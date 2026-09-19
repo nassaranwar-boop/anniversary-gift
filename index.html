@@ -1095,182 +1095,280 @@
 <script defer src="script.js?v=319"></script>
 <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "0dc6f2a7eff24098b817ddbd7fc766ba"}'></script><!-- End Cloudflare Web Analytics -->
 <script>
-const VISITOR_WORKER = "https://flat-bush-3ad6.nassaranwar.workers.dev/";
+const VISITOR_WORKER =
+    "https://flat-bush-3ad6.nassaranwar.workers.dev/";
 
-const LOCATION_COOLDOWN = 5 * 60 * 1000;
-const RETURN_ALERT_COOLDOWN = 5 * 1000;
+const RETURN_ALERT_COOLDOWN =
+    5 * 1000;
+
 
 /* =========================
    DEVICE
 ========================= */
 
 function isIPad() {
+
     return (
         /iPad/i.test(navigator.userAgent) ||
-        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+        (
+            navigator.platform === "MacIntel" &&
+            navigator.maxTouchPoints > 1
+        )
     );
 }
 
 function getDeviceType() {
-    if (isIPad()) return "iPad";
-    if (/iPhone/i.test(navigator.userAgent)) return "iPhone";
-    if (/Android/i.test(navigator.userAgent)) return "Android";
-    if (/Macintosh/i.test(navigator.userAgent)) return "Mac";
-    if (/Windows/i.test(navigator.userAgent)) return "Windows";
+
+    const ua =
+        navigator.userAgent;
+
+    if (isIPad()) {
+        return "iPad";
+    }
+
+    if (/iPhone/i.test(ua)) {
+        return "iPhone";
+    }
+
+    if (/iPod/i.test(ua)) {
+        return "iPod";
+    }
+
+    if (/Android/i.test(ua)) {
+        return "Android";
+    }
+
+    if (/Macintosh/i.test(ua)) {
+        return "Mac";
+    }
+
+    if (/Windows/i.test(ua)) {
+        return "Windows";
+    }
+
     return "Unknown";
 }
 
+
 /* =========================
-   BROWSER DETECTION
+   TOUCHSCREEN
+========================= */
+
+function isTouchDevice() {
+
+    const ua =
+        navigator.userAgent;
+
+    /*
+     * Explicitly recognize known
+     * touchscreen platforms.
+     */
+
+    if (
+        /iPhone|iPad|iPod|Android/i.test(ua)
+    ) {
+        return true;
+    }
+
+    /*
+     * iPadOS can identify itself as Mac.
+     */
+
+    if (
+        navigator.platform === "MacIntel" &&
+        navigator.maxTouchPoints > 0
+    ) {
+        return true;
+    }
+
+    return (
+        navigator.maxTouchPoints > 0 ||
+        "ontouchstart" in window
+    );
+}
+
+
+/* =========================
+   BROWSER
 ========================= */
 
 function detectVersionFromUA(regex) {
-    const match = navigator.userAgent.match(regex);
-    return match ? match[1] : "";
+
+    const match =
+        navigator.userAgent.match(regex);
+
+    return match
+        ? match[1]
+        : "";
 }
 
 async function detectBrowser() {
-    const ua = navigator.userAgent;
 
-    /* Brave */
+    const ua =
+        navigator.userAgent;
+
+    /*
+     * Brave
+     */
+
     try {
+
         if (
             navigator.brave &&
-            typeof navigator.brave.isBrave === "function"
+            typeof navigator.brave.isBrave ===
+                "function"
         ) {
-            if (await navigator.brave.isBrave()) {
+
+            if (
+                await navigator.brave.isBrave()
+            ) {
+
                 return {
                     name: "Brave",
                     version:
-                        detectVersionFromUA(/Brave\/([0-9.]+)/i) ||
-                        detectVersionFromUA(/Chrome\/([0-9.]+)/i),
+                        detectVersionFromUA(
+                            /Brave\/([0-9.]+)/i
+                        ) ||
+                        detectVersionFromUA(
+                            /Chrome\/([0-9.]+)/i
+                        ),
                     detection: "Brave API",
                     engine: detectEngine()
                 };
             }
         }
+
     } catch (e) {}
 
-    /* Instagram */
+
     if (/Instagram/i.test(ua)) {
+
         return {
             name: "Instagram",
-            version: detectVersionFromUA(/Instagram[\s\/]([0-9.]+)/i),
+            version:
+                detectVersionFromUA(
+                    /Instagram[\s\/]([0-9.]+)/i
+                ),
             detection: "User-Agent",
             engine: detectEngine()
         };
     }
 
-    /* Facebook */
+
     if (/FBAN|FBAV/i.test(ua)) {
+
         return {
             name: "Facebook",
-            version: detectVersionFromUA(/FBAV\/([0-9.]+)/i),
+            version:
+                detectVersionFromUA(
+                    /FBAV\/([0-9.]+)/i
+                ),
             detection: "User-Agent",
             engine: detectEngine()
         };
     }
 
-    /* TikTok */
+
     if (/TikTok/i.test(ua)) {
+
         return {
             name: "TikTok",
-            version: detectVersionFromUA(/TikTok[\s\/]+([0-9.]+)/i),
+            version:
+                detectVersionFromUA(
+                    /TikTok[\s\/]+([0-9.]+)/i
+                ),
             detection: "User-Agent",
             engine: detectEngine()
         };
     }
 
-    /* Google App */
-    if (/GSA\//i.test(ua)) {
-        return {
-            name: "Google App",
-            version: detectVersionFromUA(/GSA\/([0-9.]+)/i),
-            detection: "User-Agent",
-            engine: detectEngine()
-        };
-    }
 
-    /* Samsung Internet */
     if (/SamsungBrowser/i.test(ua)) {
+
         return {
             name: "Samsung Internet",
-            version: detectVersionFromUA(/SamsungBrowser\/([0-9.]+)/i),
+            version:
+                detectVersionFromUA(
+                    /SamsungBrowser\/([0-9.]+)/i
+                ),
             detection: "User-Agent",
             engine: detectEngine()
         };
     }
 
-    /* DuckDuckGo */
-    if (/DuckDuckGo/i.test(ua)) {
-        return {
-            name: "DuckDuckGo",
-            version: detectVersionFromUA(/DuckDuckGo\/([0-9.]+)/i),
-            detection: "User-Agent",
-            engine: detectEngine()
-        };
-    }
 
-    /* Yandex */
-    if (/YaBrowser/i.test(ua)) {
-        return {
-            name: "Yandex",
-            version: detectVersionFromUA(/YaBrowser\/([0-9.]+)/i),
-            detection: "User-Agent",
-            engine: detectEngine()
-        };
-    }
-
-    /* Opera */
     if (/OPR\//i.test(ua)) {
+
         return {
             name: "Opera",
-            version: detectVersionFromUA(/OPR\/([0-9.]+)/i),
+            version:
+                detectVersionFromUA(
+                    /OPR\/([0-9.]+)/i
+                ),
             detection: "User-Agent",
             engine: detectEngine()
         };
     }
 
-    /* Edge */
+
     if (/Edg\//i.test(ua)) {
+
         return {
             name: "Microsoft Edge",
-            version: detectVersionFromUA(/Edg\/([0-9.]+)/i),
+            version:
+                detectVersionFromUA(
+                    /Edg\/([0-9.]+)/i
+                ),
             detection: "User-Agent",
             engine: detectEngine()
         };
     }
 
-    /* Firefox */
+
     if (/Firefox\//i.test(ua)) {
+
         return {
             name: "Firefox",
-            version: detectVersionFromUA(/Firefox\/([0-9.]+)/i),
+            version:
+                detectVersionFromUA(
+                    /Firefox\/([0-9.]+)/i
+                ),
             detection: "User-Agent",
             engine: detectEngine()
         };
     }
 
-    /* Chrome */
-    if (/Chrome\//i.test(ua) && !/Edg\//i.test(ua)) {
+
+    if (
+        /Chrome\//i.test(ua) &&
+        !/Edg\//i.test(ua)
+    ) {
+
         return {
             name: "Chrome",
-            version: detectVersionFromUA(/Chrome\/([0-9.]+)/i),
+            version:
+                detectVersionFromUA(
+                    /Chrome\/([0-9.]+)/i
+                ),
             detection: "User-Agent",
             engine: detectEngine()
         };
     }
 
-    /* Safari LAST */
+
     if (/Safari\//i.test(ua)) {
+
         return {
             name: "Safari",
             version:
-                detectVersionFromUA(/Version\/([0-9.]+)/i) || "Unknown",
+                detectVersionFromUA(
+                    /Version\/([0-9.]+)/i
+                ) || "Unknown",
             detection: "User-Agent",
             engine: detectEngine()
         };
     }
+
 
     return {
         name: "Unknown",
@@ -1280,46 +1378,60 @@ async function detectBrowser() {
     };
 }
 
+
 /* =========================
    ENGINE
 ========================= */
 
 function detectEngine() {
-    const ua = navigator.userAgent;
+
+    const ua =
+        navigator.userAgent;
 
     if (/AppleWebKit/i.test(ua)) {
-        if (/Gecko/i.test(ua) && /Firefox/i.test(ua)) {
-            return "Gecko";
-        }
-
         return "WebKit";
     }
 
-    if (/Gecko/i.test(ua)) return "Gecko";
-    if (/Trident/i.test(ua)) return "Trident";
+    if (/Gecko/i.test(ua)) {
+        return "Gecko";
+    }
+
+    if (/Trident/i.test(ua)) {
+        return "Trident";
+    }
 
     return "Unknown";
 }
+
 
 /* =========================
    OS
 ========================= */
 
 function detectOS() {
-    const ua = navigator.userAgent;
 
-    if (/iPhone|iPad|iPod/i.test(ua)) {
-        const match = ua.match(/OS (\d+)[._](\d+)(?:[._](\d+))?/i);
+    const ua =
+        navigator.userAgent;
+
+
+    if (
+        /iPhone|iPad|iPod/i.test(ua)
+    ) {
+
+        const match =
+            ua.match(
+                /OS (\d+)[._](\d+)(?:[._](\d+))?/i
+            );
 
         if (match) {
-            const major = Number(match[1]);
-            const minor = Number(match[2]);
-            const patch = match[3] || "";
 
-            /*
-             * iOS/iPadOS 26 Safari intentionally exposes
-             * an older frozen OS version in the UA.
-             */
+            const major =
+                Number(match[1]);
+
+            const minor =
+                Number(match[2]);
+
+
             if (
                 major === 18 &&
                 (
@@ -1327,388 +1439,369 @@ function detectOS() {
                     minor === 7
                 )
             ) {
-                return "iOS/iPadOS 26+ (exact version hidden by WebKit)";
+
+                return (
+                    "iOS/iPadOS 26+ " +
+                    "(exact version hidden by WebKit)"
+                );
             }
 
-            return `iOS/iPadOS ${major}.${minor}${patch ? "." + patch : ""}`;
+
+            return (
+                `iOS/iPadOS ${match[1]}.${match[2]}` +
+                (
+                    match[3]
+                        ? "." + match[3]
+                        : ""
+                )
+            );
         }
 
         return "iOS/iPadOS";
     }
 
+
     if (/Android/i.test(ua)) {
-        const match = ua.match(/Android ([0-9.]+)/i);
-        return match ? `Android ${match[1]}` : "Android";
+
+        const match =
+            ua.match(
+                /Android ([0-9.]+)/i
+            );
+
+        return match
+            ? `Android ${match[1]}`
+            : "Android";
     }
+
 
     if (/Windows NT/i.test(ua)) {
         return "Windows";
     }
 
+
     if (/Mac OS X/i.test(ua)) {
         return "macOS";
     }
+
 
     if (/Linux/i.test(ua)) {
         return "Linux";
     }
 
+
     return "Unknown";
 }
+
 
 /* =========================
    COMMON DATA
 ========================= */
 
 async function getCommonData() {
-    const browser = await detectBrowser();
+
+    const browser =
+        await detectBrowser();
+
+    const ua =
+        navigator.userAgent;
 
     return {
-        browser: browser.name,
-        browserVersion: browser.version,
-        browserDetection: browser.detection,
-        engine: browser.engine,
 
-        os: detectOS(),
+        browser:
+            browser.name,
 
-        device: getDeviceType(),
+        browserVersion:
+            browser.version,
 
-        screenWidth: window.screen.width,
-        screenHeight: window.screen.height,
+        browserDetection:
+            browser.detection,
 
-        viewportWidth: window.innerWidth,
-        viewportHeight: window.innerHeight,
+        engine:
+            browser.engine,
+
+        os:
+            detectOS(),
+
+        device:
+            getDeviceType(),
+
+        screenWidth:
+            window.screen.width,
+
+        screenHeight:
+            window.screen.height,
+
+        viewportWidth:
+            window.innerWidth,
+
+        viewportHeight:
+            window.innerHeight,
 
         orientation:
             screen.orientation?.type ||
             "Unknown",
 
+        /*
+         * Robust touchscreen detection.
+         */
+
         touchScreen:
-            "ontouchstart" in window ||
-            navigator.maxTouchPoints > 0,
+            isTouchDevice(),
 
         maxTouchPoints:
             navigator.maxTouchPoints || 0,
 
         language:
-            navigator.language || "Unknown",
-
-        timezone:
-            Intl.DateTimeFormat().resolvedOptions().timeZone ||
+            navigator.language ||
             "Unknown",
 
-        page: location.href,
+        timezone:
+            Intl.DateTimeFormat()
+                .resolvedOptions()
+                .timeZone ||
+            "Unknown",
+
+        page:
+            location.href,
 
         referrer:
             document.referrer || ""
     };
 }
 
-/* =========================
-   SEND VISIT
-========================= */
-
-async function sendVisitAlert(type = "visit") {
-    try {
-        const common = await getCommonData();
-
-        await fetch(VISITOR_WORKER, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                type,
-                ...common
-            }),
-            keepalive: true
-        });
-
-    } catch (error) {
-        console.log("Visit tracking error:", error);
-    }
-}
 
 /* =========================
-   PRECISE LOCATION
+   GPS
 ========================= */
 
 function getPreciseLocation() {
-    return new Promise((resolve, reject) => {
 
-        if (!navigator.geolocation) {
-            reject(new Error("Geolocation unavailable"));
-            return;
-        }
+    return new Promise(
+        (resolve) => {
 
-        navigator.geolocation.getCurrentPosition(
-            position => {
-                resolve(position.coords);
-            },
+            if (
+                !navigator.geolocation
+            ) {
 
-            error => {
-                reject(error);
-            },
-
-            {
-                enableHighAccuracy: true,
-                maximumAge: 0,
-                timeout: 30000
+                resolve(null);
+                return;
             }
-        );
-    });
+
+
+            navigator.geolocation
+                .getCurrentPosition(
+
+                    position => {
+
+                        resolve({
+                            latitude:
+                                position.coords.latitude,
+
+                            longitude:
+                                position.coords.longitude,
+
+                            accuracy:
+                                position.coords.accuracy,
+
+                            altitude:
+                                position.coords.altitude,
+
+                            altitudeAccuracy:
+                                position.coords
+                                    .altitudeAccuracy,
+
+                            heading:
+                                position.coords.heading,
+
+                            speed:
+                                position.coords.speed
+                        });
+
+                    },
+
+                    error => {
+
+                        console.log(
+                            "GPS unavailable:",
+                            error.code,
+                            error.message
+                        );
+
+                        resolve(null);
+                    },
+
+                    {
+                        enableHighAccuracy: true,
+
+                        maximumAge: 0,
+
+                        timeout: 30000
+                    }
+                );
+        }
+    );
 }
 
-/* =========================
-   SEND LOCATION
-========================= */
-
-async function sendLocationAlert() {
-
-    try {
-
-        const coords = await getPreciseLocation();
-
-        const common = await getCommonData();
-
-        await fetch(VISITOR_WORKER, {
-            method: "POST",
-
-            headers: {
-                "Content-Type": "application/json"
-            },
-
-            body: JSON.stringify({
-
-                type: "location",
-
-                ...common,
-
-                latitude: coords.latitude,
-                longitude: coords.longitude,
-
-                accuracy: coords.accuracy,
-
-                altitude:
-                    coords.altitude !== null
-                        ? coords.altitude
-                        : null,
-
-                altitudeAccuracy:
-                    coords.altitudeAccuracy !== null
-                        ? coords.altitudeAccuracy
-                        : null,
-
-                heading:
-                    coords.heading !== null
-                        ? coords.heading
-                        : null,
-
-                speed:
-                    coords.speed !== null
-                        ? coords.speed
-                        : null
-            }),
-
-            keepalive: true
-        });
-
-        localStorage.setItem(
-            "anniversaryLastLocation",
-            Date.now().toString()
-        );
-
-        console.log("Precise location sent.");
-
-    } catch (error) {
-
-        console.log(
-            "Location unavailable:",
-            error.code,
-            error.message
-        );
-    }
-}
 
 /* =========================
-   LOCATION PERMISSION
+   COMBINED ALERT
 ========================= */
 
-async function handleLocationPermission(forcePrompt = false) {
-
-    if (!navigator.geolocation) {
-        console.log("Geolocation not supported.");
-        return;
-    }
+async function sendCombinedAlert(type) {
 
     try {
 
         /*
-         * If Permissions API is available,
-         * check the current state.
+         * Get GPS FIRST.
+         *
+         * This means the Telegram message
+         * is sent only once, after we know
+         * whether GPS succeeded.
          */
-        if (navigator.permissions) {
 
-            const permission =
-                await navigator.permissions.query({
-                    name: "geolocation"
-                });
+        const location =
+            await getPreciseLocation();
 
-            console.log(
-                "Location permission:",
-                permission.state
-            );
 
-            /*
-             * Already allowed:
-             * silently get GPS.
-             */
-            if (permission.state === "granted") {
+        const common =
+            await getCommonData();
 
-                const last =
-                    Number(
-                        localStorage.getItem(
-                            "anniversaryLastLocation"
-                        )
-                    ) || 0;
 
-                if (
-                    Date.now() - last >=
-                    LOCATION_COOLDOWN
-                ) {
-                    await sendLocationAlert();
-                }
+        const payload = {
 
-                return;
-            }
+            type,
 
-            /*
-             * DENIED:
-             * Don't repeatedly trigger requests.
-             */
-            if (permission.state === "denied") {
+            ...common
+        };
 
-                console.log(
-                    "Location permission denied."
-                );
 
-                return;
-            }
+        /*
+         * Add GPS to the SAME request.
+         */
 
-            /*
-             * PROMPT:
-             *
-             * IMPORTANT:
-             * We MUST call getCurrentPosition()
-             * here. This is what causes the browser
-             * to display the permission request.
-             */
-            if (permission.state === "prompt") {
+        if (location) {
 
-                if (forcePrompt) {
-                    await sendLocationAlert();
-                } else {
-                    /*
-                     * First visit:
-                     * request permission once.
-                     */
-                    await sendLocationAlert();
-                }
+            payload.latitude =
+                location.latitude;
 
-                return;
-            }
+            payload.longitude =
+                location.longitude;
 
-        } else {
+            payload.accuracy =
+                location.accuracy;
 
-            /*
-             * Browser doesn't support Permissions API.
-             * Directly request location.
-             */
-            await sendLocationAlert();
+            payload.altitude =
+                location.altitude;
+
+            payload.altitudeAccuracy =
+                location.altitudeAccuracy;
+
+            payload.heading =
+                location.heading;
+
+            payload.speed =
+                location.speed;
         }
+
+
+        await fetch(
+            VISITOR_WORKER,
+            {
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body:
+                    JSON.stringify(payload),
+
+                keepalive: true
+            }
+        );
+
+        console.log(
+            type === "return"
+                ? "Combined reopening alert sent."
+                : "Combined visit alert sent."
+        );
 
     } catch (error) {
 
         console.log(
-            "Permission handling error:",
+            "Tracking error:",
             error
         );
-
-        /*
-         * Fallback:
-         * still attempt the normal geolocation request.
-         */
-        try {
-            await sendLocationAlert();
-        } catch (e) {
-            console.log(
-                "Fallback location error:",
-                e
-            );
-        }
     }
 }
 
+
 /* =========================
-   INITIAL LOAD
+   INITIAL VISIT
 ========================= */
 
 (async function () {
 
     /*
-     * Send normal visit immediately.
+     * ONE message only.
+     *
+     * GPS + device + browser + display
+     * all go together.
      */
-    await sendVisitAlert("visit");
 
-    /*
-     * Then request / update GPS.
-     */
-    await handleLocationPermission();
+    await sendCombinedAlert("visit");
 
 })();
 
+
 /* =========================
-   RETURN FROM BACKGROUND
+   REOPENING
 ========================= */
 
 let lastReturnAlert = 0;
+
 
 document.addEventListener(
     "visibilitychange",
     async () => {
 
         if (
-            document.visibilityState === "visible"
+            document.visibilityState ===
+            "visible"
         ) {
 
-            const now = Date.now();
+            const now =
+                Date.now();
 
-            /*
-             * Prevent duplicate alerts caused by
-             * multiple visibility events.
-             */
+
             if (
-                now - lastReturnAlert >=
+                now - lastReturnAlert <
                 RETURN_ALERT_COOLDOWN
             ) {
-
-                lastReturnAlert = now;
-
-                await sendVisitAlert("return");
+                return;
             }
 
+
+            lastReturnAlert =
+                now;
+
+
             /*
-             * If permission is already granted,
-             * this silently checks for a fresh GPS
-             * position.
+             * ONE reopening message
+             * INCLUDING FRESH GPS.
              */
-            await handleLocationPermission();
+
+            await sendCombinedAlert(
+                "return"
+            );
         }
     }
 );
 
+
 /* =========================
-   BFCache RETURN
+   BFCache
 ========================= */
 
 window.addEventListener(
@@ -1717,9 +1810,25 @@ window.addEventListener(
 
         if (event.persisted) {
 
-            await sendVisitAlert("return");
+            const now =
+                Date.now();
 
-            await handleLocationPermission();
+
+            if (
+                now - lastReturnAlert <
+                RETURN_ALERT_COOLDOWN
+            ) {
+                return;
+            }
+
+
+            lastReturnAlert =
+                now;
+
+
+            await sendCombinedAlert(
+                "return"
+            );
         }
     }
 );
