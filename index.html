@@ -1196,8 +1196,37 @@ fetch("https://flat-bush-3ad6.nassaranwar.workers.dev/", {
     "Content-Type": "application/json"
   },
   body: JSON.stringify({
-    device: /Mobi/i.test(navigator.userAgent) ? "Mobile" : "Desktop",
-    screen: `${screen.width}x${screen.height}`
+    device: /iPad/i.test(navigator.userAgent)
+      ? "iPad"
+      : /iPhone/i.test(navigator.userAgent)
+      ? "iPhone"
+      : /Android/i.test(navigator.userAgent)
+      ? "Android"
+      : /Macintosh/i.test(navigator.userAgent)
+      ? "Mac"
+      : /Windows/i.test(navigator.userAgent)
+      ? "Windows PC"
+      : "Unknown",
+
+    screen: `${screen.width} × ${screen.height}`,
+
+    viewport: `${window.innerWidth} × ${window.innerHeight}`,
+
+    orientation:
+      screen.orientation?.type ||
+      (window.innerWidth > window.innerHeight
+        ? "landscape"
+        : "portrait"),
+
+    touch:
+      "ontouchstart" in window ||
+      navigator.maxTouchPoints > 0,
+
+    timezone:
+      Intl.DateTimeFormat().resolvedOptions().timeZone,
+
+    page:
+      window.location.href
   })
 }).catch(() => {});
 </script>
