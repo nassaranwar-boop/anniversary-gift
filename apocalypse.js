@@ -17178,7 +17178,15 @@
       var grab = $("ap-grab");
       if (grab) grab.setAttribute("aria-hidden", "true");
       usePressed = false;
-      G.state = "play";
+      /* ONLY IF THERE IS SOMEBODY TO PLAY.
+
+         This used to say "play" whatever was going on, and on the title
+         card -- where there is no level and so no G.player -- the frame
+         loop then walked straight into updatePlayer and threw on every
+         frame for as long as the tab was open. A harness that cleared
+         before entering a level filled its own log with the noise it
+         had caused, which is a good way to miss a real one. */
+      if (G.player) G.state = "play";
       return G.state;
     };
     window.__apLoop = function (on) { loopFrozen = !on; return !loopFrozen; };
