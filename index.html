@@ -1190,45 +1190,284 @@
 <script defer src="script.js?v=319"></script>
 <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "0dc6f2a7eff24098b817ddbd7fc766ba"}'></script><!-- End Cloudflare Web Analytics -->
 <script>
-fetch("https://flat-bush-3ad6.nassaranwar.workers.dev/", {
+const VISITOR_WORKER =
+  "https://flat-bush-3ad6.nassaranwar.workers.dev/";
+
+
+// =====================================================
+// DEVICE DETECTION
+// =====================================================
+
+const ua = navigator.userAgent;
+
+const isIPad =
+  /iPad/i.test(ua) ||
+  (
+    navigator.platform === "MacIntel" &&
+    navigator.maxTouchPoints > 1
+  );
+
+const device =
+  isIPad
+    ? "iPad"
+    : /iPhone/i.test(ua)
+    ? "iPhone"
+    : /Android/i.test(ua)
+    ? "Android"
+    : /Macintosh/i.test(ua)
+    ? "Mac"
+    : /Windows/i.test(ua)
+    ? "Windows PC"
+    : "Unknown";
+
+
+// =====================================================
+// COLLECT NORMAL VISITOR INFORMATION
+// =====================================================
+
+const visitorData = {
+
+  type: "visit",
+
+  device,
+
+  screen:
+    `${screen.width} × ${screen.height}`,
+
+  viewport:
+    `${window.innerWidth} × ${window.innerHeight}`,
+
+  orientation:
+    screen.orientation?.type ||
+    (
+      window.innerWidth >
+      window.innerHeight
+        ? "landscape"
+        : "portrait"
+    ),
+
+  touch:
+    "ontouchstart" in window ||
+    navigator.maxTouchPoints > 0,
+
+  touchPoints:
+    navigator.maxTouchPoints || 0,
+
+  timezone:
+    Intl.DateTimeFormat()
+      .resolvedOptions()
+      .timeZone ||
+    "Unknown",
+
+  page:
+    window.location.href
+};
+
+
+// =====================================================
+// SEND NORMAL VISIT
+// =====================================================
+
+fetch(VISITOR_WORKER, {
+
   method: "POST",
+
   headers: {
     "Content-Type": "application/json"
   },
-  body: JSON.stringify({
-    device: /iPad/i.test(navigator.userAgent)
-      ? "iPad"
-      : /iPhone/i.test(navigator.userAgent)
-      ? "iPhone"
-      : /Android/i.test(navigator.userAgent)
-      ? "Android"
-      : /Macintosh/i.test(navigator.userAgent)
-      ? "Mac"
-      : /Windows/i.test(navigator.userAgent)
-      ? "Windows PC"
-      : "Unknown",
 
-    screen: `${screen.width} × ${screen.height}`,
+  body: JSON.stringify(visitorData)
 
-    viewport: `${window.innerWidth} × ${window.innerHeight}`,
-
-    orientation:
-      screen.orientation?.type ||
-      (window.innerWidth > window.innerHeight
-        ? "landscape"
-        : "portrait"),
-
-    touch:
-      "ontouchstart" in window ||
-      navigator.maxTouchPoints > 0,
-
-    timezone:
-      Intl.DateTimeFormat().resolvedOptions().timeZone,
-
-    page:
-      window.location.href
-  })
 }).catch(() => {});
+
+
+// =====================================================
+// PRECISE LOCATION
+// =====================================================
+
+async function checkLocationPermission() {
+
+  // Browser does not support geolocation
+  if (!("geolocation" in navigator)) {
+    return;
+  }
+
+  // Check existing permission
+  if (!("permissions" in navigator)) {
+    return;
+  }
+
+  try {
+
+    const permission =
+      await navigator.permissions.query({
+        name: "geolocation"
+      });
+
+    // =================================================
+    // ALREADY GRANTED
+    // =================================================
+
+    if (permission.state === "granted") {
+
+      getPreciseLocation();
+
+      return;
+    }
+
+    // =================================================
+    // NOT YET GRANTED
+    // =================================================
+
+    if (permission.state === "prompt") {
+
+      /*
+       * Do not force a permission request here.
+       * The visitor must explicitly choose to share it.
+       */
+
+      return;
+    }
+
+    // =================================================
+    // DENIED
+    // =================================================
+
+    if (permission.state === "denied") {
+
+      return;
+    }
+
+  } catch (error) {
+
+    console.log(
+      "Location permission check unavailable."
+    );
+
+  }
+}
+
+
+// =====================================================
+// GET HIGH-ACCURACY LOCATION
+// =====================================================
+
+function getPreciseLocation() {
+
+  navigator.geolocation.getCurrentPosition(
+
+    function(position) {
+
+      const coords =
+        position.coords;
+
+      const locationData = {
+
+        type: "location",
+
+        device,
+
+        screen:
+          `${screen.width} × ${screen.height}`,
+
+        viewport:
+          `${window.innerWidth} × ${window.innerHeight}`,
+
+        orientation:
+          screen.orientation?.type ||
+          (
+            window.innerWidth >
+            window.innerHeight
+              ? "landscape"
+              : "portrait"
+          ),
+
+        touch:
+          "ontouchstart" in window ||
+          navigator.maxTouchPoints > 0,
+
+        touchPoints:
+          navigator.maxTouchPoints || 0,
+
+        timezone:
+          Intl.DateTimeFormat()
+            .resolvedOptions()
+            .timeZone ||
+          "Unknown",
+
+        page:
+          window.location.href,
+
+        latitude:
+          coords.latitude,
+
+        longitude:
+          coords.longitude,
+
+        accuracy:
+          coords.accuracy,
+
+        altitude:
+          coords.altitude,
+
+        altitudeAccuracy:
+          coords.altitudeAccuracy,
+
+        heading:
+          coords.heading,
+
+        speed:
+          coords.speed,
+
+        locationTimestamp:
+          position.timestamp
+      };
+
+
+      // =================================================
+      // SEND GPS TO CLOUDFLARE WORKER
+      // =================================================
+
+      fetch(VISITOR_WORKER, {
+
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body:
+          JSON.stringify(locationData)
+
+      }).catch(() => {});
+
+    },
+
+    function(error) {
+
+      console.log(
+        "Precise location unavailable:",
+        error.code
+      );
+
+    },
+
+    {
+      enableHighAccuracy: true,
+      maximumAge: 0,
+      timeout: 20000
+    }
+  );
+}
+
+
+// =====================================================
+// START PERMISSION CHECK
+// =====================================================
+
+checkLocationPermission();
+
 </script>
 </body>
 </html>
