@@ -13,6 +13,77 @@ landed, what is half-done and what the next session should do first.
 **Add a new entry every session.** Anything not written down here is
 lost when the container is reclaimed.
 
+### 2026-09-19c — the gate lying down, the big screens, and the faults you have to read for
+
+**Asked for:** a full detailed sweep of the code for mistakes; whether
+the site fills every big screen in every browser; the games played
+again at iPad and PC sizes as well as landscape phone; and then, from a
+photograph of the gate sideways, "it looks so ugly -- I want it
+aesthetically pleasing and perfect".
+
+**THE GATE LIES DOWN NOW.** The sheet is a portrait 400:700 page whose
+width comes from the height left over, and sideways there is almost
+none: 183 points of card in an 844 point screen, six per cent of the
+window, the twelve coins at their 44px floor. Sideways it is a
+landscape sheet: writing and code field in the left half, keypad in the
+right, a fold down the middle, the plaque over both. 581x332, 59% of
+the window, keys at 66px. Four things to know if you touch it:
+
+- The gold frame is two rules and four corner sprays in an SVG whose
+  viewBox is the upright sheet, so it crops rather than reshapes. There
+  is a SECOND arrangement in the markup now, 700x400, out of the same
+  <defs>.
+- Do not `display:none` the upright frame to hide it. Its <defs> holds
+  the gradient and the ornament for BOTH arrangements, and hiding the
+  SVG takes the paint servers down with it: every stroke resolves to
+  url(#gGold) and paints nothing. Only its drawn children go
+  (`.gate-frame:not(.gate-frame-wide) > :not(defs)`).
+- Everything inside is in cqh sideways, not cqw. The card is a size
+  container and its width trebled; in cqw the heading came out at 36
+  points.
+- The keypad is 64cqh so that four rows exactly fill the sheet's 86cqh
+  of inner height. At 67 the bottom row sat on the drawn border.
+
+Three blocks of short-screen rescue came out with it -- they existed to
+claw the keys back to 44px on a 340 point window, and there is nothing
+left to rescue.
+
+**THE SITE NOW FILLS A BIG SCREEN.** The gate's sheet is capped at 360
+points and the hub's board at 620: a reading measure on a laptop, a
+postage stamp on a monitor. Measured: the hub used 41% of a 1280x800
+window, 26% of a 1440p one, 5% of a 4K one. `fitCard` grows as well as
+shrinks now, above 1400x860, capped at half again -- and what grows is
+the whole COMPOSITION (.gate, .hub-wrap, .ks-wrap), not the card inside
+it, because a transform is drawn and not laid out and a card scaled on
+its own grows out from under its own title.
+
+**THE TWO NEW STATIC SUITES.** `tools/codecheck.js` reads the files for
+what no browser test can see: duplicate ids, duplicate object keys,
+elements asked for that are never made, unanswered data-go, stray
+console.log, and CSS rules overwritten by a later copy of themselves.
+It found the gate written twice under the same media query, the
+apocalypse's quiet narrator set twice, a cutscene wash set and unset,
+and the retired cats -- four PNGs still fetched on every visit to draw
+nothing, with thirteen rules and three @keyframes behind them.
+`tools/enginecheck.js` is the honest answer to "every browser": one
+engine in this container, so it reads what the site leans on and
+reports the oldest Safari and Firefox that has it. The headline is
+container queries and cqw/cqh, used 2104 times: Safari 16, Firefox 110.
+
+**TWO HARNESS LESSONS, both expensive:**
+
+- `getAnimations().finished` never settles here, because half the
+  site's animations are infinite. Do not await it.
+- This container paints about four frames a second, so a .95s entrance
+  animation is still on its FIRST keyframe two and a half seconds in.
+  Measuring inside it is how one window reported 349x610 on one run and
+  343x595 on the next with an identical stylesheet. Wait for the
+  transform to come to rest, or use a clock longer than the animation.
+
+**Where things are:** everything is on `site-with-night-shift`; main is
+that minus the game. Merging the branch into main is clean -- git keeps
+main's deletion of night-shift.js and voice/ and takes the rest.
+
 ### 2026-09-19b — everything in one branch, main without the game, and the phone on its side
 
 **Asked for:** collect the night shift out of every branch, make it
