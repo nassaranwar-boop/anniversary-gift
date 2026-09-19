@@ -275,6 +275,28 @@ addEventListener("resize", () => setTimeout(fitSiteCards, 60));
 /* and once the page itself has finished arriving, for whatever screen
    it opened on */
 addEventListener("load", () => { setTimeout(fitSiteCards, 120); setTimeout(fitSiteCards, 800); });
+/* AND WHENEVER THE HEIGHT THE WHOLE SITE IS LAID OUT AGAINST CHANGES.
+
+   --app-h is written after the first paint and written again whenever
+   the browser's own furniture comes and goes -- the URL bar on a phone,
+   most of all -- and several cards are sized from it: the gate's sheet
+   is min(360px, 86vw, (app-h - 190px) * 400/700). A card fitted against
+   the old height is a card fitted against the wrong one, and nothing
+   else would re-measure it until the next rotation. writeVars announces
+   every change; this listens.
+
+   (Honesty about why this went in: it was written to explain the gate
+   coming out 330x578 on one run and 325x563 on the next in the same
+   window, and it does not explain that -- the card arrives by a .95s
+   animation from scale(.97), and the harness was measuring inside it.
+   The listener is right on its own terms, so it stays, but it fixed
+   nothing.) */
+addEventListener("app-viewport", () => setTimeout(fitSiteCards, 30));
+/* and when a face finally arrives, because the card is as tall as its
+   words and the fallback face is not the same size */
+if (document.fonts && document.fonts.ready) {
+  document.fonts.ready.then(() => setTimeout(fitSiteCards, 40)).catch(() => {});
+}
 addEventListener("orientationchange", () => {
   setTimeout(fitSiteCards, 80);
   /* iOS has not settled by the time this fires */

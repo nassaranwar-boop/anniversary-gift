@@ -22,7 +22,16 @@
 */
 const { chromium } = require('playwright-core');
 
-const SIZES = [[844, 390, '844x390'], [740, 360, '740x360']];
+/* the four shapes she actually holds it in: a laptop, an iPad, and two
+   phones on their side.  The two big ones are not touch devices, so the
+   same game is played there through the same controls a mouse gets --
+   which is how a control that only exists on one of them gets caught. */
+const SIZES = [
+  [1280, 800, '1280x800 laptop'],
+  [1024, 768, '1024x768 ipad'],
+  [844, 390, '844x390 phone'],
+  [740, 360, '740x360 phone'],
+];
 const PASSCODE = '2207';
 
 let pass = 0, fail = 0;
@@ -118,6 +127,32 @@ async function look(p, rootSel) {
   return p.evaluate(controls());
 }
 
+/* IS THIS CONTROL ON THE SCREEN AT ALL?
+
+   The same game has two different sets of controls depending on what it
+   thinks it is being played on: the racer hides its steering zone for a
+   mouse and shows a pad, Super Ouissy's pad is display:none for a fine
+   pointer, and the apocalypse's stick only appears once a thumb has
+   touched the picture. So every check below asks the page which one is
+   up rather than assuming, and drives whichever it finds. */
+async function shown(p, sel) {
+  return p.evaluate((s) => {
+    const el = document.querySelector(s);
+    if (!el) return false;
+    const r = el.getBoundingClientRect();
+    if (r.width < 2 || r.height < 2) return false;
+    const cs = getComputedStyle(el);
+    if (cs.display === 'none' || cs.visibility === 'hidden' || cs.opacity === '0') return false;
+    let q = el.parentElement;
+    while (q) {
+      const qs = getComputedStyle(q);
+      if (q.hidden || qs.display === 'none' || qs.visibility === 'hidden' || qs.opacity === '0') return false;
+      q = q.parentElement;
+    }
+    return true;
+  }, sel);
+}
+
 /* ---- the games ------------------------------------------------------ */
 const GAMES = {
   race: {
@@ -176,32 +211,52 @@ const GAMES = {
       ok(label + ' race: the throttle holds itself and the kart drives',
          Math.abs(drove.now.x - drove.was.x) + Math.abs(drove.now.y - drove.was.y) > 0.5, drove);
 
-      /* a thumb put down on the picture and slid left.  the zone listens
-         for touches, not pointers -- dispatching PointerEvents at it
-         does nothing at all, which is not the same as the control being
-         broken */
-      const slid = await p.evaluate(async () => {
-        const zone = document.getElementById('rc-steer');
-        const r = zone.getBoundingClientRect();
-        const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-        const hit = document.elementFromPoint(cx, cy);
-        const reachable = !!(hit && (hit === zone || zone.contains(hit) || hit.contains(zone)));
-        const touch = (x) => new Touch({ identifier: 11, target: zone, clientX: x, clientY: cy });
-        const fire = (t, x) => zone.dispatchEvent(new TouchEvent(t, {
-          bubbles: true, cancelable: true, changedTouches: [touch(x)], touches: t === 'touchend' ? [] : [touch(x)] }));
-        const d = window.__RACE_DEBUG();
-        const me = d.racers.filter((x) => x.isPlayer)[0] || d.racers[0];
-        fire('touchstart', cx);
-        for (let i = 1; i <= 10; i++) fire('touchmove', cx - i * 14);
-        const axis = d.input.axisWant !== undefined ? d.input.axisWant : d.input.axis;
-        const was = me.angle;
-        for (let i = 0; i < 60; i++) d.step(1 / 60);
-        const now = me.angle;
-        fire('touchend', cx - 140);
-        return { reachable: reachable, axis: axis, was: +was.toFixed(4), now: +now.toFixed(4) };
-      });
-      ok(label + ' race: the glass takes a thumb', slid.reachable, slid);
-      ok(label + ' race: sliding left asks for left lock', slid.axis < -0.05, slid);
+      /* THE WHEEL IS WHATEVER THIS DEVICE HAS.
+
+         On glass the whole picture is the wheel and the zone listens
+         for touches, not pointers. On a laptop that zone is hidden and
+         the wheel is the arrow keys. Both are the real control on the
+         device they belong to, so both are driven. */
+      const glass = await shown(p, '#rc-steer');
+      let slid;
+      if (glass) {
+        slid = await p.evaluate(async () => {
+          const zone = document.getElementById('rc-steer');
+          const r = zone.getBoundingClientRect();
+          const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+          const hit = document.elementFromPoint(cx, cy);
+          const reachable = !!(hit && (hit === zone || zone.contains(hit) || hit.contains(zone)));
+          const touch = (x) => new Touch({ identifier: 11, target: zone, clientX: x, clientY: cy });
+          const fire = (t, x) => zone.dispatchEvent(new TouchEvent(t, {
+            bubbles: true, cancelable: true, changedTouches: [touch(x)], touches: t === 'touchend' ? [] : [touch(x)] }));
+          const d = window.__RACE_DEBUG();
+          const me = d.racers.filter((x) => x.isPlayer)[0] || d.racers[0];
+          fire('touchstart', cx);
+          for (let i = 1; i <= 10; i++) fire('touchmove', cx - i * 14);
+          const axis = d.input.axisWant !== undefined ? d.input.axisWant : d.input.axis;
+          const was = me.angle;
+          for (let i = 0; i < 60; i++) d.step(1 / 60);
+          const now = me.angle;
+          fire('touchend', cx - 140);
+          return { how: 'a thumb on the glass', reachable: reachable, axis: axis,
+                   was: +was.toFixed(4), now: +now.toFixed(4) };
+        });
+      } else {
+        await p.keyboard.down('ArrowLeft');
+        slid = await p.evaluate(async () => {
+          const d = window.__RACE_DEBUG();
+          const me = d.racers.filter((x) => x.isPlayer)[0] || d.racers[0];
+          const axis = d.input.left ? -1 : (d.input.axisWant !== undefined ? d.input.axisWant : d.input.axis);
+          const was = me.angle;
+          for (let i = 0; i < 60; i++) d.step(1 / 60);
+          return { how: 'the arrow keys', reachable: true, axis: axis,
+                   was: +was.toFixed(4), now: +me.angle.toFixed(4) };
+        });
+        await p.keyboard.up('ArrowLeft');
+      }
+      note('steered with ' + slid.how);
+      ok(label + ' race: the wheel takes hold of it', slid.reachable, slid);
+      ok(label + ' race: asking for left lock is heard', slid.axis < -0.05, slid);
       ok(label + ' race: and the kart turns', Math.abs(slid.now - slid.was) > 0.0005, slid);
 
       const seen = await look(p, '#screen-race');
@@ -264,39 +319,56 @@ const GAMES = {
       ok(label + ' ouissy: every control on the screen', !seen.off.length, seen.off);
       ok(label + ' ouissy: nothing on top of a control', !seen.covered.length, seen.covered);
 
-      /* the keys answer to touches and pointers both; what matters is
-         that holding one is held, and that holding it moves her */
-      const held = await p.evaluate(async () => {
-        const el = document.querySelector('#so-pad [data-so-key="right"]');
-        const r = el.getBoundingClientRect();
-        const x = r.left + r.width / 2, y = r.top + r.height / 2;
-        const hit = document.elementFromPoint(x, y);
-        const reachable = !!(hit && (hit === el || el.contains(hit)));
-        const o = { bubbles: true, cancelable: true, clientX: x, clientY: y,
-                    pointerId: 3, pointerType: 'touch', isPrimary: true, buttons: 1 };
-        el.dispatchEvent(new PointerEvent('pointerdown', o));
-        const t = new Touch({ identifier: 3, target: el, clientX: x, clientY: y });
-        el.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, cancelable: true, changedTouches: [t], touches: [t] }));
-        const got = window.__soKeys ? JSON.parse(JSON.stringify(window.__soKeys())) : null;
-        const was = window.__soState().x;
-        const ran = window.__soPump ? window.__soPump(0.8) : null;
-        el.dispatchEvent(new PointerEvent('pointerup', Object.assign({}, o, { buttons: 0 })));
-        el.dispatchEvent(new TouchEvent('touchend', { bubbles: true, cancelable: true, changedTouches: [t], touches: [] }));
-        if (window.__soReleaseAll) window.__soReleaseAll();
-        return { reachable: reachable, keys: got, was: was, ran: ran };
-      });
-      ok(label + ' ouissy: RIGHT is reachable', held.reachable, held);
+      /* the pad is display:none for a fine pointer -- on a laptop the
+         controls are the keys, and both have to move her */
+      const padUp = await shown(p, '#so-pad [data-so-key="right"]');
+      let held;
+      if (padUp) {
+        held = await p.evaluate(async () => {
+          const el = document.querySelector('#so-pad [data-so-key="right"]');
+          const r = el.getBoundingClientRect();
+          const x = r.left + r.width / 2, y = r.top + r.height / 2;
+          const hit = document.elementFromPoint(x, y);
+          const reachable = !!(hit && (hit === el || el.contains(hit)));
+          const o = { bubbles: true, cancelable: true, clientX: x, clientY: y,
+                      pointerId: 3, pointerType: 'touch', isPrimary: true, buttons: 1 };
+          el.dispatchEvent(new PointerEvent('pointerdown', o));
+          const t = new Touch({ identifier: 3, target: el, clientX: x, clientY: y });
+          el.dispatchEvent(new TouchEvent('touchstart', { bubbles: true, cancelable: true, changedTouches: [t], touches: [t] }));
+          const got = window.__soKeys ? JSON.parse(JSON.stringify(window.__soKeys())) : null;
+          const was = window.__soState().x;
+          const ran = window.__soPump ? window.__soPump(0.8) : null;
+          el.dispatchEvent(new PointerEvent('pointerup', Object.assign({}, o, { buttons: 0 })));
+          el.dispatchEvent(new TouchEvent('touchend', { bubbles: true, cancelable: true, changedTouches: [t], touches: [] }));
+          if (window.__soReleaseAll) window.__soReleaseAll();
+          return { how: 'the pad', reachable: reachable, keys: got, was: was, ran: ran };
+        });
+      } else {
+        await p.keyboard.down('ArrowRight');
+        held = await p.evaluate(async () => {
+          const got = window.__soKeys ? JSON.parse(JSON.stringify(window.__soKeys())) : null;
+          const was = window.__soState().x;
+          const ran = window.__soPump ? window.__soPump(0.8) : null;
+          return { how: 'the arrow keys', reachable: true, keys: got, was: was, ran: ran };
+        });
+        await p.keyboard.up('ArrowRight');
+        await p.evaluate(() => { if (window.__soReleaseAll) window.__soReleaseAll(); });
+      }
+      note('ran with ' + held.how);
+      ok(label + ' ouissy: RIGHT can be taken hold of', held.reachable, held);
       ok(label + ' ouissy: holding RIGHT is held', !!held.keys && !!held.keys.right, held.keys);
       ok(label + ' ouissy: and she runs while it is held',
          !!held.ran && held.ran.x > held.was, { from: held.was, to: held.ran && held.ran.x });
 
-      const jump = await p.evaluate(() => {
-        const el = document.querySelector('#so-pad [data-so-key="jump"]');
-        const r = el.getBoundingClientRect();
-        const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-        return !!(hit && (hit === el || el.contains(hit)));
-      });
-      ok(label + ' ouissy: JUMP is reachable', jump);
+      if (padUp) {
+        const jump = await p.evaluate(() => {
+          const el = document.querySelector('#so-pad [data-so-key="jump"]');
+          const r = el.getBoundingClientRect();
+          const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+          return !!(hit && (hit === el || el.contains(hit)));
+        });
+        ok(label + ' ouissy: JUMP is reachable', jump);
+      }
 
       const pz = await press('#so-pause-btn');
       ok(label + ' ouissy: the pause button is reachable', pz.found && pz.reachable, pz);
@@ -348,6 +420,24 @@ const GAMES = {
       ok(label + ' apoc: a thumb on the picture brings the controls up', walked.ui === 'false', walked.ui);
       ok(label + ' apoc: and it walks her',
          Math.abs(walked.now.x - walked.was.x) + Math.abs(walked.now.z - walked.was.z) > 0.01, walked);
+
+      /* and the keys, which are what a laptop has -- pressing one is
+         also what takes the touch controls back off the screen */
+      await p.keyboard.down('ArrowRight');
+      const keyed = await p.evaluate(() => {
+        const was = window.__apState();
+        if (window.__apPump) window.__apPump(1 / 30, 45);
+        const now = window.__apState();
+        return { was: was.player, now: now.player,
+                 ui: document.getElementById('ap-touch').getAttribute('aria-hidden') };
+      });
+      await p.keyboard.up('ArrowRight');
+      ok(label + ' apoc: the arrow keys walk her too',
+         Math.abs(keyed.now.x - keyed.was.x) + Math.abs(keyed.now.z - keyed.was.z) > 0.01, keyed);
+      ok(label + ' apoc: and a key takes the touch controls away again', keyed.ui === 'true', keyed.ui);
+      /* put the thumb controls back for the checks below */
+      await p.evaluate(() => { if (window.__apTouchUI) __apTouchUI(true); });
+      await p.waitForTimeout(500);
 
       /* the buttons fade in over a quarter of a second, and this
          container paints about four frames in that time */
@@ -469,7 +559,12 @@ const GAMES = {
     console.log('\n=== ' + label);
     for (const name of names) {
       const g = GAMES[name];
-      const p = await b.newPage({ viewport: { width: w, height: h }, isMobile: true, hasTouch: true });
+      /* a laptop is not a touch device and must not be told it is: the
+         racer hides its steering zone and shows the pad for a mouse,
+         and a harness that claims touch on a 1280 window is measuring a
+         layout nobody has */
+      const touch = h < 500;
+      const p = await b.newPage({ viewport: { width: w, height: h }, isMobile: touch, hasTouch: touch });
       const errs = [];
       p.on('pageerror', (e) => errs.push(e.message.slice(0, 100)));
       await p.route('**/*', (r) => r.request().url().startsWith('http://127.0.0.1') ? r.continue() : r.abort());
