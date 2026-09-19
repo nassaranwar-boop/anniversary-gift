@@ -42,8 +42,16 @@ const BUDGET = 120, BUILD_BUDGET = 450, PAINT_BUDGET = 450;
     executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
     args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox'],
   });
-  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 },
-                                         isMobile: true, hasTouch: true });
+  /* upright by default, and sideways on request -- "it lags when I turn
+     it" is a different measurement, and the landscape layouts give the
+     games the whole screen rather than a band across the middle, which
+     is more pixels for the software rasteriser and more room for a
+     block to hide in:   node tools/smooth.js landscape          */
+  const SIDEWAYS = process.argv[2] === 'landscape';
+  const ctx = await browser.newContext({
+    viewport: SIDEWAYS ? { width: 844, height: 390 } : { width: 390, height: 844 },
+    isMobile: true, hasTouch: true });
+  console.log('(' + (SIDEWAYS ? '844x390, on its side' : '390x844, upright') + ')');
   await ctx.route('**/*', r => r.request().url().startsWith('http://127.0.0.1')
     ? r.continue() : r.abort());
   const page = await ctx.newPage();

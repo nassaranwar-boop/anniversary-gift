@@ -13,6 +13,114 @@ landed, what is half-done and what the next session should do first.
 **Add a new entry every session.** Anything not written down here is
 lost when the container is reclaimed.
 
+### 2026-09-19b — everything in one branch, main without the game, and the phone on its side
+
+**Asked for:** collect the night shift out of every branch, make it
+stable and verify it end to end as a new player; put the whole site
+with the game in ONE new branch and delete the others; take the game
+off main until he wants it back; then a deep sweep of the site, and
+make the landscape phone an exact smaller iPad/PC in every game and
+every screen — nothing lagging, nothing out of place, every button on
+the screen, working, and not hidden under anything.
+
+**Where the code lives now.** Three facts, and nothing else is true:
+
+- `site-with-night-shift` — the whole site INCLUDING Ouissy's Night
+  Shift. This is the branch to work on the game in.
+- `main` — the whole site WITHOUT it: no `night-shift.js`, no `voice/`
+  (16MB of recorded lines), no hub card, no screen, no stylesheet for
+  it. One commit, so bringing it back is one revert plus a merge.
+  `tools/mainshape.js` is the check that taking it out left the rest
+  whole.
+- The five old branches are gone. Every one of them was proved to be
+  fully contained in `site-with-night-shift` before it was deleted.
+
+**What was actually wrong, all of it found by measuring:**
+
+1. **The last card of the chapter said `undefined`.** `NS` had two
+   top-level keys called `kept` — the line about whether she kept the
+   terms, and the six-things ending — and the later one silently ate
+   the earlier one. `tools/dupkeys.js` now fails a check instead of
+   printing "undefined" on screen; it found a second pair on the same
+   run (two test hooks called `bed()`, so `tools/nightaudio.js` asking
+   for the room tone was quietly reading the talking state).
+
+2. **The plan of the shop sat on top of the RIGHT DOOR key** at
+   844x390 and 740x360. The rule that lowers it belongs to portrait,
+   where the pad is below the stage; it was in a `max-width:900px,
+   orientation:portrait` block, and the comma is an OR.
+
+3. **Both endings were off the bottom of the last card**, at every
+   landscape size. A transform is drawn, not laid out: the card's box
+   is still 495px tall, so it is laid out from the top of a 390px
+   overlay and scaling it about its CENTRE moves the middle of a box
+   that starts above the screen to the middle of one that ends below
+   it. `fitCard` pins an overflowing card to the top now — which also
+   lets it stay bigger, 0.72 where it was 0.58 — and where even the
+   floor is not enough the card scrolls with its buttons stuck to the
+   bottom of the scroll (`.fit-scroll`).
+
+4. **Nothing ever ran the site's fitter except turning the phone.**
+   Arriving at 360 points of height, which is how everyone actually
+   arrives, left a card unfitted: the gate's UNLOCK plate hung off the
+   bottom at 740x360. `showScreen` fits what it just put up now, and so
+   does `load`.
+
+5. **The site fitter was looking for classes that do not exist.**
+   `.hub-inner`, `.ancient-card`, `.ks-card` as a container — only
+   `.gate-card` was ever real, so it was a no-op on every screen but
+   the gate. It is `.gate-card, .hub-wrap, .ks-wrap` now.
+
+6. **Super Ouissy's touch pad was hidden from assistive technology for
+   its whole life** — `aria-hidden="true"` written once in the markup
+   and never updated, on the only controls that game has on a phone.
+
+7. **`__apClear()` forced `G.state = "play"` whatever was going on**,
+   and on the title card — no level, so no `G.player` — the frame loop
+   then walked into `updatePlayer` and threw on every frame for as long
+   as the tab was open.
+
+**The suites that found them, and what they know now:**
+
+- `tools/cardfit.js` — all 14 cards the chapter can put up, at three
+  landscape sizes, 219 checks. It reads the controls from the whole
+  chapter rather than the overlay, so the shift and the monitor are
+  checked the same way a card is, and it waits for a screen with
+  something to press rather than a flat 700ms. Two of its drivers were
+  lying to it: `route('quit')` hands the page back to the hub, so
+  everything after the pause menu was being measured inside a hidden
+  screen and read zero.
+- `tools/sidebyside.js` — desktop, iPad and two landscape phones, 180
+  checks. Every control the laptop has, on the screen, uncovered, and
+  its middle in the same place on the card it belongs to. A control at
+  the 44px touch floor cannot scale with the layout, so it is counted
+  and shown rather than failed.
+- `tools/landplay.js` — all five games PLAYED on a landscape phone, 150
+  checks. Every press is checked twice: `elementFromPoint` says nothing
+  is over it, and the game's own state says the press arrived.
+- `tools/mainshape.js` — main without the game: four ways in, all four
+  open and run, nothing asks for a file that is gone, nothing throws.
+
+**Four things to know before driving these games from a harness**, all
+paid for this session:
+
+- The kart racer has NO throttle and NO pad on glass. It drives itself
+  and the whole picture is the wheel; the steering zone listens for
+  TOUCH events, not pointers; and the countdown does not count under
+  software rendering, so step it to the green with `__RACE_DEBUG().step`.
+- The apocalypse's stick is not a button: a thumb anywhere on the left
+  of the picture below the HUD becomes it, and that first touch is what
+  puts USE and CREEP on screen — they are `pointer-events:none` until
+  then, on purpose.
+- The adventure holds its choices back, hushed and genuinely disabled,
+  until the two of them have finished talking; a line is up for 2.9s.
+- The gate's keys answer `pointerdown`, not `.click()`, and the right
+  code turns the page to the SCRAPBOOK, not the hub.
+
+**What is left:** nothing from this ask. The long-standing one is still
+task #12, polishing the book's composition — do not start it unless he
+asks.
+
 ### 2026-09-15d — the nights, played through, several times each
 
 **Asked for:** the same thing as the entry below — every fault in the

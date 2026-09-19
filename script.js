@@ -147,7 +147,11 @@ const CHAPTER_FILES = {
    everything -- and the whole card is on the screen.
 
    Notes for whoever changes this:
-   - it scales from the CENTRE, which is where these cards already sit
+   - a card that FITS the overlay scales from its centre, which is where
+     these cards already sit; one whose box is taller than the overlay
+     is pinned to the top instead and shrinks downward, because such a
+     box is laid out from the top and scaling it about its centre walks
+     the drawing off the bottom
    - it never scales UP; a card that fits is left alone at 1
    - it re-measures on resize and on orientationchange, and iOS does not
      reliably settle either by the time it fires, so it asks again
