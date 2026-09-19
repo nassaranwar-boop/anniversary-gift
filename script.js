@@ -171,6 +171,7 @@ function fitCard(el, pad) {
      when the card is scaled, because a card small enough to show whole
      has nothing left to scroll. */
   el.style.transform = "";
+  el.classList.remove("fit-scroll");
   if (el.__fitMaxH === undefined) el.__fitMaxH = el.style.maxHeight || "";
   el.style.maxHeight = "none";
   const natH = Math.max(el.offsetHeight, el.scrollHeight);
@@ -179,7 +180,18 @@ function fitCard(el, pad) {
   const k = Math.min(1, availH / natH, availW / natW);
   if (k >= 0.995) { el.style.maxHeight = el.__fitMaxH; return 1; }
   let use = Math.max(FIT_MIN, k);
-  el.style.transformOrigin = "center center";
+  /* WHERE TO SHRINK IT FROM.
+
+     A transform is drawn, not laid out: the card's BOX is still its
+     full height, so a card taller than the overlay is laid out from the
+     top of the overlay and hangs off the bottom, and scaling it about
+     its centre moves the middle of a box that starts above the screen
+     to the middle of one that ends below it. The last card of the
+     chapter came out 116..403 in a 390 window that way, with both
+     endings off the bottom. When the box overflows, it is pinned to the
+     top and shrinks downward, so what is drawn starts where the card
+     starts. */
+  el.style.transformOrigin = natH > roomH - 1 ? "center top" : "center center";
   el.style.transform = "scale(" + use.toFixed(4) + ")";
   /* AND THEN LOOK AT WHERE IT ACTUALLY LANDED.
 
@@ -199,10 +211,21 @@ function fitCard(el, pad) {
     use = Math.max(FIT_MIN, use * shrink);
     el.style.transform = "scale(" + use.toFixed(4) + ")";
   }
-  /* and if even the floor is not enough, it goes back to being a card
-     that scrolls rather than an unreadable one */
+  /* AND IF EVEN THE FLOOR IS NOT ENOUGH.
+
+     Some cards are simply longer than a phone lying down -- the last
+     card of the night shift is a letter -- and shrinking those to
+     nothing serves nobody. Below the floor the card goes back to
+     scrolling, and `fit-scroll` pins its buttons to the bottom of the
+     scroll so the two things she has to choose between are on the
+     screen whatever the text above them is doing. Measured by
+     tools/cardfit.js, which caught both of them off the bottom at all
+     three landscape sizes. */
   const fin = el.getBoundingClientRect();
-  if (fin.height > rr.height + 1) el.style.maxHeight = Math.round(availH / use) + "px";
+  if (fin.height > rr.height + 1 || (use <= FIT_MIN + 0.001 && natH * use > availH + 1)) {
+    el.style.maxHeight = Math.round(availH / use) + "px";
+    el.classList.add("fit-scroll");
+  } else el.classList.remove("fit-scroll");
   return use;
 }
 /* every card inside a container, which is what a chapter calls when it

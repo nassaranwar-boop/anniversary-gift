@@ -9308,6 +9308,26 @@ img{-webkit-user-drag:none; user-select:none;}
 @keyframes nsBreathe{ 50%{ opacity:.35; } }
 .ns-btns{ display:flex; flex-wrap:wrap; gap:1.4cqw; justify-content:center; margin-top:2.4cqh; }
 
+/* A CARD LONGER THAN THE SCREEN IT IS LYING ON.
+
+   fitCard scales a card down until it fits, and some of them -- the
+   last card of the chapter is a letter, a verdict and two endings --
+   are longer than a phone on its side however small the type gets.
+   Below its floor it clamps the height instead and hangs this class on
+   the card: the card scrolls, and the row of buttons at the end of it
+   sticks to the bottom of the scroll, so what she has to press is
+   never below the fold. tools/cardfit.js found both endings off the
+   bottom at 844x390, 740x360 and 932x430. */
+.fit-scroll{ overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch; }
+.ns-card.fit-scroll > .ns-btns{
+  position:sticky; bottom:calc(-3.4cqh - 1px); z-index:4;
+  padding:1.2cqh 0 3.4cqh; margin-top:1.6cqh;
+  background:linear-gradient(180deg, rgba(14,16,15,0) 0%, rgba(14,16,15,.94) 34%, rgba(14,16,15,.99) 100%);
+}
+/* and the scroll wants an edge, or a card that continues below the
+   fold looks like a card that ends there */
+.ns-card.fit-scroll{ box-shadow:inset 0 0 0 .22cqw rgba(200,162,96,.45), inset 0 -2.4cqh 2.4cqh -2.4cqh rgba(0,0,0,.85), 0 1.6cqh 4cqh rgba(0,0,0,.7); }
+
 /* =====================================================================
    THE DOOR.
 
@@ -9747,6 +9767,10 @@ img{-webkit-user-drag:none; user-select:none;}
   .ns-pad-mid{ align-items:stretch; }
   .ns-pause-btn{ top:1.6cqh; bottom:auto; right:1.6cqw; }
   .ns-titlebar{ margin-bottom:2vh; }
+  /* nothing under the tube to clear, so the plan drops to the floor of
+     it and the top line spreads across the narrow width */
+  .ns-map{ width:max(40cqw, 186px); bottom:max(8cqh, 24px); }
+  .ns-mon-top{ left:4cqw; right:4cqw; top:max(9cqh, 34px); }
 }
 @media (max-width: 900px), (orientation: portrait){
   /* The title bar used to be turned back on here, and this rule comes
@@ -9760,8 +9784,13 @@ img{-webkit-user-drag:none; user-select:none;}
   /* the frame's own layout is set per orientation above; setting it
      again here is what put the stage at the bottom of a portrait screen
      and pushed the controls off the end of it */
-  .ns-map{ width:max(40cqw, 186px); bottom:max(8cqh, 24px); }
-  .ns-mon-top{ left:4cqw; right:4cqw; top:max(9cqh, 34px); }
+  /* The plan and the tube's top line used to be moved here, and this
+     block matches a phone on its SIDE too -- `max-width:900px` through
+     the comma is an OR. Sideways the pad is still lying over the bottom
+     of the tube, so a plan at bottom:24px sits on top of the right door
+     key and the key cannot be pressed. Both belong to portrait, where
+     the pad is below the stage and there is nothing to clear.
+     tools/cardfit.js found it on the monitor at 844x390 and 740x360. */
   .ns-pad{ padding:0 1.4cqw 1.6cqh; gap:1.2cqw; }
   .ns-card{ max-width:92cqw; padding:2.6cqh 4cqw; }
   .ns-card-wide{ max-width:94cqw; }
@@ -9789,8 +9818,14 @@ img{-webkit-user-drag:none; user-select:none;}
   .ns-key b{ font-size:11px; letter-spacing:.12em; }
   .ns-key i{ font-size:8px; letter-spacing:.14em; }
   /* the pad is below the stage in portrait, so the plan does not have
-     to clear it — it has to fit inside a 219px tall tube instead */
-  .ns-map{ width:186px; bottom:6px; right:6px; }
+     to clear it — it has to fit inside a 219px tall tube instead.  held
+     sideways at this width the pad is back over the tube, so the plan
+     keeps its clearance and only loses its size. */
+  .ns-map{ width:186px; right:6px; }
+}
+
+@media (max-width: 560px) and (orientation: portrait){
+  .ns-map{ bottom:6px; }
 }
 
 @media (prefers-reduced-motion: reduce){

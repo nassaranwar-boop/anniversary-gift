@@ -20052,6 +20052,17 @@ const testHooks = {
      of a night hold the clock still rather than take its word for it */
   pumpFrame: (dt) => { const d = dt || 0.05; G.t += d;
                        if (G.phase === "play") playStep(d); return G.phase; },
+  /* the real end of a night, through the real function: walking a toy
+     all the way to the chair takes a suite minutes and gets there by
+     luck, and the card afterwards is the thing being checked */
+  catchNow: (id) => {
+    const ch = cast[id];
+    if (!ch || G.phase !== "play") return G.phase;
+    kill(ch);
+    return G.phase;
+  },
+  /* the pause menu, through the same toggle the button calls */
+  pauseNow: () => { togglePause(); return G.phase; },
   /* the conversation she is not part of: which one, how far through it
      is, and whether she is getting it clear or through a wall */
   overState: () => ({ armed: OVER.armed, on: OVER.on, done: OVER.done,
