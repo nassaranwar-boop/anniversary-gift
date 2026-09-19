@@ -8022,6 +8022,14 @@ function drawMini() {
 /* =========================================================
    17. MENUS  (also DOM — pixel cards, same language as the hub)
    ========================================================= */
+/* every panel in the racer, kept on the screen it is on */
+function fitPanels() {
+  if (!el.overlay || !window.fitCard) return;
+  const c = el.overlay.querySelector(".rc-panel, .rc-card, .rc-results, .rc-menu");
+  if (c) window.fitCard(c, 10);
+  else if (el.overlay.firstElementChild) window.fitCard(el.overlay.firstElementChild, 10);
+}
+
 function setOverlay(html, cls) {
   if (!el.overlay) return;
   /* whatever was being typed into the last panel is not being typed
@@ -8031,6 +8039,11 @@ function setOverlay(html, cls) {
   el.overlay.className = "rc-overlay" + (html ? " on" : "") + (cls ? " " + cls : "");
   el.overlay.setAttribute("aria-hidden", html ? "false" : "true");
   wireScroll();
+  /* and it has to fit the screen it is on: sideways a phone is 390
+     points tall and these panels are laid out against a laptop. Same
+     panel, scaled down, rather than one with its bottom below the fold
+     -- see fitCard in script.js. */
+  fitPanels();
 }
 
 /* THERE IS MORE PANEL BELOW, AND NOTHING SAID SO.

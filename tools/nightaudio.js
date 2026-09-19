@@ -129,7 +129,7 @@ const ok = (n, c, x) => { checks++; console.log((c ? '  ok   ' : '  FAIL ') + n 
      through every change to prove the sound never drops out on the way. */
   console.log('\n— a room of its own for every scene —');
   await p.evaluate(() => { const w = OuissysNightShift.__night;
-    w.musicSet('night'); w.bed(true); });
+    w.musicSet("night"); w.roomTone(true); });
   await p.waitForTimeout(1500);
   const scenes = [
     ['the film',            () => OuissysNightShift.__night.route('intro'),   'film'],

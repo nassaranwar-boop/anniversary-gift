@@ -411,8 +411,10 @@ const NS = {
     marabelle: "I stopped when you looked at me. Then you stopped looking. That is the entire arrangement and I cannot break it even when I would like to. Go again, and do not take your eyes off me.",
     jax:       "That was me. I am not going to dress it up and he did not build me anything to dress it up with. He built one thing into me and it is that I do not leave rooms. Go again.",
   },
-  /* and the last night knows whether she kept the terms */
-  kept: {
+  /* and the last night knows whether she kept the terms.  named apart
+     from NS.kept below, which is the six-things ending -- they shared a
+     name once and the later one quietly ate this one. */
+  keptTerms: {
     clean: "Six nights and nothing laid a hand on you. I asked for that because I wanted you to hear it from me, and you have earned every word of it.",
     hurt:  "Six nights. Some of them got to you and I am not going to pretend they did not. You came back anyway, which is the part I would have bet on.",
   },
@@ -16218,7 +16220,28 @@ function overlay(html, cls) {
   o.querySelectorAll("[data-go]").forEach((b) => {
     b.addEventListener("click", (e) => { e.stopPropagation(); route(b.dataset.go); });
   });
+  /* AND IT HAS TO FIT ON THE SCREEN IT IS ON.
+
+     These cards are laid out against a laptop. Sideways, a phone is 390
+     pixels tall: the title card put SOUND and LEAVE across the bottom
+     edge with half of each showing, and at 740x360 both were off it.
+     fitCard scales the whole card down uniformly when it does not fit,
+     so the sideways phone gets the same card, smaller, rather than a
+     different one with its bottom missing. Measured either way by
+     tools/sidebyside.js. */
+  fitOverlay();
 }
+
+/* the fitter, exposed so a rotation can re-run it */
+function fitOverlay() {
+  const o = EL["ns-overlay"];
+  if (!o || !window.fitCard) return;
+  o.querySelectorAll(".ns-card").forEach((c) => window.fitCard(c, 10));
+}
+/* the site re-fits whatever is up when the phone turns; this is how
+   the chapter says what "whatever is up" means for it */
+if (typeof window !== "undefined") window.__chapterFit = fitOverlay;
+
 function noOverlay() {
   const o = EL["ns-overlay"];
   if (!o) return;
@@ -16699,7 +16722,7 @@ function screenShift() {
     overlay(
       '<div class="ns-card ns-card-fin">' +
         '<p class="ns-nightno">' + NS.finale.title + '</p>' +
-        '<p class="ns-kept">' + (wasHurt() ? NS.kept.hurt : NS.kept.clean) + '</p>' +
+        '<p class="ns-kept">' + (wasHurt() ? NS.keptTerms.hurt : NS.keptTerms.clean) + '</p>' +
         (lastPage ? '<div class="ns-gave">' +
              '<p class="ns-from">' + NS.gave + '</p>' +
              '<div class="ns-paper">' +
@@ -19139,7 +19162,7 @@ const testHooks = {
   }),
   /* the room tone off, so a suite can measure what a cue has to be
      heard over */
-  bed: (on) => {
+  roomTone: (on) => {
     if (!bedGain || !AC) return;
     /* setting .value does not cancel automation that is already on the
        books, and the room tone's fade-in leaves a ramp behind it */

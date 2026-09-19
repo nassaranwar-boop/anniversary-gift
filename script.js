@@ -112,6 +112,125 @@ const CHAPTER_FILES = {
      asks for this */
   nightshift: ["night-shift.js"],
 };
+/* =====================================================================
+   A CARD THAT DOES NOT FIT IS A CARD WITH BUTTONS OFF THE BOTTOM
+
+   Every chapter puts its menus, its cards and its endings in a box
+   laid out at a comfortable size, and every one of those boxes was
+   written against a screen that is at least as tall as a laptop. Turn a
+   phone sideways and the height is 390 pixels -- less than half -- and
+   a card that wants 400 hangs off the bottom.
+
+   Measured, on a 844x390 window: the night shift's title card put SOUND
+   and LEAVE across the bottom edge, half of each visible; at 740x360
+   both were off the screen entirely. The overlay scrolls, so they were
+   not unreachable -- but a menu you have to discover you can scroll is
+   a menu with hidden buttons, and he asked for the sideways phone to be
+   the iPad layout, smaller, with nothing missing.
+
+   So: smaller, exactly. fitCard measures the box it is given against
+   the room it has and scales it down uniformly when it does not fit.
+   The layout is untouched -- same arrangement, same proportions, same
+   everything -- and the whole card is on the screen.
+
+   Notes for whoever changes this:
+   - it scales from the CENTRE, which is where these cards already sit
+   - it never scales UP; a card that fits is left alone at 1
+   - it re-measures on resize and on orientationchange, and iOS does not
+     reliably settle either by the time it fires, so it asks again
+   - the box it measures must not itself be transformed, or the second
+     measurement is of the first scaling; the scale lives on the element
+     and the measurement uses offsetHeight, which ignores transforms
+   ===================================================================== */
+const FIT_MIN = 0.58;          /* below this it is too small to read */
+function fitCard(el, pad) {
+  if (!el) return 1;
+  const room = el.parentElement || document.body;
+  const rr = room.getBoundingClientRect();
+  const gap = pad === undefined ? 8 : pad;
+  /* THE ROOM IS THE CONTENT BOX, NOT THE BORDER BOX.
+
+     The overlay these cards sit in carries its own padding, and the
+     first measurement here ignored it: the card came out exactly the
+     height of the overlay, was pushed down by the padding, and hung
+     twelve pixels off the bottom of a 360-tall screen -- scaled, and
+     still cut off, which is the worst of both. */
+  const cs = getComputedStyle(room);
+  const padV = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+  const padH = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0);
+  const roomH = (room.clientHeight || rr.height || innerHeight) - padV;
+  const roomW = (room.clientWidth || rr.width || innerWidth) - padH;
+  const availH = Math.max(80, roomH - gap);
+  const availW = Math.max(80, roomW - gap);
+  /* MEASURE THE CONTENT, NOT THE BOX.
+
+     The first cut of this measured offsetHeight and found nothing to
+     fix: these cards carry a max-height and their own scrollbar, so the
+     BOX always fits -- it is the content inside it that was below the
+     fold. So the clamp comes off for the measurement, and stays off
+     when the card is scaled, because a card small enough to show whole
+     has nothing left to scroll. */
+  el.style.transform = "";
+  if (el.__fitMaxH === undefined) el.__fitMaxH = el.style.maxHeight || "";
+  el.style.maxHeight = "none";
+  const natH = Math.max(el.offsetHeight, el.scrollHeight);
+  const natW = Math.max(el.offsetWidth, el.scrollWidth);
+  if (!natH || !natW) { el.style.maxHeight = el.__fitMaxH; return 1; }
+  const k = Math.min(1, availH / natH, availW / natW);
+  if (k >= 0.995) { el.style.maxHeight = el.__fitMaxH; return 1; }
+  let use = Math.max(FIT_MIN, k);
+  el.style.transformOrigin = "center center";
+  el.style.transform = "scale(" + use.toFixed(4) + ")";
+  /* AND THEN LOOK AT WHERE IT ACTUALLY LANDED.
+
+     Padding, safe-centring and the flex fallback for an overflowing
+     child all move a card around in ways that are not worth predicting
+     from the numbers: the estimate above put a 373-tall card at 328 in
+     a 360 window and it STILL hung two pixels off the bottom, because
+     it had been pushed down 33 before it was scaled. So the estimate is
+     a first pass, and then it measures the result and corrects it --
+     which needs no assumptions about whose padding is whose. */
+  for (let pass = 0; pass < 3; pass++) {
+    const cr = el.getBoundingClientRect();
+    const over = Math.max(cr.bottom - (rr.bottom - gap / 2), (rr.top + gap / 2) - cr.top,
+                          cr.right - (rr.right - gap / 2), (rr.left + gap / 2) - cr.left);
+    if (over <= 0.5 || cr.height < 4) break;
+    const shrink = Math.max(0.5, 1 - (over * 2) / Math.max(1, cr.height));
+    use = Math.max(FIT_MIN, use * shrink);
+    el.style.transform = "scale(" + use.toFixed(4) + ")";
+  }
+  /* and if even the floor is not enough, it goes back to being a card
+     that scrolls rather than an unreadable one */
+  const fin = el.getBoundingClientRect();
+  if (fin.height > rr.height + 1) el.style.maxHeight = Math.round(availH / use) + "px";
+  return use;
+}
+/* every card inside a container, which is what a chapter calls when it
+   has just put something on the screen */
+function fitCardsIn(root, sel, pad) {
+  const box = typeof root === "string" ? document.querySelector(root) : root;
+  if (!box) return;
+  box.querySelectorAll(sel).forEach((el) => fitCard(el, pad));
+}
+window.fitCard = fitCard;
+window.fitCardsIn = fitCardsIn;
+
+/* and the site's own cards, kept fitted through a rotation */
+const FIT_SELECTOR = ".ancient-card, .gate-card, .ks-card, .hub-inner, .end-card";
+function fitSiteCards() {
+  document.querySelectorAll(".screen.active " + FIT_SELECTOR).forEach((el) => fitCard(el, 10));
+  /* and whatever chapter is up, if it published a fitter */
+  if (window.__chapterFit) { try { window.__chapterFit(); } catch (e) {} }
+}
+window.fitSiteCards = fitSiteCards;
+addEventListener("resize", () => setTimeout(fitSiteCards, 60));
+addEventListener("orientationchange", () => {
+  setTimeout(fitSiteCards, 80);
+  /* iOS has not settled by the time this fires */
+  setTimeout(fitSiteCards, 320);
+  setTimeout(fitSiteCards, 700);
+});
+
 function loadChapter(name) {
   return Promise.all((CHAPTER_FILES[name] || []).map(loadScript));
 }
