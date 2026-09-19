@@ -120,10 +120,6 @@ const CHAPTER_FILES = {
      valley, so it comes down the same road as the chapters rather than
      in the opening payload. */
   quest:  ["ost.js"],
-  /* the night shift is the biggest of the lot and needs THREE, which the
-     deferred bundle in the head has already run by the time anything
-     asks for this */
-  nightshift: ["night-shift.js"],
 };
 /* =====================================================================
    A CARD THAT DOES NOT FIT IS A CARD WITH BUTTONS OFF THE BOTTOM
@@ -304,9 +300,7 @@ window.loadChapter = loadChapter;
    staggering stays because it is right on its own terms, not because it
    fixed anything. */
 function prefetchChapters() {
-  const first = Object.keys(CHAPTER_FILES).filter((k) => k !== "nightshift");
-  Promise.all(first.map((k) => loadChapter(k).catch(() => {})))
-    .then(() => loadChapter("nightshift").catch(() => {}));
+  Object.keys(CHAPTER_FILES).forEach((k) => { loadChapter(k).catch(() => {}); });
 }
 if (typeof requestIdleCallback === "function") {
   requestIdleCallback(prefetchChapters, { timeout: 4000 });
@@ -1599,23 +1593,6 @@ window.leaveSuperOuissyRace = () => {
 };
 window.markSuperOuissyRaceDone = () => markChapterDone("race");
 
-/* =========================================================
-   OUISSY'S NIGHT SHIFT
-   The night-shift chapter. Same contract as the others: this half only
-   owns getting in and out of it, and the file itself now comes down on
-   the idle callback with the rest rather than in the head.
-   ========================================================= */
-function startNightShift() {
-  loadChapter("nightshift").then(() => { if (window.OuissysNightShift) OuissysNightShift.start(); });
-}
-function stopNightShift() {
-  if (window.OuissysNightShift) OuissysNightShift.stop();
-}
-window.leaveNightShift = () => {
-  stopNightShift();
-  pageTurn("hub", startHub);
-};
-window.markNightShiftDone = () => markChapterDone("nightshift");
 
 /* The apocalypse ends on the roof, with the two cats — the scene the
    whole site has been walking towards. */
@@ -1861,9 +1838,10 @@ function startHub() {
   const d = chaptersDone();
   const both = bothChaptersDone();
 
-  /* the maze is gone from main; the night shift is the sixth card */
-  [["quest", d.quest], ["ouissy", d.ouissy], ["apoc", d.apoc], ["race", d.race],
-   ["nightshift", d.nightshift]].forEach(([name, done]) => {
+  /* the maze is gone from main, and so is the night shift -- it lives
+     on the branch site-with-night-shift until it comes back */
+  [["quest", d.quest], ["ouissy", d.ouissy], ["apoc", d.apoc],
+   ["race", d.race]].forEach(([name, done]) => {
     const card = document.getElementById("hub-card-" + name);
     if (card) card.classList.toggle("done", !!done);
   });
@@ -1872,8 +1850,7 @@ function startHub() {
      never leaves it lying. The keepsake is gated on the story chapter —
      see bothChaptersDone above. */
   const sub = document.getElementById("hub-sub");
-  const count = (d.quest ? 1 : 0) + (d.ouissy ? 1 : 0) + (d.apoc ? 1 : 0) + (d.race ? 1 : 0) +
-                (d.nightshift ? 1 : 0);
+  const count = (d.quest ? 1 : 0) + (d.ouissy ? 1 : 0) + (d.apoc ? 1 : 0) + (d.race ? 1 : 0);
   const total = document.querySelectorAll(".hub-card").length;
   if (both && count === total) sub.textContent = "— every one of them done. the keepsake is yours —";
   else if (both) sub.textContent = "— the story is done. the keepsake is yours —";
@@ -1894,9 +1871,6 @@ document.getElementById("hub-card-apoc").addEventListener("click", () => {
 });
 document.getElementById("hub-card-race").addEventListener("click", () => {
   pageTurn("race", startSuperOuissyRace);
-});
-document.getElementById("hub-card-nightshift").addEventListener("click", () => {
-  pageTurn("nightshift", startNightShift);
 });
 document.getElementById("hub-keepsake").addEventListener("click", () => {
   pageTurn("keepsake", startKeepsake);

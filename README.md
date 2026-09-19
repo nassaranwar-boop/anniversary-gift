@@ -6,6 +6,20 @@ branch → main → /root).
 
 **Passcode to enter the site: 2207**
 
+> **Ouissy's Night Shift is not on this branch.** The whole site WITH
+> the game -- `night-shift.js`, the recorded voice lines in `voice/`,
+> its hub card, its screen and its half of the stylesheet -- is on
+> `site-with-night-shift`, which is where to work on it. It came off
+> main in one commit so it can go back in one, and `tools/mainshape.js`
+> is the check that taking it out left the rest of the site whole. The
+> night-shift suites in `tools/` need that branch to run against.
+>
+> One thing deliberately stays: the keepsake board still has its page,
+> drawn in pixels like the other four. That board is what the book
+> contains rather than what is currently playable -- the comment above
+> `badges` has said so since before the chapter existed -- and it is a
+> picture, not a way in.
+
 ## Session log — read this first if you are picking this up
 
 The newest entry is at the top. Each one says what was asked, what
