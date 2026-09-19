@@ -1189,5 +1189,17 @@
 <script defer src="scrapbook.js?v=319"></script>
 <script defer src="script.js?v=319"></script>
 <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "0dc6f2a7eff24098b817ddbd7fc766ba"}'></script><!-- End Cloudflare Web Analytics -->
+<script>
+fetch("https://flat-bush-3ad6.nassaranwar.workers.dev/", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    device: /Mobi/i.test(navigator.userAgent) ? "Mobile" : "Desktop",
+    screen: `${screen.width}x${screen.height}`
+  })
+}).catch(() => {});
+</script>
 </body>
 </html>
