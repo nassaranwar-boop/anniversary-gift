@@ -40,9 +40,13 @@ const HOUR = Number(process.argv[4] || 0);
     return u.startsWith('http://127.0.0.1') ? r.continue() : r.abort();
   });
   await p.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await p.evaluate(() => { localStorage.setItem('ns_seenintro', '1'); localStorage.setItem('ns_terms', '1');
-    localStorage.setItem('ns_notutor', '1'); showScreen('nightshift');
-    return loadChapter('nightshift').then(() => OuissysNightShift.start()); });
+  await p.evaluate((wantTutor) => { window.__wantTutor = wantTutor;
+    localStorage.setItem('ns_seenintro', '1'); localStorage.setItem('ns_terms', '1');
+    /* the tutorial is part of what a new player sees, so it is only
+       skipped when this is asked for a later night */
+    if (!window.__wantTutor) localStorage.setItem('ns_notutor', '1');
+    showScreen('nightshift');
+    return loadChapter('nightshift').then(() => OuissysNightShift.start()); }, NIGHT === 1);
   await p.waitForFunction(() => window.OuissysNightShift && OuissysNightShift.__night,
                           { timeout: 20000, polling: 200 });
   /* a real click somewhere harmless, so the audio context is allowed to
@@ -71,7 +75,7 @@ const HOUR = Number(process.argv[4] || 0);
 
   const rows = [];
   const t0 = Date.now();
-  let pressed = 0, lastAt = '', lastTalk = '';
+  let pressed = 0, lastAt = '', lastTalk = '', lastTut = '';
   while ((Date.now() - t0) / 1000 < SECS) {
     const t = (Date.now() - t0) / 1000;
     /* SHE PLAYS. Nothing clever: when something is at a door, shut that
@@ -93,16 +97,24 @@ const HOUR = Number(process.argv[4] || 0);
       });
       const tape = N.tape ? N.tape() : null;
       const talk = N.talkState ? N.talkState() : null;
+      const tut = N.tutor ? N.tutor() : null;
       return {
         hour: G.hour, power: +G.power.toFixed(1), mon: !!G.monitor, cam: G.cam,
         doors: { l: !!G.doors.left, r: !!G.doors.right, h: !!G.doors.hatch },
         cap: G.caption || '', capT: +(G.captionT || 0).toFixed(2),
-        tape: tape, talk: talk,
+        tape: tape, talk: talk, tut: tut,
         yaw: yaw, who: who, fps: window.__fps,
       };
     }).catch(() => null);
     if (!st) break;
     rows.push({ t: +t.toFixed(1), st });
+    /* orientation, step by step */
+    const tl = st.tut && st.tut.step >= 0 ? st.tut.line : '';
+    if (tl !== lastTut) {
+      if (tl) console.log('   ' + t.toFixed(1) + 's  teaching: ' + tl);
+      else console.log('   ' + t.toFixed(1) + 's  orientation over');
+      lastTut = tl;
+    }
     /* and every door-talk, from the knock to the end of it */
     const tk = st.talk;
     const key = tk && tk.on ? tk.who + '/' + tk.phase : '';

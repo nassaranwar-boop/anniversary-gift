@@ -12340,7 +12340,7 @@ function midStart(n) {
   const m = MIDNIGHT[n];
   MID.on = !!m;
   MID.t = 0; MID.i = 0; MID.raised = false; MID.cut = false; MID.shut = null;
-  MID.broken = false;
+  MID.broken = false; MID.thenTutor = false;
   MID.list = m ? m.beats : null;
   MID.secs = m ? m.secs : 0;
   MID.breaks = m ? (m.breaks || null) : null;
@@ -12409,6 +12409,7 @@ function midEnd() {
   if (MID.shut) { G.doors[MID.shut] = false; MID.shut = null; }
   if (MID.breaks && !MID.broken) { MID.broken = true; if (MID.breaks === "hallDark") G.hallDark = true; }
   MID.raised = false; MID.cut = false;
+  if (MID.thenTutor) { MID.thenTutor = false; tutorStart(); }
 }
 
 /* everything an act can do, and all of it is machinery the night
@@ -12505,6 +12506,9 @@ function midStep(dt) {
        still politely waiting to happen */
     if (MID.breaks && !MID.broken) { MID.broken = true; if (MID.breaks === "hallDark") G.hallDark = true; }
     MID.raised = false; MID.cut = false;
+    /* and the first night starts being taught, now that the building
+       has stopped talking */
+    if (MID.thenTutor) { MID.thenTutor = false; tutorStart(); }
     bumpUI();
     return true;
   }
@@ -17114,13 +17118,23 @@ function beginNight(n, opts) {
      back after a week and forgotten which button shuts a door -- got
      no hands at all. Night one teaches; every night after it assumes
      she was taught. The setting to turn it off is still hers. */
-  if (G.mode === "story" && G.night === 1 && !loadNoTutor()) tutorStart();
-  else tutorOff();
+  /* ORIENTATION WAITS FOR THE BUILDING TO FINISH TALKING.
+
+     Both of these open night one and both of them speak through the
+     annunciator: the first minute is the building doing tonight's
+     damage to itself, and the first card of orientation is read out
+     the same way. Armed together they read over each other from t=0,
+     which is the first thing a new player hears. So the card is armed
+     here and shown when the cold open is done -- see midStep, and
+     midEnd for the way out a suite takes. */
+  const wantTutor = G.mode === "story" && G.night === 1 && !loadNoTutor();
+  tutorOff();
   /* and the shop clears its throat: tonight's fault, in front of her,
      before the clock starts. Story mode only -- a custom night is a
      sandbox and a replay of the same building breaking in the same
      order is a wait. */
   if (G.mode === "story") midStart(G.night); else midStart(0);
+  if (wantTutor) { if (midOn()) MID.thenTutor = true; else tutorStart(); }
   overStart(G.mode === "story" ? G.night : 0);
   if (officeParts && officeParts.glass && TX.night) {
     officeParts.glass.material = new T.MeshBasicMaterial({ map: TX.night, fog: true });
