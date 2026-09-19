@@ -348,9 +348,13 @@ img{-webkit-user-drag:none; user-select:none;}
   position:absolute; inset:0; width:100%; height:100%; display:block;
   image-rendering:pixelated; z-index:0;
 }
-.night-sky-inner{position:absolute; inset:0; transform-origin:60% 76%; transform:scale(1) translate(0,0);}
-.night-sky.scene-2 .night-sky-inner{transform:scale(1.24) translate(-4%,-3%);}
-.night-sky.scene-3 .night-sky-inner{transform:scale(1.6) translate(-7%,-6%);}
+/* The push-in used to be done here, by scaling this box on scene-2 and
+   scene-3. The scene is painted into the canvas now and moves the
+   camera itself, so the stylesheet's version was turned off with
+   `transform:none !important` further down -- which left three rules
+   arguing about a transform that never applied. The box is only a
+   layer now. */
+.night-sky-inner{position:absolute; inset:0;}
 .scene-cut-flash{position:absolute; inset:0; z-index:15; background:#000; opacity:0; pointer-events:none; transition:opacity .38s ease;}
 .scene-cut-flash.active{opacity:1;}
 
@@ -363,20 +367,6 @@ img{-webkit-user-drag:none; user-select:none;}
 
 .shooting-star{position:absolute; top:16%; left:-10%; width:80px; height:2px; background:linear-gradient(90deg,#fff,transparent); transform:rotate(18deg); opacity:0; animation:shoot 6s ease-in infinite; animation-delay:2s;}
 @keyframes shoot{0%{opacity:0; transform:translateX(0) rotate(18deg);} 4%{opacity:1;} 22%{opacity:0; transform:translateX(260px) rotate(18deg);} 100%{opacity:0;}}
-
-.cats-wrap{position:absolute; bottom:15%; left:50%; transform:translateX(-50%); display:flex; align-items:flex-end; z-index:3;}
-.cat-slot{position:relative; transition:transform 1.6s ease;}
-.cat-black-slot{width:120px; aspect-ratio:64/68; transform:translateY(2px); margin-right:-14px;}
-.cat-black-slot.lean{transform:translateY(2px) rotate(4deg) translateX(3px);}
-.cat-white-slot{width:104px; aspect-ratio:58/100; transform:translateY(47px);}
-.cat-white-slot.lean{transform:translateY(47px) rotate(-4deg) translateX(-4px);}
-.cat-img{position:absolute; inset:0; width:100%; height:100%; image-rendering:pixelated;}
-.cat-body-img{animation:catBreathe 3.6s ease-in-out infinite;}
-@keyframes catBreathe{0%,100%{transform:scale(1);} 50%{transform:scale(1.012);}}
-.black-tail{transform-origin:43.8% 91.2%; animation:tailWagBlack 2.3s ease-in-out infinite;}
-.white-tail{transform-origin:62.1% 70%; animation:tailWagWhite 2.7s ease-in-out infinite .25s;}
-@keyframes tailWagBlack{0%,100%{transform:rotate(-8deg);} 50%{transform:rotate(6deg);}}
-@keyframes tailWagWhite{0%,100%{transform:rotate(7deg);} 50%{transform:rotate(-7deg);}}
 
 .end-hearts{position:absolute; inset:0; z-index:2; opacity:0; transition:opacity .5s ease; pointer-events:none;}
 .night-sky.scene-3 .end-hearts{opacity:1;}
@@ -589,6 +579,8 @@ img{-webkit-user-drag:none; user-select:none;}
 .gate-sheet-marks{mix-blend-mode:multiply;}
 
 .gate-frame{fill:none;}
+/* the wide arrangement waits for the phone to be turned */
+.gate-frame-wide{display:none;}
 .gate-rule-o{stroke:url(#gGold); stroke-width:2.8; opacity:.95;}
 .gate-rule-i{stroke:url(#gGold); stroke-width:1.2; opacity:.7;}
 /* NB: a descendant selector cannot reach inside a <use> clone, so every
@@ -742,138 +734,158 @@ img{-webkit-user-drag:none; user-select:none;}
 .gate-unlock:active img,.gate-unlock.down img{filter:drop-shadow(0 .3cqw .5cqw rgba(70,40,20,.5)) brightness(.95);}
 
 /* ---- the gate on a phone held sideways ----
-   The card is a portrait 400:700 sheet stacked UNDER the title plaque, and
-   its width is derived from the height left over: min(360px, 86vw,
-   (app-h - 190px) * 400/700). On an 844x390 screen that last term wins and
-   comes out at 114px, which made the twelve keys 15x15 — the front door of
-   the whole site, unusable, on the one shape nothing had measured.
 
-   The title moves beside the card rather than above it, which gives the
-   sheet the whole height (209px wide, 366 tall), and the proportions
-   INSIDE it are rebalanced for a hand rather than for a page: the seal and
-   the heading give up their share so the keypad can take most of the width
-   and come back to a real thumb target. Nothing is hidden that she needs;
-   the sub-line goes because the heading already says it. */
+   The card is a portrait 400:700 sheet under the title plaque, and its
+   width comes from the height left over: min(360px, 86vw, (app-h -
+   190px) * 400/700). On an 844x390 screen that last term wins and came
+   out at 114px, which made the twelve keys 15x15 -- the front door of
+   the whole site, unusable, on the one shape nothing had measured. So
+   sideways it is sized from a much smaller reserve, and the
+   proportions INSIDE it are rebalanced for a hand rather than for a
+   page: the seal and the heading give up their share so the keypad can
+   take most of the width and come back to a real thumb target. Nothing
+   is hidden that she needs; the sub-line goes because the heading
+   already says it.
+
+   THE STACK, NOT THE ROW. Sideways the gate was laid out as two
+   columns for a while, the plaque on the left and the card on the
+   right. It fits, but it does not look like the same screen as the
+   iPad -- the plaque ends up alone in a wide field of nothing with the
+   card off to one side, which reads as two things that happened to
+   land on the same page rather than one composition. So the plaque
+   sits over the card here too, and the card is sized from what the
+   plaque leaves behind.
+
+   Those two paragraphs used to be two separate blocks with the SAME
+   media query, the second silently overwriting most of the first --
+   the row layout was still written out in full above the column one
+   that replaced it, and tools/codecheck.js now fails on exactly that.
+   What is left here is only what actually applies. */
 @media (orientation: landscape) and (max-height: 560px){
-  .gate{
-    flex-direction:row; align-items:center; justify-content:center;
-    gap:clamp(16px, 4vw, 56px); padding:8px 3vw;
-  }
-  .gate-title{margin:0;}
-  .gate-title img{width:min(38vw, 300px);}
-  .gate-card{width:min(360px, 34vw, (var(--app-h) - 20px) * 400 / 700);}
+  /* ONE SHEET, LYING DOWN.
 
-  .gate-body{padding:4cqw 7cqw 5cqw;}
-  .gate-seal-wrap{width:32cqw;}
-  .gate-heading{font-size:5.2cqw;}
-  .gate-sub{display:none;}
-  .gate-field{margin-top:2cqw; padding:2.4cqw 7cqw; border-radius:2.4cqw;}
-  .gate-error{margin-top:1cqw; min-height:3cqw; font-size:2.8cqw;}
-  .gate-pad{width:72cqw; gap:2cqw; margin-top:1.2cqw;}
-  .gate-unlock img{width:62cqw;}
-}
-/* On the shortest window there is one thing left to give: the unlock plate
-   now has a 44px floor under it, and on a 340px screen those two extra
-   pixels put its bottom edge off the end of the card. The keypad carries
-   the trim, as it did the last time this had to fit. */
-@media (orientation: landscape) and (max-height: 400px){
-  /* The keypad is NOT where this trim comes from. Narrowing it to 68cqw put
-     the ten keys at 39.6px, which rounds to forty and is under a thumb --
-     trading one control that does not fit for ten that are too small. The
-     card's own padding and the gaps between its parts carry it instead. */
-  .gate-card{width:min(340px, 33vw, (var(--app-h) - 14px) * 400 / 700, (100svh - 14px) * 400 / 700);}
-  .gate-body{padding:2.4cqw 6cqw 1.8cqw;}
-  /* 4.6cqw of a 186px card is 8.6px, which is not a heading any more. The
-     container query sizes it on a big card and the floor holds on a small
-     one. */
-  .gate-heading{font-size:max(10.5px, 4.6cqw);}
-  .gate-pad{width:73cqw; gap:2cqw; margin-top:.2cqw;}
-  .gate-field{margin-top:.8cqw; padding:2cqw 6cqw;}
-  .gate-error{margin-top:.4cqw; min-height:1.2cqw; font-size:2.6cqw;}
-  /* the plate is drawn to fill the 44px box its floor already reserves,
-     rather than sitting small inside it with the difference as padding */
-  .gate-unlock img{width:66cqw;}
-}
+     Upright the gate is a portrait sheet under a plaque and it reads as
+     a letter. Turned sideways the same composition is a narrow column
+     in the middle of a very wide window -- 183 points of card in an 844
+     point screen, with the keys down at their 44px floor and a field of
+     empty pink either side. It was the shape of the sheet fighting the
+     shape of the screen.
 
-/* THE STACK, NOT THE ROW, WHEREVER THERE IS HEIGHT FOR IT.
-
-   Sideways the gate was laid out as two columns: the plaque on the left,
-   the card on the right. It fits, but it does not look like the same
-   screen as the iPad -- the plaque ends up alone in a wide field of
-   nothing with the card off to one side, which reads as two things that
-   happened to land on the same page rather than one composition.
-
-   Above 400px of height there is room to keep the iPad's arrangement:
-   the plaque over the card, both on the middle of the page. The card is
-   sized from what the title leaves behind, so it takes the rest of the
-   height, so it takes the rest of what is left.
-
-   It applies to EVERY landscape phone, not the tall ones only. It was
-   gated at 401px first, on the reasoning that a shorter screen would
-   squeeze the keys under the thumb floor -- but that left the phone it
-   was written for still showing the row, and the fix for short screens
-   is a smaller plaque, not a different composition. */
-@media (orientation: landscape) and (max-height: 560px){
+     So sideways the sheet lies down with it. Same paper, same seal,
+     same coins, one object: the writing and the code field in the left
+     half, the keypad in the right, and the plaque over both. The card
+     is sized from the height that is actually there, which makes it
+     581 points wide on a phone instead of 183 -- and the twelve keys
+     come out about 70 points across instead of 44, which is the real
+     point of the exercise. */
   .gate{
     flex-direction:column; align-items:center; justify-content:center;
     gap:0; padding:6px 3vw;
   }
-  .gate-title{margin:0 0 6px;}
-  .gate-title img{width:min(30vw, 168px);}
-  .gate-card{width:min(360px, 52vw, (var(--app-h) - 84px) * 400 / 700, (100svh - 84px) * 400 / 700);}
-  .gate-seal-wrap{width:30cqw;}
-  .gate-heading{font-size:max(10.5px, 5cqw);}
-  .gate-pad{width:76cqw; gap:2cqw; margin-top:1.2cqw;}
-  .gate-unlock img{width:66cqw;}
+  .gate-title{margin:0 0 .6vh;}
+  .gate-title img{width:min(32vw, 240px);}
+  .gate-card{
+    width:min(74vw, (var(--app-h) - 58px) * 1.75);
+    aspect-ratio:1.75;
+  }
+
+  /* THE GOLD CANNOT FOLLOW IT ROUND.
+
+     The frame is two rectangles and four corner sprays inside an SVG
+     whose viewBox is the upright sheet, 400 by 700 -- on a card of
+     another shape it is cropped rather than reshaped, and what is left
+     is two gold lines running off the edges. So there is a second
+     arrangement of the same ornament in the markup, 700 by 400, drawn
+     out of the same <defs>: the same rules, the same sprays in the same
+     corners, and the band running outward from behind the seal. The
+     paper underneath keeps its torn left and right edges. */
+  /* THE UPRIGHT FRAME IS EMPTIED, NOT HIDDEN.
+
+     Its <defs> is where the gold gradient, the corner spray and the
+     band are defined -- for both arrangements. Putting display:none on
+     the whole SVG takes the paint servers down with it, and every
+     stroke in the wide frame resolves to url(#gGold) and paints
+     nothing: the ornament measured 581x332 on the page and was
+     invisible. So only its drawn children go, and the definitions stay
+     where every <use> can still reach them. */
+  .gate-frame:not(.gate-frame-wide) > :not(defs){display:none;}
+  .gate-frame-wide{display:block;}
+
+  /* EVERYTHING INSIDE IS SIZED FROM THE HEIGHT NOW, NOT THE WIDTH.
+
+     The card is a size container, so every cqw figure in the upright
+     design is a share of its WIDTH -- and the width has just trebled.
+     Left alone, the heading would come out at 36 points and the seal
+     would be wider than the column it sits in. Sideways the constrained
+     dimension is the height, so the type is in cqh, with a pixel floor
+     under each one for the shortest screens. */
+  /* the padding has to clear the drawn rule, not sit on it: the gold is
+     inset 4.4% of the height and 3% of the width, so the writing starts
+     inside that with air of its own */
+  .gate-body{
+    display:grid; grid-template-columns:1fr auto;
+    column-gap:9cqh; align-content:center; justify-items:center;
+    padding:7cqh 10.5cqh;
+  }
+  /* A HAIRLINE BETWEEN THE TWO HALVES.
+
+     Without it the sheet reads as two things that happen to be on the
+     same paper. With it -- a rule in the same brass as the border,
+     fading out before it reaches either end so it never looks like a
+     table -- it reads as one page with a fold down the middle. It is
+     placed off the right-hand edge, where the keypad's own width is
+     known -- and a little wider than half the gap, because the left
+     half's writing does not fill its column and the fold should look
+     centred between what is actually drawn rather than between two
+     grid tracks. */
+  .gate-body::after{
+    content:""; position:absolute; top:15cqh; bottom:15cqh; right:82.5cqh;
+    width:1px; pointer-events:none;
+    background:linear-gradient(180deg,
+      rgba(169,124,63,0), rgba(169,124,63,.45) 20%,
+      rgba(169,124,63,.45) 80%, rgba(169,124,63,0));
+  }
+  .gate-seal-wrap{grid-column:1; width:min(72%, 46cqh); margin:0;}
+  .gate-heading{grid-column:1; font-size:max(13px, 7cqh);}
+  .gate-sub{grid-column:1; display:block; font-size:max(9.5px, 4.2cqh); margin:.9cqh 0 0;}
+  .gate-field{
+    grid-column:1; margin-top:2.2cqh; padding:1.8cqh 5cqh; border-radius:2cqh;
+  }
+  .gate-dots{gap:max(10px, 4.6cqh);}
+  .gate-dot{width:max(8px, 3.6cqh); height:max(8px, 3.6cqh);}
+  .gate-error{grid-column:1; margin:1cqh 0 0; min-height:3.6cqh; font-size:max(8.5px, 3.2cqh);}
+  .gate-unlock{grid-column:1; margin-top:2.4cqh;}
+  .gate-unlock img{width:min(86%, 60cqh);}
+  /* THE KEYPAD IS SIZED FROM THE HEIGHT, LIKE EVERYTHING ELSE HERE.
+
+     Four rows of coins have to fit between the top and bottom rules:
+     the body's own box is 100cqh less its 7cqh of padding either end,
+     so 86cqh, and four keys with three 2cqh gaps between them makes
+     each key 20cqh. Three of those and two gaps is 64. Asked for any
+     more than that the bottom row sat on the drawn border, which is
+     what it was doing at 67. */
+  .gate-pad{
+    grid-column:2; grid-row:1 / span 6; align-self:center;
+    width:64cqh; gap:2cqh; margin:0;
+  }
 }
+/* THREE BLOCKS OF SHORT-SCREEN RESCUE WENT FROM HERE.
 
-/* THE SHORTEST SIDEWAYS SCREENS BUY THE KEYS BACK.
+   They existed to keep the UPRIGHT sheet usable sideways: the card's
+   width is its height over a fixed 400:700 page, so on a 340-point
+   window it landed at 153 and the twelve keys at 37 -- under a thumb,
+   on the first screen she ever touches. Three successive blocks took
+   the plaque down, halved the body's margins and widened the keypad's
+   share of the sheet to buy them back to 44.
 
-   Stacking costs the card height, and the card's height is what sets the
-   width of the keys: at 360px the ten of them came out at 38px, under
-   the thumb. The plaque gives way, and the space around the seal, so
-   the card itself can be bigger -- but NOT the keypad's share of the
-   sheet. Eighty-five was tried and it put the keys and the Unlock plate
-   on top of the drawn frame and over its right edge, because the sheet's
-   border is inset about seven of those units from the card's own box.
-   The width the parent sets is the width that fits inside the drawing. */
-@media (orientation: landscape) and (max-height: 400px){
-  .gate-title{margin:0 0 3px;}
-  .gate-title img{width:min(24vw, 124px);}
-  .gate-card{width:min(360px, 52vw, (var(--app-h) - 70px) * 400 / 700, (100svh - 70px) * 400 / 700);}
-  .gate-seal-wrap{width:26cqw;}
-  .gate-pad{width:76cqw; gap:1.6cqw; margin-top:.6cqw;}
-  .gate-unlock img{width:64cqw;}
-}
-
-/* ...AND THE SHORTEST OF THOSE NEEDS ONE MORE TURN OF IT.
-
-   The block above was measured at 740x360, 812x375, 844x390 and 932x430 --
-   a phone sideways with Safari's bar hidden. With the bar showing, an
-   iPhone 13 Pro is 844x340, and there the card lands at 153 wide and the
-   ten keys at 37: under a thumb, on the one screen she has to get right
-   before she can see anything at all.
-
-   The card cannot grow into it. Its width is its height over a fixed
-   400:700 sheet, and 320px of sheet does not fit in 340 points of phone.
-   What can grow is the keypad's share: at 76cqw the keys use 116 of the
-   card's 153 and the body's 6cqw margins keep another 18 as blank paper.
-   Half that margin and 93cqw of pad puts the keys at 45. Nothing else in
-   the composition moves and the sheet's drawn border is untouched.
-
-   385, not 360: an iPhone 13 mini sideways is 812x375 and its keys came out
-   at 42, which is also under a thumb. The cutoff sits just under the 390 the
-   block above reaches 44 on its own at. */
-@media (orientation: landscape) and (max-height: 385px){
-  .gate-body{padding:2.4cqw 3.5cqw 1.8cqw;}
-  /* The pad is asked for the width its keys need, not for all the width
-     there is. Widening it to a flat 93cqw did give 46px keys at 340 -- and
-     54px keys at 384, where 44 was already fine, so the keypad jumped a
-     size as the address bar slid away. Three keys of 46 and the two gaps
-     between them is what it asks for; 93cqw is only the ceiling, for the
-     narrowest card where that is all there is. */
-  .gate-pad{width:min(93cqw, calc(3 * 46px + 2 * 1.6cqw));}
-}
+   The sheet lies down sideways now, and is sized from the height that
+   is there rather than from a page shape that never fitted: at 390 the
+   card is 581 wide and the keys come out about 70. There is nothing
+   left to rescue, and every one of those rules was written in cqw --
+   a share of a card that is now three times wider -- so keeping them
+   would have been keeping three different answers to a question that
+   no longer exists. What they were for is worth remembering, which is
+   why this note is here instead of nothing. */
 
 @media (prefers-reduced-motion: reduce){
   .gate-title img,.gate-seal-glow,.gate-wax-blob,.gate-bloom{animation:none;}
@@ -5580,9 +5592,11 @@ img{-webkit-user-drag:none; user-select:none;}
   color:#d5dcec; letter-spacing:.005em;
   text-shadow:0 2px 14px rgba(0,0,0,.9);
 }
-.ap-dlg.quiet .ap-dlg-text{
-  color:#66708a; letter-spacing:.6em; font-style:normal;
-}
+/* The colour and the tracking of this one were set again 850 lines
+   further down, so the pair here never applied; what is left is the
+   one thing that rule does not say. The live values are with the rest
+   of the dialogue skins, below. */
+.ap-dlg.quiet .ap-dlg-text{ font-style:normal; }
 
 /* --- somebody speaking --- */
 .ap-dlg.speech{
@@ -6470,16 +6484,18 @@ img{-webkit-user-drag:none; user-select:none;}
 .ap-radio-cap{margin:0 0 2.4cqw; font-family:var(--ap-term); font-size:2.2cqw; color:#7f8bb0;}
 
 /* ---- a cutscene caption ---- */
-.ap-overlay.cut{background:transparent; align-items:flex-end; pointer-events:none;}
 /* a cut speaks in the same voice the narrator does in play: no box, a
-   line of prose over a wash of dark */
+   line of prose over a wash of dark.  The background used to be set
+   transparent here and then set again to the wash four rules down,
+   which is two answers to one question -- it is set once now. */
+.ap-overlay.cut{
+  background:linear-gradient(180deg, rgba(4,6,12,0) 62%, rgba(4,6,12,.72) 100%);
+  align-items:flex-end; pointer-events:none;
+}
 .ap-cut-cap{
   margin:0 0 1.6cqw; padding:0 6cqw; max-width:66ch;
   color:#dbe2f0; font:italic 400 2.5cqw/1.6 Georgia,"Times New Roman",serif;
   text-align:center; text-shadow:0 2px 16px rgba(0,0,0,.95);
-}
-.ap-overlay.cut{
-  background:linear-gradient(180deg, rgba(4,6,12,0) 62%, rgba(4,6,12,.72) 100%) !important;
 }
 /* the HUD goes during a cut; the pause button does not go with it */
 .ap-hud.gone{opacity:0; transition:opacity .3s ease;}
@@ -6530,10 +6546,6 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 .ap-serum-line{margin:0 0 2.4cqw; font-family:var(--ap-term); font-size:2.7cqw; line-height:1.3; color:#cfd8ee;}
 
-/* The cats are painted into the canvas now, at whatever size the shot
-   wants them, so the four PNGs and their CSS wag are retired. */
-.cats-wrap{display:none !important;}
-.night-sky-inner{transform:none !important;}
 .night-sky .end-hearts{opacity:0; transition:opacity 1.2s ease;}
 .night-sky.settled .end-hearts{opacity:1;}
 
@@ -8176,7 +8188,12 @@ img{-webkit-user-drag:none; user-select:none;}
   .rc-cards-4{grid-template-columns:repeat(3, minmax(0, 15cqw)); max-width:none; gap:1.1cqw;}
   .rc-panel{gap:1.1cqh;}
   .rc-h{font-size:2.4cqh;}
-  .rc-blurb{font-size:1.35cqh; line-height:1.5;}
+  /* 1.75, not the 1.35 this once said: the results panel further down
+     restated .rc-blurb and won, so 1.75cqh is what has actually been
+     shipping. The value is kept and the duplicate is gone, so this is
+     one answer instead of two -- and the size itself is dealt with
+     where all the small type is, by tools/readable.js. */
+  .rc-blurb{font-size:1.75cqh; line-height:1.5;}
   .rc-warn{line-height:1.4;}
   .rc-varnote{line-height:1.4;}
   .rc-card{padding:.8cqh .7cqw; gap:.4cqh;}
@@ -8207,7 +8224,12 @@ img{-webkit-user-drag:none; user-select:none;}
      is the point of it -- but on a screen this short that has to come back
      a little or there is more below the fold than above it */
   .rc-msg{font-size:1.75cqh; max-width:62cqw;}
-  .rc-blurb{font-size:1.75cqh; max-width:66cqw;}
+  /* .rc-blurb was restated here as well, which is the results panel
+     reaching across and resizing the COURSE SELECT screen's blurb --
+     the only place that class is used. It is set once, thirty lines
+     up, where the rest of that screen's tightening lives. What this
+     block needs from it is the width. */
+  .rc-blurb{max-width:66cqw;}
   .rc-rest li{font-size:1.7cqh;}
   .rc-rest{max-width:46cqw;}
   .rc-pod-name{font-size:1.6cqh;}

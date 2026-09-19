@@ -553,6 +553,46 @@
           </g>
         </svg>
 
+        <!-- 2b. THE SAME FRAME, FOR THE SHEET LYING DOWN.
+
+             The ornament above lives in a 400x700 viewBox and is drawn
+             with the sheet, so on a card of another shape it is cropped
+             rather than reshaped. Sideways the card is 700x400 and the
+             gold is drawn here instead -- the same two rules, the same
+             corner sprays and the same band, out of the same <defs> as
+             the upright one, so there is one ornament in this file and
+             two arrangements of it. Hidden unless the phone is on its
+             side. -->
+        <svg class="gate-frame gate-frame-wide" viewBox="0 0 700 400" aria-hidden="true">
+          <rect class="gate-rule-o" x="26" y="24" width="648" height="352" rx="6"/>
+          <rect class="gate-rule-i" x="33" y="31" width="634" height="338" rx="4"/>
+          <!-- TWO SPRAYS, NOT FOUR, AND ONLY ON THE SIDE WITH THE
+               WRITING ON IT.
+
+               They are drawn at about 100 units across -- a quarter of
+               the upright sheet's width, and a third of this one's
+               HEIGHT -- so at full size they climbed into the seal. At
+               a bit over half size they sit in the corners properly;
+               but the right-hand pair had nowhere to sit at all, since
+               the keypad fills that half of the sheet to the frame and
+               a spray behind a coin is a smudge. So the letter side is
+               decorated and the keypad side is plain paper, which is
+               what those two halves are. -->
+          <g class="gate-flour">
+            <use href="#gFlour" transform="translate(38,36) scale(.58)"/>
+            <use href="#gFlour" transform="translate(38,364) scale(.58,-.58)"/>
+          </g>
+          <!-- and the band runs outward from behind the seal, which
+               sideways is over the middle of the LEFT half rather than
+               the middle of the sheet. Only the top pair: the bottom of
+               that half is the Unlock plate, and a band behind a plate
+               is a band nobody sees. -->
+          <g class="gate-flour gate-flour-band">
+            <use href="#gBand" transform="translate(204,52) scale(.82)"/>
+            <use href="#gBand" transform="translate(204,52) scale(-.82,.82)"/>
+          </g>
+        </svg>
+
         <!-- 3. what she uses -->
         <div class="gate-body">
 
@@ -1064,16 +1104,11 @@
         <div class="end-heading" id="end-heading"><span><svg class="gl gl-in" aria-hidden="true"><use href="#ic-px-heart"/></svg> You found each other <svg class="gl gl-in" aria-hidden="true"><use href="#ic-px-heart"/></svg></span></div>
         <div class="night-stars" id="night-stars"></div>
         <div class="shooting-star"></div>
-        <div class="cats-wrap">
-          <div class="cat-slot cat-black-slot" id="cat-black-slot">
-            <img class="cat-img cat-tail-img black-tail" id="cat-black-tail" src="assets/black_tail.png" alt="" />
-            <img class="cat-img cat-body-img" id="cat-black-body" src="assets/black_body.png" alt="black cat" />
-          </div>
-          <div class="cat-slot cat-white-slot" id="cat-white-slot">
-            <img class="cat-img cat-tail-img white-tail" id="cat-white-tail" src="assets/white_tail.png" alt="" />
-            <img class="cat-img cat-body-img" id="cat-white-body" src="assets/white_body.png" alt="white cat" />
-          </div>
-        </div>
+        <!-- The two of them used to be four PNGs here with a CSS wag.
+             They are painted into #night-canvas now, at whatever size
+             the shot wants them, and the stylesheet had been hiding
+             this block with display:none !important ever since -- four
+             files still fetched on every visit to draw nothing. -->
         <div class="end-hearts" id="end-hearts"></div>
       </div>
       <div class="scene-cut-flash" id="scene-cut-flash"></div>

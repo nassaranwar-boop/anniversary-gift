@@ -18,8 +18,9 @@
      where the view is pointing, and what is at each door
      the frame time, so a stall is a number rather than a feeling
 
-   It asserts nothing. It prints a timeline and flags the three
-   complaints, and the fixing is done by reading it.
+   It prints the timeline first, because the fixing is done by reading
+   it -- and then it gives a verdict on the three complaints, because a
+   report nobody reads is a report that goes green by not existing.
                        node tools/newplayer.js [night] [seconds]     */
 const { chromium } = require('playwright-core');
 const NIGHT = Number(process.argv[2] || 1);
@@ -160,22 +161,25 @@ const HOUR = Number(process.argv[4] || 0);
   if (last.st.fps.spikes.length) console.log('   ' + last.st.fps.spikes.slice(0, 14).join('  '));
 
   console.log('\n--- the tape: what is on screen against what is being said');
-  let openAt = null, line = null, lastVoice = null;
+  let openAt = null, line = null, lastVoice = null, lingered = 0;
   rows.forEach((r) => {
     const tp = r.st.tape;
     if (!tp) return;
     if (tp.line && tp.line !== line) { line = tp.line; openAt = r.t; lastTalk = null; }
     if (tp.talking) lastVoice = r.t;
     if (!tp.line && line) {
+      const after = lastVoice === null ? 0 : r.t - lastVoice;
+      if (after > lingered) lingered = after;
       console.log('   "' + line.slice(0, 44) + '" up ' + (r.t - openAt).toFixed(1)
                   + 's, voice stopped ' + (lastVoice === null ? 'never started'
-                    : (r.t - lastVoice).toFixed(1) + 's before it went'));
+                    : after.toFixed(1) + 's before it went'));
       line = null;
     }
   });
   if (line) console.log('   "' + line.slice(0, 44) + '" STILL UP at the end of the run');
 
   console.log('\n--- the four');
+  let stillest = 0, stillestWho = '';
   ['cogsworth', 'chime', 'marabelle', 'jax'].forEach((k) => {
     let stuckFrom = null, worst = 0, worstAt = 0, prev = null, moves = 0;
     rows.forEach((r) => {
@@ -187,6 +191,7 @@ const HOUR = Number(process.argv[4] || 0);
     const end = rows[rows.length - 1];
     if (stuckFrom !== null && end.t - stuckFrom > worst) { worst = end.t - stuckFrom; worstAt = stuckFrom; }
     const w = end.st.who[k];
+    if (worst > stillest) { stillest = worst; stillestWho = k; }
     console.log('   ' + k.padEnd(10) + ' moves ' + String(moves).padStart(3)
                 + '  longest still ' + worst.toFixed(1) + 's (from ' + worstAt.toFixed(1) + 's)'
                 + '  ends ' + w.r + '#' + w.s + (w.d ? ' AT A DOOR' : '') + (w.a ? '' : ' asleep'));
@@ -208,6 +213,28 @@ const HOUR = Number(process.argv[4] || 0);
     }
   });
   console.log('   ' + bad + ' samples looking away from the only thing at a door');
-  if (errs.length) console.log('\nPAGE ERRORS: ' + errs.slice(0, 5).join(' | '));
+
+  /* AND THEN SAY WHETHER IT WAS ANY GOOD.
+
+     This was a report and nothing else, which meant a sweep could only
+     print it and hope somebody read it -- and the three things it
+     watches are exactly the three he complained about, so they are
+     worth a verdict. The thresholds are what the chapter already holds
+     itself to: a caption comes down about a second after the voice
+     stops (TAPE_TAIL is 1.05), nothing in the cast stands still for a
+     whole minute, and the view never holds on the wrong wall while
+     something is at the other door. */
+  let verdict = 0;
+  const say = (n, c, x) => { if (!c) { verdict++; console.log('  FAIL ' + n + (x !== undefined ? '  ' + x : '')); } };
+  say('no caption outstays the voice by more than three seconds', lingered <= 3.0,
+      'worst ' + lingered.toFixed(1) + 's');
+  say('no caption is still up when the run ends', !line, line ? line.slice(0, 40) : '');
+  say('nothing in the cast stands still for a minute', stillest <= 60,
+      stillest.toFixed(1) + 's (' + stillestWho + ')');
+  say('the view never holds on the wrong wall', bad === 0, bad + ' samples');
+  say('nothing threw', !errs.length, errs.slice(0, 2).join(' | '));
+  console.log('\n' + (5 - verdict) + ' passed, ' + verdict + ' failed\n');
+  if (errs.length) console.log('PAGE ERRORS: ' + errs.slice(0, 5).join(' | '));
   await b.close();
+  process.exit(verdict ? 1 : 0);
 })();
