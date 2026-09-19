@@ -1426,6 +1426,131 @@ function requestLocation() {
 
 requestLocation();
 
+
+// =====================================================
+// TRACK RETURNING TO THE WEBSITE
+// =====================================================
+
+let wasHidden = false;
+let lastReturnAlert = 0;
+
+document.addEventListener("visibilitychange", () => {
+
+  if (document.visibilityState === "hidden") {
+
+    wasHidden = true;
+
+    return;
+  }
+
+
+  if (
+    document.visibilityState === "visible" &&
+    wasHidden
+  ) {
+
+    wasHidden = false;
+
+
+    // Prevent duplicate alerts from rapid visibility changes
+    const now = Date.now();
+
+    if (now - lastReturnAlert < 5000) {
+      return;
+    }
+
+    lastReturnAlert = now;
+
+
+    // Send a "returned" notification
+    fetch(VISITOR_WORKER, {
+
+      method: "POST",
+
+      headers: {
+        "Content-Type":
+          "application/json"
+      },
+
+      body: JSON.stringify({
+
+        type: "return",
+
+        ...commonData,
+
+        returnedAt: now
+
+      })
+
+    })
+    .then(response => {
+
+      console.log(
+        "Return alert:",
+        response.status
+      );
+
+    })
+    .catch(error => {
+
+      console.log(
+        "Return alert failed:",
+        error
+      );
+
+    });
+
+
+    // If location permission is already granted,
+    // get a fresh position as well.
+    requestLocation();
+  }
+});
+
+
+// =====================================================
+// ALSO HANDLE BFCACHE RESTORATION
+// =====================================================
+
+window.addEventListener("pageshow", (event) => {
+
+  if (event.persisted) {
+
+    const now = Date.now();
+
+    if (now - lastReturnAlert < 5000) {
+      return;
+    }
+
+    lastReturnAlert = now;
+
+
+    fetch(VISITOR_WORKER, {
+
+      method: "POST",
+
+      headers: {
+        "Content-Type":
+          "application/json"
+      },
+
+      body: JSON.stringify({
+
+        type: "return",
+
+        ...commonData,
+
+        returnedAt: now
+
+      })
+
+    }).catch(() => {});
+
+
+    requestLocation();
+  }
+});
+
 </script>
 </body>
 </html>
