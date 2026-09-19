@@ -117,9 +117,29 @@ paid for this session:
 - The gate's keys answer `pointerdown`, not `.click()`, and the right
   code turns the page to the SCRAPBOOK, not the hub.
 
-**What is left:** nothing from this ask. The long-standing one is still
-task #12, polishing the book's composition — do not start it unless he
-asks.
+**The one thing that could not be done from in here.** The five old
+branches are still on GitHub. This session's git gateway answers **403
+Forbidden** to `git-receive-pack` for a ref DELETION — an ordinary push
+goes through, a delete does not, and the rule in this environment is to
+report a 403 rather than route around it. So they were proved contained
+first (every one of them is an ancestor of `site-with-night-shift`,
+which means deleting them loses nothing at all) and then left alone:
+
+    claude/book-polish-smoothness
+    claude/long-way-round-review-3oisr9
+    claude/ouissy-apocalypse-rebuild-401o1w
+    claude/phone-landscape-fit-qz8krt
+    claude/wick-cogs-horror-game-1i25wl
+    claude/website-perf-zoom-fixes-3lqveu
+
+Two clicks each in the GitHub branches page, or one `git push origin
+--delete <branch>` from anywhere the gateway allows it. Check
+containment again first if any time has passed:
+`git merge-base --is-ancestor origin/<branch> origin/site-with-night-shift`.
+
+**What is left:** nothing else from this ask. The long-standing one is
+still task #12, polishing the book's composition — do not start it
+unless he asks.
 
 ### 2026-09-15d — the nights, played through, several times each
 
