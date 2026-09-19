@@ -14,17 +14,25 @@
 */
 const { chromium } = require('playwright-core');
 
+/* 4K AND ULTRAWIDE ARE BEHIND A FLAG, AND THE REASON IS THE CONTAINER.
+
+   There is no GPU in here: every pixel is rasterised in software, and
+   the cost is the pixel count. Measured at 3840x2160, one `goto` takes
+   38 seconds and one showScreen 32 -- so the two biggest sizes alone
+   are half an hour of a suite that otherwise runs in five minutes, and
+   a run nobody has the patience for is a run nobody makes. What they
+   would tell us is already told by 1920 and 2560: whether the
+   composition grows with the window. Ask for them by name when you
+   want them:   node tools/bigscreen.js huge                        */
+const HUGE = process.argv[2] === 'huge';
 const SIZES = [
   [1280, 800,  'laptop'],
   [1440, 900,  'laptop big'],
   [1512, 982,  'macbook 14'],
   [1920, 1080, 'desktop 1080p'],
   [2560, 1440, 'desktop 1440p'],
-  [3440, 1440, 'ultrawide'],
-  [3840, 2160, '4K'],
-  [1024, 1366, 'ipad pro upright'],
-  [1366, 1024, 'ipad pro sideways'],
-];
+].concat(HUGE ? [[3440, 1440, 'ultrawide'], [3840, 2160, '4K']] : [])
+ .concat([[1024, 1366, 'ipad pro upright'], [1366, 1024, 'ipad pro sideways']]);
 
 /* what she is looking at on each screen, and the floor under how much of
    the window it is allowed to leave empty */
