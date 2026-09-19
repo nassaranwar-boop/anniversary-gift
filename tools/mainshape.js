@@ -31,16 +31,29 @@ const ok = (n, c, x) => { if (c) { pass++; } else { fail++;
     await p.waitForTimeout(1500);
     console.log('\n=== ' + label);
 
-    /* the front door */
-    await p.evaluate(() => { const c = document.getElementById('book-canvas') || document.body;
-      c.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); c.click(); });
-    await p.waitForTimeout(1000);
-    await p.evaluate(() => { if (!document.querySelector('#screen-gate.active')) showScreen('gate'); });
-    await p.waitForTimeout(500);
-    for (const d of '2207') { try { await p.click('[data-gate-key="' + d + '"]', { timeout: 6000 }); }
-      catch (e) { break; } await p.waitForTimeout(160); }
-    let gate = true;
-    try { await p.waitForSelector('#screen-scrapbook.active', { timeout: 15000 }); } catch (e) { gate = false; }
+    /* THE FRONT DOOR, TWICE IF NEED BE.
+
+       A key press that lands while the card is still animating in does
+       nothing, and this container animates when it feels like it. The
+       code is typed, and if the page has not turned, typed again --
+       which is what a person does too. */
+    const knock = async () => {
+      await p.evaluate(() => { const c = document.getElementById('book-canvas') || document.body;
+        c.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); c.click(); });
+      await p.waitForTimeout(1200);
+      await p.evaluate(() => { if (!document.querySelector('#screen-gate.active')) showScreen('gate'); });
+      await p.waitForSelector('#screen-gate.active [data-gate-key="2"]', { timeout: 10000 }).catch(() => {});
+      await p.waitForTimeout(600);
+      for (const d of '2207') {
+        try { await p.click('[data-gate-key="' + d + '"]', { timeout: 8000 }); }
+        catch (e) { return false; }
+        await p.waitForTimeout(200);
+      }
+      try { await p.waitForSelector('#screen-scrapbook.active', { timeout: 20000 }); return true; }
+      catch (e) { return false; }
+    };
+    let gate = await knock();
+    if (!gate) gate = await knock();
     ok(label + ': the passcode opens the book', gate);
 
     /* the hub */
@@ -67,8 +80,15 @@ const ok = (n, c, x) => { if (c) { pass++; } else { fail++;
       await p.evaluate(() => showScreen('hub'));
       await p.waitForTimeout(400);
       await p.evaluate((n) => { const c = document.getElementById('hub-card-' + n); if (c) c.click(); }, name);
+      /* the apocalypse builds a Three.js world on the main thread and
+         this container rasterises in software: a minute is not
+         generous, it is the measurement */
       let came = true;
-      try { await p.waitForSelector(READY[name], { timeout: 30000 }); } catch (e) { came = false; }
+      try { await p.waitForSelector(READY[name], { timeout: 60000 }); } catch (e) { came = false; }
+      if (!came) {
+        await p.evaluate((n) => { const c = document.getElementById('hub-card-' + n); if (c) c.click(); }, name);
+        try { await p.waitForSelector(READY[name], { timeout: 60000 }); came = true; } catch (e) {}
+      }
       ok(label + ': ' + name + ' opens', came);
       await p.waitForTimeout(1500);
       const live = await p.evaluate((n) => {
