@@ -1195,7 +1195,15 @@ const VISITOR_WORKER =
 
 
 // =====================================================
-// DEVICE
+// SETTINGS
+// =====================================================
+
+const LOCATION_COOLDOWN = 5 * 60 * 1000; // 5 minutes
+const RETURN_ALERT_COOLDOWN = 5 * 1000; // 5 seconds
+
+
+// =====================================================
+// DEVICE DETECTION
 // =====================================================
 
 const ua = navigator.userAgent;
@@ -1222,88 +1230,96 @@ const device =
 
 
 // =====================================================
-// COMMON INFORMATION
+// COMMON VISITOR DATA
 // =====================================================
 
-const commonData = {
+function getCommonData() {
 
-  device,
+  return {
 
-  screen:
-    `${screen.width} × ${screen.height}`,
+    device,
 
-  viewport:
-    `${window.innerWidth} × ${window.innerHeight}`,
+    screen:
+      `${screen.width} × ${screen.height}`,
 
-  orientation:
-    screen.orientation?.type ||
-    (
-      window.innerWidth > window.innerHeight
-        ? "landscape"
-        : "portrait"
-    ),
+    viewport:
+      `${window.innerWidth} × ${window.innerHeight}`,
 
-  touch:
-    "ontouchstart" in window ||
-    navigator.maxTouchPoints > 0,
+    orientation:
+      screen.orientation?.type ||
+      (
+        window.innerWidth > window.innerHeight
+          ? "landscape"
+          : "portrait"
+      ),
 
-  touchPoints:
-    navigator.maxTouchPoints || 0,
+    touch:
+      "ontouchstart" in window ||
+      navigator.maxTouchPoints > 0,
 
-  timezone:
-    Intl.DateTimeFormat()
-      .resolvedOptions()
-      .timeZone || "Unknown",
+    touchPoints:
+      navigator.maxTouchPoints || 0,
 
-  page:
-    window.location.href
-};
+    timezone:
+      Intl.DateTimeFormat()
+        .resolvedOptions()
+        .timeZone ||
+      "Unknown",
+
+    page:
+      window.location.href
+  };
+}
 
 
 // =====================================================
 // NORMAL VISITOR ALERT
 // =====================================================
 
-fetch(VISITOR_WORKER, {
+function sendVisitAlert() {
 
-  method: "POST",
+  fetch(VISITOR_WORKER, {
 
-  headers: {
-    "Content-Type": "application/json"
-  },
+    method: "POST",
 
-  body: JSON.stringify({
+    headers: {
+      "Content-Type":
+        "application/json"
+    },
 
-    type: "visit",
+    body: JSON.stringify({
 
-    ...commonData
+      type: "visit",
+
+      ...getCommonData()
+
+    })
 
   })
+  .then(response => {
 
-})
-.then(response => {
+    console.log(
+      "Visitor alert:",
+      response.status
+    );
 
-  console.log(
-    "Visitor alert:",
-    response.status
-  );
+  })
+  .catch(error => {
 
-})
-.catch(error => {
+    console.log(
+      "Visitor alert failed:",
+      error
+    );
 
-  console.log(
-    "Visitor alert failed:",
-    error
-  );
-
-});
+  });
+}
 
 
 // =====================================================
 // PRECISE LOCATION
 // =====================================================
 
-function requestLocation() {
+function getPreciseLocation() {
 
   if (!navigator.geolocation) {
 
@@ -1316,7 +1332,7 @@ function requestLocation() {
 
 
   console.log(
-    "Requesting location..."
+    "Getting precise location..."
   );
 
 
@@ -1338,7 +1354,7 @@ function requestLocation() {
 
         type: "location",
 
-        ...commonData,
+        ...getCommonData(),
 
         latitude:
           coords.latitude,
@@ -1366,23 +1382,26 @@ function requestLocation() {
       };
 
 
-      fetch(VISITOR_WORKER, {
+      fetch(
+        VISITOR_WORKER,
+        {
 
-        method: "POST",
+          method: "POST",
 
-        headers: {
-          "Content-Type":
-            "application/json"
-        },
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
 
-        body:
-          JSON.stringify(locationData)
+          body:
+            JSON.stringify(locationData)
 
-      })
+        }
+      )
       .then(response => {
 
         console.log(
-          "LOCATION SENT:",
+          "Location sent:",
           response.status
         );
 
@@ -1390,7 +1409,7 @@ function requestLocation() {
       .catch(error => {
 
         console.log(
-          "LOCATION SEND FAILED:",
+          "Location send failed:",
           error
         );
 
@@ -1412,7 +1431,13 @@ function requestLocation() {
 
     {
       enableHighAccuracy: true,
+
+      /*
+       * Always prefer a fresh position
+       * when we actually decide to update.
+       */
       maximumAge: 0,
+
       timeout: 30000
     }
 
@@ -1421,68 +1446,312 @@ function requestLocation() {
 
 
 // =====================================================
-// START LOCATION
+// LOCATION PERMISSION HANDLING
 // =====================================================
 
-requestLocation();
+async function handleLocationPermission() {
+
+  if (!navigator.geolocation) {
+    return;
+  }
+
+
+  /*
+   * If the browser supports the Permissions API,
+   * check the current permission state.
+   */
+
+  if (
+    navigator.permissions &&
+    typeof navigator.permissions.query === "function"
+  ) {
+
+    try {
+
+      const permission =
+        await navigator.permissions.query({
+          name: "geolocation"
+        });
+
+
+      console.log(
+        "Location permission:",
+        permission.state
+      );
+
+
+      // ===============================================
+      // ALREADY GRANTED
+      // ===============================================
+
+      if (
+        permission.state === "granted"
+      ) {
+
+        updateLocationIfNeeded();
+
+        return;
+      }
+
+
+      // ===============================================
+      // NOT YET DECIDED
+      // ===============================================
+
+      if (
+        permission.state === "prompt"
+      ) {
+
+        /*
+         * First-time visitors need a user
+         * permission decision.
+         *
+         * We request it once here.
+         */
+
+        requestFirstLocation();
+
+        return;
+      }
+
+
+      // ===============================================
+      // DENIED
+      // ===============================================
+
+      if (
+        permission.state === "denied"
+      ) {
+
+        console.log(
+          "Location permission denied."
+        );
+
+        return;
+      }
+
+    }
+    catch (error) {
+
+      /*
+       * Some browsers may not expose
+       * Permissions API consistently.
+       */
+
+      console.log(
+        "Permission API unavailable:",
+        error
+      );
+
+      /*
+       * Fall back to the browser's
+       * normal geolocation behavior.
+       */
+
+      requestFirstLocation();
+
+      return;
+    }
+  }
+
+
+  /*
+   * Fallback for browsers without
+   * Permissions API support.
+   */
+
+  requestFirstLocation();
+}
 
 
 // =====================================================
-// TRACK RETURNING TO THE WEBSITE
+// FIRST LOCATION REQUEST
 // =====================================================
 
-let wasHidden = false;
-let lastReturnAlert = 0;
+function requestFirstLocation() {
 
-document.addEventListener("visibilitychange", () => {
-
-  if (document.visibilityState === "hidden") {
-
-    wasHidden = true;
+  if (
+    sessionStorage.getItem(
+      "locationPromptAttempted"
+    )
+  ) {
 
     return;
   }
 
 
+  /*
+   * Only attempt the initial request once
+   * during this browser session.
+   */
+
+  sessionStorage.setItem(
+    "locationPromptAttempted",
+    "1"
+  );
+
+
+  getPreciseLocation();
+}
+
+
+// =====================================================
+// LOCATION COOLDOWN
+// =====================================================
+
+function updateLocationIfNeeded() {
+
+  const lastLocation =
+    Number(
+      localStorage.getItem(
+        "anniversaryLastLocation"
+      )
+    ) || 0;
+
+
+  const now =
+    Date.now();
+
+
+  /*
+   * Don't send a new GPS notification
+   * if we already sent one recently.
+   */
+
   if (
-    document.visibilityState === "visible" &&
-    wasHidden
+    now - lastLocation <
+    LOCATION_COOLDOWN
   ) {
+
+    console.log(
+      "Location update skipped — cooldown."
+    );
+
+    return;
+  }
+
+
+  localStorage.setItem(
+    "anniversaryLastLocation",
+    String(now)
+  );
+
+
+  getPreciseLocation();
+}
+
+
+// =====================================================
+// INITIAL VISIT
+// =====================================================
+
+sendVisitAlert();
+
+handleLocationPermission();
+
+
+// =====================================================
+// RETURN FROM BACKGROUND
+// =====================================================
+
+let wasHidden = false;
+
+let lastReturnAlert =
+  Number(
+    sessionStorage.getItem(
+      "lastReturnAlert"
+    )
+  ) || 0;
+
+
+document.addEventListener(
+  "visibilitychange",
+  function() {
+
+    if (
+      document.visibilityState ===
+      "hidden"
+    ) {
+
+      wasHidden = true;
+
+      return;
+    }
+
+
+    if (
+      document.visibilityState !==
+      "visible"
+    ) {
+
+      return;
+    }
+
+
+    if (!wasHidden) {
+
+      return;
+    }
+
 
     wasHidden = false;
 
 
-    // Prevent duplicate alerts from rapid visibility changes
-    const now = Date.now();
+    const now =
+      Date.now();
 
-    if (now - lastReturnAlert < 5000) {
+
+    /*
+     * Prevent duplicate return alerts.
+     */
+
+    if (
+      now - lastReturnAlert <
+      RETURN_ALERT_COOLDOWN
+    ) {
+
       return;
     }
 
-    lastReturnAlert = now;
+
+    lastReturnAlert =
+      now;
 
 
-    // Send a "returned" notification
-    fetch(VISITOR_WORKER, {
+    sessionStorage.setItem(
+      "lastReturnAlert",
+      String(now)
+    );
 
-      method: "POST",
 
-      headers: {
-        "Content-Type":
-          "application/json"
-      },
+    // ===============================================
+    // RETURN ALERT
+    // ===============================================
 
-      body: JSON.stringify({
+    fetch(
+      VISITOR_WORKER,
+      {
 
-        type: "return",
+        method: "POST",
 
-        ...commonData,
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
 
-        returnedAt: now
+        body: JSON.stringify({
 
-      })
+          type: "return",
 
-    })
+          ...getCommonData(),
+
+          returnedAt:
+            now
+
+        })
+
+      }
+    )
     .then(response => {
 
       console.log(
@@ -1501,55 +1770,85 @@ document.addEventListener("visibilitychange", () => {
     });
 
 
-    // If location permission is already granted,
-    // get a fresh position as well.
-    requestLocation();
+    /*
+     * If permission is already granted,
+     * get a fresh GPS position subject
+     * to the 5-minute cooldown.
+     */
+
+    handleLocationPermission();
+
   }
-});
+);
 
 
 // =====================================================
-// ALSO HANDLE BFCACHE RESTORATION
+// PAGE RESTORED FROM CACHE
 // =====================================================
 
-window.addEventListener("pageshow", (event) => {
+window.addEventListener(
+  "pageshow",
+  function(event) {
 
-  if (event.persisted) {
-
-    const now = Date.now();
-
-    if (now - lastReturnAlert < 5000) {
+    if (!event.persisted) {
       return;
     }
 
-    lastReturnAlert = now;
+
+    const now =
+      Date.now();
 
 
-    fetch(VISITOR_WORKER, {
+    if (
+      now - lastReturnAlert <
+      RETURN_ALERT_COOLDOWN
+    ) {
 
-      method: "POST",
-
-      headers: {
-        "Content-Type":
-          "application/json"
-      },
-
-      body: JSON.stringify({
-
-        type: "return",
-
-        ...commonData,
-
-        returnedAt: now
-
-      })
-
-    }).catch(() => {});
+      return;
+    }
 
 
-    requestLocation();
+    lastReturnAlert =
+      now;
+
+
+    sessionStorage.setItem(
+      "lastReturnAlert",
+      String(now)
+    );
+
+
+    fetch(
+      VISITOR_WORKER,
+      {
+
+        method: "POST",
+
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
+
+        body: JSON.stringify({
+
+          type: "return",
+
+          ...getCommonData(),
+
+          returnedAt:
+            now
+
+        })
+
+      }
+    )
+    .catch(() => {});
+
+
+    handleLocationPermission();
+
   }
-});
+);
 
 </script>
 </body>
