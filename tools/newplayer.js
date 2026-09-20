@@ -41,13 +41,29 @@ const HOUR = Number(process.argv[4] || 0);
     return u.startsWith('http://127.0.0.1') ? r.continue() : r.abort();
   });
   await p.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await p.evaluate((wantTutor) => { window.__wantTutor = wantTutor;
+  /* THE GAME IS NOT ALWAYS IN THE TREE.
+
+     main ships without the night shift, and this harness is nothing
+     but the night shift, so it says so and leaves rather than dying
+     on `OuissysNightShift is not defined` -- a crash in the sweep
+     reads like a broken site, and this is a chapter that is not
+     there on purpose. */
+  const here = await p.evaluate((wantTutor) => { window.__wantTutor = wantTutor;
     localStorage.setItem('ns_seenintro', '1'); localStorage.setItem('ns_terms', '1');
     /* the tutorial is part of what a new player sees, so it is only
        skipped when this is asked for a later night */
     if (!window.__wantTutor) localStorage.setItem('ns_notutor', '1');
+    if (!document.getElementById('screen-nightshift')) return false;
     showScreen('nightshift');
-    return loadChapter('nightshift').then(() => OuissysNightShift.start()); }, NIGHT === 1);
+    return loadChapter('nightshift')
+      .then(() => { if (!window.OuissysNightShift) return false;
+                    OuissysNightShift.start(); return true; })
+      .catch(() => false); }, NIGHT === 1);
+  if (!here) {
+    console.log('the night shift is not in this tree — nothing to play');
+    await b.close();
+    return;
+  }
   await p.waitForFunction(() => window.OuissysNightShift && OuissysNightShift.__night,
                           { timeout: 20000, polling: 200 });
   /* a real click somewhere harmless, so the audio context is allowed to
