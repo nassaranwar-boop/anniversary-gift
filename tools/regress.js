@@ -66,9 +66,10 @@ const ok = (n, c, x) => {
        run since the racing chapter became the fifth card -- a suite that is
        always red is a suite nobody reads. Listing them by name means adding
        a chapter fails here once, on purpose, instead of silently.
-       The maze is gone from main and the night shift is the fifth. */
-    const WANT = ['hub-card-quest','hub-card-ouissy','hub-card-apoc','hub-card-race',
-                  'hub-card-nightshift'];
+       The maze is gone from main, and so is the night shift -- it was
+       taken out on purpose, to be worked on somewhere else, and it goes
+       back on this list the day the chapter comes back. Four cards. */
+    const WANT = ['hub-card-quest','hub-card-ouissy','hub-card-apoc','hub-card-race'];
     ok(label + ': the hub has every card',
        WANT.every(id => cards.includes(id)) && cards.length === WANT.length,
        cards.join(','));

@@ -77,6 +77,13 @@ const ok = (n, c, x) => { if (c) { pass++; } else { fail++;
     await p.waitForTimeout(1200);
     console.log('\n--- ' + label + '  ' + w + 'x' + h);
     for (const [name, sel, floorWide, floorTall] of SCREENS) {
+      /* a chapter that is not in this tree is not a fault of it -- and
+         asking for one used to bring the whole suite down on
+         showScreen's `el.classList` */
+      if (!(await p.evaluate((n) => !!document.getElementById('screen-' + n), name))) {
+        console.log('   ' + name.padEnd(11) + 'not in this tree');
+        continue;
+      }
       const floor = w >= h ? floorWide : floorTall;
       await p.evaluate((n) => { showScreen(n); if (n === 'hub' && window.startHub) startHub(); }, name);
       /* EVERY SCREEN ARRIVES BY ANIMATION: screenIn slides it 14px up

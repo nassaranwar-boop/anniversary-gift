@@ -26,8 +26,15 @@ const MEMORIES = [
 
 /* ---------- screen manager ---------- */
 function showScreen(name) {
-  document.querySelectorAll(".screen").forEach((s) => { s.classList.remove("active","anim-in","page-turning","opening","zoom-out","zoom-in-enter"); });
+  /* A SCREEN THAT IS NOT IN THE PAGE IS NOT A REASON TO TAKE THE PAGE
+     DOWN. Asking for one used to throw on `el.classList` and stop
+     whatever called it -- which is exactly what happened the first time
+     a chapter was taken out of a build and something still asked for
+     it by name. Say so and carry on: the screen she was looking at
+     stays up, which is a far better failure than a dead page. */
   const el = document.getElementById("screen-" + name);
+  if (!el) { console.warn("showScreen: no screen called " + name); return; }
+  document.querySelectorAll(".screen").forEach((s) => { s.classList.remove("active","anim-in","page-turning","opening","zoom-out","zoom-in-enter"); });
   el.classList.add("active");
   void el.offsetWidth;
   el.classList.add("anim-in");

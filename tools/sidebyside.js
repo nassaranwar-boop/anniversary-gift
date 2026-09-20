@@ -299,7 +299,12 @@ async function inventory(p, stageSel) {
   for (const name of names) {
     const rec = out[name] || {};
     const base = rec.desktop;
-    if (!base) { console.log(name + ': never opened at desktop size'); bad++; continue; }
+    if (!base) {
+      /* nothing was measured at any size: that is a chapter this tree
+         does not have, not a chapter that failed to open */
+      if (!Object.keys(rec).length) { console.log('\n' + name + ': not in this tree'); continue; }
+      console.log(name + ': never opened at desktop size'); bad++; continue;
+    }
     const byId = (inv) => { const m = {}; (inv.controls || []).forEach((c) => { m[c.id] = m[c.id] || c; }); return m; };
     const b0 = byId(base);
     console.log('\n' + name + '  stage ' + base.stage.w + 'x' + base.stage.h
