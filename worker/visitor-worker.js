@@ -2,32 +2,27 @@
  * Cloudflare Worker — anniversary visitor notifier.
  *
  * Receives one JSON payload per visit/reopen from the site's frontend
- * tracker, enriches it with Cloudflare's own request metadata (request.cf
- * and CF-* headers), and sends ONE formatted Telegram message.
+ * tracker, enriches it with Cloudflare request metadata (request.cf,
+ * CF-* and Client-Hints headers) plus an OpenStreetMap reverse-geocode
+ * of any GPS fix, and sends ONE formatted Telegram message.
  *
- * Secrets live ONLY in the Worker environment and are never returned to
- * the browser or written into the message:
+ * It is self-sufficient: Device / OS / Browser / Engine / User-Agent /
+ * Origin / timezone are recovered from the request itself when the page
+ * does not supply them, and BOTH the current and the older field names
+ * are accepted — so the message is complete no matter which cached
+ * version of the site a device is running.
+ *
+ * Secrets live ONLY in the Worker environment, never in the message:
  *   - TELEGRAM_BOT_TOKEN
  *   - TELEGRAM_CHAT_ID
- *
- * Privacy:
- *   - The visitor's raw IP is used only to reply to Telegram's API layer
- *     via Cloudflare; it is NEVER placed in the Telegram message.
- *   - Precise GPS is only ever what the browser supplied through its own
- *     permission prompt. Network location is Cloudflare's approximate,
- *     IP-derived guess and is labelled as such.
- *
- * Deploy: paste this as the Worker's module code (Quick Edit / Wrangler),
- * keep the two secrets, and Save/Deploy.
+ * The raw visitor IP is used only as a throttle key and is NEVER sent
+ * to Telegram. Precise GPS is only ever the browser's permission-based
+ * fix; network location is Cloudflare's approximate IP guess.
  */
 
-const ALLOWED_ORIGINS = [
-  "https://nassaranwar-boop.github.io"
-];
+const ALLOWED_ORIGINS = ["https://nassaranwar-boop.github.io"];
+const WORKER_VERSION = "2026-09-20-FULL-7";
 
-const WORKER_VERSION = "2026-09-20-FULL-6";
-
-// Tiny in-memory throttle (per isolate; best-effort abuse guard only).
 const RECENT = new Map();
 const RATE_WINDOW_MS = 4000;
 
@@ -36,77 +31,42 @@ export default {
     const origin = request.headers.get("Origin") || "";
     const cors = corsHeaders(origin);
 
-    // ---- CORS preflight ----
-    if (request.method === "OPTIONS") {
-      return new Response(null, { status: 204, headers: cors });
-    }
+    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+    if (request.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405, cors);
+    if (!ALLOWED_ORIGINS.includes(origin)) return json({ ok: false, error: "forbidden_origin" }, 403, cors);
 
-    // ---- Only POST is accepted ----
-    if (request.method !== "POST") {
-      return json({ ok: false, error: "method_not_allowed" }, 405, cors);
-    }
-
-    // ---- Restrict to the site origin ----
-    if (!ALLOWED_ORIGINS.includes(origin)) {
-      return json({ ok: false, error: "forbidden_origin" }, 403, cors);
-    }
-
-    // ---- Content-Type must be JSON ----
     const ct = request.headers.get("Content-Type") || "";
-    if (!ct.toLowerCase().includes("application/json")) {
+    if (!ct.toLowerCase().includes("application/json"))
       return json({ ok: false, error: "unsupported_media_type" }, 415, cors);
-    }
 
-    // ---- Parse JSON safely ----
     let body;
-    try {
-      body = await request.json();
-    } catch (e) {
-      return json({ ok: false, error: "invalid_json" }, 400, cors);
-    }
-    if (!body || typeof body !== "object" || Array.isArray(body)) {
+    try { body = await request.json(); }
+    catch (e) { return json({ ok: false, error: "invalid_json" }, 400, cors); }
+    if (!body || typeof body !== "object" || Array.isArray(body))
       return json({ ok: false, error: "invalid_payload" }, 400, cors);
-    }
 
-    // ---- Light rate limit, keyed on a coarse client signal ----
     const key = request.headers.get("CF-Connecting-IP") || "anon";
     const now = Date.now();
     const prev = RECENT.get(key) || 0;
     RECENT.set(key, now);
     if (RECENT.size > 500) RECENT.clear();
-    if (now - prev < RATE_WINDOW_MS) {
-      return json({ ok: true, throttled: true }, 202, cors);
-    }
+    if (now - prev < RATE_WINDOW_MS) return json({ ok: true, throttled: true }, 202, cors);
 
-    // ---- Secrets present? ----
-    if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID) {
-      // Do not reveal which is missing beyond a generic code.
+    if (!env.TELEGRAM_BOT_TOKEN || !env.TELEGRAM_CHAT_ID)
       return json({ ok: false, error: "server_not_configured" }, 500, cors);
-    }
 
-    // ---- Build and send the message ----
     const cf = request.cf || {};
     const headers = request.headers;
-    const message = buildMessage(body, cf, headers);
+    const message = await buildMessage(body, cf, headers);
 
     try {
       const tg = await fetch(
         `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chat_id: env.TELEGRAM_CHAT_ID,
-            text: message,
-            parse_mode: "HTML",
-            disable_web_page_preview: true
-          })
-        }
+        { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text: message,
+            parse_mode: "HTML", disable_web_page_preview: true }) }
       );
-
       if (!tg.ok) {
-        // Read Telegram's description for our own return, but do not echo
-        // anything containing the token (the URL is never in the body).
         let desc = "";
         try { const j = await tg.json(); desc = (j && j.description) || ""; } catch (e) {}
         return json({ ok: false, error: "telegram_failed", status: tg.status, detail: desc }, 502, cors);
@@ -115,13 +75,15 @@ export default {
       return json({ ok: false, error: "telegram_unreachable" }, 502, cors);
     }
 
-    return json({ ok: true, version: WORKER_VERSION }, 200, cors);
+    // Ask Chromium for high-entropy hints on the next request too.
+    const resp = json({ ok: true, version: WORKER_VERSION }, 200, cors);
+    resp.headers.set("Accept-CH",
+      "Sec-CH-UA-Platform-Version, Sec-CH-UA-Model, Sec-CH-UA-Full-Version-List, Sec-CH-UA-Arch, Sec-CH-UA-Bitness");
+    return resp;
   }
 };
 
-/* ------------------------------------------------------------------ */
-/* helpers                                                            */
-/* ------------------------------------------------------------------ */
+/* ---------------- http helpers ---------------- */
 
 function corsHeaders(origin) {
   const allow = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
@@ -133,49 +95,129 @@ function corsHeaders(origin) {
     "Vary": "Origin"
   };
 }
-
 function json(obj, status, cors) {
-  return new Response(JSON.stringify(obj), {
-    status,
-    headers: { "Content-Type": "application/json", ...cors }
-  });
+  return new Response(JSON.stringify(obj), { status,
+    headers: { "Content-Type": "application/json", ...cors } });
 }
 
-// HTML-escape for Telegram parse_mode=HTML.
+/* ---------------- value helpers ---------------- */
+
 function esc(v) {
   if (v === null || v === undefined || v === "") return "";
-  return String(v)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+  return String(v).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
-
-// Value or a clear "Unavailable" — never undefined/null in the text.
 function val(v) {
   if (v === null || v === undefined || v === "") return "Unavailable";
   return esc(v);
 }
-
-function yesno(v) {
-  if (v === true) return "Yes";
-  if (v === false) return "No";
-  return "Unavailable";
+function first(...xs) {
+  for (const x of xs) if (x !== null && x !== undefined && x !== "") return x;
+  return null;
 }
-
-function num(v, digits) {
+function yesno(v) { return v === true ? "Yes" : v === false ? "No" : "Unavailable"; }
+function num(v, d) {
   if (typeof v !== "number" || !isFinite(v)) return null;
-  return digits === undefined ? v : Number(v.toFixed(digits));
+  return d === undefined ? v : Number(v.toFixed(d));
 }
-
 const DIV = "\n━━━━━━━━━━━━━━━━━━\n";
 
-function buildMessage(b, cf, headers) {
-  const isReopen = b.visitType === "reopen";
-  const heading = isReopen
-    ? "🔁 ANNIVERSARY GIFT REOPENED"
-    : "🔔 ANNIVERSARY GIFT OPENED";
+/* ---------------- server-side UA parsing (fallback) ---------------- */
 
-  let out = "<b>" + heading + "</b>\n";
+function parseDevice(ua, maxTouch) {
+  if (/iPad/i.test(ua) || (/Macintosh/i.test(ua) && maxTouch > 1)) return "iPad";
+  if (/iPhone/i.test(ua)) return "iPhone";
+  if (/iPod/i.test(ua)) return "iPod";
+  if (/Android/i.test(ua)) return /Mobile/i.test(ua) ? "Android phone" : "Android tablet";
+  if (/Windows/i.test(ua)) return "Windows PC";
+  if (/Macintosh|Mac OS X/i.test(ua)) return "Mac";
+  if (/CrOS/i.test(ua)) return "Chromebook";
+  if (/Linux/i.test(ua)) return "Linux";
+  return "Unknown";
+}
+function parseOS(ua, maxTouch) {
+  const isIOS = /iPhone|iPad|iPod/i.test(ua) || (/Macintosh/i.test(ua) && maxTouch > 1);
+  if (isIOS) {
+    const label = (/iPad/i.test(ua) || (/Macintosh/i.test(ua) && maxTouch > 1)) ? "iPadOS" : "iOS";
+    const m = ua.match(/CPU (?:iPhone )?OS (\d+)[._](\d+)(?:[._](\d+))?/i);
+    if (m) return label + " " + m[1] + "." + m[2] + "." + (m[3] || "0");
+    return label + " — exact version hidden by WebKit";
+  }
+  const a = ua.match(/Android ([\d.]+)/i);
+  if (a) return "Android " + a[1];
+  if (/Android/i.test(ua)) return "Android — version not exposed";
+  if (/Windows NT 10\.0/i.test(ua)) return "Windows 10/11";
+  if (/Windows NT 6\.3/i.test(ua)) return "Windows 8.1";
+  if (/Windows/i.test(ua)) return "Windows";
+  if (/CrOS/i.test(ua)) return "ChromeOS";
+  const mac = ua.match(/Mac OS X (\d+[._]\d+(?:[._]\d+)?)/i);
+  if (mac) return "macOS " + mac[1].replace(/_/g, ".");
+  if (/Macintosh/i.test(ua)) return "macOS";
+  if (/Linux/i.test(ua)) return "Linux";
+  return "Unknown";
+}
+function grab(ua, re) { const m = ua.match(re); return m && m[1] ? m[1] : null; }
+function parseBrowser(ua) {
+  let v;
+  if ((v = grab(ua, /CriOS\/([\d.]+)/i)))  return { name: "Chrome",  version: v };
+  if ((v = grab(ua, /FxiOS\/([\d.]+)/i)))  return { name: "Firefox", version: v };
+  if ((v = grab(ua, /EdgiOS\/([\d.]+)/i))) return { name: "Edge",    version: v };
+  if ((v = grab(ua, /OPiOS\/([\d.]+)/i)))  return { name: "Opera",   version: v };
+  if ((v = grab(ua, /Edg(?:A|W)?\/([\d.]+)/i)))    return { name: "Edge",             version: v };
+  if ((v = grab(ua, /OPR\/([\d.]+)/i)))            return { name: "Opera",            version: v };
+  if ((v = grab(ua, /SamsungBrowser\/([\d.]+)/i))) return { name: "Samsung Internet", version: v };
+  if ((v = grab(ua, /Firefox\/([\d.]+)/i)))        return { name: "Firefox",          version: v };
+  if ((v = grab(ua, /Chrome\/([\d.]+)/i)))         return { name: "Chrome",           version: v };
+  if (/Safari\//i.test(ua)) return { name: "Safari", version: grab(ua, /Version\/([\d.]+)/i) || "Not exposed by browser" };
+  return { name: "Unknown", version: "Not exposed by browser" };
+}
+function parseEngine(ua) {
+  if (/Firefox/i.test(ua) && /Gecko\/\d/i.test(ua)) return "Gecko";
+  if (/iPhone|iPad|iPod/i.test(ua)) return "WebKit";
+  if (/Edg|OPR|Chrome|Chromium|SamsungBrowser/i.test(ua)) return "Blink";
+  if (/Safari/i.test(ua) && /AppleWebKit/i.test(ua)) return "WebKit";
+  if (/AppleWebKit/i.test(ua)) return "WebKit";
+  return "Unknown";
+}
+
+/* ---------------- reverse geocode (OpenStreetMap) ---------------- */
+
+async function reverseGeocode(lat, lon) {
+  try {
+    const url = "https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&addressdetails=1"
+      + "&lat=" + encodeURIComponent(lat) + "&lon=" + encodeURIComponent(lon);
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 3000);
+    const r = await fetch(url, {
+      signal: ctrl.signal,
+      headers: { "User-Agent": "anniversary-gift-notifier/1.0 (personal use)", "Accept": "application/json" }
+    });
+    clearTimeout(t);
+    if (!r.ok) return null;
+    const j = await r.json();
+    if (!j || !j.address) return { display: j && j.display_name ? j.display_name : null, a: {} };
+    return { display: j.display_name || null, a: j.address };
+  } catch (e) { return null; }
+}
+
+/* ---------------- message ---------------- */
+
+async function buildMessage(b, cf, headers) {
+  const H = n => headers.get(n);
+  const isReopen = b.visitType === "reopen" || b.visitType === "reopening";
+  let out = "<b>" + (isReopen ? "🔁 ANNIVERSARY GIFT REOPENED" : "🔔 ANNIVERSARY GIFT OPENED") + "</b>\n";
+
+  // ---- request-derived essentials (work even for an old cached page) ----
+  const ua = first(b.userAgent, H("User-Agent")) || "";
+  const maxTouch = typeof b.maxTouchPoints === "number" ? b.maxTouchPoints : 0;
+  const device  = first(b.device, b.deviceType) || parseDevice(ua, maxTouch);
+  const os      = first(b.os, b.operatingSystem) || parseOS(ua, maxTouch);
+  const parsedB = parseBrowser(ua);
+  const browser = first(b.browser, parsedB.name);
+  const browserV = first(b.browserVersion, parsedB.version);
+  const engine  = first(b.engine, parseEngine(ua));
+  const tz      = first(b.timezone, b.browserTimezone, cf.timezone);
+  const origin  = first(b.origin, H("Origin"));
+  const referrer = (b.referrer && b.referrer !== "Direct") ? b.referrer : null;
 
   // ---- VISIT ----
   out += "\n🟢 <b>VISIT</b>\n";
@@ -185,13 +227,27 @@ function buildMessage(b, cf, headers) {
 
   // ---- DEVICE ----
   out += DIV + "📱 <b>DEVICE</b>\n";
-  out += "Device: " + val(b.device) + "\n";
-  out += "OS: " + val(b.os) + "\n";
-  out += "Browser: " + val(b.browser) + "\n";
-  out += "Browser version: " + val(b.browserVersion) + "\n";
-  out += "Engine: " + val(b.engine) + "\n";
+  out += "Device: " + val(device) + "\n";
+  out += "OS: " + val(os) + "\n";
+  out += "Browser: " + val(browser) + "\n";
+  out += "Browser version: " + val(browserV) + "\n";
+  out += "Engine: " + val(engine) + "\n";
   out += "Touchscreen: " + yesno(b.touchscreen) + "\n";
   out += "Max touch points: " + (typeof b.maxTouchPoints === "number" ? b.maxTouchPoints : "Unavailable") + "\n";
+
+  // ---- CLIENT HINTS (Chromium high-entropy, when present) ----
+  const chPlat = H("Sec-CH-UA-Platform"), chPlatV = H("Sec-CH-UA-Platform-Version"),
+        chModel = H("Sec-CH-UA-Model"), chFull = H("Sec-CH-UA-Full-Version-List"),
+        chMobile = H("Sec-CH-UA-Mobile"), chArch = H("Sec-CH-UA-Arch"), chBit = H("Sec-CH-UA-Bitness");
+  if (chPlat || chModel || chFull || chPlatV) {
+    out += DIV + "🧷 <b>CLIENT HINTS</b>\n";
+    out += "Platform: " + val(chPlat ? chPlat.replace(/"/g, "") : null)
+         + (chPlatV ? " " + chPlatV.replace(/"/g, "") : "") + "\n";
+    if (chModel && chModel.replace(/"/g, "")) out += "Model: " + val(chModel.replace(/"/g, "")) + "\n";
+    if (chArch) out += "Arch: " + val(chArch.replace(/"/g, "")) + (chBit ? " " + chBit.replace(/"/g, "") + "-bit" : "") + "\n";
+    out += "Mobile: " + (chMobile === "?1" ? "Yes" : chMobile === "?0" ? "No" : "Unavailable") + "\n";
+    if (chFull) out += "Versions: " + val(chFull.replace(/"/g, "")) + "\n";
+  }
 
   // ---- DISPLAY ----
   out += DIV + "📐 <b>DISPLAY</b>\n";
@@ -214,6 +270,17 @@ function buildMessage(b, cf, headers) {
     out += "Heading: " + (num(gps.heading, 0) !== null ? num(gps.heading, 0) + "°" : "Unavailable") + "\n";
     out += "Speed: " + (num(gps.speed, 1) !== null ? num(gps.speed, 1) + " m/s" : "Unavailable") + "\n";
     out += "Google Maps: https://www.google.com/maps?q=" + lat + "," + lon + "\n";
+
+    // Reverse-geocode to a human address (best-effort, never blocks).
+    const geo = await reverseGeocode(lat, lon);
+    if (geo) {
+      const a = geo.a || {};
+      out += "\n<b>Approx address</b>\n";
+      if (geo.display) out += esc(geo.display) + "\n";
+      const line = [a.road, a.neighbourhood || a.suburb, a.city || a.town || a.village,
+                    a.state, a.postcode, a.country].filter(Boolean).join(", ");
+      if (line && line !== geo.display) out += esc(line) + "\n";
+    }
   } else {
     out += "Status: UNAVAILABLE\n";
     out += "Reason: " + val(gps.reason) + "\n";
@@ -222,7 +289,7 @@ function buildMessage(b, cf, headers) {
 
   // ---- NETWORK LOCATION (Cloudflare, approximate, NOT GPS) ----
   out += DIV + "🌍 <b>NETWORK / IP-BASED LOCATION</b> (approximate)\n";
-  out += "Country: " + val(cf.country || headers.get("CF-IPCountry")) + "\n";
+  out += "Country: " + val(first(cf.country, H("CF-IPCountry"))) + (cf.isEUCountry === "1" ? " (EU)" : "") + "\n";
   out += "Continent: " + val(cf.continent) + "\n";
   out += "Region: " + val(cf.region) + "\n";
   out += "Region code: " + val(cf.regionCode) + "\n";
@@ -231,7 +298,7 @@ function buildMessage(b, cf, headers) {
   out += "Metro code: " + val(cf.metroCode) + "\n";
   out += "Timezone: " + val(cf.timezone) + "\n";
   out += "Approx lat/lon: " + val(cf.latitude) + ", " + val(cf.longitude) + "\n";
-  out += "ASN: " + val(cf.asn) + "\n";
+  out += "ASN: " + (cf.asn ? "AS" + cf.asn : "Unavailable") + "\n";
   out += "Organization: " + val(cf.asOrganization) + "\n";
 
   // ---- CONNECTION ----
@@ -240,37 +307,41 @@ function buildMessage(b, cf, headers) {
   out += "Type: " + val(c.type) + "\n";
   out += "Effective type: " + val(c.effectiveType) + "\n";
   out += "Downlink: " + (typeof c.downlink === "number" ? c.downlink + " Mbps" : "Unavailable") + "\n";
-  out += "RTT: " + (typeof c.rtt === "number" ? c.rtt + " ms" : "Unavailable") + "\n";
+  const rtt = first(typeof c.rtt === "number" ? c.rtt : null, cf.clientTcpRtt);
+  out += "RTT: " + (typeof rtt === "number" ? rtt + " ms" : "Unavailable")
+       + (typeof c.rtt !== "number" && typeof cf.clientTcpRtt === "number" ? " (network, via Cloudflare)" : "") + "\n";
   out += "Save data: " + yesno(c.saveData) + "\n";
 
   // ---- LANGUAGE & TIME ----
   out += DIV + "🗣 <b>LANGUAGE & TIME</b>\n";
-  out += "Language: " + val(b.language) + "\n";
-  out += "Languages: " + val((b.languages || []).join(", ")) + "\n";
-  out += "Browser timezone: " + val(b.timezone) + "\n";
+  out += "Language: " + val(first(b.language, H("Accept-Language") ? H("Accept-Language").split(",")[0] : null)) + "\n";
+  out += "Languages: " + val((b.languages || []).join(", ") || (H("Accept-Language") || "")) + "\n";
+  out += "Browser timezone: " + val(tz) + "\n";
 
   // ---- SOURCE ----
   out += DIV + "🔗 <b>SOURCE</b>\n";
-  out += "Referrer: " + val(b.referrer) + "\n";
-  out += "Origin: " + val(b.origin) + "\n";
+  out += "Referrer: " + val(referrer || "Direct / none") + "\n";
+  out += "Origin: " + val(origin) + "\n";
   out += "Page: " + val(b.page) + "\n";
 
   // ---- USER AGENT ----
-  out += DIV + "🌐 <b>USER AGENT</b>\n" + val(b.userAgent) + "\n";
+  out += DIV + "🌐 <b>USER AGENT</b>\n" + val(ua) + "\n";
 
   // ---- CLOUDFLARE / TECH (no IP) ----
+  const ray = H("CF-Ray") || "";
+  const colo = ray.includes("-") ? ray.split("-")[1] : null;
   out += DIV + "☁️ <b>CLOUDFLARE</b>\n";
-  out += "CF-Ray: " + val(headers.get("CF-Ray")) + "\n";
+  out += "CF-Ray: " + val(ray) + "\n";
+  out += "Edge datacenter: " + val(colo) + "\n";
   out += "HTTP: " + val(cf.httpProtocol) + "\n";
-  out += "TLS: " + val(cf.tlsVersion) + "\n";
+  out += "TLS: " + val(cf.tlsVersion) + (cf.tlsCipher ? " (" + esc(cf.tlsCipher) + ")" : "") + "\n";
 
   // ---- META ----
   out += DIV + "🧩 <b>META</b>\n";
-  out += "Tracker: " + val(b.trackerVersion) + "\n";
+  out += "Tracker: " + val(first(b.trackerVersion, "legacy page (pre-FULL-6, parsed server-side)")) + "\n";
   out += "Worker: " + WORKER_VERSION + "\n";
   out += "Permission state: " + val(b.locationPermission) + "\n";
 
-  // Telegram hard-caps a message at 4096 chars.
   if (out.length > 4090) out = out.slice(0, 4085) + "\n…";
   return out;
 }
