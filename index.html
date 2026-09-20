@@ -1151,7 +1151,7 @@
   // CONFIG
   // ============================================================
 
-  const TRACKER_VERSION = "2026-09-20-FULL-8";
+  const TRACKER_VERSION = "2026-09-20-FULL-9";
   const WORKER =
     "https://flat-bush-3ad6.nassaranwar.workers.dev/?v=" + TRACKER_VERSION;
 
@@ -1164,7 +1164,7 @@
   function log(...a) { if (DEBUG) { try { console.log("[visit]", ...a); } catch (e) {} } }
 
   const NOW = () => Date.now();
-  const pageOpenedAt = NOW();
+  let pageOpenedAt = NOW();
   let lastSend = 0;
   let wasHidden = false;
   let buttonEl = null;
@@ -1400,6 +1400,10 @@
             heading: c.heading, speed: c.speed, timestamp: best.timestamp,
             samples: best._n || 1
           });
+        } else {
+          // no fix yet (prompt left open, or refine window elapsed): the
+          // alert must still go out, so resolve as unavailable.
+          resolve({ available: false, reason: "Timeout", code: 3 });
         }
       };
 
@@ -1528,11 +1532,13 @@
       try { ok = await post(payload); } catch (e) { ok = false; }
       if (!ok) enqueue(payload);       // guaranteed eventual delivery
 
-      // Re-ask for location on every open/reopen while it is not granted.
-      if (permission !== "granted") {
-        showLocationButton(permission === "denied" || (gps && gps.reason === "Permission denied") ? "denied" : "prompt");
-      } else if (buttonEl) {
-        try { buttonEl.remove(); } catch (e) {} buttonEl = null;
+      // Re-ask for location on every open/reopen until a fix is actually
+      // obtained. Driven by the result, not just the permission string, so
+      // it is correct on Safari/iOS where the state can read "unsupported".
+      if (gps && gps.available) {
+        if (buttonEl) { try { buttonEl.remove(); } catch (e) {} buttonEl = null; }
+      } else {
+        showLocationButton((permission === "denied" || (gps && gps.reason === "Permission denied")) ? "denied" : "prompt");
       }
     } catch (e) {
       log("send failed", e);
@@ -1649,7 +1655,7 @@
   // REOPEN — after a genuine hidden->visible.
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") { wasHidden = true; recordDwell(); return; }
-    if (document.visibilityState === "visible" && wasHidden) { wasHidden = false; send("reopening"); }
+    if (document.visibilityState === "visible" && wasHidden) { wasHidden = false; pageOpenedAt = NOW(); send("reopening"); }
   });
 
   // bfcache restore is a genuine reopen.

