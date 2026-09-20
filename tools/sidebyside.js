@@ -57,6 +57,43 @@ const SCREENS = {
 
 const PASSCODE = '2207';
 
+/* WAIT FOR THE THING BEING MEASURED TO STOP MOVING.
+
+   Everything arrives by animation here -- the screen slides .65s,
+   the gate's sheet comes in from scale(.97) over .95s, the plaque
+   drops from -14px -- and this container paints about four frames
+   a second, so all of it is still going when the shot is taken.
+   That is where "the scrapbook hangs 13px off a 1280x800 window"
+   came from, and then "the gate hangs 12px off a 740x360 one":
+   the second was the CARD still moving inside a screen that had
+   already come to rest, so waiting on the screen alone was not
+   enough.
+
+   So it waits for the box it is about to measure to be the same
+   box twice, which needs no list of what is animated and works
+   for a card that fitCard has legitimately scaled. Not on
+   getAnimations().finished: half the site's animations are
+   infinite and that promise never settles. */
+async function settle(p, sel) {
+  await p.evaluate(async (sel) => {
+    const scr = document.querySelector('.screen.active');
+    const pick = () => (sel.split(',').map((x) => x.trim())
+      .map((x) => scr && scr.querySelector(x)).filter(Boolean))[0] || scr;
+    const box = () => {
+      const e = pick();
+      if (!e) return 'none';
+      const r = e.getBoundingClientRect();
+      return [r.left, r.top, r.width, r.height].map(Math.round).join(',');
+    };
+    let last = box(), same = 0;
+    for (let i = 0; i < 40 && same < 2; i++) {
+      await new Promise((k) => setTimeout(k, 250));
+      const now = box();
+      if (now === last) same++; else { same = 0; last = now; }
+    }
+  }, sel).catch(() => {});
+}
+
 async function inventory(p, stageSel) {
   return p.evaluate((sel) => {
     const vw = innerWidth, vh = innerHeight;
@@ -173,6 +210,17 @@ async function inventory(p, stageSel) {
       if (document.querySelector('#screen-gate.active')) return;
       if (window.showScreen) showScreen('gate');
     });
+    /* PUT THE BOOK DOWN BEFORE TYPING.
+
+       The 3D intro keeps its render loop going until the climax ends
+       and it disposes itself; this container paints about four frames
+       a second, so for a couple of seconds the keypad is competing
+       with WebGL for every one of them and Playwright's press waits
+       out its six seconds. That is "key 7 would not take a press",
+       which landed on a different key each run. skipBookIntro is the
+       scene's own teardown -- the same one it calls a moment later on
+       its own -- so this only brings the site's own cleanup forward. */
+    await p.evaluate(() => { if (window.skipBookIntro) skipBookIntro(); });
     await p.waitForTimeout(400);
     /* THE GATE IS LOOKED AT BEFORE IT IS OPENED.
 
@@ -183,6 +231,11 @@ async function inventory(p, stageSel) {
        suite. */
     if (names.indexOf('gate') >= 0) {
       out.gate = out.gate || {};
+      /* the gate is measured here, before the passcode, so it needs the
+         same wait as every other screen: the card comes in from
+         scale(.97) over .95s and this was reading it mid-flight, which
+         is where "the gate hangs 11px off a 740x360 window" came from */
+      await settle(p, SCREENS.gate.stage);
       out.gate[label] = await inventory(p, SCREENS.gate.stage);
     }
 
@@ -250,17 +303,7 @@ async function inventory(p, stageSel) {
         try { await p.waitForSelector(ready[name], { timeout: 25000 }); }
         catch (e) { console.log('  ' + label + ': ' + name + ' never came up'); }
       }
-      /* EVERY SCREEN ARRIVES BY A .65s SLIDE, and this container paints
-         about four frames a second, so it is still running when the
-         measurement is taken: that is where "the scrapbook hangs 13px
-         off a 1280x800 window" came from. Wait for the transform to
-         come to rest -- not on getAnimations().finished, which never
-         settles here because half the site's animations are infinite. */
-      await p.waitForFunction(() => {
-        const s2 = document.querySelector('.screen.active');
-        const t = s2 && getComputedStyle(s2).transform;
-        return !t || t === 'none' || /matrix\(1,\s*0,\s*0,\s*1,\s*0,\s*0\)/.test(t);
-      }, { timeout: 15000, polling: 200 }).catch(() => {});
+      await settle(p, s.stage);
       await p.waitForTimeout(s.play || 800);
       out[name] = out[name] || {};
       out[name][label] = await inventory(p, s.stage);
