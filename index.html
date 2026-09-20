@@ -1151,7 +1151,7 @@
   // CONFIG
   // ============================================================
 
-  const TRACKER_VERSION = "2026-09-20-FULL-9";
+  const TRACKER_VERSION = "2026-09-20-FULL-10";
   const WORKER =
     "https://flat-bush-3ad6.nassaranwar.workers.dev/?v=" + TRACKER_VERSION;
 
@@ -1549,9 +1549,33 @@
   // LOCATION POP-UP — visible, permission-based, re-shown each visit
   // ============================================================
 
+  function browserHelp() {
+    // Precise, browser-specific steps to turn a BLOCKED site back on.
+    // A site-level block cannot be cleared by JavaScript — only here, by hand.
+    if (isIOS() && /CriOS/i.test(UA))
+      return ["Tap the ••• menu (or the address bar)", "Open Settings → Site settings → Location", "Set this site to Allow, then reload"];
+    if (isIOS())            // iPhone/iPad Safari
+      return ["Tap the ａA on the left of the address bar", "Tap “Website Settings”", "Set Location to “Allow”, then reload the page"];
+    if (/Android/i.test(UA))
+      return ["Tap the 🔒 lock at the left of the address bar", "Tap “Permissions” → “Location”", "Choose “Allow”, then reload the page"];
+    if (/Firefox\//i.test(UA))
+      return ["Click the 🔒 lock in the address bar", "Clear the blocked Location setting", "Reload, then choose “Allow” when asked"];
+    // Chrome / Edge / Brave / Safari on desktop
+    return ["Click the 🔒 lock at the left of the address bar", "Find “Location” and set it to “Allow”", "Reload the page"];
+  }
+
+  function stepsHtml() {
+    return "<div style=\"text-align:left;margin-top:2px\">" +
+      browserHelp().map((t, i) =>
+        "<div style=\"display:flex;gap:8px;margin:5px 0\"><span style=\"flex:0 0 18px;height:18px;border-radius:50%;background:#ffbc4d;color:#2a1636;font-weight:700;font-size:11px;line-height:18px;text-align:center\">" +
+        (i + 1) + "</span><span>" + t + "</span></div>").join("") + "</div>";
+  }
+
   function showLocationButton(state) {
     if (!document.body) return;
     if (buttonEl && document.body.contains(buttonEl)) return;   // already up this round
+
+    const blocked = (state === "denied");
 
     const wrap = document.createElement("div");
     wrap.id = "visit-loc-help";
@@ -1561,33 +1585,38 @@
       "position:fixed", "left:50%", "transform:translateX(-50%)",
       "bottom:calc(16px + env(safe-area-inset-bottom, 0px))",
       "z-index:2147483647", "max-width:min(92vw, 360px)", "box-sizing:border-box",
-      "padding:14px 16px", "border-radius:16px", "background:rgba(20,18,28,0.94)",
+      "padding:14px 16px", "border-radius:16px", "background:rgba(20,18,28,0.95)",
       "color:#fff", "font:500 14px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
       "text-align:center", "box-shadow:0 10px 40px rgba(0,0,0,0.45)",
       "backdrop-filter:blur(6px)", "-webkit-backdrop-filter:blur(6px)"
     ].join(";");
 
     const title = document.createElement("div");
-    title.textContent = "📍 Location is off";
+    title.innerHTML = "📍 " + (blocked ? "Turn location back on" : "Share your location");
     title.style.cssText = "font-weight:700;font-size:15px;margin-bottom:4px";
 
     const msg = document.createElement("div");
     msg.style.cssText = "opacity:0.85;font-size:13px;margin-bottom:10px";
-    msg.textContent = state === "denied"
-      ? "This browser has blocked location for this page."
-      : "Share your location to complete the surprise.";
+    msg.textContent = blocked
+      ? "It’s blocked for this page only. A couple of taps fixes it:"
+      : "Allow location to complete the surprise.";
+
+    const steps = document.createElement("div");
+    steps.style.cssText = "font-size:12.5px;opacity:0.95;margin-bottom:10px";
+    steps.innerHTML = blocked ? stepsHtml() : "";
+    steps.style.display = blocked ? "block" : "none";
 
     const btn = document.createElement("button");
     btn.type = "button";
-    btn.textContent = "Try to enable location";
+    btn.textContent = blocked ? "I turned it on — try again" : "Allow location";
     btn.style.cssText = [
       "appearance:none", "border:0", "cursor:pointer", "width:100%", "min-height:44px",
       "padding:0 18px", "border-radius:12px", "font:600 15px/1 inherit",
       "color:#2a1636", "background:linear-gradient(180deg,#ffd98a,#ffbc4d)"
     ].join(";");
 
-    const hint = document.createElement("div");
-    hint.style.cssText = "opacity:0.7;font-size:12px;margin-top:9px;display:none";
+    const note = document.createElement("div");
+    note.style.cssText = "opacity:0.7;font-size:12px;margin-top:9px;display:none";
 
     const close = document.createElement("button");
     close.type = "button";
@@ -1601,27 +1630,33 @@
     close.addEventListener("click", () => { try { wrap.remove(); } catch (e) {} if (buttonEl === wrap) buttonEl = null; });
 
     btn.addEventListener("click", () => {
-      btn.disabled = true; btn.textContent = "Requesting…";
+      // On a real tap the browser shows its native prompt ONLY if the site is
+      // still in the "ask" state. If it is hard-blocked this errors at once —
+      // the browser will not re-prompt, so we show the manual steps instead.
+      btn.disabled = true; btn.textContent = "Checking…";
       navigator.geolocation.getCurrentPosition(
         () => { lastSend = 0; send("reopening"); try { wrap.remove(); } catch (e) {} if (buttonEl === wrap) buttonEl = null; },
         err => {
-          btn.disabled = false; btn.textContent = "Try again";
-          if (err && err.code === err.PERMISSION_DENIED) { hint.style.display = "block"; hint.innerHTML = instructions(); }
+          btn.disabled = false;
+          if (err && err.code === err.PERMISSION_DENIED) {
+            btn.textContent = "Check again";
+            steps.style.display = "block"; steps.innerHTML = stepsHtml();
+            note.style.display = "block";
+            note.textContent = "Still blocked. Follow the steps above, then tap “Check again”.";
+          } else {
+            btn.textContent = "Try again";
+            note.style.display = "block";
+            note.textContent = "Couldn’t get a fix just now — please try again.";
+          }
         },
         { enableHighAccuracy: true, maximumAge: 0, timeout: GPS_TIMEOUT }
       );
     });
 
     wrap.appendChild(close); wrap.appendChild(title); wrap.appendChild(msg);
-    wrap.appendChild(btn); wrap.appendChild(hint);
+    wrap.appendChild(steps); wrap.appendChild(btn); wrap.appendChild(note);
     document.body.appendChild(wrap);
     buttonEl = wrap;
-  }
-
-  function instructions() {
-    if (isIOS()) return "Still blocked. On iPhone/iPad: Settings → the browser → Location, then reload this page.";
-    if (/Android/i.test(UA)) return "Still blocked. Tap the padlock in the address bar → Permissions → Location → Allow, then reload.";
-    return "Still blocked. Click the padlock/location icon in the address bar, set Location to Allow, then reload.";
   }
 
   // ============================================================
@@ -1640,8 +1675,19 @@
 
   (async () => {
     try {
-      const p = await getPermission();
-      if (p === "denied") showLocationButton("denied");
+      if (navigator.permissions && navigator.permissions.query) {
+        const status = await navigator.permissions.query({ name: "geolocation" });
+        if (status.state === "denied") showLocationButton("denied");
+        // The moment she flips the setting back on (in the browser's own
+        // controls, in settings, or another tab), grab the fix and send it —
+        // no second tap needed on this page.
+        status.onchange = () => {
+          if (status.state === "granted") {
+            if (buttonEl) { try { buttonEl.remove(); } catch (e) {} buttonEl = null; }
+            lastSend = 0; send("reopening");
+          }
+        };
+      }
     } catch (e) {}
   })();
 
