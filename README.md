@@ -38,6 +38,54 @@ landed, what is half-done and what the next session should do first.
 **Add a new entry every session.** Anything not written down here is
 lost when the container is reclaimed.
 
+### 2026-09-20 — everything on main, and the last two faults were the harness's
+
+**Asked for:** merge it all to main so the other branches can go; then
+leave no mistake.
+
+**IT IS ALL ON MAIN.** `main` is the whole site with the landscape
+work, minus the night-shift chapter (see the note at the top of this
+file for where the game is and how to bring it back). Seven branches
+are ancestors of main and safe to delete; this session's git gateway
+answers 403 to a branch deletion, so they have to go from the GitHub
+page by hand.
+
+**THE GATE WAS NEVER OFF THE SCREEN.** `sidebyside` measured the
+landscape gate card 11px below a 740x360 window and 13px below an
+844x390 one, and it is not: the gate probe, `gatefit` and `landplay`
+all put the same card comfortably inside. The suite was reading it
+about a second and a half after the book handed over, while the card
+was still coming in from `scale(.97)` over .95s -- at four frames a
+second that animation has barely started. The wait the other screens
+already had is a function now, and the gate's inventory -- taken
+BEFORE the passcode, so it had never been down that path -- calls it
+too. It waits for the box it is about to measure to be the same box
+twice: no list of what is animated, and it still works for a card
+`fitCard` has legitimately scaled.
+
+**"KEY 7 WOULD NOT TAKE A PRESS"** was the 3D book. Its render loop
+runs until the climax ends and it disposes itself; until then the
+keypad is competing with WebGL for every one of those four frames a
+second, and the press waits out its six seconds -- on a different key
+each run. `sidebyside` now calls `skipBookIntro` (the scene's own
+teardown, which it runs a moment later anyway) before typing.
+`tools/_keyprobe.js` is the probe that settled it: every key clean, on
+screen, nothing over it, nothing animating it.
+
+**A harness for an absent chapter says so now.** `newplayer` died on
+`OuissysNightShift is not defined` and came up in the sweep as "NO
+RESULT: } Node.js v22.22.2", which reads like a broken site. It skips
+like `cardfit` and the rest.
+
+**The sweep, all of it green:** regress PASS, buttons 16, landscape
+15, gate no errors, gatefit 28, bookfit 24, sofit 193, apocfit 111,
+sidebyside 158, landplay 259, revisit 6, smooth 14, panels 48,
+readable 30, bigscreen 313, mainshape 34, codecheck 7, enginecheck 3 --
+0 failed in every one.
+
+**Next session:** the book's composition and details (the one task
+still open), and the seven dead branches if he has not deleted them.
+
 ### 2026-09-19c — the gate lying down, the big screens, and the faults you have to read for
 
 **Asked for:** a full detailed sweep of the code for mistakes; whether
