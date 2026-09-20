@@ -1130,954 +1130,511 @@
 <script defer src="script.js?v=319"></script>
 <!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "0dc6f2a7eff24098b817ddbd7fc766ba"}'></script><!-- End Cloudflare Web Analytics -->
 <script>
+/* ================================================================
+   VISITOR NOTIFICATION — first-party, permission-based.
+
+   One custom tracker for the whole site. It reads normal browser and
+   device information, asks the browser (and only the browser) for GPS
+   through the standard permission prompt, and POSTs a single JSON
+   payload to the Cloudflare Worker, which enriches it with Cloudflare's
+   own request metadata and sends ONE Telegram message.
+
+   It never fingerprints, never bypasses a permission, never reads the
+   raw IP (Cloudflare does that server-side and does not forward it),
+   and never carries a secret — the Telegram token lives only in the
+   Worker's environment. If anything in here throws, it is caught: the
+   anniversary site must keep working even when tracking cannot.
+   ================================================================ */
 (() => {
+  "use strict";
 
   // ============================================================
   // CONFIG
   // ============================================================
 
+  const TRACKER_VERSION = "2026-09-20-FULL-6";
+
+  // The Worker origin. The ?v= is a cache-buster for the request only;
+  // it is not a substitute for deploying the code.
   const WORKER =
-    "https://flat-bush-3ad6.nassaranwar.workers.dev/?v=20260919-3";
+    "https://flat-bush-3ad6.nassaranwar.workers.dev/?v=" + TRACKER_VERSION;
 
+  const GPS_TIMEOUT   = 15000;  // ms to wait for a fix before giving up
+  const SEND_COOLDOWN = 20000;  // ms; ignore repeat events inside this window
+  const DEBUG         = false;  // set true in a console session to see logs
 
-  const GPS_TIMEOUT =
-    15000;
+  function log(...a) { if (DEBUG) { try { console.log("[visit]", ...a); } catch (e) {} } }
 
+  let lastSend = 0;
+  let wasHidden = false;   // set once the page has genuinely been hidden
+  let buttonEl = null;
 
-  let lastSend =
-    0;
+  // ============================================================
+  // SMALL UA HELPERS
+  // ============================================================
 
+  const UA = navigator.userAgent || "";
+  const VENDOR = navigator.vendor || "";
+  const MAXTOUCH = navigator.maxTouchPoints || 0;
 
-  let initialLoad =
-    true;
+  // Grab a capture group, or say so honestly rather than "Unknown".
+  function grab(re) {
+    const m = UA.match(re);
+    return m && m[1] ? m[1] : null;
+  }
 
+  // Apple hands modern iPads a desktop ("Macintosh") UA. The only
+  // reliable tell that it is really an iPad is a touch-capable Mac.
+  function isIOS() {
+    return /iPhone|iPad|iPod/i.test(UA) ||
+           (/Macintosh/i.test(UA) && MAXTOUCH > 1);
+  }
+
+  function isIPad() {
+    return /iPad/i.test(UA) ||
+           (/Macintosh/i.test(UA) && MAXTOUCH > 1);
+  }
 
   // ============================================================
   // DEVICE
   // ============================================================
 
   function getDevice() {
-
-    const ua =
-      navigator.userAgent || "";
-
-
-    const touches =
-      navigator.maxTouchPoints || 0;
-
-
-    // iPad / iPadOS
-    if (
-      /iPad/i.test(ua) ||
-      (
-        /Macintosh/i.test(ua) &&
-        touches > 1
-      )
-    ) {
-      return "iPad";
+    if (/iPad/i.test(UA) || (/Macintosh/i.test(UA) && MAXTOUCH > 1)) return "iPad";
+    if (/iPhone/i.test(UA)) return "iPhone";
+    if (/iPod/i.test(UA))   return "iPod";
+    if (/Android/i.test(UA)) {
+      // "Mobile" present => phone; absent => tablet (Android convention).
+      return /Mobile/i.test(UA) ? "Android phone" : "Android tablet";
     }
-
-
-    if (/iPhone/i.test(ua)) {
-      return "iPhone";
-    }
-
-
-    if (/iPod/i.test(ua)) {
-      return "iPod";
-    }
-
-
-    if (/Android/i.test(ua)) {
-      return "Android";
-    }
-
-
-    if (/Windows/i.test(ua)) {
-      return "Windows PC";
-    }
-
-
-    if (/Macintosh/i.test(ua)) {
-      return "Mac";
-    }
-
-
-    if (/Linux/i.test(ua)) {
-      return "Linux";
-    }
-
-
+    if (/Windows/i.test(UA)) return "Windows PC";
+    if (/Macintosh|Mac OS X/i.test(UA)) return "Mac";
+    if (/CrOS/i.test(UA))    return "Chromebook";
+    if (/Linux/i.test(UA))   return "Linux";
     return "Unknown";
   }
 
-
   // ============================================================
-  // TOUCHSCREEN
-  // ============================================================
-
-  function getTouchscreen() {
-
-    const ua =
-      navigator.userAgent || "";
-
-
-    const touches =
-      navigator.maxTouchPoints || 0;
-
-
-    if (
-      /iPhone|iPad|iPod|Android/i.test(ua)
-    ) {
-      return true;
-    }
-
-
-    return touches > 0;
-  }
-
-
-  // ============================================================
-  // VERSION HELPER
-  // ============================================================
-
-  function version(
-    ua,
-    regex
-  ) {
-
-    const match =
-      ua.match(regex);
-
-
-    return match
-      ? match[1]
-      : "Unknown";
-  }
-
-
-  // ============================================================
-  // BROWSER
-  // ============================================================
-
-  async function getBrowser() {
-
-    const ua =
-      navigator.userAgent || "";
-
-
-    /*
-     * IMPORTANT:
-     * Check Chrome on iOS BEFORE Safari.
-     *
-     * Your User-Agent contains:
-     *
-     * CriOS/153.0.8010.24
-     *
-     * Therefore it is Chrome, not Safari.
-     */
-
-    if (/CriOS\//i.test(ua)) {
-
-      return {
-        name: "Chrome",
-        version:
-          version(
-            ua,
-            /CriOS\/([\d.]+)/i
-          ),
-        detection: "CriOS User-Agent"
-      };
-    }
-
-
-    // Brave
-    try {
-
-      if (
-        navigator.brave &&
-        typeof navigator.brave.isBrave ===
-          "function"
-      ) {
-
-        if (
-          await navigator.brave.isBrave()
-        ) {
-
-          return {
-            name: "Brave",
-            version:
-              version(
-                ua,
-                /(?:Brave|Chrome|Chromium)\/([\d.]+)/i
-              ),
-            detection:
-              "navigator.brave.isBrave()"
-          };
-        }
-      }
-
-    } catch {}
-
-
-    // Instagram
-    if (/Instagram/i.test(ua)) {
-
-      return {
-        name: "Instagram",
-        version:
-          version(
-            ua,
-            /Instagram[^ ]*\/([\d.]+)/i
-          ),
-        detection: "User-Agent"
-      };
-    }
-
-
-    // Facebook
-    if (/FBAN|FBAV/i.test(ua)) {
-
-      return {
-        name: "Facebook",
-        version:
-          version(
-            ua,
-            /FBAV\/([\d.]+)/i
-          ),
-        detection: "User-Agent"
-      };
-    }
-
-
-    // TikTok
-    if (/TikTok/i.test(ua)) {
-
-      return {
-        name: "TikTok",
-        version: "Unknown",
-        detection: "User-Agent"
-      };
-    }
-
-
-    // Samsung Internet
-    if (/SamsungBrowser/i.test(ua)) {
-
-      return {
-        name: "Samsung Internet",
-        version:
-          version(
-            ua,
-            /SamsungBrowser\/([\d.]+)/i
-          ),
-        detection: "User-Agent"
-      };
-    }
-
-
-    // Edge
-    if (/Edg\//i.test(ua)) {
-
-      return {
-        name: "Microsoft Edge",
-        version:
-          version(
-            ua,
-            /Edg\/([\d.]+)/i
-          ),
-        detection: "User-Agent"
-      };
-    }
-
-
-    // Firefox
-    if (/Firefox\//i.test(ua)) {
-
-      return {
-        name: "Firefox",
-        version:
-          version(
-            ua,
-            /Firefox\/([\d.]+)/i
-          ),
-        detection: "User-Agent"
-      };
-    }
-
-
-    // Opera
-    if (/OPR\//i.test(ua)) {
-
-      return {
-        name: "Opera",
-        version:
-          version(
-            ua,
-            /OPR\/([\d.]+)/i
-          ),
-        detection: "User-Agent"
-      };
-    }
-
-
-    // Chrome desktop / Android
-    if (/Chrome\//i.test(ua)) {
-
-      return {
-        name: "Chrome",
-        version:
-          version(
-            ua,
-            /Chrome\/([\d.]+)/i
-          ),
-        detection: "User-Agent"
-      };
-    }
-
-
-    // Safari — LAST
-    if (
-      /Safari\//i.test(ua) &&
-      /Apple Computer/i.test(
-        navigator.vendor || ""
-      )
-    ) {
-
-      return {
-        name: "Safari",
-        version:
-          version(
-            ua,
-            /Version\/([\d.]+)/i
-          ),
-        detection: "Safari User-Agent"
-      };
-    }
-
-
-    return {
-      name: "Unknown",
-      version: "Unknown",
-      detection: "Unknown"
-    };
-  }
-
-
-  // ============================================================
-  // OPERATING SYSTEM
+  // OPERATING SYSTEM  (never fabricates a hidden version)
   // ============================================================
 
   function getOS() {
+    if (isIOS()) {
+      const label = isIPad() ? "iPadOS" : "iOS";
+      // The genuine OS token, e.g. "CPU OS 26_6_2" or "CPU iPhone OS 18_1".
+      const m = UA.match(/CPU (?:iPhone )?OS (\d+)[._](\d+)(?:[._](\d+))?/i);
+      if (m) return label + " " + m[1] + "." + m[2] + "." + (m[3] || "0");
+      // Desktop-mode iPad UA carries no OS token. Do NOT read Safari's
+      // Version/ number as the OS — that is exactly the "iPadOS 18.7"
+      // mistake. Say plainly that WebKit is hiding it.
+      return label + " — exact version hidden by WebKit";
+    }
 
-    const ua =
-      navigator.userAgent || "";
+    const android = grab(/Android ([\d.]+)/i);
+    if (android) return "Android " + android;
+    if (/Android/i.test(UA)) return "Android — version not exposed";
 
+    if (/Windows NT 10\.0/i.test(UA)) return "Windows 10/11";
+    if (/Windows NT 6\.3/i.test(UA))  return "Windows 8.1";
+    if (/Windows NT 6\.2/i.test(UA))  return "Windows 8";
+    if (/Windows NT 6\.1/i.test(UA))  return "Windows 7";
+    if (/Windows/i.test(UA))          return "Windows";
 
-    const touches =
-      navigator.maxTouchPoints || 0;
+    if (/CrOS/i.test(UA)) return "ChromeOS";
 
+    const mac = grab(/Mac OS X (\d+[._]\d+(?:[._]\d+)?)/i);
+    if (mac) return "macOS " + mac.replace(/_/g, ".");
+    if (/Macintosh/i.test(UA)) return "macOS";
 
-    // iPhone / iPad
-    if (
-      /iPhone|iPad|iPod/i.test(ua) ||
-      (
-        /Macintosh/i.test(ua) &&
-        touches > 1
-      )
-    ) {
+    if (/Linux/i.test(UA)) return "Linux";
+    return "Unknown";
+  }
 
-      /*
-       * Your exact UA is:
-       *
-       * CPU OS 26_6_2
-       *
-       * So extract that directly when available.
-       */
+  // ============================================================
+  // BROWSER  (async because Brave is a promise)
+  // ============================================================
 
-      const match =
-        ua.match(
-          /CPU (?:iPhone )?OS (\d+)[._](\d+)(?:[._](\d+))?/i
-        );
+  async function getBrowser() {
+    // ---- iOS in-app engines first: every iOS browser is WebKit, and
+    //      each rebrands the UA with its own token. Check these before
+    //      the generic Safari branch, or Chrome/Firefox/Edge on iPhone
+    //      all read as "Safari".
+    let v;
+    if ((v = grab(/CriOS\/([\d.]+)/i)))  return { name: "Chrome",  version: v, how: "CriOS token" };
+    if ((v = grab(/FxiOS\/([\d.]+)/i)))  return { name: "Firefox", version: v, how: "FxiOS token" };
+    if ((v = grab(/EdgiOS\/([\d.]+)/i))) return { name: "Edge",    version: v, how: "EdgiOS token" };
+    if ((v = grab(/OPiOS\/([\d.]+)/i)))  return { name: "Opera",   version: v, how: "OPiOS token" };
+    if ((v = grab(/GSA\/([\d.]+)/i)))    return { name: "Google App", version: v, how: "GSA token" };
 
-
-      if (match) {
-
-        return `iOS/iPadOS ${match[1]}.${match[2]}.${match[3] || "0"}`;
+    // ---- Brave: only its own runtime API can tell it from Chrome.
+    try {
+      if (navigator.brave && typeof navigator.brave.isBrave === "function" &&
+          await navigator.brave.isBrave()) {
+        return {
+          name: "Brave",
+          version: grab(/(?:Chrome|Chromium)\/([\d.]+)/i) || "Not exposed by browser",
+          how: "navigator.brave.isBrave()"
+        };
       }
+    } catch (e) {}
 
+    // ---- In-app webviews (they matter for "how did she open it").
+    if (/Instagram/i.test(UA)) return { name: "Instagram in-app", version: grab(/Instagram[^\s]*\/([\d.]+)/i) || "Not exposed by browser", how: "UA" };
+    if (/FBAN|FBAV|FB_IAB/i.test(UA)) return { name: "Facebook in-app", version: grab(/FBAV\/([\d.]+)/i) || "Not exposed by browser", how: "UA" };
+    if (/TikTok|musical_ly|BytedanceWebview/i.test(UA)) return { name: "TikTok in-app", version: "Not exposed by browser", how: "UA" };
+    if (/Snapchat/i.test(UA)) return { name: "Snapchat in-app", version: "Not exposed by browser", how: "UA" };
 
-      /*
-       * iPadOS desktop-style UA may not expose
-       * the OS version.
-       */
+    // ---- Desktop / Android engines, most specific token first.
+    if ((v = grab(/Edg(?:A|W)?\/([\d.]+)/i)))    return { name: "Edge",             version: v, how: "UA" };
+    if ((v = grab(/OPR\/([\d.]+)/i)))            return { name: "Opera",            version: v, how: "UA" };
+    if ((v = grab(/SamsungBrowser\/([\d.]+)/i))) return { name: "Samsung Internet", version: v, how: "UA" };
+    if ((v = grab(/Vivaldi\/([\d.]+)/i)))        return { name: "Vivaldi",          version: v, how: "UA" };
+    if ((v = grab(/YaBrowser\/([\d.]+)/i)))      return { name: "Yandex",           version: v, how: "UA" };
+    if ((v = grab(/Firefox\/([\d.]+)/i)))        return { name: "Firefox",          version: v, how: "UA" };
+    if ((v = grab(/Chrome\/([\d.]+)/i)))         return { name: "Chrome",           version: v, how: "UA" };
 
-      return "iOS/iPadOS";
+    // ---- Safari LAST, and only a real Apple-vendor Safari.
+    if (/Safari\//i.test(UA) && /Apple/i.test(VENDOR)) {
+      return { name: "Safari", version: grab(/Version\/([\d.]+)/i) || "Not exposed by browser", how: "Version token" };
     }
 
+    // ---- Honest fallbacks rather than a false "Safari".
+    if (/AppleWebKit/i.test(UA) && isIOS()) return { name: "WebKit browser", version: "Not exposed by browser", how: "fallback" };
+    if (/Chromium|Chrome/i.test(UA))        return { name: "Chromium-based browser", version: grab(/(?:Chromium|Chrome)\/([\d.]+)/i) || "Not exposed by browser", how: "fallback" };
+    return { name: "Unknown", version: "Not exposed by browser", how: "fallback" };
+  }
 
-    // Android
-    const android =
-      ua.match(
-        /Android ([\d.]+)/i
-      );
+  // ============================================================
+  // ENGINE  (from platform + brand, not just "AppleWebKit")
+  // ============================================================
 
-
-    if (android) {
-
-      return `Android ${android[1]}`;
-    }
-
-
-    // Windows
-    if (/Windows NT 10\.0/i.test(ua)) {
-      return "Windows 10/11";
-    }
-
-
-    if (/Windows NT 6\.3/i.test(ua)) {
-      return "Windows 8.1";
-    }
-
-
-    // macOS
-    const mac =
-      ua.match(
-        /Mac OS X ([\d_]+)/i
-      );
-
-
-    if (mac) {
-
-      return `macOS ${mac[1].replace(
-        /_/g,
-        "."
-      )}`;
-    }
-
-
-    if (/Linux/i.test(ua)) {
-      return "Linux";
-    }
-
-
+  function getEngine(browserName) {
+    if (/Firefox/i.test(UA) && /Gecko\/\d/i.test(UA)) return "Gecko";
+    if (isIOS()) return "WebKit";                 // every iOS browser
+    if (browserName === "Safari") return "WebKit";
+    if (/Edg|OPR|Chrome|Chromium|SamsungBrowser|Vivaldi|YaBrowser|Brave/i.test(UA)) return "Blink";
+    if (/AppleWebKit/i.test(UA)) return "WebKit";
     return "Unknown";
   }
 
-
   // ============================================================
-  // ENGINE
+  // TOUCHSCREEN  (real feature detection, not UA guessing)
   // ============================================================
 
-  function getEngine() {
-
-    const ua =
-      navigator.userAgent || "";
-
-
-    if (/AppleWebKit/i.test(ua)) {
-
-      return "WebKit";
-    }
-
-
-    if (/Gecko\//i.test(ua)) {
-
-      return "Gecko";
-    }
-
-
-    return "Unknown";
+  function getTouch() {
+    let yes = MAXTOUCH > 0 || "ontouchstart" in window;
+    try { if (window.matchMedia && matchMedia("(pointer: coarse)").matches) yes = true; } catch (e) {}
+    if (isIOS() || /Android/i.test(UA)) yes = true;
+    return { touchscreen: !!yes, maxTouchPoints: MAXTOUCH };
   }
 
-
   // ============================================================
-  // ORIENTATION
+  // ORIENTATION / CONNECTION
   // ============================================================
 
   function getOrientation() {
-
-    if (
-      screen.orientation &&
-      screen.orientation.type
-    ) {
-
-      return screen.orientation.type;
-    }
-
-
-    return window.innerWidth >
-      window.innerHeight
-      ? "landscape"
-      : "portrait";
+    try { if (screen.orientation && screen.orientation.type) return screen.orientation.type; } catch (e) {}
+    return window.innerWidth > window.innerHeight ? "landscape" : "portrait";
   }
 
-
-  // ============================================================
-  // CONNECTION
-  // ============================================================
-
   function getConnection() {
-
-    const connection =
-      navigator.connection ||
-      navigator.mozConnection ||
-      navigator.webkitConnection;
-
-
-    if (!connection) {
-
-      return {
-        type: "Unavailable",
-        effectiveType: "Unavailable",
-        downlink: null,
-        rtt: null,
-        saveData: null
-      };
-    }
-
-
+    const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (!c) return { type: null, effectiveType: null, downlink: null, rtt: null, saveData: null };
     return {
-
-      type:
-        connection.type ||
-        "Unknown",
-
-      effectiveType:
-        connection.effectiveType ||
-        "Unknown",
-
-      downlink:
-        typeof connection.downlink === "number"
-          ? connection.downlink
-          : null,
-
-      rtt:
-        typeof connection.rtt === "number"
-          ? connection.rtt
-          : null,
-
-      saveData:
-        typeof connection.saveData === "boolean"
-          ? connection.saveData
-          : null
+      type: c.type || null,
+      effectiveType: c.effectiveType || null,
+      downlink: typeof c.downlink === "number" ? c.downlink : null,
+      rtt: typeof c.rtt === "number" ? c.rtt : null,
+      saveData: typeof c.saveData === "boolean" ? c.saveData : null
     };
   }
 
-
   // ============================================================
-  // GPS
-  // ============================================================
-
-  function getGPS() {
-
-    return new Promise(
-      resolve => {
-
-        if (
-          !navigator.geolocation
-        ) {
-
-          resolve({
-            available: false,
-            error:
-              "Geolocation API unavailable",
-            code: null
-          });
-
-          return;
-        }
-
-
-        let done = false;
-
-
-        function finish(result) {
-
-          if (done) {
-            return;
-          }
-
-
-          done = true;
-
-
-          resolve(result);
-        }
-
-
-        navigator.geolocation.getCurrentPosition(
-
-          position => {
-
-            const c =
-              position.coords;
-
-
-            finish({
-
-              available: true,
-
-              latitude:
-                c.latitude,
-
-              longitude:
-                c.longitude,
-
-              accuracy:
-                c.accuracy,
-
-              altitude:
-                c.altitude,
-
-              altitudeAccuracy:
-                c.altitudeAccuracy,
-
-              heading:
-                c.heading,
-
-              speed:
-                c.speed,
-
-              timestamp:
-                position.timestamp
-            });
-          },
-
-
-          error => {
-
-            let reason =
-              "Unknown";
-
-
-            if (
-              error.code ===
-              error.PERMISSION_DENIED
-            ) {
-
-              reason =
-                "Permission denied";
-            }
-
-
-            else if (
-              error.code ===
-              error.POSITION_UNAVAILABLE
-            ) {
-
-              reason =
-                "Position unavailable";
-            }
-
-
-            else if (
-              error.code ===
-              error.TIMEOUT
-            ) {
-
-              reason =
-                "Request timed out";
-            }
-
-
-            finish({
-
-              available: false,
-
-              error: reason,
-
-              code:
-                error.code
-            });
-          },
-
-
-          {
-            enableHighAccuracy: true,
-            maximumAge: 0,
-            timeout: GPS_TIMEOUT
-          }
-        );
-
-
-        // Safety timeout
-        setTimeout(
-          () => {
-
-            finish({
-
-              available: false,
-
-              error:
-                "Request timed out",
-
-              code: 3
-            });
-
-          },
-          GPS_TIMEOUT + 1000
-        );
-      }
-    );
-  }
-
-
-  // ============================================================
-  // PERMISSION
+  // GEOLOCATION PERMISSION STATE
   // ============================================================
 
   async function getPermission() {
-
     try {
+      if (!navigator.permissions || !navigator.permissions.query) return "unsupported";
+      const r = await navigator.permissions.query({ name: "geolocation" });
+      return r.state;                 // "granted" | "prompt" | "denied"
+    } catch (e) {
+      return "unsupported";
+    }
+  }
 
-      if (
-        !navigator.permissions
-      ) {
+  // ============================================================
+  // GPS  (standard browser API only; resolves, never rejects)
+  // ============================================================
 
-        return "Unknown";
+  function getGPS() {
+    return new Promise(resolve => {
+      if (!navigator.geolocation) {
+        resolve({ available: false, reason: "Geolocation API unavailable", code: null });
+        return;
+      }
+      let done = false;
+      const finish = r => { if (!done) { done = true; resolve(r); } };
+
+      try {
+        navigator.geolocation.getCurrentPosition(
+          pos => {
+            const c = pos.coords;
+            finish({
+              available: true,
+              latitude: c.latitude, longitude: c.longitude,
+              accuracy: c.accuracy,
+              altitude: c.altitude, altitudeAccuracy: c.altitudeAccuracy,
+              heading: c.heading, speed: c.speed,
+              timestamp: pos.timestamp
+            });
+          },
+          err => {
+            let reason = "Unknown error";
+            if (err.code === err.PERMISSION_DENIED)    reason = "Permission denied";
+            else if (err.code === err.POSITION_UNAVAILABLE) reason = "Position unavailable";
+            else if (err.code === err.TIMEOUT)         reason = "Timeout";
+            finish({ available: false, reason, code: err.code });
+          },
+          { enableHighAccuracy: true, maximumAge: 0, timeout: GPS_TIMEOUT }
+        );
+      } catch (e) {
+        finish({ available: false, reason: "Geolocation threw", code: null });
       }
 
-
-      const result =
-        await navigator.permissions.query({
-          name: "geolocation"
-        });
-
-
-      return result.state;
-
-    } catch {
-
-      return "Unknown";
-    }
+      // Backstop, in case the callback never fires on some engine.
+      setTimeout(() => finish({ available: false, reason: "Timeout", code: 3 }), GPS_TIMEOUT + 1500);
+    });
   }
 
-
   // ============================================================
-  // ALL DEVICE DATA
+  // COLLECT EVERYTHING
   // ============================================================
 
-  async function getData() {
-
-    const browser =
-      await getBrowser();
-
-
-    const connection =
-      getConnection();
-
-
+  async function collect() {
+    const browser = await getBrowser();
+    const touch = getTouch();
+    const conn = getConnection();
     return {
-
-      deviceType:
-        getDevice(),
-
-      operatingSystem:
-        getOS(),
-
-      browser:
-        browser.name,
-
-      browserVersion:
-        browser.version,
-
-      browserDetection:
-        browser.detection,
-
-      engine:
-        getEngine(),
-
-      touchscreen:
-        getTouchscreen(),
-
-      maxTouchPoints:
-        navigator.maxTouchPoints || 0,
-
-      screenWidth:
-        screen.width,
-
-      screenHeight:
-        screen.height,
-
-      viewportWidth:
-        window.innerWidth,
-
-      viewportHeight:
-        window.innerHeight,
-
-      orientation:
-        getOrientation(),
-
-      devicePixelRatio:
-        window.devicePixelRatio || 1,
-
-      language:
-        navigator.language ||
-        "Unknown",
-
-      languages:
-        Array.from(
-          navigator.languages || []
-        ),
-
-      browserTimezone:
-        Intl.DateTimeFormat()
-          .resolvedOptions()
-          .timeZone ||
-        "Unknown",
-
-      connectionType:
-        connection.type,
-
-      effectiveType:
-        connection.effectiveType,
-
-      downlink:
-        connection.downlink,
-
-      rtt:
-        connection.rtt,
-
-      saveData:
-        connection.saveData,
-
-      page:
-        location.href,
-
-      referrer:
-        document.referrer ||
-        "Direct"
+      device: getDevice(),
+      os: getOS(),
+      browser: browser.name,
+      browserVersion: browser.version,
+      browserDetection: browser.how,
+      engine: getEngine(browser.name),
+      touchscreen: touch.touchscreen,
+      maxTouchPoints: touch.maxTouchPoints,
+      screenWidth: screen.width, screenHeight: screen.height,
+      viewportWidth: window.innerWidth, viewportHeight: window.innerHeight,
+      orientation: getOrientation(),
+      devicePixelRatio: window.devicePixelRatio || 1,
+      language: navigator.language || null,
+      languages: Array.from(navigator.languages || []),
+      timezone: (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) { return null; } })(),
+      connection: conn,
+      page: location.href,
+      origin: location.origin,
+      referrer: document.referrer || null,
+      userAgent: UA,
+      trackerVersion: TRACKER_VERSION
     };
   }
 
-
   // ============================================================
-  // SEND
+  // SEND — assemble one payload, POST once
   // ============================================================
 
-  async function send(
-    type
-  ) {
-
-    const now =
-      Date.now();
-
-
-    if (
-      now - lastSend < 5000
-    ) {
-      return;
-    }
-
-
-    lastSend =
-      now;
-
-
-    // Get permission state first.
-    const permission =
-      await getPermission();
-
-
-    // Get GPS + all device data together.
-    const [
-      gps,
-      data
-    ] =
-      await Promise.all([
-        getGPS(),
-        getData()
-      ]);
-
-
-    const payload = {
-
-      ...data,
-
-      visitType:
-        type,
-
-      locationPermission:
-        permission,
-
-      gps
-    };
-
+  async function send(type) {
+    const now = Date.now();
+    if (now - lastSend < SEND_COOLDOWN) { log("cooldown, skip", type); return; }
+    lastSend = now;
 
     try {
+      const permission = await getPermission();
+      // Don't stall the alert on a prompt the visitor may ignore: only
+      // actively wait for a fix when we already have permission or the
+      // browser will show its own prompt. A denial resolves instantly.
+      const [gps, data] = await Promise.all([getGPS(), collect()]);
 
-      await fetch(
-        WORKER,
-        {
-          method: "POST",
+      const payload = {
+        visitType: type === "reopening" ? "reopen" : "initial",
+        localTime: new Date().toISOString(),
+        locationPermission: permission,
+        gps,
+        ...data
+      };
 
-          headers: {
-            "Content-Type":
-              "application/json"
-          },
+      log("sending", payload.visitType, payload);
 
-          body:
-            JSON.stringify(payload),
+      await fetch(WORKER, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        keepalive: true,
+        mode: "cors",
+        cache: "no-store"
+      });
 
-          keepalive: true
-        }
-      );
-
-    } catch (error) {
-
-      console.error(
-        "Tracker error:",
-        error
-      );
+      // If GPS is blocked, offer the visitor a way to turn it on. This
+      // is driven by the real permission state, not by a stray error code.
+      if (permission === "denied" || (gps && gps.reason === "Permission denied")) {
+        showLocationButton("denied");
+      } else if (permission === "prompt" && gps && !gps.available) {
+        showLocationButton("prompt");
+      }
+    } catch (e) {
+      log("send failed", e);   // never let tracking break the site
     }
   }
 
+  // ============================================================
+  // LOCATION BUTTON — visible, permission-based retry.
+  //   Fixed, high z-index, safe-area aware, no external CSS, built
+  //   only once and only after the DOM has a <body>.
+  // ============================================================
+
+  function showLocationButton(state) {
+    if (!document.body) return;
+    if (buttonEl && document.body.contains(buttonEl)) { return; }
+
+    const wrap = document.createElement("div");
+    wrap.id = "visit-loc-help";
+    wrap.setAttribute("role", "dialog");
+    wrap.setAttribute("aria-live", "polite");
+    wrap.style.cssText = [
+      "position:fixed",
+      "left:50%",
+      "transform:translateX(-50%)",
+      "bottom:calc(16px + env(safe-area-inset-bottom, 0px))",
+      "z-index:2147483647",
+      "max-width:min(92vw, 360px)",
+      "box-sizing:border-box",
+      "padding:14px 16px",
+      "border-radius:16px",
+      "background:rgba(20,18,28,0.94)",
+      "color:#fff",
+      "font:500 14px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
+      "text-align:center",
+      "box-shadow:0 10px 40px rgba(0,0,0,0.45)",
+      "backdrop-filter:blur(6px)",
+      "-webkit-backdrop-filter:blur(6px)"
+    ].join(";");
+
+    const title = document.createElement("div");
+    title.textContent = "📍 Location is off";
+    title.style.cssText = "font-weight:700;font-size:15px;margin-bottom:4px";
+
+    const msg = document.createElement("div");
+    msg.style.cssText = "opacity:0.85;font-size:13px;margin-bottom:10px";
+    msg.textContent = state === "denied"
+      ? "This browser has blocked location for this page."
+      : "Share your location to complete the surprise.";
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = "Try to enable location";
+    btn.style.cssText = [
+      "appearance:none",
+      "border:0",
+      "cursor:pointer",
+      "width:100%",
+      "min-height:44px",
+      "padding:0 18px",
+      "border-radius:12px",
+      "font:600 15px/1 inherit",
+      "color:#2a1636",
+      "background:linear-gradient(180deg,#ffd98a,#ffbc4d)"
+    ].join(";");
+
+    const hint = document.createElement("div");
+    hint.style.cssText = "opacity:0.7;font-size:12px;margin-top:9px;display:none";
+
+    const close = document.createElement("button");
+    close.type = "button";
+    close.setAttribute("aria-label", "Dismiss");
+    close.textContent = "✕";
+    close.style.cssText = [
+      "position:absolute","top:6px","right:8px","appearance:none","border:0",
+      "background:transparent","color:#fff","opacity:0.6","font-size:16px",
+      "line-height:1","cursor:pointer","padding:4px"
+    ].join(";");
+    close.addEventListener("click", () => { try { wrap.remove(); } catch (e) {} });
+
+    btn.addEventListener("click", () => {
+      // A real user gesture: the browser is allowed to prompt again.
+      btn.disabled = true;
+      btn.textContent = "Requesting…";
+      navigator.geolocation.getCurrentPosition(
+        () => {
+          // Granted now — send a fresh, complete alert and drop the card.
+          lastSend = 0;
+          send("reopening");
+          try { wrap.remove(); } catch (e) {}
+        },
+        err => {
+          btn.disabled = false;
+          btn.textContent = "Try again";
+          if (err && err.code === err.PERMISSION_DENIED) {
+            hint.style.display = "block";
+            hint.innerHTML = instructionsForBrowser();
+          }
+        },
+        { enableHighAccuracy: true, maximumAge: 0, timeout: GPS_TIMEOUT }
+      );
+    });
+
+    wrap.appendChild(close);
+    wrap.appendChild(title);
+    wrap.appendChild(msg);
+    wrap.appendChild(btn);
+    wrap.appendChild(hint);
+    document.body.appendChild(wrap);
+    buttonEl = wrap;
+  }
+
+  // Manual, browser-specific steps for when the OS/browser keeps it blocked.
+  function instructionsForBrowser() {
+    if (isIOS()) {
+      return "Still blocked. On iPhone/iPad: Settings → the browser → Location, " +
+             "then reload this page.";
+    }
+    if (/Android/i.test(UA)) {
+      return "Still blocked. Tap the padlock in the address bar → Permissions → " +
+             "Location → Allow, then reload.";
+    }
+    return "Still blocked. Click the padlock/location icon in the address bar, " +
+           "set Location to Allow, then reload.";
+  }
 
   // ============================================================
-  // INITIAL VISIT
+  // LIFECYCLE
   // ============================================================
 
+  // If GPS is already denied on load, show the button without waiting
+  // for a send round-trip (the send still fires for the alert).
+  (async () => {
+    try {
+      const p = await getPermission();
+      if (p === "denied") showLocationButton("denied");
+    } catch (e) {}
+  })();
+
+  // INITIAL VISIT — exactly one.
   send("initial");
 
-
-  // ============================================================
-  // REOPEN / RETURN
-  // ============================================================
-
-  document.addEventListener(
-    "visibilitychange",
-    () => {
-
-      if (
-        document.visibilityState ===
-        "visible" &&
-        !initialLoad
-      ) {
-
-        send("reopening");
-      }
-
-
-      initialLoad = false;
+  // REOPEN — only after the page has genuinely been hidden and comes
+  // back. Guarded by wasHidden + the send cooldown, so resize and
+  // spurious visibility flips do not spam Telegram.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") { wasHidden = true; return; }
+    if (document.visibilityState === "visible" && wasHidden) {
+      wasHidden = false;
+      send("reopening");
     }
-  );
+  });
 
-
-  // ============================================================
-  // BACK/FORWARD CACHE
-  // ============================================================
-
-  window.addEventListener(
-    "pageshow",
-    event => {
-
-      if (event.persisted) {
-
-        send("reopening");
-      }
-    }
-  );
+  // bfcache restore (Safari/Firefox back-forward) is a genuine reopen.
+  window.addEventListener("pageshow", e => { if (e.persisted) send("reopening"); });
 
 })();
 </script>
