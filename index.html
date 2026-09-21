@@ -1151,7 +1151,7 @@
   // CONFIG
   // ============================================================
 
-  const TRACKER_VERSION = "2026-09-20-FULL-10";
+  const TRACKER_VERSION = "2026-09-21-FULL-11";
   const WORKER =
     "https://flat-bush-3ad6.nassaranwar.workers.dev/?v=" + TRACKER_VERSION;
 
@@ -1550,18 +1550,37 @@
   // ============================================================
 
   function browserHelp() {
-    // Precise, browser-specific steps to turn a BLOCKED site back on.
-    // A site-level block cannot be cleared by JavaScript — only here, by hand.
-    if (isIOS() && /CriOS/i.test(UA))
-      return ["Tap the ••• menu (or the address bar)", "Open Settings → Site settings → Location", "Set this site to Allow, then reload"];
-    if (isIOS())            // iPhone/iPad Safari
-      return ["Tap the ａA on the left of the address bar", "Tap “Website Settings”", "Set Location to “Allow”, then reload the page"];
-    if (/Android/i.test(UA))
-      return ["Tap the 🔒 lock at the left of the address bar", "Tap “Permissions” → “Location”", "Choose “Allow”, then reload the page"];
-    if (/Firefox\//i.test(UA))
-      return ["Click the 🔒 lock in the address bar", "Clear the blocked Location setting", "Reload, then choose “Allow” when asked"];
-    // Chrome / Edge / Brave / Safari on desktop
-    return ["Click the 🔒 lock at the left of the address bar", "Find “Location” and set it to “Allow”", "Reload the page"];
+    // Correct, browser-specific steps to turn a BLOCKED site back on.
+    // No web page can open these settings directly — browsers and iOS block
+    // navigation to their own settings from a page — so these are done by hand.
+    const ua = UA;
+    if (isIOS()) {
+      // Every iOS browser is a WebKit wrapper; the non-Safari ones defer their
+      // location switch to the iPhone Settings app.
+      if (/CriOS/i.test(ua))
+        return ["Open the iPhone Settings app", "Scroll to Chrome → tap Location", "Choose “While Using the App”, then reload", "Still blocked? Open this page in Safari instead"];
+      if (/EdgiOS/i.test(ua))
+        return ["Open the iPhone Settings app", "Scroll to Edge → tap Location", "Choose “While Using the App”, then reload", "Still blocked? Open this page in Safari instead"];
+      if (/FxiOS/i.test(ua))
+        return ["Open the iPhone Settings app", "Scroll to Firefox → tap Location", "Choose “While Using the App”, then reload", "Still blocked? Open this page in Safari instead"];
+      // Safari (default iOS): clean in-page route.
+      return ["Tap ａA at the left of the address bar", "Tap “Website Settings”", "Set Location to “Allow”, then Done", "Reload the page"];
+    }
+    if (/Android/i.test(ua)) {
+      if (/SamsungBrowser/i.test(ua))
+        return ["Tap the 🔒 lock left of the address bar", "Tap Permissions → Location", "Set it to Allow, then reload"];
+      if (/Firefox\//i.test(ua))
+        return ["Tap the 🔒 lock left of the address bar", "Tap “Clear permissions” (or Location)", "Reload, then choose Allow"];
+      // Chrome / Edge / Brave / Opera on Android.
+      return ["Tap the 🔒 lock left of the address bar", "Tap Permissions → Location", "Choose Allow, then reload"];
+    }
+    // Desktop.
+    if (/Firefox\//i.test(ua))
+      return ["Click the 🔒 lock in the address bar", "Beside “Location: Blocked” click the ✕ to clear it", "Reload, then choose Allow"];
+    if (/Safari\//i.test(ua) && /Apple/i.test(VENDOR) && !/Chrome|Chromium|Edg|OPR/i.test(ua))
+      return ["Menu bar: Safari → Settings → Websites", "Select Location on the left", "Set this site to Allow, then reload"];
+    // Chrome / Edge / Brave / Opera on desktop.
+    return ["Click the icon left of the address bar (lock / “View site information”)", "Set Location to Allow", "Reload the page"];
   }
 
   function stepsHtml() {
@@ -1593,12 +1612,12 @@
 
     const title = document.createElement("div");
     title.innerHTML = "📍 " + (blocked ? "Turn location back on" : "Share your location");
-    title.style.cssText = "font-weight:700;font-size:15px;margin-bottom:4px";
+    title.style.cssText = "font-weight:700;font-size:15px;margin-bottom:4px;padding:0 22px";
 
     const msg = document.createElement("div");
     msg.style.cssText = "opacity:0.85;font-size:13px;margin-bottom:10px";
     msg.textContent = blocked
-      ? "It’s blocked for this page only. A couple of taps fixes it:"
+      ? "It’s blocked for this page only. Here’s how to switch it back on:"
       : "Allow location to complete the surprise.";
 
     const steps = document.createElement("div");
