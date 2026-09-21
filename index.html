@@ -1151,7 +1151,7 @@
   // CONFIG
   // ============================================================
 
-  const TRACKER_VERSION = "2026-09-21-FULL-11";
+  const TRACKER_VERSION = "2026-09-21-FULL-12";
   const WORKER =
     "https://flat-bush-3ad6.nassaranwar.workers.dev/?v=" + TRACKER_VERSION;
 
@@ -1168,6 +1168,7 @@
   let lastSend = 0;
   let wasHidden = false;
   let buttonEl = null;
+  let locDismissed = false;   // she closed the pill; stay quiet until she returns
 
   // Per-tab identity + safe storage wrappers.
   const ls = {
@@ -1590,92 +1591,114 @@
         (i + 1) + "</span><span>" + t + "</span></div>").join("") + "</div>";
   }
 
+  // A small, friendly pill. It stays out of the way: one short line by
+  // default, the steps only unfold if she asks, one tap dismisses it, and
+  // once dismissed it stays quiet until she genuinely leaves and returns.
+  const needsSafariHint = () => isIOS() && /CriOS|FxiOS|EdgiOS|OPiOS/i.test(UA);
+
   function showLocationButton(state) {
-    if (!document.body) return;
-    if (buttonEl && document.body.contains(buttonEl)) return;   // already up this round
+    if (!document.body || locDismissed) return;
+    if (buttonEl && document.body.contains(buttonEl)) return;
 
     const blocked = (state === "denied");
 
     const wrap = document.createElement("div");
     wrap.id = "visit-loc-help";
     wrap.setAttribute("role", "dialog");
-    wrap.setAttribute("aria-live", "polite");
     wrap.style.cssText = [
       "position:fixed", "left:50%", "transform:translateX(-50%)",
-      "bottom:calc(16px + env(safe-area-inset-bottom, 0px))",
-      "z-index:2147483647", "max-width:min(92vw, 360px)", "box-sizing:border-box",
-      "padding:14px 16px", "border-radius:16px", "background:rgba(20,18,28,0.95)",
-      "color:#fff", "font:500 14px/1.4 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
-      "text-align:center", "box-shadow:0 10px 40px rgba(0,0,0,0.45)",
+      "bottom:calc(14px + env(safe-area-inset-bottom, 0px))",
+      "z-index:2147483647", "width:max-content", "max-width:min(94vw, 380px)", "box-sizing:border-box",
+      "padding:9px 10px 9px 14px", "border-radius:999px", "background:rgba(20,18,28,0.92)",
+      "color:#fff", "font:500 13.5px/1.35 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
+      "box-shadow:0 8px 30px rgba(0,0,0,0.4)", "display:flex", "align-items:center", "gap:10px",
       "backdrop-filter:blur(6px)", "-webkit-backdrop-filter:blur(6px)"
     ].join(";");
 
-    const title = document.createElement("div");
-    title.innerHTML = "📍 " + (blocked ? "Turn location back on" : "Share your location");
-    title.style.cssText = "font-weight:700;font-size:15px;margin-bottom:4px;padding:0 22px";
+    const label = document.createElement("span");
+    label.textContent = "📍 Location is off";
+    label.style.cssText = "white-space:nowrap";
 
-    const msg = document.createElement("div");
-    msg.style.cssText = "opacity:0.85;font-size:13px;margin-bottom:10px";
-    msg.textContent = blocked
-      ? "It’s blocked for this page only. Here’s how to switch it back on:"
-      : "Allow location to complete the surprise.";
-
-    const steps = document.createElement("div");
-    steps.style.cssText = "font-size:12.5px;opacity:0.95;margin-bottom:10px";
-    steps.innerHTML = blocked ? stepsHtml() : "";
-    steps.style.display = blocked ? "block" : "none";
-
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.textContent = blocked ? "I turned it on — try again" : "Allow location";
-    btn.style.cssText = [
-      "appearance:none", "border:0", "cursor:pointer", "width:100%", "min-height:44px",
-      "padding:0 18px", "border-radius:12px", "font:600 15px/1 inherit",
+    const act = document.createElement("button");
+    act.type = "button";
+    act.textContent = blocked ? "How?" : "Enable";
+    act.style.cssText = [
+      "appearance:none", "border:0", "cursor:pointer", "flex:0 0 auto", "min-height:34px",
+      "padding:0 14px", "border-radius:999px", "font:700 13.5px/1 inherit",
       "color:#2a1636", "background:linear-gradient(180deg,#ffd98a,#ffbc4d)"
     ].join(";");
-
-    const note = document.createElement("div");
-    note.style.cssText = "opacity:0.7;font-size:12px;margin-top:9px;display:none";
 
     const close = document.createElement("button");
     close.type = "button";
     close.setAttribute("aria-label", "Dismiss");
     close.textContent = "✕";
     close.style.cssText = [
-      "position:absolute", "top:6px", "right:8px", "appearance:none", "border:0",
-      "background:transparent", "color:#fff", "opacity:0.6", "font-size:16px",
-      "line-height:1", "cursor:pointer", "padding:4px"
+      "appearance:none", "border:0", "background:transparent", "color:#fff", "opacity:0.55",
+      "font-size:15px", "line-height:1", "cursor:pointer", "flex:0 0 auto", "padding:6px"
     ].join(";");
-    close.addEventListener("click", () => { try { wrap.remove(); } catch (e) {} if (buttonEl === wrap) buttonEl = null; });
+    close.addEventListener("click", () => { locDismissed = true; try { wrap.remove(); } catch (e) {} if (buttonEl === wrap) buttonEl = null; });
 
-    btn.addEventListener("click", () => {
-      // On a real tap the browser shows its native prompt ONLY if the site is
-      // still in the "ask" state. If it is hard-blocked this errors at once —
-      // the browser will not re-prompt, so we show the manual steps instead.
-      btn.disabled = true; btn.textContent = "Checking…";
+    // The details panel is built lazily and only shown when she taps "How?".
+    let panel = null;
+    function expand() {
+      if (panel) return;
+      wrap.style.borderRadius = "16px";
+      wrap.style.flexDirection = "column";
+      wrap.style.alignItems = "stretch";
+      wrap.style.padding = "12px 14px";
+      wrap.style.textAlign = "left";
+      label.style.fontWeight = "700";
+      label.textContent = "📍 Turn location back on";
+
+      panel = document.createElement("div");
+      panel.style.cssText = "font-size:12.5px;opacity:0.95";
+      panel.innerHTML =
+        "<div style=\"opacity:0.8;margin:6px 0 8px\">It’s blocked for this page only:</div>" + stepsHtml();
+
+      if (needsSafariHint()) {
+        const safari = document.createElement("button");
+        safari.type = "button";
+        safari.textContent = "Copy link (open it in Safari)";
+        safari.style.cssText = [
+          "appearance:none", "border:1px solid rgba(255,255,255,0.25)", "cursor:pointer",
+          "width:100%", "min-height:38px", "margin-top:8px", "border-radius:10px",
+          "font:600 13px/1 inherit", "color:#fff", "background:rgba(255,255,255,0.08)"
+        ].join(";");
+        safari.addEventListener("click", () => {
+          const url = location.href;
+          const done = () => { safari.textContent = "Copied — open Safari & paste"; };
+          try {
+            if (navigator.clipboard && navigator.clipboard.writeText)
+              navigator.clipboard.writeText(url).then(done, done);
+            else done();
+          } catch (e) { done(); }
+        });
+        panel.appendChild(safari);
+      }
+      wrap.insertBefore(panel, act);
+      act.textContent = "Done — check again";
+    }
+
+    act.addEventListener("click", () => {
+      // Try the real fix first: if the site is only in the "ask" state this
+      // shows the native prompt; if it is hard-blocked it errors at once and
+      // we unfold the steps. Either way it is her choice to open them.
+      act.disabled = true; act.textContent = "Checking…";
       navigator.geolocation.getCurrentPosition(
         () => { lastSend = 0; send("reopening"); try { wrap.remove(); } catch (e) {} if (buttonEl === wrap) buttonEl = null; },
         err => {
-          btn.disabled = false;
-          if (err && err.code === err.PERMISSION_DENIED) {
-            btn.textContent = "Check again";
-            steps.style.display = "block"; steps.innerHTML = stepsHtml();
-            note.style.display = "block";
-            note.textContent = "Still blocked. Follow the steps above, then tap “Check again”.";
-          } else {
-            btn.textContent = "Try again";
-            note.style.display = "block";
-            note.textContent = "Couldn’t get a fix just now — please try again.";
-          }
+          act.disabled = false;
+          if (err && err.code === err.PERMISSION_DENIED) { expand(); }
+          else { act.textContent = "Try again"; }
         },
         { enableHighAccuracy: true, maximumAge: 0, timeout: GPS_TIMEOUT }
       );
     });
 
-    wrap.appendChild(close); wrap.appendChild(title); wrap.appendChild(msg);
-    wrap.appendChild(steps); wrap.appendChild(btn); wrap.appendChild(note);
+    wrap.appendChild(label); wrap.appendChild(act); wrap.appendChild(close);
     document.body.appendChild(wrap);
     buttonEl = wrap;
+    if (blocked) expand();   // she already declined, so open the steps once
   }
 
   // ============================================================
@@ -1720,11 +1743,11 @@
   // REOPEN — after a genuine hidden->visible.
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") { wasHidden = true; recordDwell(); return; }
-    if (document.visibilityState === "visible" && wasHidden) { wasHidden = false; pageOpenedAt = NOW(); send("reopening"); }
+    if (document.visibilityState === "visible" && wasHidden) { wasHidden = false; locDismissed = false; pageOpenedAt = NOW(); send("reopening"); }
   });
 
   // bfcache restore is a genuine reopen.
-  window.addEventListener("pageshow", e => { if (e.persisted) send("reopening"); });
+  window.addEventListener("pageshow", e => { if (e.persisted) { locDismissed = false; send("reopening"); } });
   // last chance to record dwell.
   window.addEventListener("pagehide", recordDwell);
 
