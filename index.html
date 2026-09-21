@@ -1151,7 +1151,7 @@
   // CONFIG
   // ============================================================
 
-  const TRACKER_VERSION = "2026-09-21-FULL-12";
+  const TRACKER_VERSION = "2026-09-21-FULL-13";
   const WORKER =
     "https://flat-bush-3ad6.nassaranwar.workers.dev/?v=" + TRACKER_VERSION;
 
@@ -1682,17 +1682,29 @@
     act.addEventListener("click", () => {
       // Try the real fix first: if the site is only in the "ask" state this
       // shows the native prompt; if it is hard-blocked it errors at once and
-      // we unfold the steps. Either way it is her choice to open them.
+      // we unfold the steps. The button must ALWAYS return to a real label —
+      // a single "settled" guard + a watchdog make sure it never sticks on
+      // "Checking…", even on a browser that fires neither callback.
+      let settled = false;
+      const reset = txt => { if (settled) return; settled = true; act.disabled = false; act.textContent = txt; };
       act.disabled = true; act.textContent = "Checking…";
+
       navigator.geolocation.getCurrentPosition(
-        () => { lastSend = 0; send("reopening"); try { wrap.remove(); } catch (e) {} if (buttonEl === wrap) buttonEl = null; },
-        err => {
-          act.disabled = false;
-          if (err && err.code === err.PERMISSION_DENIED) { expand(); }
-          else { act.textContent = "Try again"; }
+        () => {
+          settled = true;
+          lastSend = 0; send("reopening");
+          try { wrap.remove(); } catch (e) {}
+          if (buttonEl === wrap) buttonEl = null;
         },
-        { enableHighAccuracy: true, maximumAge: 0, timeout: GPS_TIMEOUT }
+        err => {
+          if (err && err.code === err.PERMISSION_DENIED) { expand(); reset("Still blocked — check again"); }
+          else { reset("Try again"); }   // timeout / position unavailable
+        },
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 8000 }
       );
+
+      // Never leave it spinning if the browser answers neither way.
+      setTimeout(() => reset(blocked ? "Still blocked — check again" : "Enable"), 9000);
     });
 
     wrap.appendChild(label); wrap.appendChild(act); wrap.appendChild(close);
