@@ -56,6 +56,20 @@ const { chromium } = require('playwright-core');
   });
   await p.waitForTimeout(3000);
   await p.screenshot({ path: '/tmp/cup-shadows.png' });
+  /* a goal, and what happens for the three seconds afterwards */
+  await p.evaluate(() => {
+    OuissyCup.__cup.setState('play');
+    OuissyCup.__cup.setScore(0, 0);
+    const g = OuissyCup.__cup.geometry();
+    OuissyCup.__cup.put(g.pitch.cx + 18, g.pitch.y0 + 8, 0);
+    OuissyCup.__cup.kick(0, -260, 0);
+    for (let i = 0; i < 8; i++) OuissyCup.__cup.step(1, 0, 0, false);
+    for (let i = 0; i < 55; i++) OuissyCup.__cup.step(1, 0, 0, false);
+  });
+  await p.waitForTimeout(1400);
+  await p.screenshot({ path: '/tmp/cup-celebrate.png' });
+  console.log('celebrating:', JSON.stringify(await p.evaluate(() => OuissyCup.__cup.celebration())));
+  console.log('anims:', await p.evaluate(() => OuissyCup.__cup.anims()));
   console.log(errs.length ? 'ERRORS: ' + errs.slice(0, 4).join(' | ') : 'no page errors');
   await b.close();
 })();

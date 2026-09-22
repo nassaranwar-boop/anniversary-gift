@@ -309,6 +309,10 @@ window.OuissyCup = (function () {
      reference uses and it is what makes four players fill a pitch. */
   var PH = 15;
 
+  /* the ball, which is the one object in here whose real size matters:
+     it sets the roll rate and the reach of a foot */
+  var BALL_R = 1.7;
+
   /* =======================================================================
      6. THE WORLD
 
@@ -321,9 +325,22 @@ window.OuissyCup = (function () {
   var sun = null, pitchGroup = null, rigs = [], ballMesh = null, ballGroup = null;
   var shadowsOn = true;
 
+  /* THE ONE PLACE THE TWO IDEAS MEET.
+     The simulation thinks in (x across the pitch, y up it). The camera
+     watches from the touchline, so on screen the LENGTH of the pitch
+     runs left to right and the width runs into the distance:
+
+         scene X  =  y   how far up the pitch      (screen left/right)
+         scene Z  =  x   how far across it         (towards the camera)
+         scene Y  =  height
+
+     Every builder, every rig and the camera itself goes through here.
+     Nothing else in the file holds both ideas at once. */
   function place(o, x, y, h) {
-    o.position.set(x - PITCH.cx, h || 0, y - PITCH.cy);
+    o.position.set(y - PITCH.cy, h || 0, x - PITCH.cx);
   }
+  function sceneX(y) { return y - PITCH.cy; }
+  function sceneZ(x) { return x - PITCH.cx; }
 
   function loadThree() {
     if (THREE) return Promise.resolve(THREE);
@@ -525,7 +542,7 @@ window.OuissyCup = (function () {
 
     /* the grass the stadium is standing on, beyond the pitch itself */
     var around = new THREE.Mesh(
-      new THREE.PlaneGeometry(fullW + 210, fullH + 210),
+      new THREE.PlaneGeometry(fullH + 240, fullW + 240),
       toon("#3c8c42")
     );
     around.rotation.x = -Math.PI / 2;
@@ -536,10 +553,14 @@ window.OuissyCup = (function () {
     pitchGroup = new THREE.Group();
     scene.add(pitchGroup);
 
-    var ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(fullW, fullH),
-      toon("#ffffff", { map: tex(pitchTexture()) })
-    );
+    /* the pitch texture is painted the way the simulation thinks — long
+       axis vertical — so the plane is laid out long-axis-horizontal and
+       the texture is turned a quarter turn to match rather than being
+       painted twice */
+    var pt = tex(pitchTexture());
+    pt.center.set(0.5, 0.5);
+    pt.rotation = Math.PI / 2;
+    var ground = new THREE.Mesh(new THREE.PlaneGeometry(fullH, fullW), toon("#ffffff", { map: pt }));
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     pitchGroup.add(ground);
@@ -614,42 +635,88 @@ window.OuissyCup = (function () {
     g.add(roof);
 
     place(g, P.cx, gl, 0);
+    /* built with its mouth along local X; the mouth spans the WIDTH of
+       the pitch, which is scene Z now, so it turns a quarter */
+    g.rotation.y = Math.PI / 2;
     pitchGroup.add(g);
   }
 
   function buildStands(fullW, fullH) {
-    var ct = tex(crowdTexture(), 6, 1);
-    var bt = tex(boardTexture(), 2, 1);
+    var ct = tex(crowdTexture(), 8, 1);
+    var bt = tex(boardTexture(), 3, 1);
     var crowdMat = toon("#ffffff", { map: ct });
     var boardMat = toon("#ffffff", { map: bt });
     var concrete = toon("#5b6570");
+    var steel = toon("#8e98a4");
 
-    /* one side of the ground, then rotated into four */
-    [[0, -1], [0, 1], [-1, 0], [1, 0]].forEach(function (d) {
-      var along = d[0] ? fullH : fullW;
-      var off = d[0] ? fullW / 2 : fullH / 2;
+    /* Four sides. `along` is how long that side of the ground is and
+       `out` is how far from the middle it sits; the two ends are short
+       and the two touchlines are long, and in this view the touchlines
+       are the ones you see. */
+    var sides = [
+      { rot: 0,             along: fullH, out: fullW / 2 + 14, axis: "z", sign: 1 },
+      { rot: Math.PI,       along: fullH, out: fullW / 2 + 14, axis: "z", sign: -1 },
+      { rot: Math.PI / 2,   along: fullW, out: fullH / 2 + 14, axis: "x", sign: 1 },
+      { rot: -Math.PI / 2,  along: fullW, out: fullH / 2 + 14, axis: "x", sign: -1 },
+    ];
+    sides.forEach(function (sd) {
       var grp = new THREE.Group();
 
-      var board = new THREE.Mesh(new THREE.BoxGeometry(along, 7, 2.2), boardMat);
+      var board = new THREE.Mesh(new THREE.BoxGeometry(sd.along, 7, 2.4), boardMat);
       board.position.set(0, 3.5, 0);
       board.castShadow = true;
       grp.add(board);
 
-      /* the stand behind it, raked back and up */
-      var rake = new THREE.Mesh(new THREE.BoxGeometry(along + 30, 46, 54), crowdMat);
-      rake.position.set(0, 22, -30);
-      rake.rotation.x = -0.30;
+      /* the rake of seats, and a lip of concrete under it so the stand
+         does not appear to be balancing on the advertising */
+      /* OUTWARD. Every part of a stand is placed along its own local
+         +z, which each side's rotation turns into "away from the
+         pitch". Built along -z, as these were, the four stands are
+         erected across the grass: the rake lands on the touchline, the
+         roof hangs over the penalty area, and the pillars stand in the
+         middle of the picture like scaffolding nobody took down. */
+      var kerb = new THREE.Mesh(new THREE.BoxGeometry(sd.along + 26, 6, 10), concrete);
+      kerb.position.set(0, 3, 7);
+      grp.add(kerb);
+
+      var rake = new THREE.Mesh(new THREE.BoxGeometry(sd.along + 26, 52, 58), crowdMat);
+      rake.position.set(0, 26, 34);
+      rake.rotation.x = 0.32;
       grp.add(rake);
 
-      var roof = new THREE.Mesh(new THREE.BoxGeometry(along + 40, 3, 60), concrete);
-      roof.position.set(0, 52, -40);
+      var roof = new THREE.Mesh(new THREE.BoxGeometry(sd.along + 40, 3.5, 66), concrete);
+      roof.position.set(0, 60, 46);
       grp.add(roof);
+      for (var i = -2; i <= 2; i++) {
+        var col = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 60, 8), steel);
+        col.position.set(i * (sd.along / 5), 30, 74);
+        grp.add(col);
+      }
 
-      grp.rotation.y = Math.atan2(d[0], d[1]) + (d[1] > 0 ? 0 : 0);
-      var ang = d[0] ? (d[0] > 0 ? -Math.PI / 2 : Math.PI / 2) : (d[1] > 0 ? Math.PI : 0);
-      grp.rotation.y = ang;
-      grp.position.set(d[0] * (off + 12), 0, d[1] * (off + 12));
+      grp.rotation.y = sd.rot;
+      if (sd.axis === "z") grp.position.set(0, 0, sd.sign * sd.out);
+      else grp.position.set(sd.sign * sd.out, 0, 0);
       pitchGroup.add(grp);
+    });
+
+    /* four floodlights, one per corner, because a stadium at this hour
+       has them on and they are the tallest thing in the picture */
+    [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(function (c) {
+      var m = new THREE.Group();
+      var mast = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2.4, 96, 8), toon("#7b8590"));
+      mast.position.y = 48;
+      m.add(mast);
+      var rigM = new THREE.Mesh(new THREE.BoxGeometry(22, 13, 3), toon("#4b535c"));
+      rigM.position.set(0, 98, 0);
+      m.add(rigM);
+      for (var a = 0; a < 3; a++) for (var b2 = 0; b2 < 2; b2++) {
+        var lamp = new THREE.Mesh(new THREE.BoxGeometry(5.6, 4.6, 1.4),
+          new THREE.MeshBasicMaterial({ color: new THREE.Color("#fff7d8") }));
+        lamp.position.set((a - 1) * 7, 98 + (b2 ? 3.2 : -3.2), 1.9);
+        m.add(lamp);
+      }
+      m.position.set(c[0] * (fullH / 2 + 46), 0, c[1] * (fullW / 2 + 40));
+      pitchGroup.add(m);
     });
   }
 
@@ -1107,7 +1174,9 @@ window.OuissyCup = (function () {
       score: [0, 0], half: 1, clock: 0,
       state: "kickoff", stateT: 0, msg: "",
       players: [], ball: { x: PITCH.cx, y: PITCH.cy, z: 0, vx: 0, vy: 0, vz: 0,
-                           owner: null, lastTouch: null, lock: 0, spin: 0 },
+                           owner: null, lastTouch: null, lock: 0, spin: 0,
+                           curve: 0, struck: 0 },
+      timeScale: 1, scoredBy: 0, scorerP: null, celebration: "armsUp",
       cam: { y: PITCH.cy },
       controlled: null, kickoffTeam: 0, golden: false, over: false,
       shake: 0, flash: 0, scorer: "", stat: { shots: [0, 0], poss: [0, 0] },
@@ -1208,6 +1277,18 @@ window.OuissyCup = (function () {
         else b.vz = 0;
       }
     }
+    /* the bend, applied across the direction of travel and dying away
+       with the pace, so it curls most while it is still flying */
+    if (b.curve) {
+      var spd = len(b.vx, b.vy);
+      if (spd > 30) {
+        var cx2 = -b.vy / spd, cy2 = b.vx / spd;
+        b.vx += cx2 * b.curve * dt;
+        b.vy += cy2 * b.curve * dt;
+        b.curve *= Math.pow(0.35, dt);
+      } else b.curve = 0;
+    }
+    b.struck = Math.max(0, (b.struck || 0) - dt * 5);
     var drag = Math.pow(b.z > 2 ? TUNE.ballAirDrag : TUNE.ballDrag, dt);
     b.vx *= drag; b.vy *= drag;
     if (len(b.vx, b.vy) < 3) { b.vx = 0; b.vy = 0; }
@@ -1254,7 +1335,7 @@ window.OuissyCup = (function () {
     });
   }
 
-  function kickBall(from, ang, speed, lift) {
+  function kickBall(from, ang, speed, lift, bender) {
     var b = G.ball;
     b.owner = null;
     b.lastTouch = from;
@@ -1262,6 +1343,12 @@ window.OuissyCup = (function () {
     b.vx = Math.cos(ang) * speed;
     b.vy = Math.sin(ang) * speed;
     b.vz = lift || 0;
+    /* BEND. A ball struck by somebody running across it keeps some of
+       that sideways momentum as spin, and spin pulls it through the
+       air. It is one line of Magnus and it is the difference between a
+       shot that travels and a shot that is aimed. */
+    b.curve = bender ? clamp((-Math.sin(ang) * bender.vx + Math.cos(ang) * bender.vy) * 0.85, -70, 70) : 0;
+    b.struck = 1;
     b.x = from.x + Math.cos(ang) * 6;
     b.y = from.y + Math.sin(ang) * 6;
   }
@@ -1285,7 +1372,17 @@ window.OuissyCup = (function () {
     if (b.owner && b.owner.team !== best.team) SFX.tackle();
     b.owner = best;
     b.lastTouch = best;
-    if (best.gk && inBox(best, b)) { best.hold = TUNE.gkHold; SFX.save(); }
+    if (best.gk && inBox(best, b)) {
+      best.hold = TUNE.gkHold;
+      /* a save is only a save if it looked like one: he goes the way
+         the ball was, and only when it was actually going somewhere */
+      if (len(b.vx, b.vy) > 90) {
+        best.diveDir = (b.x < best.x) ? 1 : -1;
+        setAnim(best, "dive", 0.55);
+        crowdSwell(0.05, 1.0);
+      }
+      SFX.save();
+    }
   }
   function inBox(p, b) {
     var gl = ownGoalY(p.team);
@@ -1300,8 +1397,20 @@ window.OuissyCup = (function () {
     if (G.state !== "play") return;
     G.score[team]++;
     G.state = "goal"; G.stateT = 0;
-    G.scorer = (G.ball.lastTouch && G.ball.lastTouch.team === team)
-      ? G.ball.lastTouch.name : "";
+    var by = G.ball.lastTouch && G.ball.lastTouch.team === team ? G.ball.lastTouch : null;
+    G.scorer = by ? by.name : "";
+    G.scoredBy = team;
+    G.scorerP = by || nearestTo(G.ball, team, true);
+    G.celebration = G.scorerP && G.scorerP.face === "ouissy"
+      ? "heart"                                  // hers is her own
+      : CELEBRATIONS[Math.floor(Math.random() * CELEBRATIONS.length)];
+    if (G.scorerP) setAnim(G.scorerP, G.celebration, TUNE.goalCheer);
+    /* the moment stretches, then lets go. Half a second of slow motion
+       is the difference between a number changing and something
+       happening. */
+    G.timeScale = 0.35;
+    setCamMode("goal", G.scorerP, TUNE.goalCheer);
+    confettiBurst(G.scorerP || G.ball, team === 0 ? 150 : 40);
     G.kickoffTeam = 1 - team;
     G.flash = 1; G.shake = 1;
     G.ball.vx = G.ball.vy = G.ball.vz = 0; G.ball.owner = null;
@@ -1341,6 +1450,7 @@ window.OuissyCup = (function () {
   }
 
   function playerStep(p, dt) {
+    animStep(p, dt);
     p.coolT = Math.max(0, p.coolT - dt);
     p.hold = Math.max(0, p.hold - dt);
     if (p.tackleT > 0) {
@@ -1525,7 +1635,7 @@ window.OuissyCup = (function () {
     var far = len(tx - p.x, ty - p.y);
     var sp = clamp(far * 1.9, 95, TUNE.passSpeed * 1.35);
     kickBall(p, ang, soft ? sp * 0.8 : sp, 0);
-    p.legs = "kick"; p.anim = 0;
+    setAnim(p, "kick", 0.34);
     SFX.pass();
   }
 
@@ -1536,8 +1646,8 @@ window.OuissyCup = (function () {
     var aimX = PITCH.cx + (Math.random() - 0.5) * PITCH.goalW * 0.62;
     var ang = Math.atan2(gy - p.y, aimX - p.x);
     var sp = TUNE.shotMin + (TUNE.shotMax - TUNE.shotMin) * power;
-    kickBall(p, ang, sp, power * TUNE.shotLift * 46);
-    p.legs = "kick"; p.anim = 0;
+    kickBall(p, ang, sp, power * TUNE.shotLift * 46, p);
+    setAnim(p, "kick", 0.34);
     G.stat.shots[p.team]++;
     SFX.shot();
     crowdSwell(0.03, 0.8);
@@ -1545,7 +1655,7 @@ window.OuissyCup = (function () {
 
   function startTackle(p) {
     p.tackleT = TUNE.tackleTime;
-    p.legs = "slide";
+    setAnim(p, "slide", TUNE.tackleTime + 0.12);
     var b = G.ball;
     if (dist(p, b) < TUNE.tackleReach && b.owner && b.owner.team !== p.team) {
       var ang = Math.atan2(b.y - p.y, b.x - p.x);
@@ -1626,7 +1736,12 @@ window.OuissyCup = (function () {
     var mul = sprinting ? TUNE.sprintMul : 1;
     /* winding a shot up roots you a little, which is the cost of power */
     if (carrying && IN.held) mul *= 0.55;
-    if (v.x || v.y) driveP(p, v.x, v.y, dt, mul * (len(v.x, v.y)));
+    /* The thumb pushes towards a place on the SCREEN, and the screen is
+       the camera's, not the pitch's. When they change ends the camera
+       crosses to the other touchline, and without this line every
+       control in the second half is mirrored. */
+    var sd = camSide();
+    if (v.x || v.y) driveP(p, sd * v.y, sd * v.x, dt, mul * (len(v.x, v.y)));
     else { p.vx *= Math.pow(0.02, dt); p.vy *= Math.pow(0.02, dt); }
   }
 
@@ -1646,6 +1761,7 @@ window.OuissyCup = (function () {
       }
     } else if (G.state === "goal") {
       if (G.stateT > TUNE.goalCheer && !G.over) {
+        setCamMode("play");
         resetPositions(G.kickoffTeam);
         G.state = "kickoff"; G.stateT = 0;
         clearBanner();
@@ -1666,9 +1782,7 @@ window.OuissyCup = (function () {
         G.players.forEach(function (p) { if (p !== G.controlled) think(p, dt); });
         G.stat.poss[G.ball.owner ? G.ball.owner.team : 0] += dt;
       } else {
-        /* during a celebration everybody keeps moving, which is what
-           stops a goal looking like a freeze-frame */
-        G.players.forEach(function (p) { p.vx *= 0.94; p.vy *= 0.94; });
+        celebrate(dt);
       }
       G.players.forEach(function (p) { playerStep(p, dt); });
       separate();
@@ -1685,6 +1799,33 @@ window.OuissyCup = (function () {
      and quietly aimed everything ninety units past the ball. What you
      got was a lovely view of the far penalty area with the match
      happening somewhere below the bottom of the screen. */
+  /* WHAT EVERYBODY DOES FOR THE NEXT THREE SECONDS.
+
+     The scorer wheels away towards the corner flag; their side runs
+     after them and piles in; the other side stands still and looks at
+     the floor, which is the only animation in the game that is about
+     not moving. A goal used to be everybody decelerating politely. */
+  function celebrate(dt) {
+    var sc = G.scorerP;
+    G.players.forEach(function (p) {
+      if (p.gk) { p.vx *= 0.9; p.vy *= 0.9; return; }
+      if (p === sc) {
+        /* away towards the near corner of the end they were attacking */
+        var tx = p.celX || (p.celX = PITCH.cx + (p.x > PITCH.cx ? 1 : -1) * 98);
+        var ty = p.celY || (p.celY = goalY(p.team) + attackDir(p.team) * -34);
+        if (G.stateT < 1.9) moveTo(p, tx, ty, dt, 1.05);
+        else { p.vx *= 0.88; p.vy *= 0.88; }
+        return;
+      }
+      if (p.team === G.scoredBy && sc) {
+        moveTo(p, sc.x + (p.idx - 2) * 9, sc.y + 10, dt, 0.98);
+      } else {
+        p.vx *= 0.86; p.vy *= 0.86;
+        p.celX = p.celY = null;
+      }
+    });
+  }
+
   function cameraStep(dt) {
     var b = G.ball;
     var want = b.y + clamp(b.vy, -60, 60) * (TUNE.camLead / 60);
@@ -1743,53 +1884,210 @@ window.OuissyCup = (function () {
      legs swinging out of phase with the arms and the whole body dipping
      on each step, and both of those are one sine wave.
      ======================================================================= */
+  /* =======================================================================
+     THE POSES
+
+     Everything a player can be doing, and what their bones are at while
+     they do it. There is no skeleton and no clip here — it is nine
+     rotations recomputed every frame — but that is enough, because what
+     makes a cartoon run read is not the fidelity of the joint angles. It
+     is that the legs swing out of phase with the arms, the body dips on
+     each step, and the whole thing leans into where it is going.
+
+     `pl.anim` lives in the simulation rather than the renderer, so a
+     celebration is the same length whatever the frame rate is doing.
+     ======================================================================= */
+  var CELEBRATIONS = ["armsUp", "knee", "planeRun", "heart"];
+
+  function setAnim(pl, state, dur) {
+    if (pl.anim && pl.anim.state === state && !pl.anim.once) return;
+    pl.anim = { state: state, t: 0, dur: dur || 0, once: !!dur,
+                seed: Math.random(), prev: pl.anim ? pl.anim.state : "idle", blend: 0 };
+  }
+  function animStep(pl, dt) {
+    if (!pl.anim) setAnim(pl, "idle");
+    pl.anim.t += dt;
+    pl.anim.blend = Math.min(1, pl.anim.blend + dt * 9);
+    if (pl.anim.once && pl.anim.t >= pl.anim.dur) { pl.anim.once = false; pl.anim = null; }
+  }
+  /* what the simulation thinks this player is doing, if nothing has
+     asked for something specific */
+  function baseAnim(pl) {
+    if (pl.tackleT > 0) return "slide";
+    if (G.state === "goal") {
+      if (G.scorerP === pl) return G.celebration;
+      return pl.team === G.scoredBy ? "cheer" : "dejected";
+    }
+    if (G.state === "full") return G.score[0] > G.score[1]
+      ? (pl.team === 0 ? "cheer" : "dejected") : (pl.team === 1 ? "cheer" : "dejected");
+    var sp = len(pl.vx, pl.vy);
+    if (pl.gk && ballNear(pl)) return "ready";
+    if (sp > 4) return "run";
+    return "idle";
+  }
+  function ballNear(pl) {
+    return Math.abs(G.ball.y - ownGoalY(pl.team)) < PITCH.boxH &&
+           Math.abs(G.ball.x - PITCH.cx) < PITCH.boxW / 2;
+  }
+
+  /* WHICH WAY IS OUT.
+
+     An arm hangs from its shoulder down the -Y axis, so rotating it
+     about Z by θ points it at (sin θ, -cos θ). The LEFT arm is the one
+     at -X, which means raising it away from the body needs a NEGATIVE
+     angle and the right one needs a positive. Every celebration in here
+     was first written with those the other way round, and what that
+     does is not obvious from the code and completely obvious on the
+     screen: the arms swing up THROUGH the chest and finish inside the
+     head, so a player celebrating a goal looks exactly like a player
+     standing still. Hence two named helpers and no bare signs. */
+  function armsOut(A, v, lift) {
+    A[0].rotation.z = -v; A[1].rotation.z = v;
+    if (lift !== undefined) { A[0].rotation.x = lift; A[1].rotation.x = lift; }
+  }
+  function armsIn(A, v, lift) {
+    A[0].rotation.z = v; A[1].rotation.z = -v;
+    if (lift !== undefined) { A[0].rotation.x = lift; A[1].rotation.x = lift; }
+  }
+
   function syncRig(pl, r, dt) {
     var g = r.group;
-    g.position.set(pl.x - PITCH.cx, 0, pl.y - PITCH.cy);
-    /* three.js yaw is around +y and measured from -z; the simulation's
-       angle is measured from +x in its own flat world. This is the one
-       line where those two ideas meet. */
-    g.rotation.y = -pl.dir - Math.PI / 2;
+    g.position.set(sceneX(pl.y), 0, sceneZ(pl.x));
+    /* A three.js object faces -Z, and yaw turns that to (-sin, -cos).
+       The simulation's heading is measured from +x in its own flat
+       world, which `place` maps to (sin d, cos d) on the ground. Setting
+       those equal gives exactly this. */
+    g.rotation.y = pl.dir + Math.PI;
+    g.rotation.x = 0; g.rotation.z = 0;
+    g.scale.set(1, 1, 1);
 
+    var state = (pl.anim && pl.anim.once) ? pl.anim.state : baseAnim(pl);
+    if (!pl.anim || (!pl.anim.once && pl.anim.state !== state)) setAnim(pl, state);
+    var t = pl.anim ? pl.anim.t : 0;
     var sp = len(pl.vx, pl.vy);
-    var moving = sp > 4;
-    pl.gait = (pl.gait || 0) + dt * (moving ? 5.2 + sp * 0.085 : 0);
-    var swing = moving ? Math.sin(pl.gait) : 0;
-    var amp = Math.min(1, sp / 70);
 
-    r.legs[0].rotation.x = swing * 0.95 * amp;
-    r.legs[1].rotation.x = -swing * 0.95 * amp;
-    r.arms[0].rotation.x = -swing * 0.72 * amp;
-    r.arms[1].rotation.x = swing * 0.72 * amp;
+    /* defaults, so every pose only has to say what it changes */
+    var L = r.legs, A = r.arms;
+    L[0].rotation.set(0, 0, 0); L[1].rotation.set(0, 0, 0);
+    A[0].rotation.set(0, 0, 0); A[1].rotation.set(0, 0, 0); armsOut(A, 0.14);
+    r.head.rotation.set(0, 0, 0);
+    r.torso.rotation.set(0, 0, 0);
+    g.position.y = 0;
 
-    /* a sliding tackle is the one pose that is not a run */
-    if (pl.tackleT > 0) {
-      g.rotation.x = -1.05;
-      g.position.y = 1.4;
-      r.legs[0].rotation.x = -0.9; r.legs[1].rotation.x = -0.2;
-      r.arms[0].rotation.x = 1.1; r.arms[1].rotation.x = 1.1;
-    } else {
-      g.rotation.x = -Math.min(0.20, sp * 0.0022);      // lean into the run
-      g.position.y = moving ? Math.abs(Math.sin(pl.gait)) * 0.55 * amp : 0;
+    if (state === "run") {
+      var amp = Math.min(1, sp / 66);
+      pl.gait = (pl.gait || 0) + dt * (5.0 + sp * 0.085);
+      var sw = Math.sin(pl.gait);
+      L[0].rotation.x = sw * 1.02 * amp;
+      L[1].rotation.x = -sw * 1.02 * amp;
+      A[0].rotation.x = -sw * 0.80 * amp;
+      A[1].rotation.x = sw * 0.80 * amp;
+      armsOut(A, 0.20);
+      g.rotation.x = -Math.min(0.24, sp * 0.0028);
+      g.position.y = Math.abs(sw) * 0.62 * amp;
+      r.head.rotation.x = Math.min(0.18, sp * 0.0020);
+
+    } else if (state === "idle") {
+      var br = Math.sin(t * 1.9 + pl.anim.seed * 6) * 0.055;
+      r.torso.rotation.x = br;
+      A[0].rotation.x = br * 0.6; A[1].rotation.x = br * 0.6;
+      g.position.y = Math.abs(br) * 1.2;
+      /* a look around, every few seconds, so a standing player is not
+         a statue — the cheapest life there is */
+      var look = Math.sin(t * 0.7 + pl.anim.seed * 9);
+      r.head.rotation.y = look * 0.34;
+
+    } else if (state === "ready") {                 // the keeper, set
+      L[0].rotation.z = -0.30; L[1].rotation.z = 0.30;     // feet apart
+      armsOut(A, 1.15, -0.35);                             // and set
+      g.position.y = -0.7;
+      r.torso.rotation.x = 0.22;
+
+    } else if (state === "kick") {
+      /* plant, swing through, follow through. One curve, read three
+         ways: before the contact it is a wind-up and after it is a
+         finish, and the ball leaves on the frame it crosses zero. */
+      var k = clamp(t / 0.34, 0, 1);
+      var swing = Math.sin(k * Math.PI) * (k < 0.4 ? -1 : 1);
+      L[0].rotation.x = k < 0.4 ? 0.9 * k * 2.5 : -1.5 * Math.sin((k - 0.4) * 2.6);
+      L[1].rotation.x = -0.25;
+      armsOut(A, 0.62);
+      A[0].rotation.x = 0.55; A[1].rotation.x = -0.75;      // one counters
+      g.rotation.x = -0.12 + swing * 0.08;
+
+    } else if (state === "slide") {
+      g.rotation.x = -1.12;
+      g.position.y = 1.5;
+      L[0].rotation.x = -0.95; L[1].rotation.x = -0.15;
+      armsOut(A, 0.85);
+      A[0].rotation.x = 1.25; A[1].rotation.x = 1.05;
+
+    } else if (state === "dive") {
+      var d2 = clamp(t / 0.5, 0, 1);
+      g.rotation.z = (pl.diveDir || 1) * 1.25 * Math.sin(d2 * Math.PI * 0.7);
+      g.position.y = Math.sin(d2 * Math.PI) * 5.5;
+      armsOut(A, 2.15);
+      L[0].rotation.x = -0.3; L[1].rotation.x = 0.3;
+
+    } else if (state === "armsUp" || state === "cheer") {
+      var c = t * 6;
+      armsOut(A, 2.55 + Math.sin(c) * 0.22, -0.3);
+      g.position.y = Math.max(0, Math.sin(c * 0.75)) * 2.6;    // jumping
+      L[0].rotation.x = -0.25; L[1].rotation.x = 0.25;
+      r.head.rotation.x = -0.22;
+
+    } else if (state === "knee") {                   // the knee slide
+      var s2 = clamp(t / 1.4, 0, 1);
+      g.rotation.x = -0.55 * (1 - s2 * 0.4);
+      g.position.y = 0.4;
+      L[0].rotation.x = -1.5; L[1].rotation.x = 0.35;
+      armsOut(A, 2.42);
+      r.head.rotation.x = -0.4;
+
+    } else if (state === "planeRun") {               // arms out, banking
+      armsOut(A, 1.62);
+      g.rotation.z = Math.sin(t * 2.4) * 0.26;
+      pl.gait = (pl.gait || 0) + dt * 8;
+      L[0].rotation.x = Math.sin(pl.gait) * 0.9;
+      L[1].rotation.x = -Math.sin(pl.gait) * 0.9;
+      g.position.y = Math.abs(Math.sin(pl.gait)) * 0.5;
+
+    } else if (state === "heart") {                  /* hands together over
+                                                        her head, which is
+                                                        the only one of
+                                                        these that is for
+                                                        one person */
+      /* hers, and the only one that comes IN: the hands meet */
+      armsIn(A, 2.72, -0.5);
+      r.head.rotation.x = -0.3;
+      g.position.y = Math.max(0, Math.sin(t * 4)) * 1.4;
+
+    } else if (state === "dejected") {
+      r.head.rotation.x = 0.55;
+      r.torso.rotation.x = 0.26;
+      armsOut(A, 0.42, 0.5);                               // hands on hips
+      g.position.y = Math.sin(t * 1.4) * 0.15;
     }
-    /* the keeper spreads himself when the ball is near */
-    if (pl.gk && G.ball.z < 12 && Math.abs(G.ball.y - ownGoalY(pl.team)) < PITCH.boxH) {
-      r.arms[0].rotation.z = 1.15; r.arms[1].rotation.z = -1.15;
-    } else {
-      r.arms[0].rotation.z = 0.14; r.arms[1].rotation.z = -0.14;
+
+    /* the keeper spreads himself whenever the ball is in his half of
+       the picture, whatever else he is doing */
+    if (pl.gk && state === "run" && ballNear(pl)) {
+      armsOut(A, 1.0);
     }
     r.blob.visible = !shadowsOn;
   }
 
   function syncBall() {
     var b = G.ball;
-    ballGroup.position.set(b.x - PITCH.cx, 1.7 + b.z, b.y - PITCH.cy);
-    /* rolled, not slid: the ball turns about the axis across its own
-       direction of travel, by the distance it has covered */
+    ballGroup.position.set(sceneX(b.y), BALL_R + b.z, sceneZ(b.x));
+    /* Rolled, not slid. It turns about the axis lying across its own
+       direction of travel, through the angle the distance it covered
+       subtends on its own radius — which is what makes a ball look
+       heavy instead of looking like a sticker being dragged. */
     var sp = len(b.vx, b.vy);
     if (sp > 1) {
-      var ax = -b.vy / sp, az = b.vx / sp;
-      ballMesh.rotateOnWorldAxis(new THREE.Vector3(ax, 0, az), sp * 0.016 / 1.7);
+      var uX = b.vy / sp, uZ = b.vx / sp;
+      ballMesh.rotateOnWorldAxis(new THREE.Vector3(uZ, 0, -uX), sp * 0.0166 / BALL_R);
     }
   }
 
@@ -1808,30 +2106,142 @@ window.OuissyCup = (function () {
      them. This is about a hundred and twenty out at forty-five degrees,
      which puts roughly two thirds of the pitch width on screen and a
      player at about an eighth of its height. */
-  var CAM = { height: 84, back: 84, ahead: 30, ease: 3.4 };
-  var camNow = { x: 0, z: 0, tx: 0, tz: 0 };
+  /* =======================================================================
+     THE CAMERA
+
+     It stands on the near touchline, about level with the play, and it
+     does three things: it follows the ball up and down the pitch, it
+     pulls in and out depending on how spread the football is, and it
+     leaves the game entirely when somebody scores.
+
+     THE ZOOM IS THE POINT. A camera at a fixed distance is either too
+     far out to see a face or too close to see a pass coming, and it is
+     the single thing that separates a game that feels made from one
+     that feels assembled. So it frames a box: the ball, the player she
+     is driving, and whoever is closest to contesting it. When those
+     three are on top of each other it comes right in and you can see
+     boots; when somebody hits it fifty units downfield it pulls back
+     and lets you watch it travel.
+
+     She always attacks to the RIGHT. Real football swaps ends at half
+     time and so does this, but the camera crosses to the other
+     touchline when it happens, so the goal she is running at is on the
+     same side of the screen all match. Getting that wrong is a whole
+     half spent running the wrong way.
+     ======================================================================= */
+  var CAM = {
+    near: 96,           // closest it comes in
+    /* and furthest out. Capped by the architecture: the near touchline
+       is 160 out and the stand starts just past it, so a camera allowed
+       further than this is a camera standing behind its own crowd,
+       filming the back of a roof. */
+    far: 150,
+    lift: 0.30,         // height as a fraction of distance
+    base: 22,           // plus this much, so it is never level with the grass
+    ease: 3.2,
+    lookUp: 9,          // the point it aims at, above the grass
+  };
+  var camNow = { x: 0, z: 0, dist: 150, tx: 0, ty: CAM.lookUp, tz: 0, side: 1 };
+  var camMode = { kind: "play", t: 0, at: null, hold: 0 };
+
+  /* which touchline it is standing on: whichever keeps her attacking right */
+  function camSide() { return attackDir(0) > 0 ? 1 : -1; }
+
+  function wantFraming() {
+    var b = G.ball;
+    var pts = [{ x: sceneX(b.y), z: sceneZ(b.x) }];
+    if (G.controlled) pts.push({ x: sceneX(G.controlled.y), z: sceneZ(G.controlled.x) });
+    var near = nearestTo(b, G.ball.owner && G.ball.owner.team === 0 ? 1 : 0, true);
+    if (near) pts.push({ x: sceneX(near.y), z: sceneZ(near.x) });
+    /* the ball is going somewhere: look where it will be, not where it is */
+    pts.push({ x: sceneX(b.y + b.vy * 0.42), z: sceneZ(b.x + b.vx * 0.42) });
+
+    var minX = 1e9, maxX = -1e9, minZ = 1e9, maxZ = -1e9;
+    pts.forEach(function (p) {
+      minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+      minZ = Math.min(minZ, p.z); maxZ = Math.max(maxZ, p.z);
+    });
+    var spread = Math.max(maxX - minX, (maxZ - minZ) * 1.5);
+    var dist = clamp(spread * 1.45 + 96, CAM.near, CAM.far);
+    /* and tighter in the penalty area, because that is where the story is */
+    var toGoal = Math.min(Math.abs(b.y - PITCH.y0), Math.abs(b.y - PITCH.y1));
+    if (toGoal < 70) dist -= (70 - toGoal) * 0.30;
+    return {
+      x: clamp((minX + maxX) / 2, sceneX(PITCH.y0) - 6, sceneX(PITCH.y1) + 6),
+      z: (minZ + maxZ) / 2 * 0.45,
+      dist: clamp(dist, CAM.near, CAM.far),
+    };
+  }
+
+  /* what the camera is doing this second */
+  function setCamMode(kind, at, hold) {
+    camMode.kind = kind; camMode.t = 0; camMode.at = at || null;
+    camMode.hold = hold || 0;
+  }
 
   function placeCamera(dt, snap) {
-    var d = attackDir(0);                    // which way SHE is kicking
-    var b = G.ball;
-    var wantTx = PITCH.cx + (b.x - PITCH.cx) * 0.62;
-    var wantTz = G.cam.y + d * CAM.ahead;
-    var wantX = PITCH.cx + (b.x - PITCH.cx) * 0.34;
-    var wantZ = G.cam.y - d * CAM.back;
+    camMode.t += dt;
+    var side = camSide();
+    var want;
+
+    if (camMode.kind === "goal" && camMode.at) {
+      /* THE CELEBRATION SHOT.
+
+         In front of the scorer, roughly chest height, drifting round
+         them — what a broadcast cuts to and what this did not have.
+
+         Two things were wrong with the first one. It stood about forty
+         units from a player fifteen tall, so they filled the frame and
+         spilled off the side of it; and it eased from `camNow.x/z`,
+         which the playing camera never wrote to, so every celebration
+         began with a swoop in from the middle of the world. The playing
+         branch keeps those two in step now, and this starts from
+         wherever the camera actually was. */
+      var p = camMode.at;
+      var px2 = sceneX(p.y), pz2 = sceneZ(p.x);
+      var orbit = 0.42 + camMode.t * 0.34;
+      var r = 74 - Math.min(16, camMode.t * 6);
+      var wx = px2 + Math.sin(orbit) * r * 0.55;
+      var wz = pz2 + side * Math.cos(orbit * 0.6) * r * 0.85;
+      var k2 = Math.min(1, 3.0 * dt);
+      camNow.x += (wx - camNow.x) * k2;
+      camNow.z += (wz - camNow.z) * k2;
+      camNow.tx += (px2 - camNow.tx) * k2;
+      camNow.tz += (pz2 - camNow.tz) * k2;
+      camNow.ty += (10 - camNow.ty) * k2;
+      var hh = 30 - Math.min(8, camMode.t * 3);
+      camNow.h = (camNow.h === undefined ? hh : camNow.h + (hh - camNow.h) * k2);
+      camera.position.set(camNow.x, camNow.h, camNow.z);
+      camera.lookAt(camNow.tx, camNow.ty, camNow.tz);
+      if (sun) {
+        sun.target.position.set(px2, 0, pz2);
+        sun.position.set(px2 - 90, 250, pz2 + 160);
+        sun.target.updateMatrixWorld();
+      }
+      return;
+    }
+
+    want = wantFraming();
     var k = snap ? 1 : Math.min(1, CAM.ease * dt);
-    camNow.tx += (wantTx - camNow.tx) * k;
-    camNow.tz += (wantTz - camNow.tz) * k;
-    camNow.x += (wantX - camNow.x) * k;
-    camNow.z += (wantZ - camNow.z) * k;
+    camNow.tx += (want.x - camNow.tx) * k;
+    camNow.tz += (want.z - camNow.tz) * k;
+    camNow.ty += (CAM.lookUp - camNow.ty) * k;
+    /* the distance eases more slowly than the pan, because a zoom that
+       snaps is a zoom you notice */
+    camNow.dist += (want.dist - camNow.dist) * (snap ? 1 : Math.min(1, 1.9 * dt));
+    camNow.side += (side - camNow.side) * (snap ? 1 : Math.min(1, 2.2 * dt));
 
-    var shake = G.shake > 0 ? (Math.random() - 0.5) * G.shake * 4 : 0;
-    camera.position.set(camNow.x - PITCH.cx + shake, CAM.height, camNow.z - PITCH.cy);
-    camera.lookAt(camNow.tx - PITCH.cx, 6, camNow.tz - PITCH.cy);
+    var shake = G.shake > 0 ? (Math.random() - 0.5) * G.shake * 3.4 : 0;
+    var h = CAM.base + camNow.dist * CAM.lift;
+    camNow.x = camNow.tx + shake;
+    camNow.z = camNow.tz + camNow.side * camNow.dist;
+    camNow.h = h;
+    camera.position.set(camNow.x, camNow.h, camNow.z);
+    camera.lookAt(camNow.tx, camNow.ty, camNow.tz);
 
-    /* the shadow map follows the action rather than covering the pitch */
     if (sun) {
-      sun.target.position.set(b.x - PITCH.cx, 0, b.y - PITCH.cy);
-      sun.position.set(b.x - PITCH.cx - 120, 240, b.y - PITCH.cy + 150);
+      sun.target.position.set(sceneX(G.ball.y), 0, sceneZ(G.ball.x));
+      sun.position.set(sceneX(G.ball.y) - 90, 250, sceneZ(G.ball.x) + 160);
       sun.target.updateMatrixWorld();
     }
   }
@@ -1842,8 +2252,87 @@ window.OuissyCup = (function () {
       if (rigs[i]) syncRig(G.players[i], rigs[i], dt || 0);
     }
     syncBall();
+    confettiStep(dt || 0);
     placeCamera(dt || 0, false);
     renderer.render(scene, camera);
+  }
+
+  /* =======================================================================
+     CONFETTI
+
+     One instanced mesh of two hundred little rectangles that fall out of
+     the stand when somebody scores. Instanced because two hundred
+     separate meshes is two hundred draw calls for a thing that is on
+     screen for three seconds, and a goal is the one moment in the game
+     that must not stutter.
+     ======================================================================= */
+  var confetti = null, confParts = [], confDummy = null;
+  var CONF_N = 220;
+  function buildConfetti() {
+    var geo = new THREE.BoxGeometry(1.5, 2.4, 0.2);
+    var mat = new THREE.MeshBasicMaterial({ vertexColors: true });
+    confetti = new THREE.InstancedMesh(geo, mat, CONF_N);
+    confetti.instanceMatrix.setUsage(THREE.DynamicDrawUsage || 35048);
+    var cols = new Float32Array(CONF_N * 3);
+    var c = new THREE.Color();
+    for (var i = 0; i < CONF_N; i++) {
+      c.set(CROWD_COLS[i % CROWD_COLS.length]);
+      cols[i * 3] = c.r; cols[i * 3 + 1] = c.g; cols[i * 3 + 2] = c.b;
+      confParts.push({ life: 0 });
+    }
+    confetti.geometry.setAttribute("color",
+      new THREE.InstancedBufferAttribute(cols, 3));
+    confetti.frustumCulled = false;
+    confetti.count = CONF_N;
+    confDummy = new THREE.Object3D();
+    scene.add(confetti);
+    hideConfetti();
+  }
+  function hideConfetti() {
+    if (!confetti) return;
+    for (var i = 0; i < CONF_N; i++) {
+      confDummy.position.set(0, -500, 0);
+      confDummy.updateMatrix();
+      confetti.setMatrixAt(i, confDummy.matrix);
+    }
+    confetti.instanceMatrix.needsUpdate = true;
+  }
+  function confettiBurst(at, n) {
+    if (!confetti) return;
+    var used = 0;
+    for (var i = 0; i < CONF_N && used < n; i++) {
+      var p = confParts[i];
+      if (p.life > 0) continue;
+      used++;
+      p.life = 2.6 + Math.random() * 1.8;
+      p.x = sceneX(at.y) + (Math.random() - 0.5) * 120;
+      p.z = sceneZ(at.x) + (Math.random() - 0.5) * 90;
+      p.y = 60 + Math.random() * 34;
+      p.vx = (Math.random() - 0.5) * 9;
+      p.vz = (Math.random() - 0.5) * 9;
+      p.vy = -8 - Math.random() * 7;
+      p.rx = Math.random() * 6; p.ry = Math.random() * 6;
+      p.sx = 4 + Math.random() * 5;
+    }
+  }
+  function confettiStep(dt) {
+    if (!confetti) return;
+    var any = false;
+    for (var i = 0; i < CONF_N; i++) {
+      var p = confParts[i];
+      if (p.life <= 0) continue;
+      any = true;
+      p.life -= dt;
+      p.vy -= 16 * dt;
+      p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
+      p.rx += p.sx * dt; p.ry += p.sx * 0.7 * dt;
+      if (p.y < 0) { p.life = 0; confDummy.position.set(0, -500, 0); }
+      else confDummy.position.set(p.x, p.y, p.z);
+      confDummy.rotation.set(p.rx, p.ry, 0);
+      confDummy.updateMatrix();
+      confetti.setMatrixAt(i, confDummy.matrix);
+    }
+    if (any) confetti.instanceMatrix.needsUpdate = true;
   }
 
   /* The ring under whoever she is driving. It is a mesh on the grass
@@ -1865,7 +2354,7 @@ window.OuissyCup = (function () {
     var me = G && G.controlled;
     ring.visible = !!me && G.state !== "full";
     if (!me) return;
-    ring.position.set(me.x - PITCH.cx, 0.3, me.y - PITCH.cy);
+    ring.position.set(sceneX(me.y), 0.3, sceneZ(me.x));
     ring.material.color.set(G.ball.owner === me ? "#ffe066" : "#7fd4f5");
   }
 
@@ -1982,7 +2471,7 @@ window.OuissyCup = (function () {
 
   function buildBall() {
     ballGroup = new THREE.Group();
-    ballMesh = new THREE.Mesh(new THREE.SphereGeometry(1.7, 18, 14), toon("#f8f8f4"));
+    ballMesh = new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 22, 16), toon("#f8f8f4"));
     ballMesh.castShadow = true;
     ballGroup.add(ballMesh);
     ballGroup.add(outline(ballMesh, 1.1));
@@ -2163,6 +2652,15 @@ window.OuissyCup = (function () {
     if (!lastT) lastT = now;
     var dt = Math.min(0.05, (now - lastT) / 1000);
     lastT = now;
+    /* SLOW MOTION. The goal stretches time and then lets it go. It is
+       applied to the accumulator rather than to the step, so the
+       physics still run at a fixed tick and nothing changes behaviour
+       just because the world got slower to watch. */
+    if (G) {
+      G.timeScale += ((G.state === "goal" && G.stateT < 1.1 ? 0.35 : 1) - G.timeScale)
+                     * Math.min(1, dt * 3.2);
+      dt *= G.timeScale;
+    }
     acc += dt;
     /* fixed steps, because the ball, the tackles and the goal line all
        depend on nobody passing through anything, and a 4fps frame on a
@@ -2310,7 +2808,7 @@ window.OuissyCup = (function () {
 
     return loadThree().then(function () {
       if (!playing) return;
-      if (!scene) { buildWorld(); buildRenderer(); buildMarkers(); buildBall(); }
+      if (!scene) { buildWorld(); buildRenderer(); buildMarkers(); buildBall(); buildConfetti(); }
       sizeRenderer();
       G = newMatch(0);
       buildRigs();
@@ -2390,6 +2888,24 @@ window.OuissyCup = (function () {
     setClock: function (c) { G.clock = c; },
     setScore: function (a, b) { G.score[0] = a; G.score[1] = b; },
     round: function () { return run.round; },
+    /* hold one player in one pose so every animation can be looked at
+       instead of waited for */
+    pose: function (idx, state, t) {
+      var p = G.players[idx];
+      p.anim = { state: state, t: t || 0, dur: 99, once: true, seed: 0.3,
+                 prev: state, blend: 1 };
+      return p.name;
+    },
+    anims: function () {
+      return G.players.map(function (p) {
+        return p.name + ":" + (p.anim ? p.anim.state + (p.anim.once ? "!" : "") : "-");
+      }).join(" ");
+    },
+    celebration: function () {
+      return { scorer: G.scorerP && G.scorerP.name, by: G.scoredBy,
+               cel: G.celebration, state: G.state, t: +G.stateT.toFixed(2),
+               timeScale: +G.timeScale.toFixed(2) };
+    },
     players: function () {
       return G.players.map(function (p) {
         return { name: p.name, team: p.team, role: p.role, face: p.face,
@@ -2408,6 +2924,9 @@ window.OuissyCup = (function () {
     /* build one, unattached, so a harness can line the whole squad up
        and photograph it from close range */
     rig: function (spec) { return buildRig(spec); },
+    /* pose a rig without the simulation owning it, so every animation
+       can be photographed on its own */
+    poseOnly: function (fakePlayer, rig, dt) { syncRig(fakePlayer, rig, dt); },
     /* clear the pitch, so a team photograph is not standing in the
        middle of a match that is still going on behind it */
     matchVisible: function (on) {
