@@ -7047,53 +7047,80 @@ img{-webkit-user-drag:none; user-select:none;}
   .ns-tape{ bottom:7cqh; padding:1.4cqh 4cqw 1.6cqh; font-size:max(2cqh, 11px); }
 }
 
-/* ---------- the controls ---------- */
-.ns-pad{
-  position:absolute; left:0; right:0; bottom:0; z-index:7;
-  display:flex; align-items:flex-end; justify-content:space-between;
-  padding:0 2cqw 2.4cqh; gap:2cqw; pointer-events:none;
-  /* a safety net: whatever the floors work out to, nothing leaves the stage */
-  flex-wrap:wrap;
+/* ---------- the controls ----------
+   The stick is wherever her thumb lands on the left of the picture; the
+   button is fixed bottom right and says what it is about to do, because
+   it means four different things and nobody reads a control list on a
+   phone. */
+.cup-pad{position:absolute; inset:0; touch-action:none;}
+.cup-pad[hidden]{display:none;}
+.cup-stick{position:absolute; left:0; top:0; bottom:0; width:54%; touch-action:none;}
+.cup-stick-hint{
+  position:absolute; left:4cqw; bottom:7cqh;
+  font-family:'Silkscreen',monospace; font-size:1.7cqh; letter-spacing:.1em;
+  color:rgba(255,255,255,.5); text-shadow:0 .2cqh .4cqh rgba(0,0,0,.6);
+  transition:opacity .4s ease;
 }
-.ns-pad[hidden]{display:none;}
-.ns-pad-mid{ display:flex; gap:1.6cqw; align-items:flex-end; }
-/* Sizes are in cq units so the panel scales with the stage, but every
-   control has a pixel floor under it. On a 390px phone the 16:9 stage
-   is only 219px tall, and 9cqh of that is a 20px button — small enough
-   that nobody could hit it and nothing in the layout would look wrong. */
-.ns-key{
-  pointer-events:auto; cursor:pointer;
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:.2cqh;
-  padding:1.4cqh 2cqw; min-width:max(9cqw, 72px); min-height:max(9cqh, 54px);
-  border:none; border-radius:.9cqw;
-  font-family:var(--ns-face); color:var(--ns-ink);
-  background:linear-gradient(180deg, #2b302d 0%, #1a1e1c 55%, #141715 100%);
-  box-shadow:
-    inset 0 .3cqh 0 rgba(255,255,255,.09),
-    inset 0 0 0 .2cqw rgba(200,162,96,.42),
-    0 .8cqh 0 rgba(6,8,7,.9), 0 1.2cqh 2cqh rgba(0,0,0,.6);
-  transition:transform .07s ease-out, box-shadow .07s ease-out, background .14s linear;
-  touch-action:manipulation; -webkit-tap-highlight-color:transparent;
+.cup-stick.used .cup-stick-hint{opacity:0;}
+.cup-stick-k{position:absolute; width:0; height:0; pointer-events:none;}
+.cup-stick-k::before{
+  content:""; position:absolute; left:-6.4cqh; top:-6.4cqh;
+  width:12.8cqh; height:12.8cqh; border-radius:50%;
+  background:radial-gradient(circle at 50% 50%, rgba(255,255,255,.10), rgba(255,255,255,.04) 70%);
+  box-shadow:inset 0 0 0 .45cqh rgba(255,255,255,.34), 0 .4cqh 1.4cqh rgba(0,0,0,.35);
 }
-.ns-key b{ font-size:max(2cqh, 12px); font-weight:700; letter-spacing:.2em; }
-.ns-key i{ font-style:normal; font-size:max(1.3cqh, 9px); letter-spacing:.24em; opacity:.6; }
-.ns-key:active{ transform:translateY(.6cqh); box-shadow:inset 0 0 0 .2cqw rgba(200,162,96,.42), 0 .2cqh 0 rgba(6,8,7,.9); }
-.ns-key.on{
-  background:linear-gradient(180deg,#6d2a22 0%,#43170f 60%,#2c0f09 100%);
-  color:#ffd9c8;
-  box-shadow:inset 0 0 0 .2cqw rgba(226,80,63,.7), 0 .8cqh 0 rgba(6,8,7,.9), 0 0 2.4cqh rgba(226,80,63,.45);
+.cup-stick-k i{
+  position:absolute; left:-3.6cqh; top:-3.6cqh;
+  width:7.2cqh; height:7.2cqh; border-radius:50%;
+  background:radial-gradient(circle at 36% 30%, #fff, #ffd45e 46%, #e8a12c 100%);
+  box-shadow:0 .5cqh 1.4cqh rgba(0,0,0,.45), inset 0 -.5cqh .8cqh rgba(160,90,10,.45);
+  transform:translate(var(--kx,0), var(--ky,0));
 }
-.ns-key.ns-key-m.on{
-  background:linear-gradient(180deg,#1d4a44 0%,#0f2c28 60%,#0a1f1c 100%);
-  color:#cdf6ec;
-  box-shadow:inset 0 0 0 .2cqw rgba(127,228,208,.7), 0 .8cqh 0 rgba(6,8,7,.9), 0 0 2.4cqh rgba(127,228,208,.35);
+.cup-btn{
+  position:absolute; right:3.6cqw; bottom:4.4cqh;
+  width:17cqh; height:17cqh; border-radius:50%;
+  border:0; padding:0; cursor:pointer; touch-action:none;
+  background:radial-gradient(circle at 36% 28%, #b8f0ff, #46b6e4 58%, #2481ad);
+  box-shadow:0 1.1cqh 0 #1a5f80, 0 2cqh 3.4cqh rgba(0,0,0,.45),
+             inset 0 -1cqh 1.6cqh rgba(10,60,90,.45);
+  transition:transform .06s ease, box-shadow .06s ease;
 }
-.ns-key.dead{ opacity:.42; }
-.ns-key-h, .ns-key-m{ min-width:max(7cqw, 56px); min-height:max(7cqh, 46px); }
-/* the two camera arrows only exist while the monitor is up */
-.ns-key-step{ display:none; min-width:max(5cqw, 44px); min-height:max(7cqh, 46px); }
-.ns-pad[data-mon="1"] .ns-key-step{ display:flex; }
-.ns-key-step b{ font-size:max(2.2cqh, 15px); letter-spacing:0; }
+.cup-btn.on{transform:translateY(.85cqh);
+  box-shadow:0 .25cqh 0 #1a5f80, 0 .8cqh 1.6cqh rgba(0,0,0,.4);}
+.cup-btn-face{
+  position:absolute; inset:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:.3cqh; pointer-events:none;
+}
+.cup-btn-ico{width:6cqh; height:6cqh; fill:#08334a;}
+.cup-btn b{
+  font-family:'Silkscreen',monospace; font-size:2.1cqh; font-weight:400;
+  color:#08334a; letter-spacing:.05em;
+}
+/* the ring fills while a shot winds up, so the power is on the button
+   she is already looking at and not in a corner she is not */
+.cup-btn-ring{
+  position:absolute; inset:-1.4cqh; border-radius:50%;
+  background:conic-gradient(from -90deg, #ffe066 calc(var(--f,0) * 360deg), rgba(255,255,255,.12) 0);
+  -webkit-mask:radial-gradient(farthest-side, transparent calc(100% - 1.3cqh), #000 calc(100% - 1.2cqh));
+  mask:radial-gradient(farthest-side, transparent calc(100% - 1.3cqh), #000 calc(100% - 1.2cqh));
+  pointer-events:none;
+}
+.cup-btn[data-f="1"] .cup-btn-ring{filter:drop-shadow(0 0 1.4cqh rgba(255,120,80,.8));}
+
+/* the keyboard, for anyone on a desktop; hidden the moment a finger
+   touches the glass */
+.cup-keys{
+  position:absolute; right:3.6cqw; bottom:24cqh; margin:0; text-align:right;
+  display:flex; flex-direction:column; gap:.5cqh;
+  font-family:'Poppins',sans-serif; font-size:1.6cqh; color:rgba(255,255,255,.55);
+  text-shadow:0 .2cqh .4cqh rgba(0,0,0,.7);
+}
+.cup-keys kbd{
+  display:inline-block; min-width:2.2cqh; padding:.2cqh .6cqh; margin:0 .15cqh;
+  border-radius:.4cqh; background:rgba(255,255,255,.16);
+  font-family:'Silkscreen',monospace; font-size:1.4cqh; color:#fff;
+}
+.cup-pad.touch .cup-keys{display:none;}
 
 /* ---------- the cards ---------- */
 .ns-overlay{
@@ -7539,50 +7566,92 @@ img{-webkit-user-drag:none; user-select:none;}
   position:absolute; inset:0; width:100%; height:100%; display:block;
 }
 
-/* ---------- the scoreboard ---------- */
+/* ---------- the scoreboard ----------
+   Broadcast furniture: the score in the middle of the top edge with the
+   clock hung off it, the round under it, and two bars that say who has
+   actually been playing. The first version was a score and a clock in
+   two different corners, which tells you the result and nothing about
+   the match. */
 .cup-hud{
   position:absolute; inset:0; pointer-events:none;
   font-family:'Silkscreen',monospace; color:#f6faf0;
 }
 .cup-hud[hidden]{display:none;}
+
 .cup-board{
   position:absolute; top:0; left:50%; transform:translateX(-50%);
-  display:flex; align-items:center; gap:1.4cqw;
-  padding:1cqh 2cqw 1.2cqh;
-  background:linear-gradient(180deg,#14202a,#0d161d);
-  border:0 solid transparent;
-  border-radius:0 0 1.2cqw 1.2cqw;
-  box-shadow:0 .5cqh 1.6cqh rgba(0,0,0,.5);
+  display:flex; align-items:stretch;
+  background:linear-gradient(180deg,#16242f,#0b1219);
+  border-radius:0 0 1.4cqw 1.4cqw;
+  box-shadow:0 .6cqh 2cqh rgba(0,0,0,.55), inset 0 -.25cqh 0 rgba(255,255,255,.07);
+  overflow:hidden;
 }
-.cup-side{display:flex; align-items:center; gap:.9cqw;}
-.cup-side u{text-decoration:none; font-size:2.6cqh; letter-spacing:.06em; color:#cfe0d4;}
+.cup-side{
+  display:flex; align-items:center; gap:.9cqw;
+  padding:1.1cqh 1.6cqw;
+}
+.cup-side-h{background:linear-gradient(180deg,rgba(193,39,45,.30),transparent);}
+.cup-side-a{background:linear-gradient(180deg,rgba(90,110,140,.30),transparent);}
+.cup-side u{text-decoration:none; font-size:2.7cqh; letter-spacing:.07em; color:#e8f0e9;}
 .cup-flag{
-  display:block; width:3.4cqh; height:2.3cqh; line-height:0;
-  box-shadow:0 0 0 .18cqh rgba(255,255,255,.35);
+  display:block; width:3.6cqh; height:2.4cqh; line-height:0; border-radius:.2cqh;
+  box-shadow:0 0 0 .18cqh rgba(255,255,255,.4), 0 .2cqh .5cqh rgba(0,0,0,.5);
 }
-.cup-flag canvas{width:100%; height:100%; display:block; image-rendering:pixelated;}
-.cup-sc{display:flex; align-items:baseline; gap:.5cqw; font-weight:400;}
-.cup-sc em{font-style:normal; font-size:4.2cqh; color:#ffe066; min-width:2.6cqh; text-align:center;}
-.cup-sc s{text-decoration:none; font-size:3cqh; color:#6f8a78;}
-
+.cup-flag canvas{width:100%; height:100%; display:block;}
+.cup-sc{
+  display:flex; align-items:center; gap:.6cqw; padding:1.1cqh 1.4cqw;
+  background:#05090d; font-weight:400;
+}
+.cup-sc em{font-style:normal; font-size:4.4cqh; color:#ffe066; min-width:3cqh; text-align:center;
+           text-shadow:0 0 1.6cqh rgba(255,224,102,.45);}
+.cup-sc s{text-decoration:none; font-size:3cqh; color:#546a5e;}
 .cup-clock{
-  position:absolute; top:1.2cqh; left:2cqw;
-  padding:.7cqh 1.4cqw; border-radius:.7cqw;
-  background:rgba(13,22,29,.74); font-size:2.5cqh; color:#cfe0d4;
+  display:flex; align-items:center; padding:1.1cqh 1.5cqw;
+  font-size:2.5cqh; color:#9fd8bb; background:rgba(255,255,255,.05);
+  letter-spacing:.04em; min-width:7cqw; justify-content:center;
 }
-.cup-round{
-  position:absolute; top:5.4cqh; left:2cqw;
+
+.cup-meta{
+  position:absolute; top:1.4cqh; left:2cqw;
+  display:flex; flex-direction:column; gap:.7cqh; align-items:flex-start;
+}
+.cup-round, .cup-half{
   padding:.6cqh 1.2cqw; border-radius:.6cqw;
-  background:rgba(13,22,29,.6); font-size:1.9cqh; color:#8fb39a; letter-spacing:.08em;
+  background:rgba(11,18,25,.7); font-size:1.9cqh; letter-spacing:.08em;
 }
-/* the sprint meter, low and left, where her thumb already is */
-.cup-stam{
-  position:absolute; left:2cqw; bottom:2cqh;
-  width:22cqw; height:1.6cqh; border-radius:1cqh;
-  background:rgba(13,22,29,.66); overflow:hidden;
+.cup-round{color:#ffd45e;}
+.cup-half{color:#8fb39a;}
+
+/* possession and shots, bottom centre, out of the way of both thumbs */
+.cup-stats{
+  position:absolute; bottom:3.4cqh; left:50%; transform:translateX(-50%);
+  display:flex; flex-direction:column; gap:.8cqh; align-items:center;
+  width:34cqw;
+}
+.cup-poss{
+  position:relative; display:flex; width:100%; height:1.8cqh;
+  border-radius:1cqh; overflow:hidden;
+  background:rgba(11,18,25,.7);
   box-shadow:inset 0 0 0 .18cqh rgba(255,255,255,.14);
 }
-.cup-stam i{display:block; height:100%; width:100%; background:linear-gradient(90deg,#7fd4f5,#5fe0a8); transition:width .12s linear;}
+.cup-poss i{display:block; height:100%; transition:width .3s ease;}
+#cup-poss-h{background:linear-gradient(90deg,#e04a50,#c1272d); width:50%;}
+#cup-poss-a{background:linear-gradient(90deg,#7e8ea8,#5a6b86); width:50%;}
+.cup-poss b{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  font-size:1.35cqh; color:#fff; text-shadow:0 .1cqh .3cqh rgba(0,0,0,.8); font-weight:400;
+}
+.cup-shots{font-size:1.6cqh; color:#bcd4c4; letter-spacing:.1em;}
+.cup-shots em{font-style:normal; color:#ffe066; font-size:2cqh;}
+
+.cup-stam{
+  position:absolute; left:2cqw; bottom:2.2cqh;
+  width:16cqw; height:1.6cqh; border-radius:1cqh;
+  background:rgba(11,18,25,.7); overflow:hidden;
+  box-shadow:inset 0 0 0 .18cqh rgba(255,255,255,.14);
+}
+.cup-stam i{display:block; height:100%; width:100%;
+  background:linear-gradient(90deg,#7fd4f5,#5fe0a8); transition:width .12s linear;}
 
 /* ---------- what just happened ---------- */
 .cup-banner{
@@ -7690,6 +7759,61 @@ img{-webkit-user-drag:none; user-select:none;}
   box-shadow:0 .8cqh 0 #b98c22, 0 1.4cqh 2.6cqh rgba(0,0,0,.35);
 }
 .cup-card-b:active{transform:translateY(.5cqh); box-shadow:0 .3cqh 0 #b98c22;}
+
+/* ---- what goes inside a card ---- */
+.cup-teams{
+  display:flex; align-items:stretch; justify-content:center; gap:2cqw;
+  margin:0 0 2cqh;
+}
+.cup-team{
+  flex:1 1 0; min-width:0; text-align:center;
+  padding:1.4cqh 1cqw; border-radius:1cqw;
+  background:rgba(61,42,18,.06);
+  box-shadow:inset 0 0 0 .18cqh rgba(61,42,18,.14);
+}
+.cup-team .cup-team-flag{
+  width:9cqh; height:6cqh; margin:0 auto .8cqh; display:block; border-radius:.3cqh;
+  box-shadow:0 .3cqh .8cqh rgba(0,0,0,.28);
+}
+.cup-team .cup-team-flag canvas{width:100%; height:100%; display:block;}
+.cup-team h4{
+  margin:0 0 .8cqh; font-family:'Silkscreen',monospace; font-weight:400;
+  font-size:2.3cqh; color:#3d2a12; letter-spacing:.06em;
+}
+.cup-team ol{margin:0; padding:0; list-style:none;
+  font-family:'Poppins',sans-serif; font-size:1.8cqh; color:#6a5330; line-height:1.7;}
+.cup-team li em{font-style:normal; color:#9a7b3e; font-size:1.5cqh; letter-spacing:.08em;}
+.cup-team li b{font-weight:600; color:#4a3a1e;}
+.cup-vs{
+  align-self:center; font-family:'Cinzel',serif; font-weight:700;
+  font-size:3.4cqh; color:#9a7b3e;
+}
+
+/* the run through the tournament, with the rounds she has already won */
+.cup-bracket{display:flex; justify-content:center; gap:1.2cqw; margin:0 0 2cqh;}
+.cup-leg{
+  flex:0 0 auto; padding:1cqh 1.4cqw; border-radius:.8cqw;
+  background:rgba(61,42,18,.07); text-align:center;
+  font-family:'Silkscreen',monospace; font-size:1.7cqh; color:#8a7048;
+  box-shadow:inset 0 0 0 .18cqh rgba(61,42,18,.14);
+}
+.cup-leg b{display:block; font-weight:400; font-size:2cqh; color:#3d2a12; margin-top:.4cqh;}
+.cup-leg[data-s="won"]{background:rgba(31,111,74,.16); color:#1f6f4a;}
+.cup-leg[data-s="won"] b{color:#1f6f4a;}
+.cup-leg[data-s="now"]{background:linear-gradient(180deg,#ffe98a,#f0c24a); color:#6a4a08;}
+.cup-leg[data-s="now"] b{color:#3d2a12;}
+
+/* how the half actually went */
+.cup-table{margin:0 auto 2cqh; width:min(56cqw,100%); font-family:'Poppins',sans-serif;}
+.cup-table div{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:.7cqh 0; font-size:2cqh; color:#5c4a2e;
+  border-bottom:.15cqh solid rgba(61,42,18,.12);
+}
+.cup-table div:last-child{border-bottom:0;}
+.cup-table span{font-family:'Silkscreen',monospace; font-size:1.7cqh; letter-spacing:.1em; color:#9a7b3e;}
+.cup-table b{font-weight:600; color:#3d2a12; min-width:6cqw; text-align:center;}
+
 .cup-card-alt{
   display:block; margin:1.8cqh auto 0; border:0; background:none; cursor:pointer;
   font-family:'Poppins',sans-serif; font-size:2cqh; color:#8a6f42; text-decoration:underline;

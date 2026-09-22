@@ -16,6 +16,8 @@ const { chromium } = require('playwright-core');
   await p.evaluate(() => { try { localStorage.clear(); } catch (e) {} showScreen('cup'); OuissyCup.__cup.soundOff(); OuissyCup.__cup.shadows(false); OuissyCup.start(); });
   await p.waitForTimeout(500);
   await p.screenshot({ path: '/tmp/cup-card.png' });
+  console.log('card:', await p.evaluate(() =>
+    (document.querySelector('#cup-overlay .cup-card') || {}).childElementCount));
 
   await p.click('.cup-card-b');
   await p.waitForTimeout(2400);
@@ -68,6 +70,15 @@ const { chromium } = require('playwright-core');
   });
   await p.waitForTimeout(1400);
   await p.screenshot({ path: '/tmp/cup-celebrate.png' });
+
+  /* half time, with the numbers on it */
+  await p.evaluate(() => {
+    OuissyCup.__cup.setState('play');
+    OuissyCup.__cup.setClock(999);
+    OuissyCup.__cup.step(1, 0, 0, false);
+  });
+  await p.waitForTimeout(700);
+  await p.screenshot({ path: '/tmp/cup-half.png' });
   console.log('celebrating:', JSON.stringify(await p.evaluate(() => OuissyCup.__cup.celebration())));
   console.log('anims:', await p.evaluate(() => OuissyCup.__cup.anims()));
   console.log(errs.length ? 'ERRORS: ' + errs.slice(0, 4).join(' | ') : 'no page errors');

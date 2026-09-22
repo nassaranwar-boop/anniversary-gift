@@ -125,6 +125,7 @@ window.OuissyCup = (function () {
     accel: 420,             // px/sec^2 — high, because arcade football is
                             //   about direction, not about momentum
     turnEase: 15,           // how fast the sprite's facing catches up
+    turnCost: 3.2,          // pace shed for turning hard at speed
 
     /* --- the ball --- */
     ballDrag: 0.86,         // per second, ground friction
@@ -321,7 +322,7 @@ window.OuissyCup = (function () {
      that translates — `place()` — and nothing else in the file has to
      hold both ideas in its head at once.
      ======================================================================= */
-  var THREE = null, renderer = null, scene = null, camera = null;
+  var THREE = null, renderer = null, scene = null, camera = null, goals = [];
   var sun = null, pitchGroup = null, rigs = [], ballMesh = null, ballGroup = null;
   var shadowsOn = true;
 
@@ -386,12 +387,29 @@ window.OuissyCup = (function () {
     var x = p.x;
     var ox = P.margin * TPX, oy = (P.goalDepth + P.margin) * TPX;
 
-    /* the mown stripes, across the pitch the way they are cut */
+    /* The mown stripes, across the pitch the way they are cut — and
+       then some wear in them. A pitch of two flat greens is a snooker
+       table: what makes grass read as grass at this distance is that
+       every band has a little variation along it and the middle is
+       scuffed where everybody has been standing. */
     for (var i = 0; i < H; i++) {
       var band = Math.floor(i / (11 * TPX)) % 2;
       x.fillStyle = band ? "#3f9b46" : "#4bab52";
       x.fillRect(0, i, W, 1);
     }
+    for (var n = 0; n < 5200; n++) {
+      var gx = Math.random() * W, gy = Math.random() * H;
+      x.fillStyle = Math.random() < 0.5 ? "rgba(255,255,255,.035)" : "rgba(0,50,10,.045)";
+      x.fillRect(gx, gy, 2 + Math.random() * 7, 1);
+    }
+    /* the worn strip down the middle and the two goalmouths */
+    var wear = x.createLinearGradient(0, 0, 0, H);
+    wear.addColorStop(0, "rgba(150,130,70,.16)");
+    wear.addColorStop(0.16, "rgba(150,130,70,0)");
+    wear.addColorStop(0.84, "rgba(150,130,70,0)");
+    wear.addColorStop(1, "rgba(150,130,70,.16)");
+    x.fillStyle = wear;
+    x.fillRect(W * 0.30, 0, W * 0.40, H);
     /* outside the touchline it is a shade deeper, so the playing area is
        the lit part of the picture rather than a rectangle of lines */
     x.fillStyle = "rgba(8,38,14,.20)";
@@ -623,6 +641,12 @@ window.OuissyCup = (function () {
     var back = new THREE.Mesh(new THREE.PlaneGeometry(P.goalW, H), netMat);
     back.position.set(0, H / 2, sgn * D);
     g.add(back);
+    /* kept, so a goal can push the back of the net out and let it
+       settle — a ball that goes in and changes nothing has not gone in */
+    g.userData.netBack = back;
+    g.userData.restZ = sgn * D;
+    g.userData.sgn = sgn;
+    goals[end] = g;
     [-1, 1].forEach(function (s) {
       var side = new THREE.Mesh(new THREE.PlaneGeometry(D, H), netMat);
       side.rotation.y = Math.PI / 2;
@@ -1255,10 +1279,16 @@ window.OuissyCup = (function () {
       /* carried: the ball is pushed a little in front of the foot, and it
          is still a physical object — it just has somewhere to be */
       var o = b.owner;
-      var tx = o.x + Math.cos(o.dir) * TUNE.dribblePush * 0.32;
-      var ty = o.y + Math.sin(o.dir) * TUNE.dribblePush * 0.32;
-      b.x += (tx - b.x) * Math.min(1, dt * 14);
-      b.y += (ty - b.y) * Math.min(1, dt * 14);
+      /* The touch. She pushes it further in front the faster she is
+         going and keeps it under her when she slows, which is what
+         dribbling is; a ball welded a fixed distance ahead cannot be
+         shielded and cannot be knocked off anybody. */
+      var osp = len(o.vx, o.vy);
+      var push = TUNE.dribblePush * (0.20 + Math.min(0.42, osp * 0.0062));
+      var tx = o.x + Math.cos(o.dir) * push;
+      var ty = o.y + Math.sin(o.dir) * push;
+      b.x += (tx - b.x) * Math.min(1, dt * 11);
+      b.y += (ty - b.y) * Math.min(1, dt * 11);
       b.z = Math.max(0, b.z - dt * 40);
       b.vx = o.vx; b.vy = o.vy;
       b.spin += len(o.vx, o.vy) * dt * 0.4;
@@ -1414,6 +1444,10 @@ window.OuissyCup = (function () {
     G.kickoffTeam = 1 - team;
     G.flash = 1; G.shake = 1;
     G.ball.vx = G.ball.vy = G.ball.vz = 0; G.ball.owner = null;
+    /* which net just bulged: the one she was shooting at */
+    var endHit = ownGoalY(0) === PITCH.y0 ? (team === 0 ? 1 : 0) : (team === 0 ? 0 : 1);
+    var gg = goals[endHit];
+    if (gg) gg.userData.bulge = 1;
     SFX.net();
     if (team === 0) SFX.goal(); else SFX.concede();
     banner(team === 0
@@ -1440,6 +1474,19 @@ window.OuissyCup = (function () {
     var carrying = G.ball.owner === p;
     var base = carrying ? TUNE.runSpeed : TUNE.freeSpeed;
     var top = base * (speedMul || 1);
+    /* TURNING COSTS SOMETHING. Steering used to be free: full speed in
+       one direction became full speed in the opposite one inside a
+       frame, and what that feels like is a cursor rather than a person.
+       A hard turn now sheds pace, which is also what makes a defender
+       committing to a tackle a mistake she can punish. */
+    var sp0 = len(p.vx, p.vy);
+    if (sp0 > 12) {
+      var dot = (p.vx * ux + p.vy * uy) / sp0;
+      if (dot < 0.5) {
+        var bite = (0.5 - dot) * TUNE.turnCost * dt;
+        p.vx -= p.vx * bite; p.vy -= p.vy * bite;
+      }
+    }
     p.vx += (ux * top - p.vx) * Math.min(1, TUNE.accel / top * dt);
     p.vy += (uy * top - p.vy) * Math.min(1, TUNE.accel / top * dt);
     if (ux || uy) {
@@ -1836,12 +1883,13 @@ window.OuissyCup = (function () {
   function halfTime() {
     G.state = "half"; G.stateT = 0; G.clock = 0;
     SFX.longWhistle();
-    overlay("HALF TIME", scoreLine(), "TAP TO PLAY THE SECOND HALF", function () {
+    overlay("HALF TIME", scoreLine(), "PLAY THE SECOND HALF", function () {
       G.half = 2; G.kickoffTeam = 1;
       resetPositions(G.kickoffTeam);
       G.state = "kickoff"; G.stateT = 0;
+      setCamMode("play");
       hideOverlay();
-    });
+    }, { kicker: "45'", body: statsBlock() });
   }
 
   function endMatch() {
@@ -2080,6 +2128,13 @@ window.OuissyCup = (function () {
   function syncBall() {
     var b = G.ball;
     ballGroup.position.set(sceneX(b.y), BALL_R + b.z, sceneZ(b.x));
+    /* squash and stretch, which is the oldest trick in animation and the
+       cheapest weight a ball can be given: fat on the frame it is hit,
+       drawn out along its travel while it is moving fast */
+    var hit = b.struck || 0;
+    var spd2 = len(b.vx, b.vy);
+    var st = 1 + Math.min(0.16, spd2 * 0.0006) - hit * 0.22;
+    ballGroup.scale.set(1 + hit * 0.34, st, 1 + hit * 0.34);
     /* Rolled, not slid. It turns about the axis lying across its own
        direction of travel, through the angle the distance it covered
        subtends on its own radius — which is what makes a ball look
@@ -2252,6 +2307,14 @@ window.OuissyCup = (function () {
       if (rigs[i]) syncRig(G.players[i], rigs[i], dt || 0);
     }
     syncBall();
+    /* the net settling back */
+    goals.forEach(function (g2) {
+      if (!g2 || !g2.userData.netBack) return;
+      var u = g2.userData;
+      u.bulge = Math.max(0, (u.bulge || 0) - (dt || 0) * 2.4);
+      var push = Math.sin(u.bulge * Math.PI) * 5.5;
+      u.netBack.position.z = u.restZ + u.sgn * push;
+    });
     confettiStep(dt || 0);
     placeCamera(dt || 0, false);
     renderer.render(scene, camera);
@@ -2426,8 +2489,10 @@ window.OuissyCup = (function () {
     ["cup-stage", "cup-canvas", "cup-hud", "cup-clock", "cup-round",
      "cup-h-score", "cup-a-score", "cup-h-flag", "cup-a-flag",
      "cup-h-name", "cup-a-name", "cup-stam", "cup-stam-f",
-     "cup-banner", "cup-overlay", "cup-pause-btn", "cup-pad",
-     "cup-stick", "cup-stick-k", "cup-btn", "cup-btn-ring", "cup-btn-lab"]
+     "cup-banner", "cup-overlay", "cup-pause-btn", "cup-pad", "cup-half",
+     "cup-stick", "cup-stick-k", "cup-btn", "cup-btn-ring", "cup-btn-lab",
+     "cup-btn-ico", "cup-poss-h", "cup-poss-a", "cup-poss-lab",
+     "cup-shot-h", "cup-shot-a", "cup-keys", "cup-stats"]
       .forEach(function (id) { EL[id] = $(id); });
     stage = EL["cup-stage"];
     cvs = EL["cup-canvas"];
@@ -2493,6 +2558,26 @@ window.OuissyCup = (function () {
     el.appendChild(flagCanvas(kind, 22, 15));
   }
 
+  /* The three icons the button wears. Drawn rather than lettered,
+     because at the size a thumb covers it the word is gone and the
+     shape is not. */
+  var BTN_ICON = {
+    pass:   "M4 12h11M11 7l5 5-5 5M18 6v12",
+    shoot:  "M3 17c4-1 6-4 7-7M10 10l7-4 4 6-7 4z M13 18l6-2",
+    tackle: "M3 19l7-4M8 16l5-7 6 2-4 6zM15 6a2 2 0 104 0 2 2 0 10-4 0",
+  };
+  var btnMode = "";
+  function setBtn(mode) {
+    if (mode === btnMode) return;
+    btnMode = mode;
+    if (EL["cup-btn-lab"]) EL["cup-btn-lab"].textContent = mode.toUpperCase();
+    var ico = EL["cup-btn-ico"];
+    if (ico) {
+      ico.innerHTML = '<path d="' + BTN_ICON[mode] + '" fill="none" stroke="#08334a" ' +
+                      'stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>';
+    }
+  }
+
   function syncHud() {
     if (!G || !EL["cup-clock"]) return;
     var mins;
@@ -2504,18 +2589,34 @@ window.OuissyCup = (function () {
     EL["cup-clock"].textContent = mins;
     EL["cup-h-score"].textContent = G.score[0];
     EL["cup-a-score"].textContent = G.score[1];
+    if (EL["cup-half"]) {
+      EL["cup-half"].textContent = G.golden ? "GOLDEN GOAL"
+        : G.half === 1 ? "1ST HALF" : "2ND HALF";
+    }
+
+    /* possession, as a share of the time somebody has actually had it */
+    var tot = G.stat.poss[0] + G.stat.poss[1];
+    var hp = tot > 2 ? G.stat.poss[0] / tot : 0.5;
+    if (EL["cup-poss-h"]) {
+      EL["cup-poss-h"].style.width = (hp * 100).toFixed(1) + "%";
+      EL["cup-poss-a"].style.width = ((1 - hp) * 100).toFixed(1) + "%";
+      EL["cup-poss-lab"].textContent = Math.round(hp * 100) + "%";
+    }
+    if (EL["cup-shot-h"]) {
+      EL["cup-shot-h"].textContent = G.stat.shots[0];
+      EL["cup-shot-a"].textContent = G.stat.shots[1];
+    }
+
     if (EL["cup-stam-f"]) {
       EL["cup-stam-f"].style.width = Math.round(G.controlled ? G.controlled.stamina * 100 : 100) + "%";
     }
-    if (EL["cup-btn-lab"]) {
-      var p = G.controlled;
-      var carrying = p && G.ball.owner === p;
-      EL["cup-btn-lab"].textContent = carrying ? (IN.held ? "SHOOT" : "PASS") : "TACKLE";
-    }
+    var p = G.controlled;
+    var carrying = p && G.ball.owner === p;
+    setBtn(carrying ? (IN.held ? "shoot" : "pass") : "tackle");
     if (EL["cup-btn-ring"]) {
-      var f = (G.controlled && IN.held && G.ball.owner === G.controlled)
-        ? clamp(IN.heldT / TUNE.chargeTime, 0, 1) : 0;
+      var f = (carrying && IN.held) ? clamp(IN.heldT / TUNE.chargeTime, 0, 1) : 0;
       EL["cup-btn-ring"].style.setProperty("--f", f.toFixed(3));
+      EL["cup-btn"].dataset.f = f > 0.92 ? "1" : "0";
     }
   }
 
@@ -2544,6 +2645,7 @@ window.OuissyCup = (function () {
       '<p class="cup-card-k">' + (opts.kicker || "") + '</p>' +
       '<h3>' + title + '</h3>' +
       '<p class="cup-card-l">' + (line || "") + '</p>' +
+      (opts.body || "") +
       (opts.note ? '<p class="cup-card-n">' + opts.note + '</p>' : "") +
       /* a card with nothing to press is a card that is telling her to
          wait, and an empty button is worse than no button */
@@ -2558,6 +2660,7 @@ window.OuissyCup = (function () {
       e.stopPropagation(); SFX.pick();
       if (overlayGo) overlayGo();
     });
+    paintCardFlags();
     var a = el.querySelector(".cup-card-alt");
     if (a && opts.onAlt) a.addEventListener("click", function (e) {
       e.stopPropagation(); SFX.pick(); opts.onAlt();
@@ -2573,6 +2676,60 @@ window.OuissyCup = (function () {
   }
   /* the button during a card, and the tap-anywhere that goes with it */
   function skipState() { if (overlayGo) overlayGo(); }
+
+  /* =======================================================================
+     WHAT A CARD CAN BE MADE OF
+
+     Three blocks, reused by every screen in the chapter: the two team
+     sheets, the run through the tournament, and a table of how a half
+     actually went. A round card that says only who she is playing tells
+     her less than the fixture list on a wall.
+     ======================================================================= */
+  var ROLE_NAME = { gk: "GK", def: "DEF", mid: "MID", st: "ST" };
+
+  function teamSheet(id, sideLabel) {
+    var t = TEAMS[id];
+    var rows = t.squad.map(function (m) {
+      return "<li><em>" + (ROLE_NAME[m.role] || "") + "</em> " +
+             (m.star ? "<b>" + m.name + "</b>" : m.name) + "</li>";
+    }).join("");
+    return '<div class="cup-team">' +
+           '<span class="cup-team-flag" data-flag="' + t.flag + '"></span>' +
+           "<h4>" + t.name + "</h4><ol>" + rows + "</ol>" +
+           (sideLabel ? "" : "") + "</div>";
+  }
+  function teamsBlock(a, b) {
+    return '<div class="cup-teams">' + teamSheet(a) +
+           '<span class="cup-vs">v</span>' + teamSheet(b) + "</div>";
+  }
+  function bracketBlock(at) {
+    return '<div class="cup-bracket">' + CUP.map(function (r, i) {
+      var st = i < at ? "won" : i === at ? "now" : "next";
+      return '<span class="cup-leg" data-s="' + st + '">' + r.round +
+             "<b>" + TEAMS[r.id].short + "</b></span>";
+    }).join("") + "</div>";
+  }
+  function statsBlock() {
+    var tot = G.stat.poss[0] + G.stat.poss[1];
+    var hp = tot > 2 ? Math.round((G.stat.poss[0] / tot) * 100) : 50;
+    var rows = [
+      ["POSSESSION", hp + "%", (100 - hp) + "%"],
+      ["SHOTS", G.stat.shots[0], G.stat.shots[1]],
+      ["GOALS", G.score[0], G.score[1]],
+    ];
+    return '<div class="cup-table">' + rows.map(function (r) {
+      return "<div><b>" + r[1] + "</b><span>" + r[0] + "</span><b>" + r[2] + "</b></div>";
+    }).join("") + "</div>";
+  }
+  /* the flags are canvases, so they go in after the card is in the DOM */
+  function paintCardFlags() {
+    var el = EL["cup-overlay"];
+    if (!el) return;
+    Array.prototype.forEach.call(el.querySelectorAll("[data-flag]"), function (n) {
+      n.innerHTML = "";
+      n.appendChild(flagCanvas(n.dataset.flag, 96, 64));
+    });
+  }
 
   /* =======================================================================
      20. THE CUP
@@ -2601,7 +2758,8 @@ window.OuissyCup = (function () {
       if (EL["cup-pad"]) EL["cup-pad"].hidden = false;
       if (EL["cup-pause-btn"]) EL["cup-pause-btn"].hidden = false;
       startCrowd();
-    }, { kicker: r.round, big: true });
+    }, { kicker: r.round, big: true,
+         body: bracketBlock(run.round) + teamsBlock("mar", r.id) });
   }
 
   function finishRound(won) {
@@ -2614,11 +2772,12 @@ window.OuissyCup = (function () {
         if (run.round >= CUP.length - 1) return theEnd();
         overlay("FULL TIME", scoreLine(), "NEXT ROUND", function () {
           run.round++; hideOverlay(); roundCard();
-        }, { kicker: "WON", note: r.won });
+        }, { kicker: "WON", note: r.won,
+             body: statsBlock() + bracketBlock(run.round + 1) });
       } else {
         overlay("FULL TIME", scoreLine(), "PLAY IT AGAIN", function () {
           hideOverlay(); roundCard();
-        }, { kicker: "LOST", note: r.lost,
+        }, { kicker: "LOST", note: r.lost, body: statsBlock(),
              alt: "LEAVE IT FOR NOW", onAlt: function () { quit(); } });
       }
     }, 1400);
@@ -2713,6 +2872,8 @@ window.OuissyCup = (function () {
         IN.stickX = e.clientX - r.left; IN.stickY = e.clientY - r.top;
         IN.curX = IN.stickX; IN.curY = IN.stickY;
         st.setPointerCapture(e.pointerId);
+        st.classList.add("used");
+        if (EL["cup-pad"]) EL["cup-pad"].classList.add("touch");
         showStick(true);
         e.preventDefault();
       });
@@ -2734,6 +2895,7 @@ window.OuissyCup = (function () {
     var bt = EL["cup-btn"];
     if (bt) {
       bt.addEventListener("pointerdown", function (e) {
+        if (EL["cup-pad"]) EL["cup-pad"].classList.add("touch");
         IN.btnId = e.pointerId;
         bt.setPointerCapture(e.pointerId);
         bt.classList.add("on");
@@ -2763,6 +2925,7 @@ window.OuissyCup = (function () {
 
   function showStick(on) {
     var k = EL["cup-stick-k"];
+    if (!on && EL["cup-stick"]) EL["cup-stick"].classList.remove("hold");
     if (!k) return;
     if (!on || IN.stickId === null) { k.hidden = true; return; }
     k.hidden = false;
@@ -2772,6 +2935,7 @@ window.OuissyCup = (function () {
     if (d > cap) { dx = (dx / d) * cap; dy = (dy / d) * cap; }
     k.style.left = IN.stickX + "px";
     k.style.top = IN.stickY + "px";
+    if (EL["cup-stick"]) EL["cup-stick"].classList.add("hold");
     k.style.setProperty("--kx", dx.toFixed(1) + "px");
     k.style.setProperty("--ky", dy.toFixed(1) + "px");
   }

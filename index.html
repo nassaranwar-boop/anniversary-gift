@@ -65,14 +65,14 @@
 <title>For My Love</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="style.css?v=222">
+<link rel="stylesheet" href="style.css?v=223">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Silkscreen:wght@400;700&family=VT323&family=Rye&family=Pixelify+Sans:wght@400;500;600&family=Press+Start+2P&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&family=Fredoka:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=Caveat:wght@600;700&family=Great+Vibes&display=swap" rel="stylesheet">
 <!-- defer, not a plain tag. three.js is the biggest single file here and
      in the head it blocked the parser for its whole download, so nothing
      was painted until it had arrived. defer fetches it just as early and
      runs it after the document is parsed — and deferred scripts still run
      in the order they are written, so book-scene.js below still finds it. -->
-<script defer src="vendor/three.bundle.js?v=222"></script>
+<script defer src="vendor/three.bundle.js?v=223"></script>
 
 </head>
 <body>
@@ -1172,16 +1172,38 @@
       <div class="cup-stage" id="cup-stage">
         <canvas id="cup-canvas"></canvas>
 
-        <!-- the scoreboard, the clock and the round, in a band along the
-             top the way a broadcast puts them -->
+        <!-- the broadcast furniture: a scoreboard in the middle of the
+             top edge, the clock and the round beside it, and under it
+             the two bars that say who has actually been playing —
+             possession and shots. -->
         <div class="cup-hud" id="cup-hud" hidden>
           <div class="cup-board">
-            <span class="cup-side"><i class="cup-flag" id="cup-h-flag"></i><u id="cup-h-name">MAR</u></span>
+            <span class="cup-side cup-side-h">
+              <i class="cup-flag" id="cup-h-flag"></i><u id="cup-h-name">MAR</u>
+            </span>
             <b class="cup-sc"><em id="cup-h-score">0</em><s>:</s><em id="cup-a-score">0</em></b>
-            <span class="cup-side"><u id="cup-a-name">GER</u><i class="cup-flag" id="cup-a-flag"></i></span>
+            <span class="cup-side cup-side-a">
+              <u id="cup-a-name">GER</u><i class="cup-flag" id="cup-a-flag"></i>
+            </span>
+            <span class="cup-clock" id="cup-clock">0&rsquo;</span>
           </div>
-          <span class="cup-clock" id="cup-clock">0&rsquo;</span>
-          <span class="cup-round" id="cup-round">GROUP MATCH</span>
+
+          <div class="cup-meta">
+            <span class="cup-round" id="cup-round">GROUP MATCH</span>
+            <span class="cup-half" id="cup-half">1ST HALF</span>
+          </div>
+
+          <!-- who has had it, and who has had a go -->
+          <div class="cup-stats" id="cup-stats">
+            <div class="cup-poss" id="cup-poss">
+              <i id="cup-poss-h"></i><i id="cup-poss-a"></i>
+              <b id="cup-poss-lab">50%</b>
+            </div>
+            <div class="cup-shots">
+              <span><em id="cup-shot-h">0</em> SHOTS <em id="cup-shot-a">0</em></span>
+            </div>
+          </div>
+
           <!-- how much sprint is left, low on the left where her thumb
                already is rather than up in the corner with the score -->
           <div class="cup-stam" id="cup-stam"><i id="cup-stam-f"></i></div>
@@ -1201,11 +1223,19 @@
         <div class="cup-pad" id="cup-pad" hidden>
           <div class="cup-stick" id="cup-stick">
             <span class="cup-stick-k" id="cup-stick-k" hidden><i></i></span>
+            <span class="cup-stick-hint" id="cup-stick-hint">slide to run</span>
           </div>
           <button class="cup-btn" id="cup-btn" type="button" aria-label="Pass, shoot or tackle">
             <span class="cup-btn-ring" id="cup-btn-ring" aria-hidden="true"></span>
-            <b id="cup-btn-lab">PASS</b>
+            <span class="cup-btn-face">
+              <svg class="cup-btn-ico" id="cup-btn-ico" viewBox="0 0 24 24" aria-hidden="true"></svg>
+              <b id="cup-btn-lab">PASS</b>
+            </span>
           </button>
+          <p class="cup-keys" id="cup-keys" aria-hidden="true">
+            <span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> run</span>
+            <span><kbd>space</kbd> tap to pass &middot; hold to shoot</span>
+          </p>
         </div>
 
         <!-- every round card, half time, full time and the trophy -->
@@ -1214,8 +1244,8 @@
     </div>
   </section>
 
-<script defer src="book-scene.js?v=222"></script>
-<script defer src="scrapbook.js?v=222"></script>
-<script defer src="script.js?v=222"></script>
+<script defer src="book-scene.js?v=223"></script>
+<script defer src="scrapbook.js?v=223"></script>
+<script defer src="script.js?v=223"></script>
 </body>
 </html>
