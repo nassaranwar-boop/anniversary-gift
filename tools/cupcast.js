@@ -38,28 +38,29 @@ const { chromium } = require('playwright-core');
     }
     window.__parade.clear();
     OuissyCup.__cup.matchVisible(false);
-    const all = Object.keys(OuissyCup.__cup.cast());
+    const all = OuissyCup.__cup.roster();
     const cast = all.slice(from, from + count);
-    const kits = ['mar', 'ger', 'bra', 'anw'];
-    cast.forEach((face, i) => {
-      const rig = OuissyCup.__cup.rig({ face: face, teamId: kits[i % 4],
-                                        gk: face === 'soldier' || face === 'jester' });
-      rig.group.position.set((i - (cast.length - 1) / 2) * 14, 0, 0);
+    const kits = ['mar', 'ger', 'bra', 'anw', 'm1', 'm5'];
+    cast.forEach((r, i) => {
+      const face = r.id;
+      const rig = OuissyCup.__cup.rig({ face: face, teamId: kits[i % kits.length],
+                                        gk: r.role === 'gk' });
+      rig.group.position.set((i - (cast.length - 1) / 2) * 16, 0, 0);
       rig.group.rotation.y = turn;
       window.__parade.add(rig.group);
     });
-    cam.position.set(0, 13, 52);
+    cam.position.set(0, 13, 54);
     cam.lookAt(0, 8, 0);
     t.renderer.render(scene, cam);
-    return cast;
+    return cast.map(r => r.name);
   }, { turn, from, count });
 
-  const a = await shoot(0, 0, 6);
+  const a = await shoot(0, 0, 5);
   await p.screenshot({ path: '/tmp/cup-cast-a.png' });
-  const c = await shoot(0, 6, 6);
+  const c = await shoot(0, 5, 5);
   await p.screenshot({ path: '/tmp/cup-cast-b.png' });
-  await shoot(Math.PI, 0, 6);
-  await p.screenshot({ path: '/tmp/cup-cast-back.png' });
+  await shoot(0, 10, 4);
+  await p.screenshot({ path: '/tmp/cup-cast-c.png' });
   console.log('cast:', a.join(' '), '|', c.join(' '));
   console.log(errs.length ? 'ERRORS: ' + errs.slice(0, 4).join(' | ') : 'no page errors');
   await b.close();

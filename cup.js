@@ -70,6 +70,46 @@
 window.OuissyCup = (function () {
   "use strict";
 
+  /* Everything personal lives in cup.config.js and is read once, here.
+     The fallback is not a second copy of the settings: it is only enough
+     to stop the chapter throwing if that file fails to arrive, which on
+     a static site means a bad deploy rather than a case worth designing
+     around. */
+  var CFG = window.CUP_CONFIG || {};
+  function cfg(path, dflt) {
+    var v = CFG, parts = path.split(".");
+    for (var i = 0; i < parts.length; i++) {
+      if (v == null) return dflt;
+      v = v[parts[i]];
+    }
+    return v === undefined ? dflt : v;
+  }
+  var ROSTER = {};
+  (cfg("ROSTER", []) || []).forEach(function (r) { ROSTER[r.id] = r; });
+  var FALLBACK_LOOK = { name: "PLAYER", skin: "#e8c9a8", hair: "#5a4632",
+                        head: "crop", build: { h: 1, w: 1 },
+                        stats: { speed: 75, power: 75, skill: 75, defence: 75 } };
+
+  /* A team, by id, out of the config. */
+  function teamById(id) {
+    var list = cfg("TEAMS", []);
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return null;
+  }
+  /* A team's four, resolved from the roster, keeper first. A squad she
+     has built herself arrives in exactly this shape, so nothing
+     downstream knows or cares which kind it is looking at. */
+  function squadOf(team) {
+    var ids = (team && team.squad) || [];
+    return ids.map(function (rid, i) {
+      var r = ROSTER[rid] || FALLBACK_LOOK;
+      return { id: rid, name: r.name || String(rid).toUpperCase(), face: rid,
+               role: i === 0 ? "gk" : (r.role === "gk" ? "mid" : (r.role || "mid")),
+               star: !!r.star, stats: r.stats || FALLBACK_LOOK.stats,
+               captain: !!(team && team.captain === rid) };
+    });
+  }
+
   /* =======================================================================
      1. THE VIEW
 
@@ -179,62 +219,10 @@ window.OuissyCup = (function () {
      head maps that player is drawn with, so the cat is a cat and the
      bear is a bear without either of them needing a body of their own.
      ======================================================================= */
-  var TEAMS = {
-    mar: {
-      name: "MOROCCO", short: "MAR", flag: "mar",
-      kit: { shirt: "#c1272d", shirtDark: "#8f1a20", shorts: "#0e6b3c",
-             shortsDark: "#08492a", socks: "#c1272d", trim: "#ffffff" },
-      gk:  { shirt: "#1f6f4a", shirtDark: "#134a31", shorts: "#12241c",
-             shortsDark: "#0b1712", socks: "#1f6f4a", trim: "#ffd45e" },
-      squad: [
-        { name: "COGSWORTH", face: "soldier", role: "gk" },
-        { name: "OUISSY",    face: "ouissy",  role: "st", star: true },
-        { name: "THE CAT",   face: "cat",     role: "mid" },
-        { name: "THE BEAR",  face: "bear",    role: "def" },
-      ],
-    },
-    ger: {
-      name: "GERMANY", short: "GER", flag: "ger",
-      kit: { shirt: "#f2f2ef", shirtDark: "#c8c8c2", shorts: "#1c1c22",
-             shortsDark: "#0e0e12", socks: "#f2f2ef", trim: "#1c1c22" },
-      gk:  { shirt: "#3a3f6b", shirtDark: "#252945", shorts: "#1c1c22",
-             shortsDark: "#0e0e12", socks: "#3a3f6b", trim: "#e0c24a" },
-      squad: [
-        { name: "KELLER",  face: "keeper", role: "gk" },
-        { name: "BRAUN",   face: "blond",  role: "st" },
-        { name: "HAAS",    face: "dark",   role: "mid" },
-        { name: "LOWE",    face: "blond",  role: "def" },
-      ],
-    },
-    bra: {
-      name: "BRAZIL", short: "BRA", flag: "bra",
-      kit: { shirt: "#f5d020", shirtDark: "#c9a410", shorts: "#1d4fa0",
-             shortsDark: "#123268", socks: "#f5f2e8", trim: "#0f7a3c" },
-      gk:  { shirt: "#1b8a4a", shirtDark: "#115c31", shorts: "#1d4fa0",
-             shortsDark: "#123268", socks: "#1b8a4a", trim: "#f5d020" },
-      squad: [
-        { name: "TAVARES", face: "keeper", role: "gk" },
-        { name: "RUI",     face: "dark",   role: "st" },
-        { name: "MOACIR",  face: "curly",  role: "mid" },
-        { name: "PEDRINHO",face: "curly",  role: "def" },
-      ],
-    },
-    /* The final. Not a country — a paper heart, which is the token she
-       picks up in the first minute of the walk up the valley. */
-    anw: {
-      name: "HIS SIDE", short: "ANW", flag: "heart",
-      kit: { shirt: "#4a5f86", shirtDark: "#31415e", shorts: "#efe3cb",
-             shortsDark: "#c9bb9f", socks: "#4a5f86", trim: "#f2b8c6" },
-      gk:  { shirt: "#2a2438", shirtDark: "#1a1626", shorts: "#12101c",
-             shortsDark: "#0a0812", socks: "#2a2438", trim: "#f2b8c6" },
-      squad: [
-        { name: "JAX",      face: "jester", role: "gk" },
-        { name: "ANWAR",    face: "anwar",  role: "st", star: true },
-        { name: "MARABELLE",face: "ballet", role: "mid" },
-        { name: "THE LURKER",face:"zombie",  role: "def" },
-      ],
-    },
-  };
+  /* The sides used to be written out here. They live in cup.config.js
+     now, along with eight more, and they are reached through teamById()
+     — so nothing about a team is in this file any more: not its name,
+     not its kit, and not who plays for it. */
 
   /* =======================================================================
      4. THE CUP
@@ -246,7 +234,7 @@ window.OuissyCup = (function () {
      unfair, and the difference is obvious within about ten seconds.
      ======================================================================= */
   var CUP = [
-    { id: "ger", round: "GROUP MATCH", skill: 0.44,
+    { id: "ger", round: "QUARTER-FINAL", skill: 0.44,
       before: "Germany first. He said they always come first.",
       won: "One down. He is somewhere behind the goal with his hands on his head.",
       lost: "Germany, then. It happens to better teams than us." },
@@ -768,12 +756,19 @@ window.OuissyCup = (function () {
      is just four rotations and a bob and it needs to reach them.
      ======================================================================= */
   function buildRig(pl) {
-    var look = CAST[pl.face] || CAST.keeper;
-    var team = TEAMS[pl.teamId];
-    var kit = pl.gk ? team.gk : team.kit;
-    var b = look.build;
+    /* `pl` is either a player on the pitch or a bare {face, teamId, gk}
+       from a menu or a harness. Either way the look comes out of the
+       roster in cup.config.js and the kit comes off the team. */
+    var look = ROSTER[pl.face] || ROSTER[pl.id] || FALLBACK_LOOK;
+    var team = teamById(pl.teamId) || teamById("mar") || {};
+    var kit = pl.kit || (pl.gk ? team.gkKit : team.kit) || {
+      shirt: "#c1272d", shirtDark: "#8f1a20", shorts: "#0e6b3c",
+      shortsDark: "#08492a", socks: "#c1272d", trim: "#ffffff" };
+    var bh = (look.build && look.build.h) || 1;
+    var bw = (look.build && look.build.w) || 1;
+    var b = 1;
     var g = new THREE.Group();
-    var parts = { group: g };
+    var parts = { group: g, build: { h: bh, w: bw }, look: look };
 
     var skinM = toon(look.skin);
     var shirtM = toon(kit.shirt);
@@ -874,6 +869,23 @@ window.OuissyCup = (function () {
 
     /* the ground shadow, which is a fallback for when the real ones are
        switched off on a slow device rather than a decoration */
+    /* a hand on the end of each arm — one more ball, and the cheapest
+       thing there is that stops an arm reading as a stick */
+    parts.arms.forEach(function (arm) {
+      var hand = new THREE.Mesh(new THREE.SphereGeometry(0.95 * b, 8, 6),
+                                pl.gk ? toon("#f0e6d2") : skinM);
+      hand.position.y = -5.0 * b;
+      arm.add(hand);
+    });
+    /* the captain's armband, in the colour their super burns */
+    if (look.armband) {
+      var bandM = new THREE.Mesh(new THREE.CylinderGeometry(1.0 * b, 1.0 * b, 1.1 * b, 8),
+                                 toon(look.super ? look.super.colour : "#ffd45e"));
+      bandM.position.set(-3.3 * b, 8.3 * b, 0);
+      bandM.rotation.z = 0.14;
+      g.add(bandM);
+    }
+
     var blob = new THREE.Mesh(new THREE.CircleGeometry(3.4 * b, 16),
       new THREE.MeshBasicMaterial({ color: new THREE.Color("#12401c"),
                                     transparent: true, opacity: 0.26, depthWrite: false }));
@@ -882,20 +894,37 @@ window.OuissyCup = (function () {
     g.add(blob);
     parts.blob = blob;
 
+    /* THE SILHOUETTE. Height and width come from the roster, and they
+       are the first thing that tells one of these from another at the
+       distance the game is played at: Boulder is half again as wide as
+       Comet and you can still tell them apart with the colour turned
+       off, which is the test. */
+    g.scale.set(bw, bh, bw);
     return parts;
   }
 
-  /* what each character has on top */
+  /* WHAT EACH ONE HAS ON TOP.
+
+     This is where the roster stops being a table and becomes fourteen
+     different people. The rule every one is built to: it must be
+     tellable from the others with the colour turned off. Flame hair,
+     goggles on a forehead, a flat cap, a bun, shoulder pads — each is a
+     different OUTLINE, because at the size this is played at the
+     outline arrives about a tenth of a second before anything inside it
+     does. */
   function addHead(head, look, b, hairM, skinM) {
     var kind = look.head;
-    if (kind === "long") {
-      var cap = new THREE.Mesh(new THREE.SphereGeometry(3.32 * b, 18, 14,
-        0, Math.PI * 2, 0, Math.PI * 0.62), hairM);
-      cap.position.y = 0.12 * b;
-      head.add(cap);
-      /* The fall of her hair, down past the jaw. It used to sit at 2.5
-         out, which is outside the head, and from the front she had two
-         pigtails standing off the sides of it. It follows the skull now. */
+    var accent = toon((look.colour && look.colour.c) || "#ffd45e");
+    var cap = function (frac, lift) {
+      var m = new THREE.Mesh(new THREE.SphereGeometry(3.3 * b, 18, 14,
+        0, Math.PI * 2, 0, Math.PI * (frac || 0.52)), hairM);
+      m.position.y = (lift === undefined ? 0.16 : lift) * b;
+      head.add(m);
+      return m;
+    };
+
+    if (kind === "ouissy") {
+      cap(0.62, 0.12);
       [-1, 1].forEach(function (s) {
         var fall = new THREE.Mesh(new THREE.CapsuleGeometry(0.98 * b, 4.0 * b, 4, 8), hairM);
         fall.position.set(s * 2.15 * b, -2.3 * b, -0.7 * b);
@@ -905,101 +934,148 @@ window.OuissyCup = (function () {
       var back = new THREE.Mesh(new THREE.SphereGeometry(2.7 * b, 14, 12), hairM);
       back.position.set(0, -1.1 * b, -1.6 * b);
       head.add(back);
-    } else if (kind === "crop") {
-      var c2 = new THREE.Mesh(new THREE.SphereGeometry(3.3 * b, 18, 14,
-        0, Math.PI * 2, 0, Math.PI * 0.52), hairM);
-      c2.position.y = 0.16 * b;
-      head.add(c2);
-    } else if (kind === "afro") {
-      var a = new THREE.Mesh(new THREE.SphereGeometry(4.0 * b, 14, 12), hairM);
-      a.position.y = 0.9 * b;
-      a.scale.set(1, 0.92, 1);
-      head.add(a);
+
+    } else if (kind === "anwar") {
+      cap(0.50, 0.18);
+      var fr = new THREE.Mesh(new THREE.BoxGeometry(5.0 * b, 0.9 * b, 1.2 * b), hairM);
+      fr.position.set(0, 1.9 * b, 2.2 * b);
+      head.add(fr);
+
+    } else if (kind === "flame") {
+      /* Ember: five spikes of different heights leaning back — the only
+         head in the game with a jagged top edge. */
+      cap(0.46, 0.2);
+      [[-2.0, 2.6, -0.4], [-0.9, 3.9, 0.2], [0.2, 4.8, -0.1],
+       [1.3, 3.6, 0.3], [2.2, 2.4, -0.3]].forEach(function (sp) {
+        var f = new THREE.Mesh(new THREE.ConeGeometry(0.85 * b, sp[1] * b, 5), hairM);
+        f.position.set(sp[0] * b, (2.0 + sp[1] * 0.42) * b, sp[2] * b);
+        f.rotation.x = -0.32; f.rotation.z = -sp[0] * 0.09;
+        f.castShadow = true;
+        head.add(f);
+      });
+
+    } else if (kind === "goggles") {
+      /* Comet: goggles pushed up on the forehead — a hard horizontal
+         bar across a round head, which reads instantly. */
+      cap(0.50, 0.18);
+      var strap = new THREE.Mesh(new THREE.CylinderGeometry(3.32 * b, 3.32 * b, 1.3 * b,
+                                                           16, 1, true), toon("#2b3340"));
+      strap.position.y = 1.5 * b;
+      head.add(strap);
+      [-1, 1].forEach(function (s) {
+        var lens = new THREE.Mesh(new THREE.CylinderGeometry(1.15 * b, 1.15 * b, 0.6 * b, 10), accent);
+        lens.rotation.x = Math.PI / 2;
+        lens.position.set(s * 1.35 * b, 1.7 * b, 2.5 * b);
+        head.add(lens);
+      });
+
     } else if (kind === "bun") {
-      var c3 = new THREE.Mesh(new THREE.SphereGeometry(3.3 * b, 18, 14,
-        0, Math.PI * 2, 0, Math.PI * 0.58), hairM);
-      c3.position.y = 0.14 * b;
-      head.add(c3);
+      cap(0.58, 0.14);
       var bun = new THREE.Mesh(new THREE.SphereGeometry(1.5 * b, 12, 10), hairM);
       bun.position.set(0, 2.5 * b, -2.2 * b);
+      bun.castShadow = true;
       head.add(bun);
-    } else if (kind === "ears") {
-      var c4 = new THREE.Mesh(new THREE.SphereGeometry(3.3 * b, 18, 14), hairM);
-      c4.scale.set(1.0, 0.98, 1.0);
-      c4.position.y = 0.05 * b;
-      head.add(c4);
-      /* the face shows through the front of the fur */
-      var face = new THREE.Mesh(new THREE.SphereGeometry(2.6 * b, 14, 12), skinM);
-      face.position.set(0, -0.2 * b, 1.3 * b);
-      face.scale.set(1, 0.95, 0.8);
-      head.add(face);
-      [-1, 1].forEach(function (s) {
-        var ear = new THREE.Mesh(new THREE.ConeGeometry(1.15 * b, 2.4 * b, 4), hairM);
-        ear.position.set(s * 2.0 * b, 3.0 * b, -0.2 * b);
-        ear.rotation.z = s * 0.25;
-        ear.castShadow = true;
-        head.add(ear);
-      });
-      if (look.muzzle) {
-        var mz = new THREE.Mesh(new THREE.SphereGeometry(1.3 * b, 12, 10), toon(look.muzzle));
-        mz.position.set(0, -1.2 * b, 2.5 * b);
-        mz.scale.set(1.2, 0.8, 0.9);
-        head.add(mz);
-        var nose = new THREE.Mesh(new THREE.SphereGeometry(0.42 * b, 8, 6), toon(look.spot));
-        nose.position.set(0, -0.85 * b, 3.5 * b);
-        head.add(nose);
+      if (look.charm) {
+        var ch = new THREE.Mesh(new THREE.BoxGeometry(1.1 * b, 1.4 * b, 1.1 * b), accent);
+        ch.position.set(2.7 * b, -1.6 * b, 0.6 * b);
+        head.add(ch);
       }
-    } else if (kind === "bear") {
-      var c5 = new THREE.Mesh(new THREE.SphereGeometry(3.45 * b, 18, 14), hairM);
-      head.add(c5);
+
+    } else if (kind === "sprig") {
+      cap(0.56, 0.14);
+      var tail = new THREE.Mesh(new THREE.CapsuleGeometry(1.0 * b, 3.4 * b, 4, 8), hairM);
+      tail.position.set(0, -1.4 * b, -2.6 * b);
+      tail.rotation.x = 0.5;
+      head.add(tail);
+      [0, 1, 2].forEach(function (i) {
+        var lf = new THREE.Mesh(new THREE.SphereGeometry(0.62 * b, 8, 6), accent);
+        lf.scale.set(0.5, 1.5, 0.9);
+        lf.position.set(2.6 * b, (1.4 + i * 0.9) * b, -1.0 * b);
+        lf.rotation.z = -0.4 - i * 0.16;
+        head.add(lf);
+      });
+
+    } else if (kind === "phones") {
+      var c7 = cap(0.54, 0.14);
+      c7.scale.set(1.12, 1, 1);
+      var flick = new THREE.Mesh(new THREE.BoxGeometry(2.4 * b, 2.6 * b, 1.4 * b), hairM);
+      flick.position.set(-2.4 * b, 1.1 * b, 0.8 * b);
+      flick.rotation.z = 0.5;
+      head.add(flick);
+      var bandH = new THREE.Mesh(new THREE.TorusGeometry(2.6 * b, 0.42 * b, 6, 14, Math.PI),
+                                 toon("#3a3f4a"));
+      bandH.rotation.z = Math.PI;
+      bandH.position.y = -2.6 * b;
+      head.add(bandH);
       [-1, 1].forEach(function (s) {
-        var ear = new THREE.Mesh(new THREE.SphereGeometry(1.25 * b, 10, 8), hairM);
-        ear.position.set(s * 2.5 * b, 2.7 * b, -0.3 * b);
-        ear.castShadow = true;
-        head.add(ear);
+        var cu = new THREE.Mesh(new THREE.CylinderGeometry(1.0 * b, 1.0 * b, 0.9 * b, 10), accent);
+        cu.rotation.z = Math.PI / 2;
+        cu.position.set(s * 2.7 * b, -2.4 * b, 0);
+        head.add(cu);
       });
-      var mz2 = new THREE.Mesh(new THREE.SphereGeometry(1.75 * b, 12, 10), toon(look.muzzle));
-      mz2.position.set(0, -1.3 * b, 2.5 * b);
-      mz2.scale.set(1.1, 0.85, 1.0);
-      head.add(mz2);
-      var nose2 = new THREE.Mesh(new THREE.SphereGeometry(0.6 * b, 8, 6), toon(look.spot));
-      nose2.position.set(0, -0.9 * b, 3.8 * b);
-      head.add(nose2);
-    } else if (kind === "shako") {
-      var c6 = new THREE.Mesh(new THREE.SphereGeometry(3.3 * b, 18, 14,
-        0, Math.PI * 2, 0, Math.PI * 0.5), hairM);
-      c6.position.y = 0.2 * b;
-      head.add(c6);
-      var hat = new THREE.Mesh(new THREE.CylinderGeometry(2.5 * b, 2.8 * b, 4.6 * b, 12),
-                               toon("#20222a"));
-      hat.position.y = 4.6 * b;
-      hat.castShadow = true;
-      head.add(hat); head.add(outline(hat, 1.08));
-      var brim = new THREE.Mesh(new THREE.CylinderGeometry(3.1 * b, 3.1 * b, 0.6 * b, 12),
-                                toon("#15161c"));
-      brim.position.y = 2.4 * b;
-      head.add(brim);
-      var plume = new THREE.Mesh(new THREE.SphereGeometry(1.0 * b, 10, 8), toon(look.spot));
-      plume.position.y = 7.4 * b;
-      head.add(plume);
-    } else if (kind === "jester") {
-      var c7 = new THREE.Mesh(new THREE.SphereGeometry(3.3 * b, 18, 14,
-        0, Math.PI * 2, 0, Math.PI * 0.55), hairM);
-      c7.position.y = 0.14 * b;
-      head.add(c7);
-      [-1, 0, 1].forEach(function (s, i) {
-        var pt = new THREE.Mesh(new THREE.ConeGeometry(1.1 * b, 3.4 * b, 6), hairM);
-        pt.position.set(s * 2.2 * b, 3.4 * b, s === 0 ? -1.4 * b : 0);
-        pt.rotation.z = -s * 0.5;
-        pt.castShadow = true;
-        head.add(pt);
-        var bell = new THREE.Mesh(new THREE.SphereGeometry(0.6 * b, 8, 6), toon(look.spot));
-        bell.position.set(s * 3.0 * b, 4.6 * b, s === 0 ? -1.8 * b : 0);
-        head.add(bell);
+
+    } else if (kind === "flat") {
+      /* Boulder: no neck, a squat head and a flat top — the widest and
+         lowest outline on the pitch. */
+      var sq = new THREE.Mesh(new THREE.BoxGeometry(5.6 * b, 3.0 * b, 5.0 * b), hairM);
+      sq.position.y = 1.9 * b;
+      sq.castShadow = true;
+      head.add(sq); head.add(outline(sq, 1.07));
+      var brow = new THREE.Mesh(new THREE.BoxGeometry(5.0 * b, 0.7 * b, 0.8 * b), hairM);
+      brow.position.set(0, 0.9 * b, 2.7 * b);
+      head.add(brow);
+
+    } else if (kind === "pads") {
+      cap(0.48, 0.18);
+      [-1, 1].forEach(function (s) {
+        var pad = new THREE.Mesh(new THREE.ConeGeometry(1.9 * b, 2.4 * b, 4), accent);
+        pad.position.set(s * 3.5 * b, -3.2 * b, 0);
+        pad.rotation.z = -s * 0.5;
+        pad.castShadow = true;
+        head.add(pad);
       });
+
+    } else if (kind === "willow") {
+      cap(0.58, 0.12);
+      [-1, -0.45, 0.45, 1].forEach(function (s, i) {
+        var str = new THREE.Mesh(new THREE.CapsuleGeometry(0.62 * b, 6.2 * b, 4, 6), hairM);
+        str.position.set(s * 2.3 * b, -3.6 * b, -1.2 * b + (i % 2) * 0.6 * b);
+        str.rotation.z = s * 0.12;
+        head.add(str);
+      });
+
+    } else if (kind === "cap") {
+      var crown = new THREE.Mesh(new THREE.SphereGeometry(3.3 * b, 14, 10,
+        0, Math.PI * 2, 0, Math.PI * 0.46), accent);
+      crown.position.y = 0.5 * b;
+      crown.scale.set(1.05, 0.8, 1.05);
+      crown.castShadow = true;
+      head.add(crown);
+      var peak = new THREE.Mesh(new THREE.BoxGeometry(4.6 * b, 0.5 * b, 2.6 * b), accent);
+      peak.position.set(0, 1.5 * b, 2.6 * b);
+      head.add(peak);
+      [-1, 1].forEach(function (s) {
+        var bw2 = new THREE.Mesh(new THREE.BoxGeometry(1.5 * b, 0.6 * b, 0.7 * b), hairM);
+        bw2.position.set(s * 1.1 * b, 1.35 * b, 2.75 * b);
+        bw2.rotation.z = -s * 0.22;
+        head.add(bw2);
+      });
+
+    } else if (kind === "pony") {
+      cap(0.52, 0.16);
+      var tie = new THREE.Mesh(new THREE.SphereGeometry(0.85 * b, 8, 6), accent);
+      tie.position.set(0, 2.6 * b, -2.0 * b);
+      head.add(tie);
+      var pony = new THREE.Mesh(new THREE.CapsuleGeometry(0.95 * b, 4.6 * b, 4, 8), hairM);
+      pony.position.set(0, 1.0 * b, -3.6 * b);
+      pony.rotation.x = 0.85;
+      pony.castShadow = true;
+      head.add(pony);
+
+    } else {
+      cap(0.52, 0.16);                       /* "crop", and anything new */
     }
   }
-
 
   /* =======================================================================
      8. SOUND
@@ -1206,7 +1282,7 @@ window.OuissyCup = (function () {
       shake: 0, flash: 0, scorer: "", stat: { shots: [0, 0], poss: [0, 0] },
     };
     g.ids.forEach(function (id, t) {
-      TEAMS[id].squad.forEach(function (def, i) {
+      squadOf(teamById(id)).forEach(function (def, i) {
         g.players.push(makePlayer(t, id, def, i));
       });
     });
@@ -1916,8 +1992,8 @@ window.OuissyCup = (function () {
   }
 
   function scoreLine() {
-    return TEAMS[G.ids[0]].short + "  " + G.score[0] + " – " + G.score[1] +
-           "  " + TEAMS[G.ids[1]].short;
+    return teamById(G.ids[0]).short + "  " + G.score[0] + " – " + G.score[1] +
+           "  " + teamById(G.ids[1]).short;
   }
 
   /* =======================================================================
@@ -2007,7 +2083,9 @@ window.OuissyCup = (function () {
        those equal gives exactly this. */
     g.rotation.y = pl.dir + Math.PI;
     g.rotation.x = 0; g.rotation.z = 0;
-    g.scale.set(1, 1, 1);
+    /* the build, not unity: resetting this every frame is how a roster
+       of fourteen different shapes becomes fourteen of the same one */
+    g.scale.set(r.build.w, r.build.h, r.build.w);
 
     var state = (pl.anim && pl.anim.once) ? pl.anim.state : baseAnim(pl);
     if (!pl.anim || (!pl.anim.once && pl.anim.state !== state)) setAnim(pl, state);
@@ -2466,6 +2544,121 @@ window.OuissyCup = (function () {
     }
     return f.c;
   }
+  /* =======================================================================
+     CRESTS
+
+     A painted badge per shape, in the team's own two colours. Drawn
+     rather than lettered because a crest has to be recognisable at the
+     size of a thumbnail on a scoreboard, and three letters at that size
+     is a smudge.
+     ======================================================================= */
+  function crestCanvas(kind, base, trim, w, h) {
+    var f = mkCanvas(w, h);
+    var x = f.x, cx = w / 2, cy = h / 2, u = Math.min(w, h) / 2;
+    x.fillStyle = base;
+    x.beginPath();
+    x.moveTo(cx - u * 0.78, cy - u * 0.9);
+    x.lineTo(cx + u * 0.78, cy - u * 0.9);
+    x.lineTo(cx + u * 0.78, cy + u * 0.18);
+    x.quadraticCurveTo(cx + u * 0.72, cy + u * 0.92, cx, cy + u * 0.98);
+    x.quadraticCurveTo(cx - u * 0.72, cy + u * 0.92, cx - u * 0.78, cy + u * 0.18);
+    x.closePath(); x.fill();
+    x.strokeStyle = "rgba(0,0,0,.45)"; x.lineWidth = Math.max(1, u * 0.10); x.stroke();
+
+    x.fillStyle = trim; x.strokeStyle = trim;
+    x.lineWidth = Math.max(1, u * 0.16);
+    x.lineCap = "round"; x.lineJoin = "round";
+    var s = u * 0.52;
+
+    if (kind === "heart") {
+      x.beginPath();
+      x.arc(cx - s * 0.46, cy - s * 0.18, s * 0.5, 0, Math.PI * 2);
+      x.arc(cx + s * 0.46, cy - s * 0.18, s * 0.5, 0, Math.PI * 2);
+      x.fill();
+      x.beginPath();
+      x.moveTo(cx - s * 0.95, cy - s * 0.02);
+      x.lineTo(cx, cy + s * 1.0); x.lineTo(cx + s * 0.95, cy - s * 0.02);
+      x.closePath(); x.fill();
+    } else if (kind === "star") {
+      starPath(x, cx, cy, s, s * 0.44); x.fill();
+    } else if (kind === "flame") {
+      x.beginPath();
+      x.moveTo(cx, cy - s * 1.05);
+      x.quadraticCurveTo(cx + s * 0.9, cy, cx + s * 0.3, cy + s * 0.9);
+      x.quadraticCurveTo(cx, cy + s * 0.3, cx - s * 0.35, cy + s * 0.9);
+      x.quadraticCurveTo(cx - s * 0.85, cy, cx, cy - s * 1.05);
+      x.fill();
+    } else if (kind === "mountain") {
+      x.beginPath();
+      x.moveTo(cx - s, cy + s * 0.7); x.lineTo(cx - s * 0.2, cy - s * 0.9);
+      x.lineTo(cx + s * 0.25, cy + s * 0.05); x.lineTo(cx + s * 0.55, cy - s * 0.4);
+      x.lineTo(cx + s, cy + s * 0.7); x.closePath(); x.fill();
+    } else if (kind === "lantern") {
+      x.fillRect(cx - s * 0.5, cy - s * 0.5, s, s * 1.1);
+      x.fillRect(cx - s * 0.7, cy - s * 0.72, s * 1.4, s * 0.24);
+      x.beginPath(); x.moveTo(cx, cy - s * 1.1); x.lineTo(cx, cy - s * 0.72); x.stroke();
+    } else if (kind === "leaf" || kind === "branch") {
+      x.beginPath();
+      x.moveTo(cx - s * 0.7, cy + s * 0.7);
+      x.quadraticCurveTo(cx - s * 0.2, cy - s, cx + s * 0.8, cy - s * 0.7);
+      x.quadraticCurveTo(cx + s * 0.3, cy + s * 0.6, cx - s * 0.7, cy + s * 0.7);
+      x.fill();
+      if (kind === "branch") {
+        x.beginPath(); x.moveTo(cx - s * 0.7, cy + s * 0.7);
+        x.lineTo(cx + s * 0.7, cy - s * 0.6); x.stroke();
+      }
+    } else if (kind === "note") {
+      x.beginPath(); x.arc(cx - s * 0.35, cy + s * 0.55, s * 0.42, 0, Math.PI * 2); x.fill();
+      x.fillRect(cx, cy - s * 0.95, s * 0.22, s * 1.5);
+      x.fillRect(cx, cy - s * 0.95, s * 0.75, s * 0.28);
+    } else if (kind === "wave") {
+      x.beginPath();
+      for (var i = 0; i <= 3; i++) {
+        var wx = cx - s + (i / 3) * s * 2;
+        if (i === 0) x.moveTo(wx, cy);
+        else x.quadraticCurveTo(wx - s * 0.33, cy + (i % 2 ? -s * 0.8 : s * 0.8), wx, cy);
+      }
+      x.stroke();
+    } else if (kind === "key") {
+      x.beginPath(); x.arc(cx - s * 0.4, cy - s * 0.3, s * 0.45, 0, Math.PI * 2); x.stroke();
+      x.beginPath(); x.moveTo(cx - s * 0.1, cy); x.lineTo(cx + s * 0.8, cy + s * 0.8); x.stroke();
+      x.beginPath(); x.moveTo(cx + s * 0.45, cy + s * 0.45);
+      x.lineTo(cx + s * 0.75, cy + s * 0.15); x.stroke();
+    } else if (kind === "book") {
+      x.fillRect(cx - s * 0.9, cy - s * 0.65, s * 0.8, s * 1.3);
+      x.fillRect(cx + s * 0.1, cy - s * 0.65, s * 0.8, s * 1.3);
+      x.fillStyle = base; x.fillRect(cx - s * 0.08, cy - s * 0.7, s * 0.16, s * 1.4);
+    } else if (kind === "moon") {
+      x.beginPath(); x.arc(cx + s * 0.1, cy, s * 0.9, 0, Math.PI * 2); x.fill();
+      x.fillStyle = base;
+      x.beginPath(); x.arc(cx + s * 0.55, cy - s * 0.2, s * 0.8, 0, Math.PI * 2); x.fill();
+    } else if (kind === "rose") {
+      x.beginPath(); x.arc(cx, cy - s * 0.1, s * 0.62, 0, Math.PI * 2); x.fill();
+      x.fillStyle = base;
+      x.beginPath(); x.arc(cx, cy - s * 0.1, s * 0.3, 0, Math.PI * 2); x.fill();
+      x.fillStyle = trim;
+      x.beginPath(); x.moveTo(cx, cy + s * 0.5); x.lineTo(cx, cy + s * 1.0); x.stroke();
+    } else if (kind === "glove") {
+      x.fillRect(cx - s * 0.55, cy - s * 0.3, s * 1.1, s * 1.05);
+      for (var g2 = 0; g2 < 3; g2++)
+        x.fillRect(cx - s * 0.5 + g2 * s * 0.38, cy - s * 0.95, s * 0.26, s * 0.7);
+    } else {
+      x.fillRect(cx - s * 0.8, cy - s * 0.2, s * 1.6, s * 0.4);
+      x.fillRect(cx - s * 0.2, cy - s * 0.8, s * 0.4, s * 1.6);
+    }
+    return f.c;
+  }
+  function starPath(x, cx, cy, R, r) {
+    x.beginPath();
+    for (var i = 0; i < 10; i++) {
+      var a = -Math.PI / 2 + (i * Math.PI) / 5;
+      var rad = i % 2 ? r : R;
+      var px2 = cx + Math.cos(a) * rad, py = cy + Math.sin(a) * rad;
+      if (i) x.lineTo(px2, py); else x.moveTo(px2, py);
+    }
+    x.closePath();
+  }
+
   function star(x, cx, cy, R, r) {
     x.beginPath();
     for (var i = 0; i < 10; i++) {
@@ -2503,14 +2696,40 @@ window.OuissyCup = (function () {
      buffer is asking to render nine times the area of a 1x one, and on
      a cartoon with hard colours the third pixel buys nothing you can
      see. */
+  /* THE RETRO LAYER.
+
+     The chapter is modelled and lit in 3D and then rendered through a
+     small buffer and blown up with hard edges, so it comes out looking
+     placed by hand like the rest of the site while keeping the depth
+     and the camera a flat version could not have.
+
+     There is no shader and no post pass in it: the canvas BACKING STORE
+     is simply made small, and CSS stretches it with image-rendering:
+     pixelated. That is precisely the trick the other five chapters use
+     to get a 320x180 buffer onto a phone — so this is not a new idea in
+     this codebase, it is the same idea pointed at WebGL. It is also the
+     cheapest possible way to do it: a quarter of the pixels is a
+     quarter of the shading, which is what pays for real shadows.
+
+     Everything with words in it is DOM over the top, so nothing that
+     has to be READ goes through the buffer. */
   function sizeRenderer() {
     if (!renderer || !stage) return;
     var r = stage.getBoundingClientRect();
     var w = Math.max(2, Math.round(r.width)), h = Math.max(2, Math.round(r.height));
-    var dpr = Math.min(2, window.devicePixelRatio || 1);
-    renderer.setPixelRatio(dpr);
-    renderer.setSize(w, h, false);
-    if (camera) { camera.aspect = w / h; camera.updateProjectionMatrix(); }
+    var aspect = w / h;
+    if (cfg("PIXEL.on", true)) {
+      var ph = Math.max(120, Math.round(cfg("PIXEL.height", 270)));
+      var pw = Math.max(2, Math.round(ph * aspect));
+      renderer.setPixelRatio(1);
+      renderer.setSize(pw, ph, false);
+      if (cvs) cvs.classList.add("px");
+    } else {
+      renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+      renderer.setSize(w, h, false);
+      if (cvs) cvs.classList.remove("px");
+    }
+    if (camera) { camera.aspect = aspect; camera.updateProjectionMatrix(); }
   }
 
   function buildRenderer() {
@@ -2552,10 +2771,19 @@ window.OuissyCup = (function () {
     scene.add(ballGroup);
   }
 
-  function setFlag(el, kind) {
-    if (!el) return;
+  /* A side shows its flag if it is a country and its crest if it is
+     not. The memory-lane teams are places, not nations, so a flag would
+     be a lie and a crest is the honest badge for them. */
+  function setFlag(el, team) {
+    if (!el || !team) return;
     el.innerHTML = "";
-    el.appendChild(flagCanvas(kind, 22, 15));
+    el.appendChild(badgeCanvas(team, 30, 20));
+  }
+  function badgeCanvas(team, w, h) {
+    if (team.flag && team.flag !== "crest") return flagCanvas(team.flag, w, h);
+    return crestCanvas(team.crest || "shield",
+                       team.kit ? team.kit.shirt : "#c1272d",
+                       team.kit ? team.kit.trim : "#ffffff", w, h);
   }
 
   /* The three icons the button wears. Drawn rather than lettered,
@@ -2644,8 +2872,8 @@ window.OuissyCup = (function () {
       '<div class="cup-card' + (opts.big ? " cup-card-big" : "") + '">' +
       '<p class="cup-card-k">' + (opts.kicker || "") + '</p>' +
       '<h3>' + title + '</h3>' +
-      '<p class="cup-card-l">' + (line || "") + '</p>' +
-      (opts.body || "") +
+      (line ? '<p class="cup-card-l">' + line + '</p>' : "") +
+      (opts.html || opts.body || "") +
       (opts.note ? '<p class="cup-card-n">' + opts.note + '</p>' : "") +
       /* a card with nothing to press is a card that is telling her to
          wait, and an empty button is worse than no button */
@@ -2688,13 +2916,13 @@ window.OuissyCup = (function () {
   var ROLE_NAME = { gk: "GK", def: "DEF", mid: "MID", st: "ST" };
 
   function teamSheet(id, sideLabel) {
-    var t = TEAMS[id];
-    var rows = t.squad.map(function (m) {
+    var t = teamById(id);
+    var rows = squadOf(t).map(function (m) {
       return "<li><em>" + (ROLE_NAME[m.role] || "") + "</em> " +
-             (m.star ? "<b>" + m.name + "</b>" : m.name) + "</li>";
+             (m.captain || m.star ? "<b>" + m.name + "</b>" : m.name) + "</li>";
     }).join("");
     return '<div class="cup-team">' +
-           '<span class="cup-team-flag" data-flag="' + t.flag + '"></span>' +
+           '<span class="cup-team-flag" data-team="' + t.id + '"></span>' +
            "<h4>" + t.name + "</h4><ol>" + rows + "</ol>" +
            (sideLabel ? "" : "") + "</div>";
   }
@@ -2706,7 +2934,7 @@ window.OuissyCup = (function () {
     return '<div class="cup-bracket">' + CUP.map(function (r, i) {
       var st = i < at ? "won" : i === at ? "now" : "next";
       return '<span class="cup-leg" data-s="' + st + '">' + r.round +
-             "<b>" + TEAMS[r.id].short + "</b></span>";
+             "<b>" + (teamById(r.id) || {}).short + "</b></span>";
     }).join("") + "</div>";
   }
   function statsBlock() {
@@ -2725,10 +2953,400 @@ window.OuissyCup = (function () {
   function paintCardFlags() {
     var el = EL["cup-overlay"];
     if (!el) return;
-    Array.prototype.forEach.call(el.querySelectorAll("[data-flag]"), function (n) {
+    Array.prototype.forEach.call(el.querySelectorAll("[data-team]"), function (n) {
+      var t = teamById(n.dataset.team);
+      if (!t) return;
       n.innerHTML = "";
-      n.appendChild(flagCanvas(n.dataset.flag, 96, 64));
+      n.appendChild(badgeCanvas(t, 96, 64));
     });
+  }
+
+  /* =======================================================================
+     THE MENUS — title, team select, and the squad builder
+
+     All DOM inside the same card the round screens use, so they arrive
+     with the same weight as everything else in the chapter rather than
+     looking like a settings dialog that wandered in.
+
+     The builder is the piece with real state behind it: a squad she has
+     put together is saved to localStorage and then joins the carousel
+     as a team like any other, which is why `squadOf` and `teamById` do
+     not care where a side came from.
+     ======================================================================= */
+  var CUSTOM_KEY = "cup_custom_v1";
+  var carAt = 0;
+  var build = null;                     // the squad under construction
+
+  function loadCustom() {
+    try {
+      var raw = localStorage.getItem(CUSTOM_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) { return []; }
+  }
+  function saveCustom(list) {
+    try { localStorage.setItem(CUSTOM_KEY, JSON.stringify(list)); } catch (e) {}
+  }
+  /* every side she can pick: the config's, then her own */
+  function allTeams() { return cfg("TEAMS", []).concat(loadCustom()); }
+  var customPatched = false;
+  function patchTeamLookup() {
+    if (customPatched) return;
+    customPatched = true;
+    var base = teamById;
+    teamById = function (id) {
+      var t = base(id);
+      if (t) return t;
+      var mine = loadCustom();
+      for (var i = 0; i < mine.length; i++) if (mine[i].id === id) return mine[i];
+      return null;
+    };
+  }
+
+  /* a side's four stats, averaged, and the rating that comes out of them */
+  function teamStats(team) {
+    var sq = squadOf(team);
+    var o = { speed: 0, power: 0, skill: 0, defence: 0 };
+    if (!sq.length) return o;
+    sq.forEach(function (m) {
+      o.speed += m.stats.speed; o.power += m.stats.power;
+      o.skill += m.stats.skill; o.defence += m.stats.defence;
+    });
+    Object.keys(o).forEach(function (k) { o[k] = Math.round(o[k] / sq.length); });
+    return o;
+  }
+  function teamRating(team) {
+    var st = teamStats(team);
+    return Math.round((st.speed + st.power + st.skill + st.defence) / 4);
+  }
+
+  function barsHtml(st) {
+    var rows = [["spd", "SPEED", st.speed], ["pow", "POWER", st.power],
+                ["skl", "SKILL", st.skill], ["def", "DEFENCE", st.defence]];
+    return '<div class="cup-bars">' + rows.map(function (r) {
+      return '<span class="cup-bar" data-k="' + r[0] + '"><u>' + r[1] +
+             '</u><i><b data-w="' + r[2] + '"></b></i><s>' + r[2] + '</s></span>';
+    }).join("") + "</div>";
+  }
+  /* the bars grow after the card is in the DOM, which is the whole
+     reason they are worth having rather than printing four numbers */
+  function animateBars() {
+    var el = EL["cup-overlay"];
+    if (!el) return;
+    requestAnimationFrame(function () {
+      Array.prototype.forEach.call(el.querySelectorAll(".cup-bar b"), function (b) {
+        b.style.width = Math.max(2, Math.min(100, +b.dataset.w)) + "%";
+      });
+    });
+  }
+
+  /* ---------------------------------------------------------------- title */
+  function titleMenu() {
+    var d = cfg("RULES.difficulty", "normal");
+    overlay(cfg("TITLE", "Ouissy\u2019s Cup"), "", "", null, {
+      kicker: "FOUR A SIDE",
+      html: '<div class="cup-menu">' +
+        '<p class="cup-menu-sub">' + cfg("TAGLINE", "") + "</p>" +
+        '<div class="cup-menu-list">' +
+        '<button class="cup-menu-b primary" data-go="cup">PLAY THE CUP' +
+          "<small>quarter-final, semi, final</small></button>" +
+        '<button class="cup-menu-b" data-go="quick">QUICK MATCH' +
+          "<small>one game, any two sides</small></button>" +
+        '<button class="cup-menu-b" data-go="teams">TEAMS &amp; SQUADS' +
+          "<small>pick a side, or build your own</small></button>" +
+        '<button class="cup-menu-b" data-go="help">HOW TO PLAY</button>' +
+        '<button class="cup-menu-b" data-go="quit">BACK TO THE BOOK</button>' +
+        "</div></div>",
+    });
+    wireMenu({
+      cup: function () { hideOverlay(); run.round = 0; roundCard(); },
+      quick: function () { teamSelect("quick"); },
+      teams: function () { teamSelect("pick"); },
+      help: function () { helpCard(titleMenu); },
+      quit: function () { quit(); },
+    });
+  }
+
+  function wireMenu(map) {
+    var el = EL["cup-overlay"];
+    if (!el) return;
+    Array.prototype.forEach.call(el.querySelectorAll("[data-go]"), function (b) {
+      b.addEventListener("click", function (e) {
+        e.stopPropagation();
+        SFX.pick();
+        var fn = map[b.dataset.go];
+        if (fn) fn(b);
+      });
+    });
+  }
+
+  /* ------------------------------------------------------------ carousel */
+  function teamSelect(mode) {
+    var list = allTeams();
+    if (!list.length) return titleMenu();
+    carAt = ((carAt % list.length) + list.length) % list.length;
+    var t = list[carAt];
+    var st = teamStats(t);
+    var sq = squadOf(t);
+    var cap = sq.filter(function (m) { return m.captain; })[0] || sq[1] || sq[0];
+    var capR = cap ? ROSTER[cap.id] : null;
+
+    overlay(mode === "quick" ? "QUICK MATCH" : "TEAMS", "", "", null, {
+      kicker: (carAt + 1) + " / " + list.length,
+      html: '<div class="cup-menu">' +
+        '<div class="cup-car">' +
+        '<button class="cup-car-arrow" data-go="prev">&#9664;</button>' +
+        '<div class="cup-tcard">' +
+          '<div class="cup-tcard-top">' +
+            '<span class="cup-tcard-badge" data-team="' + t.id + '"></span>' +
+            '<span class="cup-tcard-name"><h4>' + t.name + "</h4>" +
+            "<span>" + (t.custom ? "your own squad" :
+                        t.home ? "her side" : t.final ? "his side" : "rated " + teamRating(t)) +
+            "</span></span>" +
+          "</div>" +
+          '<div class="cup-tcard-body">' +
+            '<ol class="cup-tcard-squad">' + sq.map(function (m) {
+              return "<li><em>" + (ROLE_NAME[m.role] || "") + "</em> " +
+                     (m.captain ? "<b>" + m.name + "</b>" : m.name) + "</li>";
+            }).join("") + "</ol>" +
+            barsHtml(st) +
+          "</div>" +
+          (capR && capR.super ?
+            '<p class="cup-super"><b style="background:' + capR.super.colour + '">\u2665 ' +
+            capR.super.name + "</b> \u2014 " + capR.super.note + "</p>" : "") +
+        "</div>" +
+        '<button class="cup-car-arrow" data-go="next">&#9654;</button>' +
+        "</div>" +
+        '<div class="cup-btnrow">' +
+        '<button class="cup-menu-b primary" data-go="use">' +
+          (mode === "quick" ? "PLAY AS THIS SIDE" : "USE THIS SIDE") + "</button>" +
+        '<button class="cup-menu-b" data-go="build">BUILD YOUR OWN</button>' +
+        (t.custom ? '<button class="cup-menu-b" data-go="del">DELETE</button>' : "") +
+        '<button class="cup-menu-b" data-go="back">BACK</button>' +
+        "</div></div>",
+    });
+    animateBars();
+    wireMenu({
+      prev: function () { carAt--; teamSelect(mode); },
+      next: function () { carAt++; teamSelect(mode); },
+      use: function () {
+        patchTeamLookup();
+        run.myTeam = t.id;
+        hideOverlay();
+        if (mode === "quick") { run.quick = true; run.round = 0; roundCard(); }
+        else titleMenu();
+      },
+      build: function () { openBuilder(mode); },
+      del: function () {
+        saveCustom(loadCustom().filter(function (c) { return c.id !== t.id; }));
+        carAt = 0; teamSelect(mode);
+      },
+      back: function () { titleMenu(); },
+    });
+  }
+
+  /* ------------------------------------------------------------- builder */
+  var SWATCHES = ["#c1272d", "#1d6b6e", "#e8a63c", "#7a4fb0", "#2f7fc4",
+                  "#5f9a5c", "#b8556e", "#2b3340", "#f6efdd", "#e8764a"];
+  var CRESTS = ["heart", "star", "flame", "mountain", "lantern", "leaf",
+                "note", "shield", "rose", "wave", "key", "book", "moon"];
+
+  function blankBuild() {
+    return { id: "own_" + Date.now(), custom: true, name: "OUR SIDE", short: "OUR",
+             crest: "heart", flag: "crest", squad: [null, null, null, null],
+             captain: null, formation: "diamond",
+             kit: { shirt: "#c1272d", shirtDark: "#8f1a20", shorts: "#f6efdd",
+                    shortsDark: "#cdbf9f", socks: "#c1272d", trim: "#e8a63c" },
+             gkKit: { shirt: "#2a2438", shirtDark: "#1a1626", shorts: "#12101c",
+                      shortsDark: "#0a0812", socks: "#2a2438", trim: "#ffd45e" } };
+  }
+  function shade(hex, f) {
+    var n = parseInt(hex.slice(1), 16);
+    var r = Math.round(((n >> 16) & 255) * f), g2 = Math.round(((n >> 8) & 255) * f),
+        b2 = Math.round((n & 255) * f);
+    return "#" + ((1 << 24) + (r << 16) + (g2 << 8) + b2).toString(16).slice(1);
+  }
+
+  function openBuilder(backTo) {
+    if (!build) build = blankBuild();
+    drawBuilder(backTo);
+  }
+
+  function drawBuilder(backTo) {
+    var roster = cfg("ROSTER", []);
+    var keepers = roster.filter(function (r) { return r.role === "gk"; });
+    var outfield = roster.filter(function (r) { return r.role !== "gk"; });
+    var chosen = build.squad.filter(Boolean);
+    var full = chosen.length === 4;
+    var rating = full ? teamRating(build) : 0;
+
+    var pick = function (r) {
+      var on = build.squad.indexOf(r.id) >= 0;
+      var isGk = r.role === "gk";
+      var slotFull = isGk ? !!build.squad[0] && !on
+                          : chosen.filter(function (id) { return id !== build.squad[0]; }).length >= 3 && !on;
+      return '<button class="cup-pick" data-go="pick" data-id="' + r.id + '"' +
+             ' data-on="' + (on ? 1 : 0) + '"' + (slotFull ? " disabled" : "") + '>' +
+             '<i style="background:' + (r.colour ? r.colour.a : "#888") + '"></i>' +
+             "<span>" + r.name + " <em>" + (ROLE_NAME[r.role] || "") + " \u00b7 " +
+             Math.round((r.stats.speed + r.stats.power + r.stats.skill + r.stats.defence) / 4) +
+             "</em></span></button>";
+    };
+
+    var slots = ["gk", "1", "2", "3"].map(function (lab, i) {
+      var id = build.squad[i];
+      var r = id ? ROSTER[id] : null;
+      var isCap = id && build.captain === id;
+      return '<div class="cup-slot' + (isCap ? " cap" : "") + (r ? "" : " empty") + '">' +
+             "<em>" + (i === 0 ? "GK" : ROLE_NAME[r ? r.role : "mid"] || "") + "</em>" +
+             "<span>" + (r ? r.name : "\u2014 empty \u2014") + "</span>" +
+             (r && i > 0 ? '<button class="cup-form" data-go="cap" data-id="' + id + '"' +
+                ' data-on="' + (isCap ? 1 : 0) + '">CAPTAIN</button>' : "") +
+             "</div>";
+    }).join("");
+
+    var capR = build.captain ? ROSTER[build.captain] : null;
+
+    overlay("BUILD YOUR SQUAD", "", "", null, {
+      kicker: "TEAM BUILDER", big: true,
+      html: '<div class="cup-menu"><div class="cup-build">' +
+        '<div class="cup-build-col"><h5>KEEPERS</h5><div class="cup-pool">' +
+          keepers.map(pick).join("") + "</div>" +
+          '<h5 style="margin-top:1.2cqh">OUTFIELD \u2014 PICK THREE</h5>' +
+          '<div class="cup-pool">' + outfield.map(pick).join("") + "</div></div>" +
+
+        '<div class="cup-build-col"><h5>YOUR SIDE</h5>' +
+          '<div class="cup-slots">' + slots + "</div>" +
+          '<div class="cup-rating"><b>' + (full ? rating : "--") + "</b> TEAM RATING</div>" +
+          (full ? barsHtml(teamStats(build)) : "") +
+          (capR && capR.super ?
+            '<p class="cup-super"><b style="background:' + capR.super.colour + '">\u2665 ' +
+            capR.super.name + "</b> \u2014 your team\u2019s super</p>" : "") +
+
+          '<div class="cup-row"><label>NAME</label>' +
+            '<input type="text" id="cup-bname" maxlength="22" value="' +
+            String(build.name).replace(/"/g, "&quot;") + '"></div>' +
+          '<div class="cup-row"><label>KIT</label>' +
+            SWATCHES.map(function (c) {
+              return '<button class="cup-swatch" data-go="kit" data-c="' + c + '"' +
+                     ' data-on="' + (build.kit.shirt === c ? 1 : 0) +
+                     '" style="background:' + c + '"></button>';
+            }).join("") + "</div>" +
+          '<div class="cup-row"><label>TRIM</label>' +
+            SWATCHES.map(function (c) {
+              return '<button class="cup-swatch" data-go="trim" data-c="' + c + '"' +
+                     ' data-on="' + (build.kit.trim === c ? 1 : 0) +
+                     '" style="background:' + c + '"></button>';
+            }).join("") + "</div>" +
+          '<div class="cup-row"><label>CREST</label><span class="cup-forms">' +
+            CRESTS.map(function (k) {
+              return '<button class="cup-form" data-go="crest" data-c="' + k + '"' +
+                     ' data-on="' + (build.crest === k ? 1 : 0) + '">' + k + "</button>";
+            }).join("") + "</span></div>" +
+          '<div class="cup-row"><label>SHAPE</label><span class="cup-forms">' +
+            cfg("FORMATIONS", []).map(function (f) {
+              return '<button class="cup-form" data-go="form" data-c="' + f.id + '"' +
+                     ' data-on="' + (build.formation === f.id ? 1 : 0) + '">' + f.name + "</button>";
+            }).join("") + "</span></div>" +
+          '<p class="cup-note">' + (formationNote(build.formation) || "") + "</p>" +
+        "</div></div>" +
+
+        '<div class="cup-btnrow">' +
+        '<button class="cup-menu-b primary" data-go="save"' + (full ? "" : " disabled") +
+          ">SAVE THIS SIDE</button>" +
+        '<button class="cup-menu-b" data-go="rand">RANDOMISE</button>' +
+        '<button class="cup-menu-b" data-go="reset">RESET</button>' +
+        '<button class="cup-menu-b" data-go="back">BACK</button>' +
+        "</div></div>",
+    });
+    animateBars();
+
+    var nameEl = document.getElementById("cup-bname");
+    if (nameEl) nameEl.addEventListener("input", function () {
+      build.name = nameEl.value || "OUR SIDE";
+      build.short = build.name.replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase() || "OUR";
+    });
+
+    wireMenu({
+      pick: function (b) { togglePick(b.dataset.id); drawBuilder(backTo); },
+      cap: function (b) { build.captain = b.dataset.id; drawBuilder(backTo); },
+      kit: function (b) {
+        build.kit.shirt = b.dataset.c;
+        build.kit.shirtDark = shade(b.dataset.c, 0.72);
+        build.kit.socks = b.dataset.c;
+        drawBuilder(backTo);
+      },
+      trim: function (b) { build.kit.trim = b.dataset.c; drawBuilder(backTo); },
+      crest: function (b) { build.crest = b.dataset.c; drawBuilder(backTo); },
+      form: function (b) { build.formation = b.dataset.c; drawBuilder(backTo); },
+      rand: function () { randomiseBuild(); drawBuilder(backTo); },
+      reset: function () { build = blankBuild(); drawBuilder(backTo); },
+      save: function () {
+        if (build.squad.filter(Boolean).length !== 4) return;
+        if (!build.captain) build.captain = build.squad[1];
+        var mine = loadCustom().filter(function (c) { return c.id !== build.id; });
+        mine.push(JSON.parse(JSON.stringify(build)));
+        saveCustom(mine);
+        patchTeamLookup();
+        carAt = cfg("TEAMS", []).length + mine.length - 1;
+        build = null;
+        teamSelect(backTo || "pick");
+      },
+      back: function () { teamSelect(backTo || "pick"); },
+    });
+  }
+
+  function formationNote(id) {
+    var f = cfg("FORMATIONS", []).filter(function (x) { return x.id === id; })[0];
+    return f ? f.note : "";
+  }
+
+  function togglePick(id) {
+    var r = ROSTER[id];
+    if (!r) return;
+    var at = build.squad.indexOf(id);
+    if (at >= 0) {
+      build.squad[at] = null;
+      if (build.captain === id) build.captain = null;
+      return;
+    }
+    if (r.role === "gk") { build.squad[0] = id; return; }
+    for (var i = 1; i < 4; i++) if (!build.squad[i]) { build.squad[i] = id; break; }
+    if (!build.captain) build.captain = id;
+  }
+
+  function randomiseBuild() {
+    var roster = cfg("ROSTER", []);
+    var gks = roster.filter(function (r) { return r.role === "gk"; });
+    var out = roster.filter(function (r) { return r.role !== "gk"; }).slice();
+    for (var i = out.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var tmp = out[i]; out[i] = out[j]; out[j] = tmp;
+    }
+    build.squad = [gks[Math.floor(Math.random() * gks.length)].id,
+                   out[0].id, out[1].id, out[2].id];
+    build.captain = out[0].id;
+    build.kit.shirt = SWATCHES[Math.floor(Math.random() * SWATCHES.length)];
+    build.kit.shirtDark = shade(build.kit.shirt, 0.72);
+    build.kit.socks = build.kit.shirt;
+    build.kit.trim = SWATCHES[Math.floor(Math.random() * SWATCHES.length)];
+    build.crest = CRESTS[Math.floor(Math.random() * CRESTS.length)];
+  }
+
+  function helpCard(back) {
+    overlay("HOW TO PLAY", "", "", null, {
+      kicker: "CONTROLS", big: true,
+      html: '<div class="cup-menu"><div class="cup-table">' +
+        "<div><b>MOVE</b><span>stick, or W A S D</span><b>&nbsp;</b></div>" +
+        "<div><b>TAP</b><span>pass \u00b7 or tackle when they have it</span><b>&nbsp;</b></div>" +
+        "<div><b>HOLD</b><span>wind up a shot \u00b7 or sprint</span><b>&nbsp;</b></div>" +
+        "<div><b>\u2665 FULL</b><span>tap to unleash the super</span><b>&nbsp;</b></div>" +
+        "</div>" +
+        '<p class="cup-note">You are always whoever is nearest the ball. ' +
+        "It never switches away while you are carrying it.</p>" +
+        '<div class="cup-btnrow"><button class="cup-menu-b primary" data-go="back">GOT IT</button></div>' +
+        "</div>",
+    });
+    wireMenu({ back: function () { (back || titleMenu)(); } });
   }
 
   /* =======================================================================
@@ -2743,15 +3361,15 @@ window.OuissyCup = (function () {
 
   function roundCard() {
     var r = CUP[run.round];
-    var them = TEAMS[r.id];
+    var them = teamById(r.id);
     overlay(them.name, r.before, "KICK OFF", function () {
       hideOverlay();
       G = newMatch(run.round);
       buildRigs();
-      setFlag(EL["cup-h-flag"], TEAMS[G.ids[0]].flag);
-      setFlag(EL["cup-a-flag"], TEAMS[G.ids[1]].flag);
-      EL["cup-h-name"].textContent = TEAMS[G.ids[0]].short;
-      EL["cup-a-name"].textContent = TEAMS[G.ids[1]].short;
+      setFlag(EL["cup-h-flag"], teamById(G.ids[0]));
+      setFlag(EL["cup-a-flag"], teamById(G.ids[1]));
+      EL["cup-h-name"].textContent = teamById(G.ids[0]).short;
+      EL["cup-a-name"].textContent = teamById(G.ids[1]).short;
       EL["cup-round"].textContent = r.round;
       resetPositions(0);
       if (EL["cup-hud"]) EL["cup-hud"].hidden = false;
@@ -2979,7 +3597,8 @@ window.OuissyCup = (function () {
       resetPositions(0);
       placeCamera(0, true);
       renderer.render(scene, camera);
-      roundCard();
+      patchTeamLookup();
+      titleMenu();
       if (raf) cancelAnimationFrame(raf);
       raf = requestAnimationFrame(frame);
     }).catch(function (e) {
@@ -3084,7 +3703,8 @@ window.OuissyCup = (function () {
                                z: +camera.position.z.toFixed(1) } : null,
                rigs: rigs.length, shadows: shadowsOn };
     },
-    cast: function () { return CAST; },
+    roster: function () { return cfg("ROSTER", []); },
+    teams: function () { return cfg("TEAMS", []); },
     /* build one, unattached, so a harness can line the whole squad up
        and photograph it from close range */
     rig: function (spec) { return buildRig(spec); },

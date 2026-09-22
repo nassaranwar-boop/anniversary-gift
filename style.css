@@ -7561,9 +7561,16 @@ img{-webkit-user-drag:none; user-select:none;}
     0 0 0 1cqw rgba(14,44,20,.92),
     0 1.2cqw 4cqw rgba(0,0,0,.5);
 }
-/* WebGL, so no pixel snapping: this one is smooth on purpose. */
+/* The canvas is rendered small and stretched hard, the same way the
+   other five chapters put a 320x180 buffer on a phone — see
+   sizeRenderer() in cup.js. `.px` is added by the game when the retro
+   layer is on, so turning it off in cup.config.js really does turn it
+   off rather than leaving a smoothed image inside a pixelated box. */
 #cup-canvas{
   position:absolute; inset:0; width:100%; height:100%; display:block;
+}
+#cup-canvas.px{
+  image-rendering:pixelated; image-rendering:crisp-edges;
 }
 
 /* ---------- the scoreboard ----------
@@ -7731,7 +7738,12 @@ img{-webkit-user-drag:none; user-select:none;}
 .cup-overlay[hidden]{display:none;}
 .cup-card{
   width:min(74cqw, 88%); text-align:center;
-  padding:4cqh 4cqw;
+  /* A card is allowed to be long — the squad builder is — but never
+     taller than the stage: overflowing it centred clips the heading off
+     the top AND the buttons off the bottom, so the two things she needs
+     are the two things she cannot see. */
+  max-height:92cqh; overflow-y:auto; overscroll-behavior:contain;
+  padding:3.2cqh 3.2cqw;
   border-radius:1.6cqw;
   background:linear-gradient(180deg,#f7f1e0,#e9dec6);
   box-shadow:0 1.6cqh 4cqh rgba(0,0,0,.55), inset 0 0 0 .3cqh #c8b48a;
@@ -7824,4 +7836,181 @@ img{-webkit-user-drag:none; user-select:none;}
    top doing nothing. */
 @media (max-width: 900px) and (orientation: portrait){
   .cup-titlebar{display:block;}
+}
+
+/* =========================================================================
+   OUISSY'S CUP — THE MENUS
+
+   The title, the team carousel and the squad builder. All DOM over the
+   pitch, all in the site's own type and colours, and all inside the
+   same card the round screens use so they arrive with the same weight.
+   ========================================================================= */
+.cup-menu{width:min(86cqw,96%); text-align:center;}
+.cup-menu-title{
+  margin:0 0 .4cqh; font-family:'Cinzel',serif; font-weight:700;
+  font-size:6.4cqh; color:#3d2a12; letter-spacing:.02em;
+}
+.cup-menu-sub{
+  margin:0 0 2.6cqh; font-family:'Poppins',sans-serif;
+  font-size:2.1cqh; color:#8a6f42; font-style:italic;
+}
+.cup-menu-list{display:flex; flex-direction:column; gap:1.2cqh; align-items:center;}
+.cup-menu-b{
+  width:min(44cqw,320px); padding:1.5cqh 2cqw; border:0; cursor:pointer;
+  border-radius:1cqw; font-family:'Silkscreen',monospace; font-size:2.4cqh;
+  letter-spacing:.06em; color:#3d2a12;
+  background:linear-gradient(180deg,#f7f1e0,#e4d7ba);
+
+  box-shadow:0 .7cqh 0 #bca877, 0 1.2cqh 2.2cqh rgba(0,0,0,.28);
+  transition:transform .08s ease, box-shadow .08s ease;
+}
+.cup-menu-b:active{transform:translateY(.45cqh); box-shadow:0 .25cqh 0 #bca877;}
+.cup-menu-b.primary{
+  color:#0f2a16; background:linear-gradient(180deg,#ffe98a,#f0c24a);
+  box-shadow:0 .7cqh 0 #b98c22, 0 1.2cqh 2.2cqh rgba(0,0,0,.32);
+}
+.cup-menu-b small{display:block; font-family:'Poppins',sans-serif;
+  font-size:1.5cqh; letter-spacing:0; color:#7a6236; margin-top:.3cqh;}
+
+/* ---- the carousel of sides ---- */
+.cup-car{display:flex; align-items:center; justify-content:center; gap:1.6cqw; margin-bottom:2cqh;}
+.cup-car-arrow{
+  flex:0 0 auto; width:6cqh; height:6cqh; border:0; border-radius:50%; cursor:pointer;
+  background:#e4d7ba; color:#3d2a12; font-size:2.6cqh; line-height:1;
+  font-family:'Silkscreen',monospace;
+  box-shadow:0 .5cqh 0 #bca877;
+}
+.cup-car-arrow:active{transform:translateY(.3cqh); box-shadow:0 .2cqh 0 #bca877;}
+.cup-tcard{
+  flex:1 1 0; max-width:52cqw; padding:1.8cqh 2cqw; border-radius:1.2cqw;
+  background:rgba(61,42,18,.06);
+  box-shadow:inset 0 0 0 .2cqh rgba(61,42,18,.16);
+}
+.cup-tcard-top{display:flex; align-items:center; gap:1.4cqw; margin-bottom:1.2cqh;}
+.cup-tcard-badge{width:10cqh; height:6.6cqh; flex:0 0 auto;}
+.cup-tcard-badge canvas{width:100%; height:100%; display:block; image-rendering:pixelated;}
+.cup-tcard-name{flex:1 1 auto; text-align:left;}
+.cup-tcard-name h4{
+  margin:0; font-family:'Silkscreen',monospace; font-weight:400;
+  font-size:2.4cqh; color:#3d2a12; letter-spacing:.04em; line-height:1.25;
+}
+.cup-tcard-name span{
+  font-family:'Poppins',sans-serif; font-size:1.7cqh; color:#8a6f42;
+}
+.cup-tcard-body{display:flex; gap:2cqw; text-align:left;}
+.cup-tcard-squad{flex:1 1 0; margin:0; padding:0; list-style:none;
+  font-family:'Poppins',sans-serif; font-size:1.8cqh; color:#6a5330; line-height:1.75;}
+.cup-tcard-squad em{font-style:normal; color:#9a7b3e; font-size:1.45cqh; letter-spacing:.08em;}
+.cup-tcard-squad b{font-weight:600; color:#4a3a1e;}
+
+/* the little animated stat bars */
+.cup-bars{flex:1 1 0; display:flex; flex-direction:column; gap:.7cqh; justify-content:center;}
+.cup-bar{display:flex; align-items:center; gap:.8cqw;}
+.cup-bar u{
+  text-decoration:none; width:7cqw; font-family:'Silkscreen',monospace;
+  font-size:1.5cqh; color:#9a7b3e; letter-spacing:.06em;
+}
+.cup-bar i{
+  flex:1 1 auto; height:1.5cqh; border-radius:.3cqh; overflow:hidden;
+  background:rgba(61,42,18,.14); display:block;
+}
+/* stepped, not smooth: it reads as a pixel meter rather than a progress bar */
+.cup-bar i b{
+  display:block; height:100%; width:0;
+  background:repeating-linear-gradient(90deg,#e0a86a 0 .7cqw,#c98f52 .7cqw 1cqw);
+  transition:width .5s cubic-bezier(.2,.9,.3,1);
+}
+.cup-bar[data-k="spd"] i b{background:repeating-linear-gradient(90deg,#5fd6cc 0 .7cqw,#3fa8a0 .7cqw 1cqw);}
+.cup-bar[data-k="pow"] i b{background:repeating-linear-gradient(90deg,#e8764a 0 .7cqw,#c0542c .7cqw 1cqw);}
+.cup-bar[data-k="skl"] i b{background:repeating-linear-gradient(90deg,#e8a63c 0 .7cqw,#c08420 .7cqw 1cqw);}
+.cup-bar[data-k="def"] i b{background:repeating-linear-gradient(90deg,#7f9ad6 0 .7cqw,#5a76b0 .7cqw 1cqw);}
+.cup-bar s{text-decoration:none; width:4cqw; text-align:right;
+  font-family:'Silkscreen',monospace; font-size:1.5cqh; color:#6a5330;}
+
+.cup-super{
+  margin-top:1.2cqh; padding:.9cqh 1.2cqw; border-radius:.7cqw;
+  background:rgba(61,42,18,.10); text-align:left;
+  font-family:'Poppins',sans-serif; font-size:1.7cqh; color:#5c4a2e;
+}
+/* the super's colour goes on a chip behind the name rather than on the
+   letters: half these colours are pale, and pale type on a cream card
+   is a name nobody can read */
+.cup-super b{
+  display:inline-block; padding:.2cqh .7cqw; border-radius:.4cqw;
+  font-family:'Silkscreen',monospace; font-weight:400; font-size:1.7cqh;
+  color:#1b1410 !important; text-shadow:0 .1cqh 0 rgba(255,255,255,.45);
+}
+
+/* ---- the squad builder ---- */
+.cup-build{display:flex; gap:1.6cqw; text-align:left; margin-bottom:1.4cqh;}
+.cup-build-col{flex:1 1 0; min-width:0;}
+.cup-build-col h5{
+  margin:0 0 .9cqh; font-family:'Silkscreen',monospace; font-weight:400;
+  font-size:1.8cqh; letter-spacing:.12em; color:#9a7b3e;
+}
+.cup-pool{
+  display:grid; grid-template-columns:repeat(2,1fr); gap:.6cqh .8cqw;
+  max-height:30cqh; overflow-y:auto; padding-right:.6cqw;
+}
+.cup-pick{
+  display:flex; align-items:center; gap:.7cqw; width:100%;
+  padding:.7cqh .9cqw; border:0; border-radius:.7cqw; cursor:pointer;
+  background:rgba(61,42,18,.07); text-align:left;
+  font-family:'Poppins',sans-serif; font-size:1.65cqh; color:#5c4a2e;
+  box-shadow:inset 0 0 0 .15cqh rgba(61,42,18,.12);
+}
+.cup-pick:hover{background:rgba(224,168,106,.26);}
+.cup-pick[data-on="1"]{background:linear-gradient(180deg,#ffe98a,#f0c24a); color:#3d2a12;}
+.cup-pick[disabled]{opacity:.38; cursor:not-allowed;}
+.cup-pick i{
+  width:1.8cqh; height:1.8cqh; border-radius:50%; flex:0 0 auto;
+  box-shadow:inset 0 0 0 .18cqh rgba(0,0,0,.35);
+}
+.cup-pick em{font-style:normal; font-size:1.35cqh; color:#9a7b3e; letter-spacing:.06em;}
+.cup-slots{display:flex; flex-direction:column; gap:.7cqh; margin-bottom:1.2cqh;}
+.cup-slot{
+  display:flex; align-items:center; gap:.8cqw; padding:.8cqh 1cqw;
+  border-radius:.7cqw; background:rgba(61,42,18,.07);
+  box-shadow:inset 0 0 0 .15cqh rgba(61,42,18,.14);
+  font-family:'Poppins',sans-serif; font-size:1.8cqh; color:#5c4a2e;
+}
+.cup-slot em{font-style:normal; width:5cqw; font-family:'Silkscreen',monospace;
+  font-size:1.5cqh; color:#9a7b3e;}
+.cup-slot.cap{background:linear-gradient(180deg,#ffe98a,#f0c24a); color:#3d2a12;}
+.cup-slot.empty{opacity:.45; font-style:italic;}
+.cup-rating{
+  display:flex; align-items:baseline; gap:1cqw; margin-bottom:1cqh;
+  font-family:'Silkscreen',monospace; font-size:1.8cqh; color:#9a7b3e;
+}
+.cup-rating b{font-size:4cqh; color:#3d2a12; font-weight:400;}
+.cup-row{display:flex; gap:.7cqw; align-items:center; margin-bottom:.8cqh; flex-wrap:wrap;}
+.cup-row label{font-family:'Silkscreen',monospace; font-size:1.5cqh;
+  color:#9a7b3e; letter-spacing:.08em; min-width:8cqw;}
+.cup-row input[type="text"]{
+  flex:1 1 auto; min-width:0; padding:.7cqh .9cqw; border-radius:.6cqw;
+  border:0; box-shadow:inset 0 0 0 .18cqh rgba(61,42,18,.24);
+  background:#fffaf0; font-family:'Silkscreen',monospace; font-size:1.8cqh; color:#3d2a12;
+}
+.cup-swatch{
+  width:3.4cqh; height:3.4cqh; border-radius:.5cqw; border:0; cursor:pointer; padding:0;
+  flex:0 0 auto;
+  box-shadow:inset 0 0 0 .2cqh rgba(0,0,0,.3), 0 0 0 .15cqh rgba(61,42,18,.35);
+}
+.cup-swatch[data-on="1"]{box-shadow:inset 0 0 0 .2cqh rgba(0,0,0,.3), 0 0 0 .4cqh #e0a86a;}
+.cup-forms{display:flex; gap:.7cqw; flex-wrap:wrap;}
+.cup-form{
+  padding:.7cqh 1cqw; border:0; border-radius:.6cqw; cursor:pointer;
+  background:rgba(61,42,18,.07); font-family:'Silkscreen',monospace;
+  font-size:1.5cqh; color:#6a5330;
+}
+.cup-form[data-on="1"]{background:linear-gradient(180deg,#ffe98a,#f0c24a); color:#3d2a12;}
+.cup-note{margin:.4cqh 0 0; font-family:'Poppins',sans-serif;
+  font-size:1.5cqh; color:#8a6f42; font-style:italic;}
+.cup-btnrow{display:flex; gap:1cqw; justify-content:center; flex-wrap:wrap;}
+.cup-btnrow .cup-menu-b{width:auto; min-width:16cqw;}
+
+@media (max-width: 760px){
+  .cup-build{flex-direction:column; gap:1.2cqh;}
+  .cup-pool{max-height:22cqh;}
+  .cup-tcard-body{flex-direction:column; gap:1cqh;}
 }

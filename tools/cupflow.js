@@ -29,7 +29,19 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
   ok('the cup screen is the one on show',
      await p.evaluate(() => document.getElementById('screen-cup').classList.contains('active')));
   ok('the pitch built', await p.evaluate(() => OuissyCup.__cup.geometry().rigs) === 8);
+  ok('and the retro layer is on',
+     await p.evaluate(() => document.getElementById('cup-canvas').classList.contains('px')));
 
+  /* The chapter opens on its own title menu now rather than straight
+     into a fixture, so the route she takes has one more step in it and
+     so does this: PLAY THE CUP, then the round card, then kick off. */
+  await p.waitForSelector('[data-go="cup"]', { timeout: 40000 });
+  ok('it opens on its own menu', true);
+  await p.click('[data-go="cup"]');
+  await p.waitForSelector('.cup-card-b', { timeout: 20000 });
+  ok('and PLAY THE CUP puts up the fixture',
+     /QUARTER-FINAL|GERMANY/.test(await p.evaluate(() =>
+       document.querySelector('#cup-overlay .cup-card').textContent)));
   await p.click('.cup-card-b');
   /* Drive the clock rather than waiting on one. requestAnimationFrame in
      this container runs at about three frames a second and the loop only

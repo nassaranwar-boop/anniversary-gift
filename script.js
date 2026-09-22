@@ -111,7 +111,8 @@ const CHAPTER_FILES = {
      deferred bundle in the head has already run by the time anything
      asks for this */
   nightshift: ["night-shift.js"],
-  cup: ["cup.js"],
+  /* the config comes first: cup.js reads it as it initialises */
+  cup: ["cup.config.js", "cup.js"],
 };
 function loadChapter(name) {
   return Promise.all((CHAPTER_FILES[name] || []).map(loadScript));
