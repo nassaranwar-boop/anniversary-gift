@@ -111,6 +111,7 @@ const CHAPTER_FILES = {
      deferred bundle in the head has already run by the time anything
      asks for this */
   nightshift: ["night-shift.js"],
+  cup: ["cup.js"],
 };
 function loadChapter(name) {
   return Promise.all((CHAPTER_FILES[name] || []).map(loadScript));
@@ -1416,6 +1417,22 @@ window.leaveNightShift = () => {
 };
 window.markNightShiftDone = () => markChapterDone("nightshift");
 
+/* OUISSY'S CUP. Same shape as every other chapter: the file comes down
+   on the click if the idle prefetch has not already brought it, and the
+   chapter is handed a door back to the hub rather than reaching for
+   pageTurn itself. */
+function startCup() {
+  loadChapter("cup").then(() => { if (window.OuissyCup) OuissyCup.start(); });
+}
+function stopCup() {
+  if (window.OuissyCup) OuissyCup.stop();
+}
+window.leaveCup = () => {
+  stopCup();
+  pageTurn("hub", startHub);
+};
+window.markCupDone = () => markChapterDone("cup");
+
 /* The apocalypse ends on the roof, with the two cats — the scene the
    whole site has been walking towards. */
 window.startApocalypseEnding = () => {
@@ -1662,7 +1679,7 @@ function startHub() {
 
   /* the maze is gone from main; the night shift is the sixth card */
   [["quest", d.quest], ["ouissy", d.ouissy], ["apoc", d.apoc], ["race", d.race],
-   ["nightshift", d.nightshift]].forEach(([name, done]) => {
+   ["nightshift", d.nightshift], ["cup", d.cup]].forEach(([name, done]) => {
     const card = document.getElementById("hub-card-" + name);
     if (card) card.classList.toggle("done", !!done);
   });
@@ -1672,7 +1689,7 @@ function startHub() {
      see bothChaptersDone above. */
   const sub = document.getElementById("hub-sub");
   const count = (d.quest ? 1 : 0) + (d.ouissy ? 1 : 0) + (d.apoc ? 1 : 0) + (d.race ? 1 : 0) +
-                (d.nightshift ? 1 : 0);
+                (d.nightshift ? 1 : 0) + (d.cup ? 1 : 0);
   const total = document.querySelectorAll(".hub-card").length;
   if (both && count === total) sub.textContent = "— every one of them done. the keepsake is yours —";
   else if (both) sub.textContent = "— the story is done. the keepsake is yours —";
@@ -1696,6 +1713,9 @@ document.getElementById("hub-card-race").addEventListener("click", () => {
 });
 document.getElementById("hub-card-nightshift").addEventListener("click", () => {
   pageTurn("nightshift", startNightShift);
+});
+document.getElementById("hub-card-cup").addEventListener("click", () => {
+  pageTurn("cup", startCup);
 });
 document.getElementById("hub-keepsake").addEventListener("click", () => {
   pageTurn("keepsake", startKeepsake);
@@ -1929,6 +1949,44 @@ const KS_SCENES = {
     ksAnwar(ctx, 36, 44, "none");
     px(ctx, 0, 0, KS_W, KS_H, "rgba(20,10,40,.10)");   // and the dark over all of it
   },
+
+  /* The cup, held up. Every other page on this board is a place; this
+     one is the two seconds after the final whistle, because that is the
+     only thing anybody keeps a photograph of. */
+  cup(ctx) {
+    ksSky(ctx, ["#7fc5ea", "#a8dcf0", "#cbeaf4"]);
+    px(ctx, 0, 6, KS_W, 10, "#23303a");                // the stand
+    for (let r = 6; r < 14; r += 3)
+      for (let x = 0; x < KS_W; x += 3) {
+        const c = ["#e0607f", "#f5d020", "#5fb0d6", "#f2f2ef",
+                   "#b46fd0", "#7f9a5e"][(x * 7 + r * 31) % 6];
+        px(ctx, x + ((r / 3) % 2), r, 2, 2, c);
+      }
+    px(ctx, 0, 16, KS_W, 3, "#12324a");                // the hoarding
+    for (let k = 0; k < KS_W; k += 12) px(ctx, k + 2, 17, 8, 1, "#e8b23c");
+    for (let y = 19; y < KS_H; y++)                    // the grass, mown across
+      px(ctx, 0, y, KS_W, 1, ((y - 19) >> 2) % 2 ? "#41923f" : "#4da652");
+    px(ctx, 6, 40, 52, 1, "#eaf4e6");                  // a line to stand on
+
+    /* her, holding it over her head, which is why her arms are up and
+       the trophy is the highest thing in the frame */
+    px(ctx, 26, 12, 12, 3, "#e8b23c");                 // the cup's bowl
+    px(ctx, 27, 15, 10, 4, "#f5d020");
+    px(ctx, 24, 13, 2, 4, "#e8b23c"); px(ctx, 38, 13, 2, 4, "#e8b23c");  // handles
+    px(ctx, 30, 19, 4, 3, "#c9a410");                  // the stem
+    px(ctx, 28, 22, 8, 2, "#8a6f2a");                  // the plinth
+    px(ctx, 28, 24, 2, 8, "#f0cfae"); px(ctx, 34, 24, 2, 8, "#f0cfae");  // arms up
+    ksOuissy(ctx, 28, 30, "smile");
+    px(ctx, 27, 39, 10, 8, "#c1272d");                 // the shirt
+    px(ctx, 27, 39, 10, 1, "#ffffff");
+    px(ctx, 28, 47, 8, 4, "#0e6b3c");                  // the shorts
+    px(ctx, 29, 51, 2, 6, "#c1272d"); px(ctx, 33, 51, 2, 6, "#c1272d");
+    px(ctx, 28, 57, 4, 2, "#2b2521"); px(ctx, 32, 57, 4, 2, "#2b2521");
+    /* and the ball she has not put down */
+    px(ctx, 44, 52, 6, 6, "#f8f8f4");
+    px(ctx, 46, 54, 2, 2, "#26262a");
+    px(ctx, 43, 58, 8, 1, "rgba(20,60,26,.35)");
+  },
 };
 
 /* Paints one and hands back a canvas sized to the card. The pixels are
@@ -2012,6 +2070,7 @@ function startKeepsake() {
      itself has landed on main yet — the board is what the book contains,
      not what is currently playable. */
   badges.splice(3, 0, { art: "night", cap: "Ouissy\u2019s Night Shift" });
+  badges.push({ art: "cup", cap: "Ouissy\u2019s Cup" });
   badges.forEach((b, i) => {
     const card = document.createElement("div");
     card.className = "ks-card";

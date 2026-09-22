@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-The five cards on the chapter menu.
+The six cards on the chapter menu.
 
 They were CSS gradients: a green band with a white dot for the adventure, a
 pink block for the platformer, a grey smear for the apocalypse. At the size
@@ -456,6 +456,89 @@ def nightshift():
     return g
 
 
+# ------------------------------------------------------------------ 6. cup
+def cup():
+    """Her, side on, about to hit one, with the keeper small in his goal.
+
+    The other five cards are a place she goes; this one is a moment,
+    because that is what a football picture is.
+
+    The depth is the whole composition and it is done the way the
+    apocalypse card does it -- not with perspective lines, but by size:
+    the goal and the keeper are small and high up the frame, she is big
+    and at the bottom of it. The first go had the keeper drawn taller
+    than the goal he was standing in, which reads as a hole in the net
+    rather than as a man, and no amount of shading fixes a silhouette
+    that is the wrong size.
+
+    The stripes run across rather than along, the way they do in the
+    chapter itself, and they are what stops a rectangle of green from
+    reading as a swatch."""
+    g = grid("#48a04c")
+
+    # the crowd behind the goal, two rows, and the hoarding that keeps it
+    # off the grass. Two rather than three: at this height a deeper stand
+    # is louder than everything in front of it.
+    rect(g, 0, 0, W, 6, "#23303a")
+    for r in (0, 3):
+        for x in range(0, W, 3):
+            c = ["#e0607f", "#f5d020", "#5fb0d6", "#f2f2ef",
+                 "#b46fd0", "#7f9a5e", "#e88a4a", "#c1272d"][(x * 7 + r * 31) % 8]
+            rect(g, x + (r // 3) % 2, r, x + 2 + (r // 3) % 2, r + 2, c)
+    rect(g, 0, 6, W, 9, "#12324a")
+    for k in range(0, W, 16):
+        rect(g, k + 2, 7, k + 14, 8, "#f6f2ea" if k % 32 else "#e8b23c")
+
+    # the grass, mown across
+    for y in range(9, H):
+        band(g, y, y + 1, "#4da652" if ((y - 9) // 4) % 2 == 0 else "#41923f")
+
+    # The six-yard box, which is what gives the grass a scale. It is
+    # shallow on purpose: drawn to its real depth its right-hand upright
+    # came down through her shoulder and read as a pole somebody had
+    # planted in the striker.
+    rect(g, 20, 23, 70, 24, "#eaf4e6")
+    rect(g, 20, 21, 21, 24, "#eaf4e6")
+    rect(g, 69, 21, 70, 24, "#eaf4e6")
+
+    # the goal, up the picture and therefore small: posts, bar and a net
+    gx0, gx1, top, bot = 28, 62, 11, 21
+    rect(g, gx0, top, gx1, bot, "#3f8c46")
+    for nx in range(gx0 + 2, gx1 - 1, 4):
+        rect(g, nx, top, nx + 1, bot, "#cfe8d2")
+    for ny in range(top + 2, bot, 3):
+        rect(g, gx0, ny, gx1, ny + 1, "#bcdcc0")
+    rect(g, gx0, top, gx0 + 2, bot + 1, "#f6faf0")       # near post
+    rect(g, gx1 - 2, top, gx1, bot + 1, "#f6faf0")       # far post
+    rect(g, gx0, top, gx1, top + 2, "#f6faf0")           # the bar
+
+    # the keeper: nine pixels of him, inside his own goal, arms out. Dark
+    # green rather than black -- the light is behind him, but a shape with
+    # no colour in it at all reads as a gap in the net.
+    kx, ky = 45, 12
+    rect(g, kx - 2, ky, kx + 3, ky + 3, "#e8c9a8")       # head
+    rect(g, kx - 2, ky, kx + 3, ky + 1, "#3a2f21")       # hair
+    rect(g, kx - 3, ky + 3, kx + 4, ky + 7, "#1f6f4a")   # jersey
+    rect(g, kx - 5, ky + 3, kx - 3, ky + 5, "#1f6f4a")   # arms, spread
+    rect(g, kx + 4, ky + 3, kx + 6, ky + 5, "#1f6f4a")
+    rect(g, kx - 6, ky + 3, kx - 5, ky + 5, "#f0e6d2")   # and the gloves
+    rect(g, kx + 6, ky + 3, kx + 7, ky + 5, "#f0e6d2")
+    rect(g, kx - 2, ky + 7, kx, ky + 10, "#12241c")      # legs
+    rect(g, kx + 1, ky + 7, kx + 3, ky + 10, "#12241c")
+
+    # and her, foreground right, big enough that the depth does the work
+    ouissy_figure(g, 78, 32, skin="#f0cfae", hair="#4a2f1c",
+                  dress="#c1272d", trim="#ffffff", dark="#2a1a22",
+                  facing=-1, arm=70, legs="#0e6b3c")
+
+    # the ball, just struck, with its shadow still on the grass under it
+    rect(g, 62, 30, 69, 31, "#2c6b33")
+    rect(g, 63, 26, 68, 30, "#f8f8f4")
+    rect(g, 64, 25, 67, 31, "#f8f8f4")
+    px(g, 64, 27, "#26262a"); px(g, 66, 28, "#26262a"); px(g, 65, 30, "#26262a")
+    return g
+
+
 def svg(g, name):
     """Run-length each row, then merge downward.
 
@@ -509,5 +592,5 @@ def svg(g, name):
 if __name__ == "__main__":
     import sys
     for key, fn in (("quest", quest), ("ouissy", ouissy), ("apoc", apoc),
-                    ("nightshift", nightshift), ("race", race)):
+                    ("nightshift", nightshift), ("race", race), ("cup", cup)):
         sys.stdout.write("===%s===\n%s\n" % (key, svg(fn(), key)))
