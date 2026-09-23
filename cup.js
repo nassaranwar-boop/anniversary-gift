@@ -4423,8 +4423,17 @@ window.OuissyCup = (function () {
       btn.dataset.armed = armed ? "1" : "0";
       if (ready && heartSuper) {
         btn.style.setProperty("--sc", heartSuper.colour);
+        /* SHORT WORDS ON A ROUND BUTTON.
+           It used to print the super's full name here, which on a circle
+           eleven units across came out as "HEARTBEAT ST…" — and a
+           truncated name is worse than no name. The name is already in
+           two other places at this moment: written along the meter
+           directly above, and flashed across the screen when the meter
+           filled. The button only has to say what pressing it does. */
         if (EL["cup-sup-lab"]) EL["cup-sup-lab"].textContent =
-          armed ? heartSuper.name : "GET ON THE BALL";
+          armed ? "SUPER" : "GET IT";
+        btn.title = armed ? heartSuper.name
+                          : "get the ball to " + (captainOf(0) || {}).name;
       }
     }
     /* the full-screen wash: the goal flash, tinted by whatever caused it */
@@ -4450,6 +4459,12 @@ window.OuissyCup = (function () {
     setFlag(EL["cup-a-flag"], b);
     EL["cup-h-name"].textContent = (a && a.short) || "—";
     EL["cup-a-name"].textContent = (b && b.short) || "—";
+    /* the possession strip wears the two sides' own kits rather than the
+       same red and grey whoever is playing */
+    if (EL["cup-stats"]) {
+      EL["cup-stats"].style.setProperty("--hc", (a && a.kit && a.kit.shirt) || "#c1272d");
+      EL["cup-stats"].style.setProperty("--ac", (b && b.kit && b.kit.shirt) || "#5a6b86");
+    }
     if (EL["cup-round"]) {
       EL["cup-round"].textContent = roundName ||
         (G.round && G.round.round) || "MATCH";

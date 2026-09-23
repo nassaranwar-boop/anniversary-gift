@@ -7109,12 +7109,19 @@ img{-webkit-user-drag:none; user-select:none;}
 
 /* the keyboard, for anyone on a desktop; hidden the moment a finger
    touches the glass */
+/* The keyboard hints used to sit at right:3.6cqw bottom:24cqh, which is
+   exactly where the heart button appears once the meter is full — so the
+   one moment the game most wants her attention, the button came up on
+   top of the text explaining it. They are clear of both buttons now. */
 .cup-keys{
-  position:absolute; right:3.6cqw; bottom:24cqh; margin:0; text-align:right;
+  position:absolute; right:22cqw; bottom:9.5cqh; margin:0; text-align:right;
   display:flex; flex-direction:column; gap:.5cqh;
   font-family:'Poppins',sans-serif; font-size:1.6cqh; color:rgba(255,255,255,.55);
   text-shadow:0 .2cqh .4cqh rgba(0,0,0,.7);
+  pointer-events:none;
 }
+/* and on a touch screen there is no keyboard to explain */
+.cup-pad.touch .cup-keys{display:none;}
 .cup-keys kbd{
   display:inline-block; min-width:2.2cqh; padding:.2cqh .6cqh; margin:0 .15cqh;
   border-radius:.4cqh; background:rgba(255,255,255,.16);
@@ -7630,26 +7637,58 @@ img{-webkit-user-drag:none; user-select:none;}
 .cup-half{color:#8fb39a;}
 
 /* possession and shots, bottom centre, out of the way of both thumbs */
+/* THE POSSESSION STRIP.
+
+   Two flat bars and a number, which is what a debug read-out looks like.
+   It is a broadcast graphic now: a dark plate with the two sides in
+   their OWN kit colours (set from the teams in dressBoard, so it is
+   never the same red-versus-grey whoever is playing), the share written
+   on her half of it, and the shots underneath on a plate of their own. */
 .cup-stats{
-  position:absolute; bottom:3.4cqh; left:50%; transform:translateX(-50%);
-  display:flex; flex-direction:column; gap:.8cqh; align-items:center;
-  width:34cqw;
+  position:absolute; bottom:3.2cqh; left:50%; transform:translateX(-50%);
+  display:flex; flex-direction:column; gap:.7cqh; align-items:center;
+  width:32cqw;
+  --hc:#c1272d; --ac:#5a6b86;
 }
 .cup-poss{
-  position:relative; display:flex; width:100%; height:1.8cqh;
+  position:relative; display:flex; width:100%; height:2.1cqh;
   border-radius:1cqh; overflow:hidden;
-  background:rgba(11,18,25,.7);
-  box-shadow:inset 0 0 0 .18cqh rgba(255,255,255,.14);
+  background:rgba(8,14,19,.82);
+  box-shadow:inset 0 0 0 .18cqh rgba(255,255,255,.16),
+             inset 0 .2cqh .4cqh rgba(0,0,0,.5),
+             0 .3cqh .8cqh rgba(0,0,0,.4);
 }
 .cup-poss i{display:block; height:100%; transition:width .3s ease;}
-#cup-poss-h{background:linear-gradient(90deg,#e04a50,#c1272d); width:50%;}
-#cup-poss-a{background:linear-gradient(90deg,#7e8ea8,#5a6b86); width:50%;}
-.cup-poss b{
-  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-  font-size:1.35cqh; color:#fff; text-shadow:0 .1cqh .3cqh rgba(0,0,0,.8); font-weight:400;
+/* a lit top edge on each half, so they read as filled rather than as
+   two rectangles of colour meeting */
+#cup-poss-h{
+  width:50%;
+  background:linear-gradient(180deg,
+    color-mix(in srgb, var(--hc) 65%, #fff), var(--hc) 46%,
+    color-mix(in srgb, var(--hc) 76%, #000));
 }
-.cup-shots{font-size:1.6cqh; color:#bcd4c4; letter-spacing:.1em;}
-.cup-shots em{font-style:normal; color:#ffe066; font-size:2cqh;}
+#cup-poss-a{
+  width:50%;
+  background:linear-gradient(180deg,
+    color-mix(in srgb, var(--ac) 60%, #fff), var(--ac) 46%,
+    color-mix(in srgb, var(--ac) 76%, #000));
+}
+.cup-poss b{
+  position:absolute; inset:0; display:flex; align-items:center;
+  justify-content:flex-start; padding-left:1cqw;
+  font-family:'Silkscreen',monospace;
+  font-size:1.35cqh; color:#fff; text-shadow:0 .1cqh .3cqh rgba(0,0,0,.9);
+  font-weight:400; letter-spacing:.06em;
+}
+.cup-shots{
+  padding:.25cqh 1.2cqw; border-radius:.8cqh;
+  background:rgba(8,14,19,.7);
+  box-shadow:inset 0 0 0 .14cqh rgba(255,255,255,.12);
+  font-family:'Silkscreen',monospace;
+  font-size:1.4cqh; color:#9fb8a8; letter-spacing:.14em;
+}
+.cup-shots em{font-style:normal; color:#ffe066; font-size:1.9cqh;
+  letter-spacing:0; margin:0 .3cqw;}
 
 .cup-stam{
   position:absolute; left:2cqw; bottom:2.2cqh;
@@ -8451,3 +8490,15 @@ img{-webkit-user-drag:none; user-select:none;}
 /* the armband: worn, or offered */
 .cup-cap[data-on="0"]{opacity:.5; font-size:1.35cqh;}
 .cup-cap[data-on="0"]:hover{opacity:1;}
+
+/* THE BARS HAVE TO HAVE ROOM TO BE BARS.
+
+   `.cup-bar u` is 7cqw of label and `.cup-bar s` is 4cqw of number, both
+   fixed; the track between them is the only part that flexes. Narrowing
+   the team card left it nothing to flex INTO, so it collapsed to zero
+   and the four animated meters became four right-aligned numbers — the
+   exact thing the bars exist instead of. A floor on the track, and on
+   the column holding them. */
+.cup-bars{flex:1 1 16cqw; min-width:16cqw;}
+.cup-bar i{min-width:6cqw;}
+.cup-tcard-squad{flex:0 1 auto; min-width:0;}

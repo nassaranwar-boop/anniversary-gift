@@ -317,8 +317,61 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
     C.reset(0);
     C.shadows(true);
     C.armAt(0, 120);
-    C.fire();
+    C.render();
   });
+  await p.waitForTimeout(200);
+  /* the button only exists while it can be used, so this is the one
+     moment it is in the document at all */
+  const btn = await p.evaluate(() => {
+    const b2 = document.getElementById('cup-sup-btn');
+    if (!b2) return null;
+    const r = b2.getBoundingClientRect();
+    return { hidden: b2.hidden, armed: b2.dataset.armed,
+             label: (document.getElementById('cup-sup-lab') || {}).textContent,
+             w: Math.round(r.width), h: Math.round(r.height) };
+  });
+  ok('the heart button is on screen when it is armed',
+     !!btn && !btn.hidden && btn.armed === '1' && btn.w > 20, btn);
+  /* The button says what pressing it DOES; the super's name is on the
+     meter above it and in the banner that went up when it charged, so
+     the assertion is that the name reaches her, not that it is squeezed
+     onto a circle. */
+  ok('the button says it will fire', !!btn && /SUPER/.test(btn.label || ''), btn);
+  ok('and the name is on the meter beside it',
+     await p.evaluate(() => /HEARTBEAT/.test(
+       (document.getElementById('cup-heart-n') || {}).textContent || '')));
+
+  /* DOES THE METER ON SCREEN AGREE WITH THE METER IN THE GAME?
+     A bar that reads a third full while the game thinks it is charged
+     is worse than no bar: she would be looking at it waiting for
+     something that has already happened. */
+  /* The fill is a CSS transition, so it is not there the instant the
+     style is set — measured cold it reads 0 while the inline style
+     already says 100%, which is the bar animating, not the bar being
+     wrong. Poll until it settles, and fail if it never does. */
+  const readMeter = () => p.evaluate(() => {
+    const C = OuissyCup.__cup;
+    const fill = document.getElementById('cup-heart-f');
+    const track = fill && fill.parentElement;
+    const h = C.heart(0);
+    return { game: h.heart[0] / h.cost,
+             shownPct: fill ? fill.style.width : null,
+             drawn: fill && track && track.getBoundingClientRect().width
+               ? +(fill.getBoundingClientRect().width /
+                   track.getBoundingClientRect().width).toFixed(2) : null,
+             ready: (document.getElementById('cup-heart') || {}).dataset
+                    && document.getElementById('cup-heart').dataset.ready };
+  });
+  let meter = await readMeter();
+  for (let i = 0; i < 12 && Math.abs((meter.drawn || 0) - meter.game) >= 0.06; i++) {
+    await p.waitForTimeout(80);
+    meter = await readMeter();
+  }
+  ok('the meter on screen matches the meter in the game',
+     meter.drawn !== null && Math.abs(meter.drawn - meter.game) < 0.06, meter);
+  ok('and a charged meter says so', meter.ready === '1', meter);
+  await p.screenshot({ path: '/tmp/cup-super-armed.png' });
+  await p.evaluate(() => OuissyCup.__cup.fire());
   /* ALL THE STEPPING INSIDE ONE CALL.
 
      Thirty round trips to the page at eighty milliseconds each is two
