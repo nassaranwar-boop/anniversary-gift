@@ -8516,3 +8516,14 @@ img{-webkit-user-drag:none; user-select:none;}
 .cup-bars{flex:1 1 16cqw; min-width:16cqw;}
 .cup-bar i{min-width:6cqw;}
 .cup-tcard-squad{flex:0 1 auto; min-width:0;}
+
+/* The screen-reader mirror of the pixel menus. Off-screen rather than
+   display:none, because display:none is invisible to assistive
+   technology too — which would defeat the entire point of it. */
+.cup-sr{
+  position:absolute; width:1px; height:1px; overflow:hidden;
+  clip-path:inset(50%); white-space:nowrap;
+}
+.cup-sr button{
+  position:absolute; width:1px; height:1px;
+}

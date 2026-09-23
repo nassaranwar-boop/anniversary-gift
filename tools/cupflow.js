@@ -48,8 +48,8 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
      await p.evaluate(() => !!document.querySelector('.cup-cupart canvas')));
   await p.click('[data-go="coupe"]');
   await p.waitForSelector('.cup-card-b', { timeout: 20000 });
-  ok('and LA COUPE puts up the fixture',
-     /QUART DE FINALE|UM6P/.test(await p.evaluate(() =>
+  ok('and THE CUP puts up the fixture',
+     /QUARTER-FINAL|UM6P/.test(await p.evaluate(() =>
        document.querySelector('#cup-overlay .cup-card').textContent)));
   await p.click('.cup-card-b');
   /* Drive the clock rather than waiting on one. requestAnimationFrame in

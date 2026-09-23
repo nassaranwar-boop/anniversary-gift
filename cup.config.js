@@ -80,11 +80,11 @@ window.CUP_CONFIG = {
      they are to shoot). `heart` multiplies how fast her meter fills, so
      Easy is not merely a slower opponent — it is more supers for her. */
   DIFFICULTIES: [
-    { id: "easy",   name: "TRANQUILLE", note: "they give you room · the meter fills fast",
+    { id: "easy",   name: "RELAXED", note: "they give you room · the meter fills fast",
       skill: 0.74, heart: 1.35, gk: 0.90 },
     { id: "normal", name: "NORMAL", note: "a real match",
       skill: 1.00, heart: 1.00, gk: 1.00 },
-    { id: "hard",   name: "SÉRIEUX", note: "they press, and their keeper is awake",
+    { id: "hard",   name: "SERIOUS", note: "they press, and their keeper is awake",
       skill: 1.22, heart: 0.80, gk: 1.10 },
   ],
 
@@ -301,7 +301,7 @@ window.CUP_CONFIG = {
   TEAMS: [
     {
       id: "fmdc", name: "FMDC CASABLANCA", short: "FMDC",
-      sub: "Facult\u00e9 de M\u00e9decine Dentaire",
+      sub: "Faculty of Dental Medicine",
       crest: "tooth", flag: "crest", derby: "his", venue: "casa",
       kit: { shirt: "#1d6b6e", shirtDark: "#12494b", shorts: "#f2e6cf",
              shortsDark: "#cdbf9f", socks: "#1d6b6e", trim: "#e8b23c" },
@@ -312,7 +312,7 @@ window.CUP_CONFIG = {
     },
     {
       id: "fmpm", name: "FMPM MARRAKECH", short: "FMPM",
-      sub: "M\u00e9decine et Pharmacie",
+      sub: "Medicine and Pharmacy",
       crest: "caduceus", flag: "crest", derby: "hers", home: true, venue: "marrakech",
       kit: { shirt: "#c1272d", shirtDark: "#8f1a20", shorts: "#f6efdd",
              shortsDark: "#cdbf9f", socks: "#c1272d", trim: "#e8b23c" },
@@ -323,7 +323,7 @@ window.CUP_CONFIG = {
     },
     {
       id: "uir", name: "UIR RABAT", short: "UIR",
-      sub: "Universit\u00e9 Internationale de Rabat",
+      sub: "International University of Rabat",
       crest: "shield", flag: "crest", venue: "rabat",
       kit: { shirt: "#2f5fa8", shirtDark: "#1f4076", shorts: "#f6f8fb",
              shortsDark: "#c8ced6", socks: "#2f5fa8", trim: "#ffd45e" },
@@ -334,7 +334,7 @@ window.CUP_CONFIG = {
     },
     {
       id: "upm", name: "UPM MARRAKECH", short: "UPM",
-      sub: "Universit\u00e9 Priv\u00e9e de Marrakech",
+      sub: "Private University of Marrakech",
       crest: "mortar", flag: "crest", venue: "marrakech",
       kit: { shirt: "#e08a3c", shirtDark: "#b06428", shorts: "#3a2a1e",
              shortsDark: "#241a12", socks: "#e08a3c", trim: "#f6efdd" },
@@ -345,7 +345,7 @@ window.CUP_CONFIG = {
     },
     {
       id: "um6ss", name: "UM6SS CASABLANCA", short: "UM6SS",
-      sub: "Sciences de la Sant\u00e9",
+      sub: "Health Sciences",
       crest: "molecule", flag: "crest", venue: "casa",
       kit: { shirt: "#5f9a5c", shirtDark: "#3f6e3c", shorts: "#f4f1e6",
              shortsDark: "#cdc8b6", socks: "#5f9a5c", trim: "#e8b23c" },
@@ -356,7 +356,7 @@ window.CUP_CONFIG = {
     },
     {
       id: "um6p", name: "UM6P BEN GUERIR", short: "UM6P",
-      sub: "Mohammed VI Polytechnique",
+      sub: "Mohammed VI Polytechnic",
       crest: "atom", flag: "crest", venue: "benguerir",
       kit: { shirt: "#7a4fb0", shirtDark: "#553578", shorts: "#2a2438",
              shortsDark: "#1a1626", socks: "#7a4fb0", trim: "#f2b8c6" },
@@ -385,32 +385,32 @@ window.CUP_CONFIG = {
        hour            shown on the fixture card
      ================================================================ */
   VENUES: [
-    { id: "rabat", name: "CAMPUS DE RABAT", city: "Rabat", hour: "16:00",
+    { id: "rabat", name: "RABAT CAMPUS", city: "Rabat", hour: "16:00",
       note: "wind off the river, and the whole faculty on the far side",
       sky: "#3e8fd0", horizon: "#cfe8f4", sun: "#fff6e0", sunStrength: 2.1,
       ambient: 0.36, grass: "#4bab52", stripe: "#3f9b46",
       stand: "#5b6570", seats: "cool", fog: [420, 820] },
 
-    { id: "marrakech", name: "CAMPUS DE MARRAKECH", city: "Marrakech", hour: "18:30",
+    { id: "marrakech", name: "MARRAKECH CAMPUS", city: "Marrakech", hour: "18:30",
       note: "the light goes orange about twenty minutes in",
       sky: "#e86a3c", horizon: "#ffd9a0", sun: "#ffd08a", sunStrength: 2.4,
       ambient: 0.42, grass: "#4f9e4a", stripe: "#428a3f",
       stand: "#8a5a3c", seats: "warm", fog: [360, 720] },
 
-    { id: "casa", name: "CAMPUS DE CASABLANCA", city: "Casablanca", hour: "11:00",
+    { id: "casa", name: "CASABLANCA CAMPUS", city: "Casablanca", hour: "11:00",
       note: "sea fog that never quite burns off",
       sky: "#8fb8cc", horizon: "#e8f0f2", sun: "#f4f2e8", sunStrength: 1.7,
       ambient: 0.52, grass: "#46a04e", stripe: "#3c9044",
       stand: "#7c858e", seats: "cool", fog: [300, 640] },
 
-    { id: "benguerir", name: "CAMPUS DE BEN GUERIR", city: "Ben Guerir", hour: "14:00",
+    { id: "benguerir", name: "BEN GUERIR CAMPUS", city: "Ben Guerir", hour: "14:00",
       note: "no shade anywhere and the ball runs fast",
       sky: "#4aa8e0", horizon: "#f2e0bc", sun: "#fffaf0", sunStrength: 2.6,
       ambient: 0.40, grass: "#5aa84c", stripe: "#4d963f",
       stand: "#b09a74", seats: "warm", fog: [460, 900] },
 
     /* the final, and the derby: under the lights */
-    { id: "night", name: "LE DERBY \u00b7 SOUS LES PROJECTEURS", city: "Casablanca",
+    { id: "night", name: "THE DERBY \u00b7 UNDER THE LIGHTS", city: "Casablanca",
       hour: "21:00", note: "floodlights, and nobody has gone home",
       sky: "#101a2e", horizon: "#2a3a58", sun: "#cfe0ff", sunStrength: 1.5,
       ambient: 0.58, grass: "#3f8f46", stripe: "#35803c",
@@ -426,27 +426,27 @@ window.CUP_CONFIG = {
      DERBY       his faculty against hers, under the lights, on its own.
      ================================================================ */
   MODES: [
-    { id: "coupe", name: "LA COUPE INTER-FACULT\u00c9S",
+    { id: "coupe", name: "THE INTER-FACULTY CUP",
       note: "six faculties \u00b7 three rounds \u00b7 one trophy",
       primary: true },
-    { id: "amical", name: "MATCH AMICAL",
+    { id: "amical", name: "FRIENDLY MATCH",
       note: "one game, any two sides, any campus" },
-    { id: "derby", name: "LE DERBY",
-      note: "dentaire contre m\u00e9decine \u00b7 sous les projecteurs" },
+    { id: "derby", name: "THE DERBY",
+      note: "dentistry against medicine \u00b7 under the lights" },
   ],
 
   /* The cup's three rounds. `id` is who she meets; the final is fixed
      to his faculty because that is the story the chapter is telling. */
   ROUNDS: [
-    { id: "um6p",  round: "QUART DE FINALE", venue: "benguerir", skill: 0.44,
+    { id: "um6p",  round: "QUARTER-FINAL", venue: "benguerir", skill: 0.44,
       before: "UM6P first. They have a pitch nobody likes playing on.",
       won: "Through. Somebody from the faculty is already posting about it.",
       lost: "UM6P, then. It happens to better sides than us." },
-    { id: "uir",   round: "DEMI-FINALE", venue: "rabat", skill: 0.64,
+    { id: "uir",   round: "SEMI-FINAL", venue: "rabat", skill: 0.64,
       before: "Rabat in the semi. Nobody had you getting this far.",
       won: "Into the final. The whole faculty is standing up.",
       lost: "Rabat were better. Nobody who watched it will say otherwise." },
-    { id: "fmdc",  round: "LA FINALE", venue: "night", skill: 0.80, derby: true,
+    { id: "fmdc",  round: "THE FINAL", venue: "night", skill: 0.80, derby: true,
       before: "And the final is against his faculty. Of course it is.",
       won: "You beat him. In front of everybody.",
       lost: "He beat you, and he has the decency to look sorry about it." },

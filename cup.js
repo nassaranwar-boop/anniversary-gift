@@ -4304,7 +4304,8 @@ window.OuissyCup = (function () {
      "cup-btn-ico", "cup-poss-h", "cup-poss-a", "cup-poss-lab",
      "cup-shot-h", "cup-shot-a", "cup-keys", "cup-stats",
      "cup-heart", "cup-heart-f", "cup-heart-n", "cup-heart-a",
-     "cup-sup-btn", "cup-sup-lab", "cup-super-card", "cup-flash", "cup-ui"]
+     "cup-sup-btn", "cup-sup-lab", "cup-super-card", "cup-flash", "cup-ui",
+     "cup-ui-a11y"]
       .forEach(function (id) { EL[id] = $(id); });
     stage = EL["cup-stage"];
     cvs = EL["cup-canvas"];
@@ -4341,7 +4342,14 @@ window.OuissyCup = (function () {
     var w = Math.max(2, Math.round(r.width)), h = Math.max(2, Math.round(r.height));
     var aspect = w / h;
     if (cfg("PIXEL.on", true)) {
-      var ph = Math.max(120, Math.round(cfg("PIXEL.height", 270)));
+      /* Never ask for more pixels than the screen is going to show. On
+         a phone held sideways the stage is about two hundred and twenty
+         CSS pixels tall, so a 270-tall buffer is rendering MORE detail
+         than can be displayed and then throwing it away — slower, and
+         it makes the art finer exactly where the screen is smallest.
+         Capping it keeps the chunk size roughly constant everywhere. */
+      var ph = Math.max(140, Math.min(Math.round(cfg("PIXEL.height", 270)),
+                                      Math.round(h / 1.7)));
       var pw = Math.max(2, Math.round(ph * aspect));
       renderer.setPixelRatio(1);
       renderer.setSize(pw, ph, false);
@@ -4825,6 +4833,8 @@ window.OuissyCup = (function () {
     7: "#####/....#/...#./..#../.#.../.#.../.#...",
     8: ".###./#...#/#...#/.###./#...#/#...#/.###.",
     9: ".###./#...#/#...#/.####/....#/...#./.##..",
+    "’": "##/##/#./#./../../..",                            // curly apostrophe
+    "—": "....../....../....../######/....../....../......", // em dash
 
     " ": "../../../../../../..",
     ".": "../../../../../../#.",
@@ -4848,6 +4858,13 @@ window.OuissyCup = (function () {
     "▸": "#../##./###/##./#../.../...",                   // right arrow
     "◂": "..#/.##/###/.##/..#/.../...",                   // left arrow
     "×": "...../#...#/.#.#./..#../.#.#./#...#/.....",
+    /* Not needed by anything today. Each is two minutes of work
+       against a question mark turning up on screen the first time
+       somebody names a squad with one of them in it. */
+    "#": ".#.#./#####/.#.#./.#.#./#####/.#.#./.....",
+    "&": ".##../#..#./.##../##.#./#..##/#..#./.##.#",
+    "*": "...../#.#.#/.###./#####/.###./#.#.#/.....",
+    "\"": "#.#/#.#/.../.../.../.../...",
   };
   /* what goes over (or under) a letter to make it an accented one */
   var ACCENTED = {
@@ -4877,7 +4894,7 @@ window.OuissyCup = (function () {
       var acc = ACCENTED[ch];
       if (acc) {
         var base = glyph(acc[0]);
-        var g2 = { w: base.w, px: base.px.slice(), accent: acc[1] };
+        var g2 = { w: base.w, px: base.px.slice(), accent: acc[1], top: base.top };
         return (glyphCache[ch] = g2);
       }
       art = GLYPH["?"];
@@ -4889,7 +4906,13 @@ window.OuissyCup = (function () {
         if (rows[y][x] === "#") px.push([x, y]);
       }
     }
-    return (glyphCache[ch] = { w: rows[0].length, px: px, accent: null });
+    /* the first row that has ink in it. An accent has to sit above the
+       LETTER, and a lowercase letter's letter starts two rows down —
+       hanging every accent off the cap line put the acute on "é" up
+       among the descenders of the line above, which is where the é in
+       "Médecine" went. */
+    var top = px.length ? Math.min.apply(null, px.map(function (q) { return q[1]; })) : 0;
+    return (glyphCache[ch] = { w: rows[0].length, px: px, accent: null, top: top });
   }
 
   var FONT_H = 7;
@@ -4904,6 +4927,31 @@ window.OuissyCup = (function () {
       cut = sp > 0 ? cut.slice(0, sp) : cut.slice(0, -1);
     }
     return cut + "...";
+  }
+  /* Break a line into as many as `maxLines` that each fit `maxW`, and
+     put an ellipsis on the last one if there is more text than that.
+     Cutting a sentence short when there is a whole empty line under it
+     is just as wrong as letting it run off the edge. */
+  function wrapText(str, maxW, maxLines, scale, track) {
+    var words = String(str).split(" ");
+    var lines = [], cur = "";
+    for (var i = 0; i < words.length; i++) {
+      var trial = cur ? cur + " " + words[i] : words[i];
+      if (textWidth(trial, scale, track) <= maxW) { cur = trial; continue; }
+      if (cur) lines.push(cur);
+      cur = words[i];
+      if (lines.length === maxLines - 1) break;
+    }
+    if (lines.length < maxLines) {
+      var rest = cur;
+      for (var j = words.indexOf(cur) + 1; j < words.length; j++) {
+        if (lines.length < maxLines - 1) break;
+        rest += " " + words[j];
+      }
+      lines.push(lines.length === maxLines - 1
+                 ? fitText(rest, maxW, scale, track) : rest);
+    }
+    return lines;
   }
   function textWidth(str, scale, track) {
     scale = scale || 1; track = track === undefined ? 1 : track;
@@ -4925,8 +4973,28 @@ window.OuissyCup = (function () {
   function drawText(x2, str, y2, opts) {
     opts = opts || {};
     var scale = opts.scale || 1;
-    var track = opts.track === undefined ? 1 : opts.track;
     var col = opts.colour || "#ffffff";
+    /* AN OUTLINE IS NOT FREE, TWICE OVER.
+
+       It eats a pixel into the gap between letters, so tracking has to
+       grow with it or the outlines of adjacent letters meet and the
+       word becomes one shape — which is what "LES EQUIPES" was doing at
+       double size, with the Q and the U welded together.
+
+       And at scale 1 an outline is wider than the strokes it is
+       outlining, so it closes the counters — the holes — inside the
+       letters. A 6 fills in and becomes an 8, which a screenshot of the
+       carousel caught reading "2/8" when there are six faculties. So
+       small text is never outlined: it gets a hard one-pixel shadow
+       instead, which lifts it off a busy background without touching
+       the shapes. */
+    var outline = scale > 1 ? opts.outline : null;
+    var outlineW = opts.outlineW || Math.max(1, scale - 1);
+    var track = opts.track === undefined ? (outline ? 1 + outlineW : 1) : opts.track;
+    if (!outline && opts.outline && !opts.shadow) {
+      opts = Object.create(opts);
+      opts.shadow = opts.outline;
+    }
     var cx2 = x2;
     if (opts.align === "center") cx2 = x2 - Math.round(textWidth(str, scale, track) / 2);
     else if (opts.align === "right") cx2 = x2 - textWidth(str, scale, track);
@@ -4934,9 +5002,9 @@ window.OuissyCup = (function () {
 
     /* the outline first, as eight offset copies — at one pixel it is a
        keyline and it is what lets a caption sit on top of a crowd */
-    if (opts.outline) {
-      var o = opts.outlineW || scale;
-      UIX.fillStyle = opts.outline;
+    if (outline) {
+      var o = outlineW;
+      UIX.fillStyle = outline;
       for (var dy = -o; dy <= o; dy += o) {
         for (var dx = -o; dx <= o; dx += o) {
           if (!dx && !dy) continue;
@@ -4951,8 +5019,14 @@ window.OuissyCup = (function () {
     }
     UIX.fillStyle = col;
     blitText(cx2, y2, str, scale, track);
+    if (wordWatch) wordWatch[str] = 1;
     return textWidth(str, scale, track);
   }
+  /* When a harness turns this on, every string that actually reaches
+     the screen is recorded — which is a better list of "what the font
+     has to be able to draw" than any guess at it, because it includes
+     the ones this file builds at runtime rather than storing. */
+  var wordWatch = null;
   function blitText(x2, y2, str, scale, track) {
     var pen = x2;
     for (var i = 0; i < str.length; i++) {
@@ -4962,7 +5036,8 @@ window.OuissyCup = (function () {
       }
       if (g.accent) {
         var ar = ACCENT_ART[g.accent].split("/");
-        var ay = g.accent === "cedilla" ? FONT_H * scale : -3 * scale;
+        /* above this letter's own ink, not above the cap line */
+        var ay = g.accent === "cedilla" ? FONT_H * scale : (g.top - 3) * scale;
         var ax = pen + Math.round((g.w - 4) / 2) * scale;
         for (var ry = 0; ry < ar.length; ry++) {
           for (var rx = 0; rx < ar[ry].length; rx++) {
@@ -5036,12 +5111,18 @@ window.OuissyCup = (function () {
     });
     /* and a title tab across the top, if the panel is announcing itself */
     if (opts.title) {
-      var tw = textWidth(opts.title, 1, 1) + 10;
+      /* ABOVE the panel, not astride it. At y-5 with a height of 11 the
+         tab straddled the frame's own top edge, so the bottom row of
+         its letters was painted over by the border drawn after it and
+         the name came out with its feet cut off. */
+      var tw = textWidth(opts.title, 1, 1) + 12;
       var tx = x2 + Math.round((w - tw) / 2);
-      box(tx, y2 - 5, tw, 11, ink);
-      box(tx + 1, y2 - 4, tw - 2, 9, tone);
-      line(tx + 1, y2 - 4, tw - 2, 1, hi);
-      drawText(tx + Math.round(tw / 2), opts.title, y2 - 1,
+      box(tx, y2 - 12, tw, 14, ink);
+      box(tx + 1, y2 - 11, tw - 2, 12, tone);
+      line(tx + 1, y2 - 11, tw - 2, 1, hi);
+      line(tx + 1, y2 - 11, 1, 11, hi);
+      line(tx + tw - 2, y2 - 11, 1, 11, lo);
+      drawText(tx + Math.round(tw / 2), opts.title, y2 - 9,
                { align: "center", colour: opts.titleInk || "#0d1412" });
     }
   }
@@ -5074,7 +5155,15 @@ window.OuissyCup = (function () {
        about to fire is never a matter of a slightly different beige */
     if (b.on) {
       var ph = Math.floor(t * 14) % 4;
-      UIX.fillStyle = "#ffe066";
+      /* IT HAS TO CONTRAST WITH WHAT IT IS AROUND.
+         A fixed pale yellow keyline round a gold button is a pale
+         yellow line on a gold field — which is what the primary action
+         had, so the one marker saying "this is the button" was the one
+         you could not see. It picks white or ink depending on how light
+         the button it is marking is. */
+      var f = parseInt(face.slice(1), 16);
+      var lum = (((f >> 16) & 255) * 0.30 + ((f >> 8) & 255) * 0.59 + (f & 255) * 0.11);
+      UIX.fillStyle = lum > 140 ? "#1a1208" : "#ffffff";
       for (var i = 0; i < w - 2; i++) {
         if ((i + ph) % 4 < 2) {
           UIX.fillRect(x2 + 1 + i, y2 + oy - 1, 1, 1);
@@ -5137,10 +5226,27 @@ window.OuissyCup = (function () {
   var UI = { screen: null, name: "", t: 0, widgets: [], hot: null,
              down: null, focus: 0, born: 0, hearts: [], on: false };
 
+  /* How far past its drawn edge a widget still counts as pressed. A
+     button is 26 units tall, which on a phone is about forty CSS
+     pixels — under the size a thumb reliably hits — and making it
+     bigger on screen would mean a second layout. Growing the hit area
+     instead costs nothing visually and is what everything else does. */
+  var HIT_PAD = 4;
+
   function uiSize() {
     if (!uiCvs || !renderer) return;
     var size = renderer.getSize(new THREE.Vector2());
     var w = Math.max(2, Math.round(size.x)), h = Math.max(2, Math.round(size.y));
+    /* WITH THE PIXEL LAYER OFF, the renderer's buffer is the full CSS
+       size of the stage — a thousand pixels across. A five-by-seven
+       font in that is three millimetres tall and the menus become
+       unreadable, so the UI keeps its own resolution whatever the pitch
+       is doing. PIXEL.on is about the GAME's look; the menus are pixel
+       art either way. */
+    if (!cfg("PIXEL.on", true)) {
+      h = clamp(Math.round(h / 2.2), 140, 300);
+      w = Math.max(2, Math.round(h * (size.x / size.y)));
+    }
     if (w === UIW && h === UIH) return;
     UIW = uiCvs.width = w;
     UIH = uiCvs.height = h;
@@ -5162,6 +5268,8 @@ window.OuissyCup = (function () {
   }
   function uiClose() {
     UI.screen = null; UI.name = ""; UI.widgets = []; UI.on = false;
+    a11yKey = "";
+    if (EL["cup-ui-a11y"]) EL["cup-ui-a11y"].innerHTML = "";
     if (uiCvs) { uiCvs.hidden = true; uiCvs.classList.remove("on"); }
   }
 
@@ -5186,7 +5294,8 @@ window.OuissyCup = (function () {
               scale: opts.scale, subInk: opts.subInk,
               hover: UI.hot === id, down: UI.down === id,
               on: opts.on || UI.widgets.length === UI.focus && UI.kb };
-    UI.widgets.push({ id: id, x: x2, y: y2, w: w, h: h, go: opts.go });
+    UI.widgets.push({ id: id, x: x2, y: y2, w: w, h: h, go: opts.go,
+                      label: label, sub: opts.sub });
     button(b, UI.t);
     return b;
   }
@@ -5203,7 +5312,8 @@ window.OuissyCup = (function () {
     if (!p) return null;
     for (var i = UI.widgets.length - 1; i >= 0; i--) {
       var w = UI.widgets[i];
-      if (p.x >= w.x && p.x <= w.x + w.w && p.y >= w.y && p.y <= w.y + w.h) return w;
+      if (p.x >= w.x - HIT_PAD && p.x <= w.x + w.w + HIT_PAD &&
+          p.y >= w.y - HIT_PAD && p.y <= w.y + w.h + HIT_PAD) return w;
     }
     return null;
   }
@@ -5262,6 +5372,31 @@ window.OuissyCup = (function () {
     UIX.clearRect(0, 0, UIW, UIH);
     UI.widgets = [];
     UI.screen(UI.t - UI.born);
+    syncA11y();
+  }
+
+  /* The mirror is rebuilt only when the set of buttons changes, not on
+     every frame — sixty DOM rebuilds a second would be worse than not
+     having it. */
+  var a11yKey = "";
+  function syncA11y() {
+    var host = EL["cup-ui-a11y"];
+    if (!host) return;
+    var key = UI.name + "|" + UI.widgets.map(function (w) {
+      return w.id + ":" + (w.label || "");
+    }).join(",");
+    if (key === a11yKey) return;
+    a11yKey = key;
+    host.innerHTML = "";
+    UI.widgets.forEach(function (w) {
+      if (!w.go) return;
+      var b = document.createElement("button");
+      b.type = "button";
+      b.textContent = (w.label || w.id) + (w.sub ? " — " + w.sub : "");
+      b.addEventListener("click", function () { SFX.pick(); w.go(); });
+      host.appendChild(b);
+    });
+    if (uiCvs) uiCvs.setAttribute("aria-label", UI.name || "menu");
   }
 
   /* ------------------------------------------------------- the trimmings */
@@ -5271,30 +5406,43 @@ window.OuissyCup = (function () {
      whole rebuild is about not having: this is a checkerboard that gets
      denser towards the edges, which is exactly how the machines that
      invented this look faked a gradient out of two colours. */
+  var vigCanvas = null, vigKey = "";
   function vignette(strength) {
-    var step = 26;
-    UIX.fillStyle = "rgba(6,10,14," + (0.44 * (strength || 1)).toFixed(2) + ")";
-    for (var y2 = 0; y2 < UIH; y2 += 2) {
-      for (var x2 = 0; x2 < UIW; x2 += 2) {
-        var dx = (x2 - UIW / 2) / (UIW / 2), dy = (y2 - UIH / 2) / (UIH / 2);
-        var d = Math.sqrt(dx * dx + dy * dy * 0.8);
-        if (d < 0.72) continue;
-        var lvl = Math.min(3, Math.floor((d - 0.72) * 6));
-        /* four dither densities: every fourth pixel, every other, three
-           in four, then solid */
-        var cell = ((x2 >> 1) & 1) + (((y2 >> 1) & 1) << 1);
-        if (lvl === 0 && cell !== 0) continue;
-        if (lvl === 1 && (cell & 1)) continue;
-        if (lvl === 2 && cell === 3) continue;
-        UIX.fillRect(x2, y2, 2, 2);
+    var key = UIW + "x" + UIH + ":" + (strength || 1);
+    if (vigKey !== key) {
+      /* IT IS THE SAME PICTURE EVERY FRAME.
+
+         Thirty-two thousand cells, each with a square root in it, were
+         being recomputed sixty times a second to draw something that
+         cannot change unless the window is resized. It is baked into an
+         offscreen canvas once and blitted from then on. */
+      vigKey = key;
+      var m = mkCanvas(UIW, UIH);
+      var g = m.x;
+      g.fillStyle = "rgba(6,10,14," + (0.42 * (strength || 1)).toFixed(2) + ")";
+      for (var y2 = 0; y2 < UIH; y2 += 2) {
+        for (var x2 = 0; x2 < UIW; x2 += 2) {
+          var dx = (x2 - UIW / 2) / (UIW / 2), dy = (y2 - UIH / 2) / (UIH / 2);
+          var d = Math.sqrt(dx * dx + dy * dy * 0.8);
+          if (d < 0.78) continue;
+          var lvl = Math.min(3, Math.floor((d - 0.78) * 5.5));
+          /* four dither densities: a quarter of the cells, then half,
+             then three quarters, then solid */
+          var cell = ((x2 >> 1) & 1) + (((y2 >> 1) & 1) << 1);
+          if (lvl === 0 && cell !== 0) continue;
+          if (lvl === 1 && (cell & 1)) continue;
+          if (lvl === 2 && cell === 3) continue;
+          g.fillRect(x2, y2, 2, 2);
+        }
       }
+      vigCanvas = m.c;
     }
-    void step;
+    if (vigCanvas) UIX.drawImage(vigCanvas, 0, 0);
   }
 
   /* Hearts drifting up the screen. Eight of them, wrapping, at three
      different speeds so there is a foreground and a background to them. */
-  function heartsStep(dt, tone) {
+  function heartsStep(dt) {
     if (!UI.hearts.length) {
       for (var i = 0; i < 9; i++) {
         UI.hearts.push({ x: Math.random() * UIW, y: Math.random() * UIH,
@@ -5314,7 +5462,6 @@ window.OuissyCup = (function () {
         UIX.fillRect(hx + g.px[k][0] * h.s, hy + g.px[k][1] * h.s, h.s, h.s);
       }
     });
-    void tone;
   }
 
   /* The banner strip along the top: pennants on a string, waving. All
@@ -5339,10 +5486,29 @@ window.OuissyCup = (function () {
   /* A crest, drawn into the pixel layer rather than composited as a
      smooth canvas: crestCanvas already draws one at any size, so it is
      rendered small and blitted with smoothing off. */
+  /* A CREST IS VECTOR ART UNTIL IT IS NOT.
+
+     crestCanvas draws with curves and the browser antialiases them, so
+     blitting one into the pixel layer drops a little cloud of blended
+     half-pixels into a screen that has none anywhere else — the one
+     smooth object left on the page. Every badge is passed through a
+     threshold once, when it is first asked for: anything more than half
+     opaque becomes solid, anything less disappears. Hard edges, same
+     artwork, and it costs nothing after the first frame. */
   var crestCache = {};
+  function hardEdge(cv) {
+    var x = cv.getContext("2d");
+    var d = x.getImageData(0, 0, cv.width, cv.height);
+    var p2 = d.data;
+    for (var i = 0; i < p2.length; i += 4) {
+      p2[i + 3] = p2[i + 3] > 128 ? 255 : 0;
+    }
+    x.putImageData(d, 0, 0);
+    return cv;
+  }
   function pixCrest(team, x2, y2, w, h, t) {
     var key = team.id + ":" + w + "x" + h;
-    if (!crestCache[key]) crestCache[key] = badgeCanvas(team, w, h);
+    if (!crestCache[key]) crestCache[key] = hardEdge(badgeCanvas(team, w, h));
     UIX.imageSmoothingEnabled = false;
     x2 = Math.round(x2); y2 = Math.round(y2);
     UIX.drawImage(crestCache[key], x2, y2, w, h);
@@ -5578,15 +5744,15 @@ window.OuissyCup = (function () {
         '<div class="cup-lock">' +
           '<span class="cup-cupart" data-cup="1"></span>' +
           '<h2 class="cup-lock-t">' + cfg("TITLE", "Ouissy\u2019s Cup") + "</h2>" +
-          '<p class="cup-lock-k">QUATRE CONTRE QUATRE</p>' +
+          '<p class="cup-lock-k">FOUR A SIDE</p>' +
           '<p class="cup-menu-sub">' + cfg("TAGLINE", "") + "</p>" +
         "</div>" +
 
         '<div class="cup-menu-list">' +
         modes.map(function (m) { return btn(m.id, m.name, m.note, m.primary); }).join("") +
-        btn("teams", "LES \u00c9QUIPES", "pick a faculty, or build your own squad") +
-        btn("help", "COMMENT JOUER", "one stick, two buttons") +
-        btn("quit", "RETOUR AU LIVRE", "") +
+        btn("teams", "THE TEAMS", "pick a faculty, or build your own squad") +
+        btn("help", "HOW TO PLAY", "one stick, two buttons") +
+        btn("quit", "BACK TO THE BOOK", "") +
         "</div>" +
 
         /* who she is playing as, and how hard it is. Both were things
@@ -5622,8 +5788,8 @@ window.OuissyCup = (function () {
         run.myTeam = mine;
         run.quick = true;
         run.fixture = { mine: mine, theirs: theirs, venue: "night",
-          round: { round: "LE DERBY", skill: 0.72, venue: "night",
-                   before: "Dentaire contre m\u00e9decine. He has been talking " +
+          round: { round: "THE DERBY", skill: 0.72, venue: "night",
+                   before: "Dentistry against medicine. He has been talking " +
                            "about this one for a fortnight.",
                    won: "You beat his faculty. He will hear about it all year.",
                    lost: "His faculty took it. He is being very gracious, which is worse." } };
@@ -5778,14 +5944,14 @@ window.OuissyCup = (function () {
       var capR = cap ? ROSTER[cap.id] : null;
       var dt = 1 / 60;
 
-      heartsStep(dt, accent);
+      heartsStep(dt);
       vignette(0.95);
       bunting(0, cols, UI.t);
 
       /* ---- the title, as a logo rather than as a heading ---- */
       var tp = slideIn(age, 0, -26);
-      var head = mode === "quick" ? "VOTRE FACULTÉ"
-               : mode === "opp" ? "CONTRE QUI ?" : "LES ÉQUIPES";
+      var head = mode === "quick" ? "YOUR FACULTY"
+               : mode === "opp" ? "WHO ARE YOU PLAYING?" : "THE TEAMS";
       drawText(Math.round(UIW / 2), head, 14 + tp.off,
                { align: "center", scale: 2, colour: "#ffffff",
                  outline: "#0d1412", outlineW: 2,
@@ -5795,15 +5961,31 @@ window.OuissyCup = (function () {
 
       /* ---- the panel: who they are, what they are, who plays ---- */
       var pn = slideIn(age, 0.06, -70);
-      var px2 = 10 - pn.off, py = 44, pw = 168, ph2 = UIH - 44 - 66;
+      /* The panel runs down to just above the action row. At the old
+         height the last man in the squad had his feet cut off by the
+         frame; the space under it was empty, so the frame grew
+         rather than the type shrinking. */
+      var px2 = 10 - pn.off, py = 44, pw = 168, ph2 = UIH - 44 - 48;
       panel(px2, py, pw, ph2, accent,
             { fill: "#16222a", title: t.short || "TEAM", titleInk: "#0d1412" });
 
       var ix = px2 + 10, iy = py + 12;
       pixCrest(t, ix, iy, 34, 23, UI.t);
-      drawText(ix + 40, t.name, iy + 1, { colour: "#ffffff" });
-      drawText(ix + 40, t.sub || (t.custom ? "your own squad" : ""), iy + 11,
-               { colour: "#8fa6b4" });
+      /* CUT TO THE PANEL, NOT TO THE SCREEN. Neither of these had a
+         width limit, so "Faculty of Dental Medicine" simply carried on
+         out through the right-hand side of the frame it is printed in.
+         A squad she names herself can be twenty-two characters, so the
+         name needs the same treatment. */
+      var textW = pw - 20 - 40;
+      drawText(ix + 40, fitText(t.name, textW), iy + 1, { colour: "#ffffff" });
+      /* WRAPPED, NOT CUT. Clipping it to the panel stopped it running
+         off the screen and immediately introduced the opposite fault:
+         "Faculty of Dental Medicine" became "Faculty of Dental..." with
+         an empty line sitting underneath it. There is room for two. */
+      wrapText(t.sub || (t.custom ? "your own squad" : ""), textW, 2)
+        .forEach(function (ln, i) {
+          drawText(ix + 40, ln, iy + 11 + i * 9, { colour: "#8fa6b4" });
+        });
 
       /* The rating counts up rather than appearing — off the screen's
          own age, not off a per-frame lerp. A lerp is frame-rate
@@ -5821,16 +6003,16 @@ window.OuissyCup = (function () {
          through the middle of it. Measure the number and put the words
          after it. */
       var rtxt = String(Math.round(selAnim.rating));
-      drawText(ix, rtxt, iy + 26,
+      drawText(ix, rtxt, iy + 31,
                { scale: 3, colour: trim, outline: "#0d1412", outlineW: 1 });
       var rw = textWidth(rtxt, 3, 1) + 7;
-      drawText(ix + rw, "TEAM", iy + 28, { colour: "#8fa6b4" });
-      drawText(ix + rw, "RATING", iy + 38, { colour: "#8fa6b4" });
+      drawText(ix + rw, "TEAM", iy + 33, { colour: "#8fa6b4" });
+      drawText(ix + rw, "RATING", iy + 43, { colour: "#8fa6b4" });
 
       /* ---- the bars: they sweep, and they overshoot ---- */
       var rows = [["SPEED", st.speed, "#5fd6cc"], ["POWER", st.power, "#e8764a"],
                   ["SKILL", st.skill, "#e8a63c"], ["DEF", st.defence, "#7f9ad6"]];
-      var by = iy + 52;
+      var by = iy + 57;
       rows.forEach(function (r, i) {
         var target = r[1] / 100;
         var d2 = clamp((age - 0.24 - i * 0.07) / 0.42, 0, 1);
@@ -5858,11 +6040,11 @@ window.OuissyCup = (function () {
       });
 
       /* ---- the arrows: big, and they are the whole side of the screen ---- */
-      var ay = Math.round(UIH / 2) - 14;
-      if (uiButton("prev", 186, ay, 22, 30, "◂",
-                   { tone: lift(accent, -30), scale: 2,
-                     go: function () { carAt--; teamSelect(mode); } }).hover) { /* */ }
-      uiButton("next", UIW - 32, ay, 22, 30, "▸",
+      var ay = Math.round(UIH / 2) - 16;
+      uiButton("prev", 188, ay, 24, 32, "◂",
+               { tone: lift(accent, -30), scale: 2,
+                 go: function () { carAt--; teamSelect(mode); } });
+      uiButton("next", UIW - 36, ay, 24, 32, "▸",
                { tone: lift(accent, -30), scale: 2,
                  go: function () { carAt++; teamSelect(mode); } });
 
@@ -5870,7 +6052,7 @@ window.OuissyCup = (function () {
       if (capR && capR.super) {
         var sp = slideIn(age, 0.36, 40);
         var spw = UIW - 206;
-        var spy = UIH - 70 + sp.off;
+        var spy = UIH - 82 + sp.off;
         /* TWO LINES, AND THE SECOND ONE IS CUT TO FIT.
 
            On one line the name and the description came to more than
@@ -5879,40 +6061,55 @@ window.OuissyCup = (function () {
            the note gets the one under it, trimmed on a word boundary
            with an ellipsis if the character's description is a long
            one — nothing is allowed to leave the plate. */
-        panel(196, spy, spw, 30, capR.super.colour, { fill: "#141c22" });
+        panel(196, spy, spw, 40, capR.super.colour, { fill: "#141c22" });
         drawText(206, "♥", spy + 6, { colour: capR.super.colour });
         drawText(216, capR.super.name, spy + 6,
                  { colour: "#ffffff", shadow: "rgba(0,0,0,.6)" });
-        drawText(206, fitText(capR.super.note || "", spw - 22), spy + 17,
-                 { colour: "#93a8b6" });
+        /* wrapped over two lines rather than cut on one. There was a
+           whole empty line underneath the ellipsis. */
+        wrapText(capR.super.note || "", spw - 22, 2).forEach(function (ln, i) {
+          drawText(206, ln, spy + 17 + i * 9, { colour: "#93a8b6" });
+        });
       }
 
       /* ---- the actions. The primary one is gold and nothing else is ---- */
       var bp = slideIn(age, 0.42, 46);
-      var byy = UIH - 34 + bp.off;
-      uiButton("use", 10, byy, 118, 26,
-               mode === "quick" ? "JOUER" : mode === "opp" ? "LES AFFRONTER" : "CHOISIR",
-               { tone: "#e0a81e", ink: "#2a1c06", scale: 2, on: true,
-                 go: function () { chooseTeam(mode, t, list); } });
-      uiButton("build", 136, byy, 116, 26, "BUILD YOUR OWN",
-               { tone: "#2f5d72",
-                 go: function () { uiClose(); openBuilder(mode); } });
-      var bx = 260;
+      var byy = UIH - 40 + bp.off;
+      /* ONE TYPE SIZE ACROSS THE ROW.
+
+         The primary was set at double size and its two neighbours at
+         single, which is two different pieces of furniture standing
+         next to each other. They are all one size now, and the primary
+         is told apart the way it should be: it is gold, it is wider,
+         and it is the only one wearing the keyline. */
+      var actions = [
+        { id: "use", w: 128, tone: "#e0a81e", ink: "#2a1c06", on: true,
+          label: mode === "quick" ? "PLAY AS THEM"
+               : mode === "opp" ? "PLAY AGAINST THEM" : "CHOOSE",
+          go: function () { chooseTeam(mode, t, list); } },
+        { id: "build", w: 112, tone: "#2f5d72", label: "BUILD A SQUAD",
+          go: function () { uiClose(); openBuilder(mode); } },
+      ];
       if (t.custom) {
-        uiButton("del", bx, byy, 60, 26, "DELETE",
-                 { tone: "#7a2b34",
-                   go: function () {
-                     saveCustom(loadCustom().filter(function (c) { return c.id !== t.id; }));
-                     carAt = 0; teamSelect(mode);
-                   } });
-        bx += 68;
+        actions.push({ id: "del", w: 64, tone: "#7a2b34", label: "DELETE",
+          go: function () {
+            saveCustom(loadCustom().filter(function (c) { return c.id !== t.id; }));
+            carAt = 0; teamSelect(mode);
+          } });
       }
-      uiButton("back", bx, byy, 60, 26, "BACK",
-               { tone: "#3b4a54", go: function () { uiClose(); titleMenu(); } });
+      actions.push({ id: "back", w: 64, tone: "#3b4a54", label: "BACK",
+        go: function () { uiClose(); titleMenu(); } });
+
+      var bx = 16;
+      actions.forEach(function (a2) {
+        uiButton(a2.id, bx, byy, a2.w, 24, a2.label,
+                 { tone: a2.tone, ink: a2.ink, on: a2.on, go: a2.go });
+        bx += a2.w + 8;                     // one gap, on the eights
+      });
     });
   }
 
-  /* what CHOISIR does, which depends on why she is looking at teams */
+  /* what CHOOSE does, which depends on why she is looking at teams */
   function chooseTeam(mode, t, list) {
     patchTeamLookup();
     if (mode === "quick") {
@@ -5924,7 +6121,7 @@ window.OuissyCup = (function () {
       run.quick = true;
       run.fixture = { mine: run.myTeam, theirs: t.id,
         venue: t.venue || "rabat",
-        round: { round: "MATCH AMICAL", skill: 0.58, venue: t.venue || "rabat",
+        round: { round: "FRIENDLY", skill: 0.58, venue: t.venue || "rabat",
                  before: "A friendly, on their grass.",
                  won: "Won it. It counts for nothing and it counts for everything.",
                  lost: "Lost a friendly. It is called a friendly for a reason." } };
@@ -6690,6 +6887,45 @@ window.OuissyCup = (function () {
                    squad: squadOf(t).map(function (m) { return m.name; }) } : null;
     },
     selAnim: function () { return JSON.parse(JSON.stringify(selAnim)); },
+    /* WHICH CHARACTERS THE FONT CANNOT DRAW.
+
+       A bitmap font has exactly the glyphs somebody sat down and drew,
+       so a curly apostrophe or an em dash in the config is not a
+       styling difference — it is a question mark on the screen. This
+       walks every string the chapter can say and reports anything the
+       font would have to fall back on. */
+    fontMissing: function () {
+      var bad = {}, seen = 0;
+      var visit = function (v) {
+        if (typeof v === "string") {
+          /* A hex colour is not a word. The config is full of them
+             and none is ever drawn, so scanning every string
+             indiscriminately reported the # of "#ff5f8f" as a
+             missing glyph a hundred and eighty-eight times and
+             buried anything real underneath it. */
+          if (/^#[0-9a-fA-F]{3,8}$/.test(v)) return;
+          seen++;
+          for (var i = 0; i < v.length; i++) {
+            var ch = v[i];
+            if (GLYPH[ch] === undefined && !ACCENTED[ch]) {
+              bad[ch] = (bad[ch] || 0) + 1;
+            }
+          }
+          return;
+        }
+        if (v && typeof v === "object") Object.keys(v).forEach(function (k) { visit(v[k]); });
+      };
+      visit(window.CUP_CONFIG);
+      if (wordWatch) Object.keys(wordWatch).forEach(visit);
+      return { scanned: seen, missing: Object.keys(bad).map(function (c) {
+        return { ch: c, code: "U+" + c.charCodeAt(0).toString(16).toUpperCase(), n: bad[c] };
+      }) };
+    },
+    /* start recording every string the UI paints */
+    watchWords: function (on) {
+      wordWatch = on ? (wordWatch || {}) : null;
+      return wordWatch ? Object.keys(wordWatch).length : 0;
+    },
     hero: function () {
       return hero.p ? { name: hero.p.name, x: hero.p.x, y: hero.p.y,
                         anim: hero.p.anim && hero.p.anim.state } : null;

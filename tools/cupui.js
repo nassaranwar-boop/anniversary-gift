@@ -200,6 +200,50 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
   });
   ok('the screen is never completely still', motion.changed > 60, motion);
 
+  /* ---- 7. every word the game can say, the font can draw ----
+     A bitmap font has exactly the glyphs somebody drew. A curly
+     apostrophe or an em dash that nobody drew is not a styling
+     difference, it is a question mark on the screen — and the title of
+     the whole chapter is "Ouissy's Cup" with a curly one in it. */
+  const font = await p.evaluate(() => {
+    OuissyCup.__cup.watchWords(true);
+    return null;
+  });
+  void font;
+  /* Walk the carousel so every team's words go through the renderer.
+     Clicked by coordinate, not by calling the handler: ui() hands back
+     a serialised copy of the widget table, so the functions on it do
+     not survive the trip out of the page. */
+  for (let i = 0; i < 6; i++) {
+    const at = await p.evaluate(() => {
+      const w = OuissyCup.__cup.ui().widgets.find(v => v.id === 'next');
+      const c = document.getElementById('cup-ui');
+      const r = c.getBoundingClientRect();
+      return w ? { x: r.left + (w.x + w.w / 2) / c.width * r.width,
+                   y: r.top + (w.y + w.h / 2) / c.height * r.height } : null;
+    });
+    if (!at) break;
+    await p.mouse.click(at.x, at.y);
+    await p.waitForTimeout(240);
+  }
+  const glyphs = await p.evaluate(() => OuissyCup.__cup.fontMissing());
+  ok('the font can draw every word in the game',
+     glyphs.missing.length === 0,
+     { scanned: glyphs.scanned, missing: glyphs.missing });
+
+  /* ---- 8. and the menus are in one language ---- */
+  const french = await p.evaluate(() => {
+    const hits = [];
+    const bad = /(ÉQUIPES|FACULTÉ|CHOISIR|JOUER|AFFRONTER|RETOUR AU|COMMENT |CONTRE QUI|AMICAL|LA COUPE|QUART DE|DEMI-|LA FINALE|PROJECTEURS|TRANQUILLE|SÉRIEUX|CAMPUS DE)/;
+    const walk = (o, path) => {
+      if (typeof o === 'string') { if (bad.test(o)) hits.push(path + ': ' + o); return; }
+      if (o && typeof o === 'object') Object.keys(o).forEach(k => walk(o[k], path + '.' + k));
+    };
+    walk(window.CUP_CONFIG, 'config');
+    return hits;
+  });
+  ok('the game is in English', french.length === 0, french);
+
   ok('no page errors', errs.length === 0, errs.slice(0, 4));
   console.log(pass + ' passed, ' + fail + ' failed');
   await b.close();
