@@ -1,111 +1,63 @@
 /* =========================================================================
    OUISSY'S CUP — THE CHARACTER SPRITES
 
-   WHY THIS FILE EXISTS
-
-   The players were low-poly figures built out of capsules and spheres. At
-   match distance that reads as "some 3D people", which is the one thing a
-   site made entirely of pixel art should never contain. They are pixel
-   sprites now — drawn, shaded and outlined here, then stood up on the 3D
-   pitch as camera-facing billboards, so the chapter keeps its camera,
-   its depth and its venues and gains characters you can actually tell
-   apart.
+   Built to the character bible. Every rule in Part 1 is implemented here
+   rather than remembered: the three-tone ramps, the single top-left
+   light, the closed one-pixel outline in a darkened fill colour, the rim
+   light on the shaded edge, and the colour budget.
 
    ---------------------------------------------------------------------
-   THE HONEST CONSTRAINT, AND WHAT IT FORCED
+   WHY A COMPOSITOR AND NOT DRAWN SHEETS
 
-   Hand-drawn sheets are not available to this repository. The rule the
-   whole site is built on is that there is not an image file in it —
-   every sprite in every chapter is made at runtime. A hand-authored
-   roster at the size asked for is about two thousand frames (fourteen
-   characters, five unique facings, six animations), which is neither
-   something that can be drawn into source nor something that would fit
-   in a page load if it were.
+   There is not an image file anywhere in this repository and there
+   cannot be: every sprite in every chapter is made at runtime. The
+   roster at the size the bible asks for is about two thousand frames —
+   thirteen characters, five unique facings, eight animations. So this is
+   a small pixel-art PROGRAM that draws one chibi footballer from a
+   description and can therefore draw all of them in one hand.
 
-   So this is a SPRITE COMPOSITOR: a small pixel-art program that draws
-   one chibi footballer from a description — build, head, hair, skin,
-   kit, accessories — and can therefore draw fourteen of them, from the
-   same roster entries the game already uses. Every frame is rasterised
-   by hand into an index buffer, never by the browser, because anything
-   the browser draws it also antialiases, and one soft edge anywhere
-   gives the whole thing away.
-
-   WHAT THAT BUYS, AND WHAT IT COSTS
-
-   Buys: fourteen characters in one consistent hand, every animation in
-   every facing, palette clamped by construction, nothing to download,
-   and a character whose silhouette can be changed by editing a number
-   in cup.config.js.
-
-   Costs: it is a drawing program, not an artist. The poses are built out
-   of sine curves and offsets rather than felt frame by frame, so the run
-   has a good bounce and will never have the tiny deliberate imperfection
-   a person would put in it.
+   Every frame is rasterised into an index buffer one pixel at a time,
+   never by the browser, because anything the browser draws it also
+   antialiases, and one soft edge anywhere gives the whole thing away.
 
    ---------------------------------------------------------------------
-   HOW A FRAME IS MADE
+   THE ORDER OF THE PASSES, AND WHY
 
      1. an index buffer, one byte per pixel, zero meaning nothing
-     2. body parts rasterised into it as flat colour FAMILIES
-     3. a cel pass: one light direction, top-left. A pixel of a family
-        whose up-left neighbour is empty becomes that family's highlight;
-        one whose down-right neighbour is empty becomes its shadow
-     4. an outline pass: empty pixels touching the figure take the dark
-        tone of whatever they are touching — so the outline is a darker
-        version of the colour beside it and never a black keyline
-     5. a rim pass: outline pixels along the top-right edge take a cool
-        bright tone, which is the back light that lifts a figure off a
-        crowd
+     2. body parts rasterised as flat colour AREAS, back to front
+     3. occlusion: hard shadow bands where forms meet — under the chin,
+        under the arm, between the legs. Drawn, not derived, because a
+        derived edge cannot know that an arm is in FRONT of a chest
+        rather than beside it
+     4. the cel pass: one light, top-left. An area pixel with nothing
+        above-left takes that area's highlight; one with nothing
+        below-right takes its shadow
+     5. the outline: empty pixels touching the figure take the OUTLINE
+        tone of whatever they touch, so a red kit is bounded by dark
+        maroon and never by black
+     6. the rim: outline pixels on the lower-right take a cool tint, so
+        the figure separates from a busy crowd
 
-   INDEXES, NOT COLOURS, the whole way through: it makes every pass a
-   comparison rather than a colour distance, and it makes the palette
-   clamp a property of the file rather than a step at the end.
+   Indexes rather than colours the whole way through, which makes every
+   pass a comparison and makes the colour budget structural.
    ========================================================================= */
 
 window.CupSprites = (function () {
   "use strict";
 
-  /* One frame is 48 by 48. Big enough that a face is a face at the
-     distance this is played from, small enough that a whole roster of
-     atlases does not become the largest thing on the page. */
-  var S = 48;
+  /* Part 1.1: a 64 cell with a 48-pixel figure in it. The headroom is
+     for the celebrate frames, where she leaves the ground. */
+  var S = 64;
+  var FIGURE = 48;
+  var GROUND = 56;            // the line the boots stand on
 
-  /* Where the figure sits inside the frame. `ground` is the line the
-     boots stand on, which is also the point the billboard is pinned to
-     the pitch at, so a character never floats or sinks. */
-  var GROUND = 44;
-
-  /* ------------------------------------------------------------ colour */
-  function rgb(hex) {
-    var n = parseInt(hex.slice(1), 16);
+  function rgb(h) {
+    var n = parseInt(h.slice(1), 16);
     return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
   }
-  function hex(c) {
-    return "#" + ((1 << 24) + (c[0] << 16) + (c[1] << 8) + c[2]).toString(16).slice(1);
-  }
-  /* Shading by a fixed step and a slight hue push rather than by a
-     percentage: multiplying a dark colour by 0.8 is no visible change,
-     and real pixel art warms its highlights and cools its shadows. */
-  function tone(h, amt, warm) {
-    var c = rgb(h);
-    var w = warm || 0;
-    return hex([
-      clamp8(c[0] + amt + w * 6),
-      clamp8(c[1] + amt + w * 2),
-      clamp8(c[2] + amt - w * 8),
-    ]);
-  }
-  function clamp8(v) { return v < 0 ? 0 : v > 255 ? 255 : Math.round(v); }
 
-  /* --------------------------------------------------------- the sheet
-     An index buffer and the smallest set of rasterising primitives that
-     can draw a person. Every one of them is a loop over integer pixels:
-     there is no path, no stroke and no fill in here, because the moment
-     the browser draws a shape it also feathers its edge. */
-  function Sheet(w, h) {
-    this.w = w; this.h = h;
-    this.d = new Uint8Array(w * h);
-  }
+  /* --------------------------------------------------------- the sheet */
+  function Sheet(w, h) { this.w = w; this.h = h; this.d = new Uint8Array(w * h); }
   Sheet.prototype.px = function (x, y, i) {
     x |= 0; y |= 0;
     if (x < 0 || y < 0 || x >= this.w || y >= this.h) return;
@@ -116,12 +68,10 @@ window.CupSprites = (function () {
     return this.d[y * this.w + x];
   };
   Sheet.prototype.rect = function (x, y, w, h, i) {
-    for (var yy = 0; yy < h; yy++) {
-      for (var xx = 0; xx < w; xx++) this.px(x + xx, y + yy, i);
-    }
+    for (var yy = 0; yy < h; yy++) for (var xx = 0; xx < w; xx++) this.px(x + xx, y + yy, i);
   };
-  /* A filled ellipse by the midpoint test, which gives the same chunky
-     stepped edge a person drawing one by hand would produce. */
+  /* filled ellipse by the midpoint test — the same chunky stepped edge a
+     person drawing one by hand would make */
   Sheet.prototype.ellipse = function (cx, cy, rx, ry, i) {
     for (var yy = -ry; yy <= ry; yy++) {
       for (var xx = -rx; xx <= rx; xx++) {
@@ -130,37 +80,39 @@ window.CupSprites = (function () {
       }
     }
   };
-  /* a capsule: the shape every limb in here actually is */
+  /* a capsule, which is what every limb actually is */
   Sheet.prototype.limb = function (x0, y0, x1, y1, r, i) {
-    var steps = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) + 1;
-    for (var s = 0; s <= steps; s++) {
-      var t = s / steps;
-      this.ellipse(Math.round(x0 + (x1 - x0) * t),
-                   Math.round(y0 + (y1 - y0) * t), r, r, i);
+    var n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) + 1;
+    for (var s = 0; s <= n; s++) {
+      var t = s / n;
+      this.ellipse(Math.round(x0 + (x1 - x0) * t), Math.round(y0 + (y1 - y0) * t), r, r, i);
+    }
+  };
+  /* Paint over pixels that already belong to `only`. The drawn occlusion
+     shadows need this: a band under the chin must darken the CHEST, not
+     punch a hole in the air beside it. */
+  Sheet.prototype.shadeIn = function (x, y, w, h, only, to) {
+    for (var yy = 0; yy < h; yy++) {
+      for (var xx = 0; xx < w; xx++) {
+        if (this.at(x + xx, y + yy) === only) this.px(x + xx, y + yy, to);
+      }
     }
   };
 
   /* ------------------------------------------------------- the palette
-     A character is at most five colour FAMILIES and each family is four
-     indexes: dark (its own outline), shadow, base, light. Twenty-one
-     slots including the empty one, which is the "max about five colours
-     per character" rule made structural rather than remembered. */
-  function Palette() {
-    this.cols = ["#000000"];        // index 0 is never drawn
-    this.fam = {};
-  }
-  Palette.prototype.family = function (name, base, opts) {
-    opts = opts || {};
+     Parts 1.2 and 1.3: every area is four explicit tones — outline,
+     shadow, base, highlight — taken from the bible rather than derived,
+     so what is on screen is what was specified. */
+  function Palette() { this.cols = ["#000000"]; this.fam = {}; }
+  Palette.prototype.area = function (name, ramp) {
     var i = this.cols.length;
-    this.cols.push(tone(base, opts.darkAmt === undefined ? -78 : opts.darkAmt, -1));
-    this.cols.push(tone(base, -34, -1));
-    this.cols.push(base);
-    this.cols.push(tone(base, opts.liteAmt === undefined ? 30 : opts.liteAmt, 1));
+    this.cols.push(ramp[3] || ramp[0]);      // outline
+    this.cols.push(ramp[0]);                 // shadow
+    this.cols.push(ramp[1]);                 // base
+    this.cols.push(ramp[2]);                 // highlight
     this.fam[name] = { dark: i, shadow: i + 1, base: i + 2, light: i + 3 };
     return this.fam[name];
   };
-  /* one flat index that takes no shading at all — eyes, the ball, a
-     charm — because a two-pixel eye with a highlight on it is mush */
   Palette.prototype.flat = function (name, col) {
     var i = this.cols.length;
     this.cols.push(col);
@@ -168,33 +120,102 @@ window.CupSprites = (function () {
     return this.fam[name];
   };
 
+  function shift(h, d) {
+    var c = rgb(h);
+    var f = function (v) { return Math.max(0, Math.min(255, Math.round(v + d))); };
+    return "#" + ((1 << 24) + (f(c[0]) << 16) + (f(c[1]) << 8) + f(c[2])).toString(16).slice(1);
+  }
+  function derive(base) { return [shift(base, -38), base, shift(base, 34), shift(base, -78)]; }
+
+  /* ------------------------------------------------------------ OUISSY
+     Part 5.2, with one deliberate departure that was asked for directly.
+
+     The bible's own table gives her warm-brown skin and dark-brown hair,
+     while Part 5.0 and 5.4 say she must match the sprite she has in the
+     other chapters of this site — and in super-ouissy.js she is very
+     light skinned with long blonde hair. Those cannot both be true. She
+     keeps her own colouring: a version of her with brown hair in one
+     game is a different person. Everything else below is the bible's.
+
+     The two skin and three hair tones are lifted straight out of
+     super-ouissy.js so the two games agree exactly. */
+  var BIBLE = {
+    ouissy: {
+      /* shadow, base, highlight, outline */
+      skin:  ["#f2c8b0", "#ffe6d4", "#fff6ec", "#b8845f"],
+      hair:  ["#b8862f", "#e0b34e", "#ffe9a8", "#8a6220"],
+      kit:   ["#a8283a", "#c73847", "#e05561", "#6e1824"],
+      trim:  ["#d9cba8", "#f4ecd8", "#fffaf0", "#b89d6a"],
+      gold:  ["#c8912f", "#e8b84b", "#f6d878", "#8a5f18"],
+      heart: ["#c03a52", "#e0556b", "#f07a8c", "#7a1e30"],
+      boot:  ["#241c26", "#3d3040", "#554860", "#160f18"],
+      /* her ink purple, not black — the colour her eyes and outlines are
+         in every other chapter */
+      eye:   "#3d2340",
+      white: "#f4f4e8",
+      blush: "#ff8fae",
+      mouth: "#b0455e",
+    },
+  };
+
+  function paletteFor(L, kit) {
+    var P = new Palette();
+    var B = BIBLE[L.id];
+    if (B) {
+      P.area("skin", B.skin);   P.area("hair", B.hair);
+      P.area("kit", B.kit);     P.area("trim", B.trim);
+      /* THE SHORTS ARE NOT THE TRIM.
+
+         The bible's cream (#f4ecd8) sits two points away from her skin
+         (#ffe6d4). On a collar that is fine. On the shorts it meant her
+         hem, her thighs and her hands were one continuous pale mass with
+         no edge anywhere in it — at sprite size the entire middle of the
+         character disappeared. Same cream, taken down far enough that
+         skin reads against it, with the bible's value kept as the
+         highlight so the family still belongs to the kit. */
+      P.area("shorts", ["#cbbc97", "#e6dabb", "#f4ecd8", "#8f7f5a"]);
+      P.area("gold", B.gold);   P.area("heart", B.heart);
+      P.area("boot", B.boot);
+      P.flat("eye", B.eye);     P.flat("white", B.white);
+      P.flat("blush", B.blush); P.flat("mouth", B.mouth);
+    } else {
+      /* anyone not yet drawn to the bible is built from their roster
+         colours, so the compositor can still draw the whole squad while
+         only the approved character is held to the spec */
+      P.area("skin", derive(L.skin || "#b98555"));
+      P.area("hair", derive(L.hair || "#3a2a1c"));
+      P.area("kit", derive((kit && kit.shirt) || "#c73847"));
+      P.area("trim", derive((kit && kit.trim) || "#f4ecd8"));
+      P.area("shorts", derive((kit && kit.shorts) || "#e6dabb"));
+      P.area("gold", derive((kit && kit.trim) || "#e8b84b"));
+      P.area("heart", derive((L.super && L.super.colour) || "#e0556b"));
+      P.area("boot", derive("#3d3040"));
+      P.flat("eye", L.eye || "#2a1c22");
+      P.flat("white", "#f4f4e8");
+      P.flat("blush", "#c07a5a");
+      P.flat("mouth", "#7a1e30");
+    }
+    /* Part 1.4: one cool tint for the whole figure, because a back light
+       is one light and not one per material */
+    P.flat("rim", "#93b2c8");
+    return P;
+  }
+
   /* =======================================================================
      THE PASSES
      ======================================================================= */
-
-  /* Cel shading: one light, from the top left. A family pixel with
-     nothing above-left of it catches the light; one with nothing
-     below-right of it falls into shadow. Two tones and a hard border
-     between them, which is what cel means. */
-  function celPass(sh, pal, famIdx) {
+  function celPass(sh, famIdx) {
     var out = new Uint8Array(sh.d);
     for (var y = 0; y < sh.h; y++) {
       for (var x = 0; x < sh.w; x++) {
-        var i = sh.at(x, y);
-        var f = famIdx[i];
+        var i = sh.at(x, y), f = famIdx[i];
         if (!f || f.flat || i !== f.base) continue;
-        var upLeft = sh.at(x - 1, y - 1) === 0 || sh.at(x, y - 1) === 0;
-        var downRight = sh.at(x + 1, y + 1) === 0 || sh.at(x, y + 1) === 0;
-        if (upLeft) out[y * sh.w + x] = f.light;
-        else if (downRight) out[y * sh.w + x] = f.shadow;
+        if (sh.at(x - 1, y - 1) === 0 || sh.at(x, y - 1) === 0) out[y * sh.w + x] = f.light;
+        else if (sh.at(x + 1, y + 1) === 0 || sh.at(x, y + 1) === 0) out[y * sh.w + x] = f.shadow;
       }
     }
     sh.d = out;
   }
-
-  /* The outline takes the dark tone of whatever it is drawn against, so
-     a figure is bounded by a darker version of its own colours rather
-     than by one black line laid over everything. */
   function outlinePass(sh, famIdx) {
     var out = new Uint8Array(sh.d);
     for (var y = 0; y < sh.h; y++) {
@@ -208,26 +229,19 @@ window.CupSprites = (function () {
     }
     sh.d = out;
   }
-
-  /* The back light. Outline pixels along the top and right take a cool
-     bright tone — the one thing that stops a figure sinking into a
-     crowd the same brightness as it is. */
   function rimPass(sh, famIdx, rimIdx) {
     var out = new Uint8Array(sh.d);
     for (var y = 0; y < sh.h; y++) {
       for (var x = 0; x < sh.w; x++) {
-        var i = sh.at(x, y);
-        if (!i) continue;
-        var f = famIdx[i];
-        if (!f || i !== f.dark) continue;          // outline pixels only
-        /* The right-hand edge only, and only where there is solid
-           figure immediately inside it. Without that second test every
-           loose strand of hair got a bright streak down it and the back
-           light read as a drawing error rather than as light. */
-        if (sh.at(x + 1, y) !== 0 || sh.at(x + 1, y - 1) !== 0) continue;
-        var inward = sh.at(x - 1, y);
-        var g2 = famIdx[inward];
-        if (!g2 || inward === g2.dark) continue;
+        var i = sh.at(x, y), f = famIdx[i];
+        if (!f || i !== f.dark) continue;
+        /* the shaded edge — lower and right — and only where there is
+           solid figure inside it, or every loose strand of hair gets a
+           streak and the back light reads as a drawing error */
+        if (sh.at(x + 1, y) !== 0 && sh.at(x, y + 1) !== 0) continue;
+        var inward = sh.at(x - 1, y) || sh.at(x, y - 1);
+        var g = famIdx[inward];
+        if (!g || inward === g.dark) continue;
         out[y * sh.w + x] = rimIdx;
       }
     }
@@ -237,132 +251,146 @@ window.CupSprites = (function () {
   /* =======================================================================
      THE FIGURE
 
-     Two and a bit heads tall. Everything below is expressed against
-     GROUND so a taller or wider character grows from the boots up rather
-     than drifting off the bottom of the frame.
+     Part 1.1 proportions for a 48-pixel character: head 20, torso 16
+     with real WIDTH — twenty pixels across, which is what stops it
+     reading as a plank — legs 12, chunky feet.
      ======================================================================= */
-
-  /* How far round the character is turned, and whether we are behind
-     them. Five unique facings are drawn; the other three are the mirror
-     of three of these and are flipped when they are put on the pitch. */
   var FACING = [
-    { id: "s",  turn: 0.0, back: false },
+    { id: "s",  turn: 0,   back: false },
     { id: "se", turn: 0.5, back: false },
-    { id: "e",  turn: 1.0, back: false },
+    { id: "e",  turn: 1,   back: false },
     { id: "ne", turn: 0.5, back: true },
-    { id: "n",  turn: 0.0, back: true },
+    { id: "n",  turn: 0,   back: true },
   ];
 
-  /* The poses. Everything a limb does is an offset in pixels, worked out
-     from the frame number — a run is a pair of sine curves a half cycle
-     apart and a bob at twice the rate, which is the whole of a cartoon
-     run cycle. */
   function pose(anim, f, n) {
-    var p = { bob: 0, lean: 0, squash: 0, headBob: 0,
+    var p = { bob: 0, lean: 0, squash: 0, stretch: 0, headBob: 0, hairLag: 0,
               legA: [0, 0], legB: [0, 0], armA: [0, 0], armB: [0, 0],
-              blink: false, armLift: 0 };
+              blink: false, air: 0, browRaise: 0 };
     var t = n > 1 ? f / n : 0;
     var ph = t * Math.PI * 2;
 
     if (anim === "idle") {
-      p.bob = Math.round(Math.sin(ph) * 0.9);
-      p.headBob = p.bob > 0 ? 1 : 0;
-      p.armA = [0, Math.round(Math.sin(ph) * 0.8)];
-      p.armB = [0, Math.round(Math.sin(ph) * 0.8)];
-      p.blink = f === 2;
+      /* Part 4.1: a one-pixel breathing bob, a head bob, and a blink.
+         The feet stand APART: with both at centre she balanced on a
+         single boot in every idle frame like a flamingo. */
+      p.bob = (f === 1 || f === 2) ? -1 : 0;
+      p.headBob = f === 2 ? -1 : 0;
+      p.blink = f === 3;
+      p.hairLag = f === 1 ? 1 : 0;
+      p.legA = [5, 0]; p.legB = [-5, 0];
+      p.armA = [-1, 0]; p.armB = [1, 0];
 
     } else if (anim === "run") {
-      var sw = Math.sin(ph);
-      var sw2 = Math.sin(ph + Math.PI);
-      /* the legs swing, and the foot that is down plants hard */
-      p.legA = [Math.round(sw * 5), Math.round(-Math.abs(sw) * 2.4)];
-      p.legB = [Math.round(sw2 * 5), Math.round(-Math.abs(sw2) * 2.4)];
-      /* the arms pump against them */
-      p.armA = [Math.round(sw2 * 3.4), Math.round(-Math.abs(sw2) * 1.6)];
-      p.armB = [Math.round(sw * 3.4), Math.round(-Math.abs(sw) * 1.6)];
-      /* up on the stride, down on the plant, twice a cycle */
-      p.bob = -Math.round(Math.abs(Math.cos(ph)) * 3.2) + 1;
-      p.squash = Math.abs(Math.cos(ph)) > 0.86 ? 1 : 0;
-      p.lean = 1;
+      /* PART 4.2 — A RUN CYCLE, NOT TWO PENDULUMS.
+
+         The first version swung both feet on a sine and put the lift on
+         |sin| of the same phase, which meant that on the cross-over
+         frames BOTH feet were at zero: she passed through two frames of
+         every eight standing perfectly still with her legs welded
+         together. A leg is on the ground for half the cycle, travelling
+         backwards flat, and in the air for the other half, lifted and
+         swinging forward. Those two halves are what a run is. */
+      var stride = function (a) {
+        var x = Math.cos(a) * 6;
+        var air = Math.sin(a) < 0 ? -Math.sin(a) * 5 : 0;  // swing half only
+        return [Math.round(x), -Math.round(air)];
+      };
+      p.legA = stride(ph);
+      p.legB = stride(ph + Math.PI);
+      /* ARMS OPPOSE THE LEGS, AND THEY SWING IN Y AS WELL AS X.
+
+         Swinging them left and right is what a front-facing sprite
+         cannot show: forwards and backwards is almost entirely depth
+         from this angle. What the eye reads instead is the hand rising
+         and tucking IN towards the chest on the forward swing and
+         dropping and opening OUT on the back swing. */
+      var c0 = Math.cos(ph);
+      p.armA = [Math.round(c0 * 2), Math.round(-c0 * 4)];   // left, forward with the right leg
+      p.armB = [Math.round(c0 * 2), Math.round(c0 * 4)];    // right, the other way
+      var contact = Math.abs(Math.cos(ph));        // 1 at each foot plant
+      p.bob = -Math.round((1 - contact) * 3);      // up between the plants
+      p.squash = contact > 0.88 ? 1 : 0;           // plant: shorter, wider
+      p.stretch = contact < 0.16 ? 1 : 0;          // extension: taller, thinner
+      p.lean = 2;
+      p.hairLag = Math.round(Math.cos(ph) * 2);    // secondary motion
 
     } else if (anim === "kick") {
-      /* ANTICIPATION, STRIKE, FOLLOW-THROUGH. The leg goes back further
-         than it goes forward, because a kick that starts at the moment
-         of contact has no weight in it at all. */
+      /* Part 4.3: anticipation, contact, follow-through.
+
+         The standing leg is PLANTED and stays planted — the first pass
+         left it at centre, so the swinging leg passed straight through
+         it and the whole kick happened on a single stacked pair of
+         boots. Everything else in the pose hangs off that plant. */
       var k = n > 1 ? f / (n - 1) : 0;
-      if (k < 0.34) {                       // wind up
-        var a = k / 0.34;
-        p.legA = [Math.round(-a * 6), Math.round(-a * 2)];
-        p.armB = [Math.round(a * 3), -1];
-        p.lean = -1;
-        p.bob = 0;
-      } else if (k < 0.55) {                // plant and swing through
-        var b2 = (k - 0.34) / 0.21;
-        p.legA = [Math.round(-6 + b2 * 12), Math.round(-2 - b2 * 1)];
-        p.armB = [Math.round(3 - b2 * 5), -1];
-        p.lean = Math.round(b2 * 2);
+      p.legB = [-5, 0];
+      if (k < 0.34) {
+        var a = k / 0.34;                      // anticipation: leg cocked back
+        p.legA = [Math.round(2 - a * 8), Math.round(-a * 3)];
+        p.armB = [Math.round(2 + a * 4), -3];
+        p.armA = [Math.round(-a * 3), 2];
+        p.lean = -2; p.hairLag = -2;
+      } else if (k < 0.56) {
+        var b = (k - 0.34) / 0.22;             // contact
+        p.legA = [Math.round(-6 + b * 15), Math.round(-3 - b * 3)];
+        p.armB = [Math.round(6 - b * 8), -3];
+        p.armA = [Math.round(-3 + b * 2), 1];
+        p.lean = Math.round(b * 3); p.hairLag = Math.round(b * 3);
         p.bob = -1;
-      } else {                              // follow through
-        var c2 = (k - 0.55) / 0.45;
-        p.legA = [Math.round(6 - c2 * 2), Math.round(-3 + c2 * 2)];
-        p.armB = [Math.round(-2 + c2 * 2), -1];
-        p.lean = 2;
-        p.bob = 0;
+      } else {
+        var c = (k - 0.56) / 0.44;             // follow-through
+        p.legA = [Math.round(9 - c * 4), Math.round(-6 + c * 4)];
+        p.armB = [Math.round(-2 + c * 3), -2];
+        p.armA = [-1, 1];
+        p.lean = 3 - Math.round(c); p.hairLag = 2;
       }
-      p.armA = [-2, 0];
 
     } else if (anim === "tackle") {
       var s2 = n > 1 ? f / (n - 1) : 0;
-      p.bob = Math.round(6 + s2 * 3);       // down on the grass
-      p.lean = Math.round(2 + s2 * 3);
-      p.legA = [Math.round(4 + s2 * 4), 2];
-      p.legB = [Math.round(-2 - s2), 1];
-      p.armA = [-3, -2]; p.armB = [3, -2];
+      p.bob = Math.round(7 + s2 * 4);
+      p.lean = Math.round(3 + s2 * 4);
+      p.legA = [Math.round(5 + s2 * 6), 3];
+      p.legB = [Math.round(-3 - s2 * 2), 1];
+      p.armA = [-4, -2]; p.armB = [4, -3];
+      p.hairLag = -3;
 
     } else if (anim === "cheer") {
+      /* Part 4.5: she leaves the ground, so the shadow has something to
+         shrink against */
       var c3 = Math.sin(t * Math.PI * 2);
-      p.bob = -Math.round(Math.max(0, c3) * 4);
-      p.armLift = 1;
-      p.armA = [-2, -7]; p.armB = [2, -7];
-      p.legA = [-1, 0]; p.legB = [1, 0];
+      p.air = Math.max(0, Math.round(c3 * 6));
+      p.bob = -p.air;
+      p.armA = [-3, -10]; p.armB = [3, -10];
+      p.legA = [-2, 0]; p.legB = [2, 0];
+      p.browRaise = 1;
+      p.hairLag = Math.round(-c3 * 2);
 
     } else if (anim === "sad") {
-      p.bob = Math.round(Math.sin(ph) * 0.6) + 1;
+      p.bob = f === 1 ? 1 : 0;
       p.headBob = 2;
-      p.armA = [1, 1]; p.armB = [-1, 1];
+      p.armA = [2, 2]; p.armB = [-2, 2];
+      p.hairLag = 2;
 
     } else if (anim === "dive") {
-      var d2 = n > 1 ? f / (n - 1) : 0;
-      p.bob = Math.round(-2 - d2 * 5);
-      p.lean = Math.round(d2 * 7);
-      p.armA = [Math.round(-2 - d2 * 5), Math.round(-4 - d2 * 3)];
-      p.armB = [Math.round(2 + d2 * 7), Math.round(-4 - d2 * 3)];
-      p.legA = [Math.round(-d2 * 5), 1]; p.legB = [Math.round(-d2 * 3), 0];
+      var d = n > 1 ? f / (n - 1) : 0;
+      p.air = Math.round(d * 5);
+      p.bob = -p.air;
+      p.lean = Math.round(d * 9);
+      p.armA = [Math.round(-3 - d * 6), Math.round(-5 - d * 4)];
+      p.armB = [Math.round(3 + d * 9), Math.round(-5 - d * 4)];
+      p.legA = [Math.round(-d * 6), 1]; p.legB = [Math.round(-d * 4), 0];
+      p.hairLag = Math.round(-d * 3);
 
-    } else if (anim === "ready") {           // the keeper, set
-      p.bob = 1;
-      p.armA = [-3, -2]; p.armB = [3, -2];
-      p.legA = [-2, 0]; p.legB = [2, 0];
+    } else if (anim === "ready") {
+      p.bob = f === 1 ? -1 : 0;
+      p.armA = [-4, -3]; p.armB = [4, -3];
+      p.legA = [-3, 0]; p.legB = [3, 0];
     }
     return p;
   }
 
-  /* ---------------------------------------------------------- the head
-
-     PROPORTION FIRST. The first attempt hung the head off the shoulders
-     and grew it with the body, which produced a figure about one and a
-     half heads tall with its legs buried under its shirt. The head is
-     pinned near the TOP of the frame at a near-constant size now and
-     everything else is measured down from it, so a short character is a
-     big head on a short body — which is what chibi is — and a tall one
-     is the same head with more leg.
-
-     The hair is built as a half-dome that follows the skull rather than
-     a rectangle sitting on it: draw the face, then lay the cap over the
-     rows above the fringe line. A rectangle was the single thing making
-     every character look like a peg doll. */
-  function capDome(sh, cx, cy, r, fringeY, i, grow) {
-    var rx = r + (grow || 0), ry = r + (grow || 0);
+  /* ---------------------------------------------------------- the head */
+  function capDome(sh, cx, cy, rx, ry, fringeY, i) {
     for (var yy = -ry; yy <= ry; yy++) {
       if (cy + yy > fringeY) break;
       for (var xx = -rx; xx <= rx; xx++) {
@@ -372,139 +400,168 @@ window.CupSprites = (function () {
     }
   }
 
-  /* what falls BEHIND the shoulders — drawn before the body, which is
-     the only way long hair reads as long rather than as a bib */
-  function drawBackHair(sh, L, P, cx, cy, r, face) {
+  /* What falls behind the shoulders, drawn before the body — the only
+     way long hair reads as long rather than as a bib. `lag` is Part
+     4.2's secondary motion: the hair trails the body by a frame. */
+  function backHair(sh, L, P, cx, cy, r, face, lag) {
     var hair = P.fam.hair;
-    var k = L.head;
-    if (k === "ouissy") {
-      /* Hers, and it has to be hers: long, past the shoulders, stepping
-         a pixel in and out as it falls so it waves rather than hangs —
-         the same hair she has in every other chapter on this site. */
-      for (var s2 = -1; s2 <= 1; s2 += 2) {
-        for (var yy = 0; yy < 17; yy++) {
-          var wob = ((yy + 2) >> 2) % 2 ? 1 : 0;
-          var w = yy < 5 ? 4 : 3;
-          var x0 = cx + s2 * (r - 1) + s2 * wob - (s2 > 0 ? 0 : w - 1);
-          sh.rect(x0, cy - 3 + yy, w, 1, hair.base);
-        }
+    if (L.head !== "ouissy" && L.head !== "willow") return;
+    var len = L.head === "ouissy" ? 18 : 12;
+
+    /* FROM BEHIND, THE HAIR IS THE CHARACTER. It is not two strands
+       either side of a shirt — it is one mass down the back, and the
+       shirt is what shows around it. */
+    if (face.back) {
+      /* It falls down her back — it does not swallow her. The first
+         attempt made the mass two pixels WIDER than her head and as
+         long as her whole body, which from behind turned her into a
+         blonde peanut with boots. It is narrower than the skull and it
+         stops at the waist, so the shirt reads around it. */
+      /* the mass has a SHAPE: it pinches at the nape, spreads across the
+         shoulder blades, then tapers to a point. A column of constant
+         width from the skull to the shorts is a cape. */
+      var ln = len - 8;
+      for (var y2 = 0; y2 < ln; y2++) {
+        var t2 = y2 / (ln - 1);
+        var w0 = Math.round(3 + Math.sin(Math.min(1, t2 * 1.5) * Math.PI * 0.5) * 3
+                              - t2 * t2 * 4);
+        var dr = Math.round(lag * t2);
+        sh.rect(cx - w0 - dr, cy + r - 2 + y2, w0 * 2 + 1, 1, hair.base);
       }
-      /* and a mass of it across the back of the shoulders */
-      sh.ellipse(cx, cy + 5, r, 5, hair.base);
-    } else if (k === "willow") {
-      for (var s3 = -1; s3 <= 1; s3 += 2) {
-        for (var y3 = 0; y3 < 11; y3++) {
-          sh.rect(cx + s3 * (r - 1) - (s3 > 0 ? 0 : 1), cy - 1 + y3, 2, 1, hair.base);
-        }
-      }
-    } else if (k === "pony") {
-      var px2 = face.back ? cx - 1 : cx + (face.turn > 0.6 ? -r - 2 : r - 1);
-      for (var y4 = 0; y4 < 12; y4++) {
-        sh.rect(px2, cy - 2 + y4 + (y4 > 6 ? 1 : 0), 3, 1, hair.base);
-      }
-    } else if (k === "bun") {
-      sh.ellipse(cx + (face.back ? 0 : -r - 1), cy - r + 1, 3, 3, hair.base);
-    }
-  }
-
-  function drawHead(sh, L, P, cx, cy, r, face) {
-    var skin = P.fam.skin, hair = P.fam.hair;
-    var turn = face.turn, back = face.back;
-    var off = Math.round(turn * 2.5);          // the face slides round
-    var k = L.head;
-
-    /* the skull */
-    sh.ellipse(cx, cy, r, r, skin.base);
-
-    /* the fringe line: how much of the face the hair comes down over */
-    var fringeY = cy - Math.round(r * 0.25);
-
-    if (k === "flame") {
-      capDome(sh, cx, cy - 1, r, fringeY, hair.base, 0);
-      /* five spikes of different heights leaning back: the only head in
-         the game with a jagged top edge */
-      [[-4, 5], [-2, 7], [0, 8], [2, 6], [4, 4]].forEach(function (f2) {
-        for (var i = 0; i < f2[1]; i++) {
-          sh.rect(cx + f2[0] - 1 + (i >> 1), cy - r - i + 1, 2, 1, hair.base);
-        }
-      });
-    } else if (k === "anwar") {
-      capDome(sh, cx, cy - 1, r, fringeY, hair.base, 0);
-      /* curls round the crown, so the silhouette is bumpy not smooth */
-      for (var a = 0; a <= 8; a++) {
-        var ang = -Math.PI - 0.2 + a * (Math.PI / 8.4);
-        sh.ellipse(cx + Math.round(Math.cos(ang) * (r - 0.5)),
-                   cy + Math.round(Math.sin(ang) * (r - 0.5)) - 1, 2, 2, hair.base);
-      }
-    } else if (k === "goggles") {
-      capDome(sh, cx, cy - 1, r, fringeY, hair.base, 0);
-    } else if (k === "flat" || k === "cap") {
-      capDome(sh, cx, cy - 1, r, fringeY, hair.base, 0);
-    } else {
-      capDome(sh, cx, cy - 1, r, fringeY, hair.base, 0);
-    }
-
-    /* things that sit ON the head, after the hair */
-    if (k === "goggles") {
-      sh.rect(cx - r, cy - r + 2, r * 2 + 1, 2, P.fam.trim.dark);
-      if (!back) {
-        sh.ellipse(cx - 3 + off, cy - r + 3, 2, 1, P.fam.trim.light);
-        sh.ellipse(cx + 3 + off, cy - r + 3, 2, 1, P.fam.trim.light);
-      }
-    } else if (k === "flat" || k === "cap") {
-      sh.rect(cx - r - 1, cy - r + 1, r * 2 + 3, 2, P.fam.trim.base);
-      if (!back) sh.rect(cx - r + off, cy - r + 3, r + 2, 1, P.fam.trim.dark);
-    } else if (k === "sprig") {
-      sh.rect(cx + 1, cy - r - 3, 1, 4, P.fam.trim.dark);
-      sh.ellipse(cx + 3, cy - r - 3, 2, 1, P.fam.trim.base);
-      sh.ellipse(cx, cy - r - 4, 1, 1, P.fam.trim.base);
-    } else if (k === "phones") {
-      sh.rect(cx - r - 2, cy - 2, 2, 5, P.fam.trim.base);
-      sh.rect(cx + r + 1, cy - 2, 2, 5, P.fam.trim.base);
-      sh.rect(cx - r - 1, cy - r - 1, r * 2 + 3, 2, P.fam.trim.dark);
-    } else if (k === "pads") {
-      sh.rect(cx - r - 2, cy + r - 1, r * 2 + 5, 3, P.fam.trim.base);
-    }
-
-    /* HER FRINGE, and the shine that says blonde. Only from the front:
-       a parting drawn on the back of a head is a mistake you can see
-       from the other side of the room. */
-    if (k === "ouissy" && !back) {
-      sh.rect(cx - 2 + off, cy - r, 3, 4, hair.shadow);
-      sh.rect(cx - r + 2 + off, cy - r + 1, 3, 1, hair.light);
-    }
-
-    /* THE FACE. Never drawn from behind. */
-    if (back) return;
-    var eyeY = cy + 1;
-    var eyes = P.fam.eye;
-    if (turn >= 1) {
-      /* in profile there is one eye and a nose, and that is the entire
-         difference between a profile and a front view turned sideways */
-      sh.rect(cx + 2 + off, eyeY - 1, 2, 3, eyes.base);
-      if (!face.blink) sh.px(cx + 2 + off, eyeY - 1, P.fam.white.base);
-      else sh.rect(cx + 2 + off, eyeY, 2, 1, eyes.base);
-      sh.px(cx + r - 1, eyeY + 1, skin.light);
-      sh.rect(cx + 2 + off, cy + 4, 2, 1, P.fam.mouth.base);
-      if (L.blush) sh.rect(cx + off, eyeY + 3, 2, 1, P.fam.blush.base);
+      sh.rect(cx - 1, cy + r - 1, 2, ln - 3, hair.shadow);   // the parting seam
+      sh.rect(cx - 4, cy + r, 2, ln - 6, hair.light);
       return;
     }
-    var ex = 2;
-    if (face.blink) {
-      sh.rect(cx - ex - 1 + off, eyeY, 3, 1, eyes.base);
-      sh.rect(cx + ex + off, eyeY, 3, 1, eyes.base);
+
+    /* in profile only the far side shows — Part 3.1's asymmetry */
+    var sides = face.turn >= 0.9 ? [-1] : [-1, 1];
+    sides.forEach(function (s) {
+      for (var yy = 0; yy < len; yy++) {
+        var wob = ((yy + 2) >> 2) % 2 ? 1 : 0;
+        var w = yy < 6 ? 5 : 4;
+        var drift = Math.round(lag * (yy / len));
+        var x0 = cx + s * (r - 1) + s * wob - drift - (s > 0 ? 0 : w - 1);
+        sh.rect(x0, cy - 3 + yy, w, 1, hair.base);
+      }
+    });
+    sh.ellipse(cx - Math.round(lag * 0.5), cy + 6, r, 6, hair.base);
+  }
+
+  function drawHead(sh, L, P, cx, cy, r, face, p) {
+    var skin = P.fam.skin, hair = P.fam.hair;
+    var back = face.back, profile = face.turn >= 0.9;
+    var off = Math.round(face.turn * 3);
+
+    /* PART 3.2 — FROM BEHIND THERE IS NO FACE, AND ALMOST NO SKIN.
+       The first build drew the skull, then a fringe across the top of
+       it, and called that a back view: from behind she was a blank
+       flesh-coloured disc with a hat on. From behind you see HAIR, the
+       nape under it, and nothing else. */
+    if (back) {
+      sh.ellipse(cx, cy, r, r, skin.base);
+      sh.ellipse(cx, cy - 1, r, r, hair.base);
+      /* a nape only shows on someone whose hair is short enough to have
+         one; on her it sat as a flesh-coloured patch in the middle of a
+         head of hair */
+      if (L.head !== "ouissy" && L.head !== "willow") {
+        sh.rect(cx - 2, cy + r - 2, 5, 3, skin.shadow);
+      }
+      /* the crown catches the light at the top-left and the far side
+         falls away — without it the back of her head is one flat gold
+         disc the size of her shoulders, which is a balloon, not hair */
+      sh.rect(cx - r + 2, cy - r, 4, 2, hair.light);
+      sh.rect(cx - 1, cy - r + 3, 2, r + 2, hair.shadow);
+      sh.rect(cx + r - 2, cy - r + 4, 3, r * 2 - 5, hair.shadow);
+      sh.shadeIn(cx - r, cy + r - 1, r * 2 + 1, 3, skin.base, skin.shadow);
+      return;
+    }
+
+    sh.ellipse(cx, cy, r, r, skin.base);
+
+    /* PART 3.1 — A TRUE PROFILE. The nose is the tell; without one a
+       side view is a front view with the eyes moved, which is exactly
+       what the first build looked like. */
+    if (profile) {
+      sh.rect(cx + r - 1, cy, 2, 2, skin.base);
+      sh.px(cx + r, cy + 2, skin.shadow);
+    }
+
+    var fringeY = cy - Math.round(r * 0.22);
+    if (L.head === "ouissy") {
+      if (profile) {
+        /* the back of the head is a MASS and the face edge is clean —
+           symmetric bangs on both sides is what made E read as S */
+        /* the mass sits BEHIND the face, not over it — the first pass
+           reached as far forward as the eye and left her with a fringe
+           where her expression should be */
+        capDome(sh, cx - 2, cy - 1, r + 1, r, fringeY + 2, hair.base);
+        sh.ellipse(cx - 4, cy + 1, r - 2, r - 1, hair.base);
+      } else {
+        capDome(sh, cx, cy - 1, r + 1, r, fringeY, hair.base);
+        /* three-quarter: the fringe sweeps across, so it is deeper on
+           the far side than the near one and the head has a direction */
+        if (off) sh.rect(cx - r, fringeY - 2, r - off, 3, hair.base);
+      }
+      /* a parting is a LINE, off to one side. Four pixels wide down the
+         middle of the crown is a hair slide, and she was wearing one in
+         every frame of the first sheet. */
+      sh.rect(cx - 1 + off * 2, cy - r, 1, 5, hair.shadow);
+      sh.rect(cx - r + 2 + off, cy - r + 1, 4, 1, hair.light);   // the shine
     } else {
-      sh.rect(cx - ex - 1 + off, eyeY - 1, 2, 3, eyes.base);
-      sh.rect(cx + ex + off, eyeY - 1, 2, 3, eyes.base);
-      /* one lit pixel in each, which is the whole of the life in a
-         pixel face */
-      sh.px(cx - ex - 1 + off, eyeY - 1, P.fam.white.base);
-      sh.px(cx + ex + off, eyeY - 1, P.fam.white.base);
+      capDome(sh, cx + (profile ? -2 : 0), cy - 1, r + 1, r, fringeY, hair.base);
     }
-    if (L.blush) {
-      sh.rect(cx - ex - 2 + off, eyeY + 2, 2, 1, P.fam.blush.base);
-      sh.rect(cx + ex + 1 + off, eyeY + 2, 2, 1, P.fam.blush.base);
+
+    /* PART 1.2 — a drawn occlusion shadow under the chin. Derived
+       shading cannot know the head is in front of the chest. */
+    sh.shadeIn(cx - r, cy + r - 1, r * 2 + 1, 3, skin.base, skin.shadow);
+
+    var eyes = P.fam.eye, white = P.fam.white;
+    var eyeY = cy + 1;
+    if (profile) {
+      if (p.blink) {
+        sh.rect(cx + 2, eyeY + 1, 3, 1, eyes.base);
+      } else {
+        sh.rect(cx + 2, eyeY - 1, 3, 3, white.base);
+        sh.rect(cx + 3, eyeY, 2, 2, eyes.base);
+        sh.px(cx + 3, eyeY, white.light);
+      }
+      sh.rect(cx + 1, cy - 2 + (p.browRaise ? -1 : 0), 4, 1, hair.shadow);
+      sh.rect(cx + 3, cy + 4, 3, 1, P.fam.mouth.base);
+      sh.rect(cx + 1, eyeY + 3, 2, 1, P.fam.blush.base);
+      return;
     }
+
+    /* on a three-quarter the near cheek breaks the circle: a two-pixel
+       bump where the nose is and a shaded plane behind it */
+    if (off) {
+      sh.rect(cx + r - 1, cy + 1, 2, 2, skin.base);
+      sh.px(cx + r, cy + 3, skin.shadow);
+      sh.rect(cx - r + 1, cy, 1, 4, skin.shadow);
+    }
+
+    var ex = 3;
+    if (p.blink) {
+      sh.rect(cx - ex - 1 + off, eyeY + 1, 4, 1, eyes.base);
+      sh.rect(cx + ex - 1 + off, eyeY + 1, 4, 1, eyes.base);
+    } else {
+      /* Part 5.3: whites, a dark pupil, and a lit pixel upper-left.
+         On a three-quarter the FAR eye is foreshortened — it loses a
+         pixel of width and sits tight against the edge of the face.
+         Two identical eyes slid sideways is what made SE read as S. */
+      var fw = 3 - (off ? 1 : 0);
+      sh.rect(cx - ex - 1 + off, eyeY - 1, fw, 3, white.base);
+      sh.rect(cx + ex - 1 + off, eyeY - 1, 3, 3, white.base);
+      sh.rect(cx - ex + off, eyeY, fw - 1, 2, eyes.base);
+      sh.rect(cx + ex + off, eyeY, 2, 2, eyes.base);
+      sh.px(cx - ex + off, eyeY, white.light);
+      sh.px(cx + ex + off, eyeY, white.light);
+    }
+    /* brows, which is where most of the expression lives */
+    var by = cy - 2 + (p.browRaise ? -1 : 0);
+    sh.rect(cx - ex - 1 + off, by, 3, 1, hair.shadow);
+    sh.rect(cx + ex - 1 + off, by, 3, 1, hair.shadow);
+    sh.rect(cx - ex - 2 + off, eyeY + 3, 2, 1, P.fam.blush.base);
+    sh.rect(cx + ex + 1 + off, eyeY + 3, 2, 1, P.fam.blush.base);
     sh.rect(cx - 1 + off, cy + 4, 3, 1, P.fam.mouth.base);
   }
 
@@ -512,153 +569,168 @@ window.CupSprites = (function () {
   function drawFrame(L, P, face, anim, f, n) {
     var sh = new Sheet(S, S);
     var p = pose(anim, f, n);
-    face = { turn: face.turn, back: face.back, blink: p.blink };
-
     var bw = (L.build && L.build.w) || 1;
     var bh = (L.build && L.build.h) || 1;
+    var profile = face.turn >= 0.9;
+
     var cx = (S >> 1) + p.lean;
     var g = GROUND + p.bob;
 
-    /* MEASURED DOWN FROM THE HEAD. Two and a half heads tall at an
-       average build; a short character is the same head on less body. */
-    /* TWO AND A HALF HEADS, MEASURED ON THE HAIR.
+    /* Part 1.1's proportions, adjusted once against the contact sheet:
+       at head 9 / torso 16 / leg 12 the shorts ate half the leg and she
+       came out bottom-heavy and stumpy. The visible leg — the part below
+       the hem — is what the eye measures, not the leg. */
+    var headR = Math.round(8 * (0.94 + bw * 0.06));
+    var torsoH = Math.round(15 * bh);
+    var legH = Math.round(14 * bh);
+    /* the chest is never wider than the head — at 21 pixels against a
+       17-pixel head she read as a bell rather than a footballer */
+    var torsoW = Math.round(8 * bw * (1 - face.turn * 0.24));
 
-       At radius 8 in a 40-tall figure the skull alone was two and a half
-       heads — but a skull is not a head, and once the hair went on top
-       the visible block was half the character. The rule has to be
-       applied to what you can SEE, so the skull came down and the figure
-       went up. */
-    var headR = Math.round(6.6 * (0.92 + bw * 0.08));
-    var totalH = Math.round(42 * bh);
-    var headCy = g - totalH + headR + p.headBob;
-    var shoulderY = headCy + headR - 1;
-    var bodyH = Math.round(12.5 * bh);
-    var hipY = shoulderY + bodyH;
+    if (p.squash) { torsoH -= 1; torsoW += 1; }
+    if (p.stretch) { torsoH += 1; torsoW -= 1; }
 
-    /* in profile the body is narrower — the cheapest and most effective
-       thing a billboard can do to say it has turned */
-    var bodyW = Math.max(3, Math.round(6.5 * bw * (1 - face.turn * 0.26)));
-    /* a three-quarter view is offset as well as narrowed, which is what
-       stops "ne" and "n" being the same picture */
-    if (face.turn > 0.2 && face.turn < 0.9) cx += face.back ? -1 : 1;
+    var hipY = g - legH;
+    var shoulderY = hipY - torsoH;
+    var headCy = shoulderY - headR + 3 + p.headBob;
 
-    var kit = P.fam.shirt, sock = P.fam.sock, boot = P.fam.boot, shortF = P.fam.short;
+    /* PART 3.1 — THE THREE-QUARTER HAS TO BE A DIFFERENT DRAWING.
+       Narrowing the chest by a pixel and sliding the eyes across is not
+       a turn; side by side on a contact sheet, S and SE came out as the
+       same character twice. The upper body rotates OVER the hips, so the
+       chest and the head sit off the line the feet stand on. */
+    var twist = Math.round(face.turn * 2);
+    var ux = cx + twist;
 
-    drawBackHair(sh, L, P, cx, headCy, headR, face);
+    var skin = P.fam.skin, kit = P.fam.kit, trim = P.fam.trim, boot = P.fam.boot;
 
-    /* legs. The far one first so the near one overlaps it, which is the
-       only depth cue a flat sprite gets for free. */
+    if (!face.back) backHair(sh, L, P, ux, headCy, headR, face, p.hairLag);
+
+    /* THE LEG IS THREE THINGS, NOT ONE.
+
+       The first build drew each leg as a single kit-coloured capsule and
+       then painted the shorts over the top of it, which left a red stump
+       between a cream slab and a boot — legs that were technically
+       present and completely unreadable. A footballer's leg reads as
+       thigh, sock, boot: skin, then kit colour, then dark. Three bands
+       in twelve pixels is what makes it a leg at a glance. */
+    var legR = Math.max(2, Math.round(2.2 * bw));
     var leg = function (o, near) {
-      var hx = cx + (near ? 1 : -1) * Math.round(bodyW * 0.42);
-      /* The swing is NOT mirrored per leg. legA and legB are already a
-         half cycle apart; flipping the far one's sign as well put them
-         back in phase, so the run cycle was both feet going the same
-         way at once — a hop, not a run. */
-      var fx = cx + o[0];
-      var fy = g + o[1];
-      sh.limb(hx, hipY, fx, fy - 3, Math.max(1, Math.round(1.7 * bw)),
-              near ? sock.base : sock.shadow);
-      sh.ellipse(fx, fy - 1, Math.round(2.5 * bw), 2, near ? boot.base : boot.shadow);
+      var hx = cx + (near ? 1 : -1) * Math.round(torsoW * 0.40);
+      var fx = cx + o[0], fy = g + o[1];
+      var kx = Math.round(hx + (fx - hx) * 0.5);
+      /* the knee comes up with the foot — a lifted boot under a knee
+         that stayed put is a foot that has come off the leg */
+      var kneeY = hipY + Math.round(legH * 0.55) + Math.round(o[1] * 0.55);
+      sh.limb(hx, hipY - 2, kx, kneeY, legR, near ? skin.base : skin.shadow);
+      sh.limb(kx, kneeY, fx, fy - 3, legR, near ? kit.base : kit.shadow);
+      /* the turnover at the top of the sock: two pixels of trim that
+         give the leg a third edge and stop it reading as one red tube */
+      sh.rect(kx - legR, kneeY, legR * 2 + 1, 1, near ? trim.base : trim.shadow);
+      /* chunky feet, and in profile they read as a stride */
+      sh.ellipse(fx + (profile && near ? 1 : 0), fy - 1, profile ? 4 : 3, 2,
+                 near ? boot.base : boot.shadow);
     };
     leg(p.legB, false);
+
+    /* the torso: real width */
+    sh.ellipse(ux, shoulderY + Math.round(torsoH / 2), torsoW,
+               Math.round(torsoH / 2) + 1, kit.base);
+    sh.rect(ux - torsoW, shoulderY + 2, torsoW * 2 + 1, torsoH - 2, kit.base);
+
     leg(p.legA, true);
 
-    /* the body */
-    sh.ellipse(cx, shoulderY + Math.round(bodyH / 2), bodyW,
-               Math.round(bodyH / 2) + 1, kit.base);
-    sh.rect(cx - bodyW, shoulderY + 1, bodyW * 2 + 1, bodyH - 1, kit.base);
-    /* THE SHORTS GO ON AFTER THE SHIRT. Painted first, the body ellipse
-       drawn over them swallowed the lot, and a red shirt above red
-       socks with nothing between them is one red column with a face on
-       top — which is exactly what the first sheet looked like. */
-    sh.rect(cx - bodyW, hipY - 4, bodyW * 2 + 1, 6, shortF.base);
-    if (face.back) sh.rect(cx - 2, shoulderY + 4, 4, 5, P.fam.trim.base);
+    /* Shorts go on after both the shirt and the legs, and they are
+       NARROWER than the torso: a hem the full width of the chest is a
+       skirt, and that is exactly what the first pass looked like. */
+    var shorts = P.fam.shorts;
+    var shW = torsoW;
+    sh.rect(cx - shW, hipY - 4, shW * 2 + 1, 5, shorts.base);
+    sh.rect(cx - shW + 1, hipY + 1, shW * 2 - 1, 1, shorts.shadow);  // the hem
 
-    /* arms — and in profile there is only one of them */
-    /* An arm has to sit OUTSIDE the body's silhouette or it is not an
-       arm, it is a stripe on a shirt. They start a pixel clear of the
-       shoulder and the hand is drawn in skin at the end of a short
-       sleeve, which is what makes the limb legible at this size. */
+    /* arms: shoulder, a bend, and a hand — Part 1.1 says not blobs.
+       They start OUTSIDE the chest, or the whole arm disappears into
+       the silhouette and she has none. */
     var arm = function (side, o, near) {
-      var sx = cx + side * (bodyW + 2);
-      var hx = sx + o[0], hy = shoulderY + Math.round(bodyH * 0.72) + o[1];
+      if (profile && !near) return;                  // one arm behind the torso
+      /* the far shoulder rolls behind the chest as she turns, so the far
+         arm starts closer in and shows less of itself */
+      /* the arm never crosses INTO the chest: a red sleeve on a red
+         shirt is an arm that has been deleted, so the swing tucks the
+         hand as far as the edge of the body and no further */
+      var sx = ux + side * (torsoW + 3 - (side < 0 ? twist * 2 : 0));
+      var ex2 = sx + Math.round(o[0] * 0.5);
+      var elbowY = shoulderY + Math.round(torsoH * 0.55);
+      /* the hand stops above the hem. Reaching to torsoH * 0.95 plus the
+         swing put her fingertips below her shorts, and a pale forearm
+         hanging past the hem reads as a stick she is carrying. */
+      var hx = sx + o[0], hy = shoulderY + Math.round(torsoH * 0.82) + o[1];
       var c = near ? kit.base : kit.shadow;
-      var rr = Math.max(1, Math.round(1.7 * bw));
-      sh.limb(sx, shoulderY + 3, hx, hy - 2, rr, c);
-      sh.ellipse(hx, hy, rr, rr, near ? P.fam.skin.base : P.fam.skin.shadow);
+      var sc = near ? skin.base : skin.shadow;
+      var rr = Math.max(2, Math.round(2 * bw));
+      /* THE SHOULDER OVERLAPS THE CHEST.
+
+         Starting the sleeve outside the body left a one-pixel notch
+         between the two where the outline pass then drew a dark line,
+         and the arms came out as red blocks propped against her sides
+         rather than attached to her. */
+      sh.limb(ux + side * (torsoW - 2), shoulderY + 2, sx, shoulderY + 4, rr, c);
+      sh.limb(sx, shoulderY + 4, ex2, elbowY, rr, c);              // sleeve
+      sh.limb(ex2, elbowY, hx, hy - 2, rr - 1, sc);                // forearm
+      sh.ellipse(hx, hy, rr - 1, rr - 1, sc);                      // the hand
     };
-    if (face.turn < 0.9) arm(-1, p.armA, false);
+    arm(-1, p.armA, !profile);
     arm(1, p.armB, true);
 
-    if (L.armband) sh.rect(cx - bodyW - 1, shoulderY + 3, 3, 2, P.fam.band.base);
+    /* PART 1.2 — DRAWN OCCLUSION, under the arms and between the legs.
 
-    drawHead(sh, L, P, cx, headCy, headR, face);
+       Both sleeves are the same red as the chest, so where an arm lies
+       against the body there is no edge at all and the arm vanishes. A
+       band of the shadow tone down each side of the torso is what puts
+       it back — this is the one shadow the light direction cannot
+       derive, because it depends on which of two touching shapes is in
+       front. */
+    sh.shadeIn(ux + torsoW - 2, shoulderY + 4, 3, torsoH - 6, kit.base, kit.shadow);
+    sh.shadeIn(ux - torsoW, shoulderY + 5, 2, torsoH - 8, kit.base, kit.shadow);
+    sh.shadeIn(cx - 1, hipY - 3, 3, 5, shorts.base, shorts.shadow);
 
-    /* a small emblem on the chest: the one piece of a kit that is about
-       the person wearing it rather than the team */
-    if (L.emblem === "heart" && !face.back && bodyW >= 5) {
-      var ey = shoulderY + 4;
-      sh.rect(cx - 2, ey, 2, 2, P.fam.band.base);
-      sh.rect(cx + 1, ey, 2, 2, P.fam.band.base);
-      sh.rect(cx - 2, ey + 1, 5, 2, P.fam.band.base);
-      sh.rect(cx - 1, ey + 3, 3, 1, P.fam.band.base);
-      sh.px(cx, ey + 4, P.fam.band.base);
+    /* the captain's armband, on the arm rather than hovering over the
+       seam between the arm and the chest */
+    if (L.armband) {
+      var gd = P.fam.gold;
+      sh.rect(ux - torsoW - 5, shoulderY + 6, 4, 2, gd.base);
+      sh.rect(ux - torsoW - 5, shoulderY + 7, 4, 1, gd.shadow);
     }
 
-    if (p.squash) squashRow(sh, shoulderY + Math.round(bodyH / 2));
-    return sh;
-  }
-
-  /* take one row out and pull everything below it up a pixel */
-  function squashRow(sh, y) {
-    for (var yy = y; yy < sh.h - 1; yy++) {
-      for (var x = 0; x < sh.w; x++) {
-        sh.d[yy * sh.w + x] = sh.d[(yy + 1) * sh.w + x];
-      }
+    if (face.back) {
+      /* from behind she is a back, so: a number, and her hair over the
+         shoulders rather than tucked behind them */
+      var ny = shoulderY + 5, gp = P.fam.trim;
+      sh.rect(ux - 1, ny, 3, 7, gp.light);
+      sh.rect(ux - 2, ny + 1, 1, 5, gp.light);
+      backHair(sh, L, P, ux, headCy, headR, face, p.hairLag);
+    } else if (L.emblem === "heart" && torsoW >= 6) {
+      var ey = shoulderY + 6, hp = P.fam.heart;
+      sh.rect(ux - 3, ey, 2, 2, hp.base); sh.rect(ux + 2, ey, 2, 2, hp.base);
+      sh.rect(ux - 3, ey + 1, 7, 2, hp.base);
+      sh.rect(ux - 2, ey + 3, 5, 1, hp.base);
+      sh.rect(ux - 1, ey + 4, 3, 1, hp.base);
+      sh.px(ux, ey + 5, hp.base);
     }
+
+    drawHead(sh, L, P, ux, headCy, headR, face, p);
+    return { sheet: sh, air: p.air || 0 };
   }
 
   /* =======================================================================
      BAKING
-
-     Every frame of every facing into one canvas, once, with the passes
-     run over each. The canvas goes to three.js as a texture with
-     nearest filtering, and a billboard picks its frame by moving its UV
-     window — so an animating character costs two numbers a frame and no
-     new geometry.
      ======================================================================= */
   var ANIMS = [
-    { id: "idle",   n: 4 },
-    { id: "run",    n: 8 },
-    { id: "kick",   n: 6 },
-    { id: "tackle", n: 4 },
-    { id: "cheer",  n: 6 },
-    { id: "sad",    n: 2 },
-    { id: "dive",   n: 4 },
-    { id: "ready",  n: 2 },
+    { id: "idle", n: 4 }, { id: "run", n: 8 }, { id: "kick", n: 6 },
+    { id: "tackle", n: 5 }, { id: "cheer", n: 6 }, { id: "sad", n: 3 },
+    { id: "dive", n: 5 }, { id: "ready", n: 4 },
   ];
 
-  function paletteFor(L, kit) {
-    var P = new Palette();
-    P.family("skin", L.skin || "#f0cfae");
-    P.family("hair", L.hair || "#4a2f1c");
-    P.family("shirt", (kit && kit.shirt) || "#c1272d");
-    P.family("short", (kit && kit.shorts) || "#f6efdd");
-    P.family("sock", (kit && kit.socks) || "#c1272d");
-    P.family("boot", "#2a2430");
-    P.family("trim", (kit && kit.trim) || "#e8b23c");
-    P.family("band", (L.super && L.super.colour) || "#ff5f8f");
-    P.flat("eye", L.eye || "#3d2340");
-    P.flat("white", "#fffdf8");
-    P.flat("mouth", "#8a3b44");
-    P.flat("blush", "#ff8fae");
-    /* the rim: one cool bright tone shared by the whole figure, because
-       a back light is one light and not one per material */
-    P.flat("rim", "#a9d9f2");
-    return P;
-  }
-
-  /* index -> family, so the passes can ask what a pixel belongs to */
   function famIndex(P) {
     var m = {};
     Object.keys(P.fam).forEach(function (k) {
@@ -673,69 +745,59 @@ window.CupSprites = (function () {
     var fi = famIndex(P);
     var rim = P.fam.rim.base;
 
-    var frames = [];
+    var list = [];
     ANIMS.forEach(function (a) {
       FACING.forEach(function (face) {
-        for (var f = 0; f < a.n; f++) {
-          frames.push({ key: a.id + ":" + face.id + ":" + f, a: a.id,
-                        face: face.id, f: f, L: L, P: P, face3: face });
-        }
+        for (var f = 0; f < a.n; f++) list.push({ a: a, face: face, f: f });
       });
     });
 
-    var cols = 10;
-    var rows = Math.ceil(frames.length / cols);
+    var cols = 10, rows = Math.ceil(list.length / cols);
     var cv = document.createElement("canvas");
     cv.width = cols * S; cv.height = rows * S;
     var ctx = cv.getContext("2d");
     var img = ctx.createImageData(S, S);
+    var map = {}, airs = {};
 
-    var map = {};
-    frames.forEach(function (fr, i) {
-      var sh = drawFrame(fr.L, fr.P, fr.face3, fr.a, fr.f,
-                         ANIMS.filter(function (x) { return x.id === fr.a; })[0].n);
-      celPass(sh, fr.P, fi);
+    list.forEach(function (fr, i) {
+      var made = drawFrame(L, P, fr.face, fr.a.id, fr.f, fr.a.n);
+      var sh = made.sheet;
+      celPass(sh, fi);
       outlinePass(sh, fi);
       rimPass(sh, fi, rim);
-
       var d = img.data;
       for (var q = 0; q < S * S; q++) {
         var idx = sh.d[q];
         if (!idx) { d[q * 4 + 3] = 0; continue; }
-        var c = rgb(fr.P.cols[idx]);
+        var c = rgb(P.cols[idx]);
         d[q * 4] = c[0]; d[q * 4 + 1] = c[1]; d[q * 4 + 2] = c[2]; d[q * 4 + 3] = 255;
       }
-      var cxp = (i % cols) * S, cyp = Math.floor(i / cols) * S;
-      ctx.putImageData(img, cxp, cyp);
-      map[fr.key] = { col: i % cols, row: Math.floor(i / cols) };
+      ctx.putImageData(img, (i % cols) * S, Math.floor(i / cols) * S);
+      var key = fr.a.id + ":" + fr.face.id + ":" + fr.f;
+      map[key] = { col: i % cols, row: Math.floor(i / cols) };
+      airs[key] = made.air;
     });
 
     return {
       canvas: cv, frames: map, cols: cols, rows: rows, size: S,
-      ground: GROUND, palette: P,
+      ground: GROUND, figure: FIGURE, palette: P,
       anims: ANIMS.reduce(function (o, a) { o[a.id] = a.n; return o; }, {}),
-      /* Which of the eight compass facings this is, and whether it has
-         to be flipped: only five are drawn and the other three are the
-         mirror of three of them. */
+      /* how far off the ground a frame is, so the shadow can shrink while
+         the character rises — Part 1.7 */
+      airOf: function (anim, faceId, f) { return airs[anim + ":" + faceId + ":" + f] || 0; },
       facing: function (dir8) {
         var d = ((dir8 % 8) + 8) % 8;
-        var table = [
-          { id: "s",  flip: false }, { id: "se", flip: false },
-          { id: "e",  flip: false }, { id: "ne", flip: false },
-          { id: "n",  flip: false }, { id: "ne", flip: true },
-          { id: "e",  flip: true },  { id: "se", flip: true },
-        ];
-        return table[d];
+        return [{ id: "s", flip: false }, { id: "se", flip: false },
+                { id: "e", flip: false }, { id: "ne", flip: false },
+                { id: "n", flip: false }, { id: "ne", flip: true },
+                { id: "e", flip: true }, { id: "se", flip: true }][d];
       },
       uv: function (anim, faceId, f) {
-        var key = anim + ":" + faceId + ":" + f;
-        var at = map[key] || map["idle:s:0"];
-        return at;
+        return map[anim + ":" + faceId + ":" + f] || map["idle:s:0"];
       },
     };
   }
 
-  return { bake: bake, SIZE: S, GROUND: GROUND, ANIMS: ANIMS, FACING: FACING,
-           /* exposed so a harness can photograph a sheet on its own */
-           _sheet: Sheet, _palette: paletteFor };
+  return { bake: bake, SIZE: S, GROUND: GROUND, FIGURE: FIGURE,
+           ANIMS: ANIMS, FACING: FACING, BIBLE: BIBLE };
 })();
