@@ -1199,3 +1199,165 @@ an answering voice a fifth above on every other one, so a long sit on
 the title screen never becomes a loop. Six o'clock switches to a third,
 warmer mode. A death cuts the music dead — the silence is half of what
 makes the scare land.
+
+
+## Ouissy's Cup
+
+A four-a-side football game, reached from the hub. Six Moroccan
+health-sciences faculties, three rounds, a trophy, and a Super Shot.
+
+One stick and two buttons. Slide anywhere on the left of the picture to
+run — the stick draws itself wherever the thumb lands rather than
+sitting in a fixed ring. The round button means four things depending on
+context, and it shows which: tap to pass, hold to wind up a shot, tap to
+tackle when they have it, hold to sprint when you do not. The heart
+button above it only exists when the meter is full. On a keyboard it is
+WASD or the arrows, space, and shift.
+
+**It carries no files of its own.** The pitch, the stands, the crowd,
+the players, the ball, the nets, the crests, the trophy and every sound
+are made at runtime. The chapter adds two scripts to the site and
+nothing else — it renders through `vendor/three.bundle.js`, which
+`index.html` already loads for the book intro, the apocalypse and the
+night shift.
+
+### It is 3D rendered through a small window
+
+Modelled and lit in three dimensions and then drawn into a buffer 270
+pixels tall and blown up with `image-rendering: pixelated`, so it reads
+as pixel art like the rest of the site while keeping a camera that can
+move. There is no shader and no post pass in it: the canvas backing
+store is simply made small. That is the same trick the other five
+chapters use to get 320×180 onto a phone, pointed at WebGL — and a
+quarter of the pixels is a quarter of the shading, which is what pays
+for real shadows.
+
+Everything with words in it is DOM over the top, because pixel text
+painted into that buffer and blown up cannot be read.
+
+Set `PIXEL.on` to `false` in the config to see it smooth, or drop
+`PIXEL.height` to 180 for a chunkier look.
+
+### Where to edit it
+
+**`cup.config.js` is the only file you need.** Nothing personal lives in
+`cup.js`.
+
+| | what it is |
+|---|---|
+| `TITLE` / `TAGLINE` | the hub card's words |
+| `PIXEL` | the retro render layer |
+| `RULES` | half length, golden goal, and every Heart-meter number |
+| `DIFFICULTIES` | the three settings, and what each one moves |
+| `ANWAR` | his name, his colouring, his kit |
+| `ROSTER` | the fourteen players, their stats and their supers |
+| `TEAMS` | the six faculties, their kits, crests and squads |
+| `VENUES` | the five campuses, and the light at each |
+| `MODES` | the cup, the friendly, the derby |
+| `ROUNDS` | the draw, and what is said before and after each tie |
+| `FORMATIONS` | shapes, and what each does to the teammates' AI |
+| `MEMORIES` | the cards between the rounds — **your words go here** |
+| `VICTORY` | the ending card — **your words go here** |
+
+`cup.js` has `TUNE` near the top, which is how it FEELS to play: run
+speeds, ball drag, how hard a shot is, how far a challenge reaches, what
+a stat is worth. Almost every complaint about an arcade football game is
+one of those numbers.
+
+### The words to replace
+
+`MEMORIES` and `VICTORY` ship with text that is written to be thrown
+away. It contains nothing invented about the two of you — no dates, no
+places, no anecdotes — only what this site already knows: medicine,
+dentistry, a hard year, and him making games about it. Put the real ones
+in. Both take an optional `photo`, any path under `/assets`, the same
+folder the scrapbook uses; leave it `null` for words on their own.
+
+### The stats are real
+
+`speed` / `power` / `skill` / `defence`, 0–100, and each drives the
+thing it names rather than only the bars on the team card:
+
+| | what it moves |
+|---|---|
+| **speed** | top pace, running and chasing |
+| **power** | shot strength, how far out they will try one, shielding |
+| **skill** | first touch, passing and shooting accuracy, turning |
+| **defence** | how far a challenge reaches — and a keeper's hands |
+
+76 is the middle of the roster and moves nothing. The spread across the
+whole table is about a quarter, deliberately: a roster where the fast one
+is twice as fast as the slow one has three usable players in it.
+
+Formations are read the same way. `up` is how far up the pitch a slot
+sits and `across` is where it sits between the touchlines, so a flat
+back three really does defend deeper. Two players sharing a role do not
+stand on the same coordinate — the second mirrors across.
+
+### The Heart meter and the Super Shot
+
+Every side has a meter under the score, in its captain's colour, with
+its captain's super written along it. It fills by playing: a pass that
+finds someone, a tackle won, a shot had, and a little for going behind.
+Fill it and the heart button appears; with the ball at the captain's
+feet, it fires.
+
+The clock slows, the camera drops to boot height, the nameplate comes
+up, and the ball leaves with a trail on it. Eleven flight kinds, one per
+`super.kind` in the roster — a rocket goes straight and gathers pace, a
+lob goes over and drops in under the bar, a curl leaves aimed at the
+wrong side of the goal and bends back. Hers turns the ball into a heart.
+
+It is a state, not an effect: `G.state` goes to `"super"` and the match
+loop stands down for it exactly as it does for a goal.
+
+A keeper can save one, and only just — about one in five. The opponents
+get a meter too, but only from `RULES.aiSupersFrom` upwards, so she
+fires one before she is ever shown one.
+
+### The menus are played on the pitch
+
+The side she is looking at walks out and stands in a line in its own
+kit, at a campus with the good light on it, and the camera drifts across
+them. Pressing the arrow on the carousel does not change a picture of a
+team — it changes the team standing on the grass. The Team Builder does
+the same thing as she picks: they walk out one at a time, in the kit
+colours she has chosen.
+
+The card in front of them is a vignette over a live world rather than a
+blackout over a dark one, which is most of the difference between this
+and a settings dialog.
+
+### The Team Builder
+
+`LES ÉQUIPES` → `BUILD YOUR OWN`. A keeper and three outfielders out of
+the fourteen, an armband (whoever wears it decides the team's super), a
+name, two kit colours, a crest and a shape. Saved to `localStorage` and
+from then on it is in the carousel like any other side — `squadOf` and
+`teamById` do not care where a team came from.
+
+### Modes
+
+- **LA COUPE INTER-FACULTÉS** — three rounds, and the draw is fixed so
+  that the final is the derby. That is the story the chapter is telling;
+  a random bracket would tell a different one.
+- **MATCH AMICAL** — any two sides, played at the home side's campus.
+- **LE DERBY** — dentistry against medicine, under the floodlights.
+
+Losing a cup tie offers the same tie again rather than throwing the run
+away. This is a present, not a test.
+
+### The harnesses
+
+`tools/cupflow.js` walks the whole chapter end to end. `tools/cupsuper.js`
+fires supers and measures them — whether the meter fills by playing,
+whether each of the eleven kinds finds the net, how often a keeper gets
+a hand to one. `tools/cupfeel.js` plays whole matches with nothing drawn
+and counts the things that decide whether a football game is worth
+playing: how long a possession lasts, what share of the match nobody has
+the ball, how often control is taken off her, how far up the pitch she
+gets. That last one is the only test in the repo that asks whether
+something is FUN, and it is the one that found the three defects that
+made the football unplayable.
+
+Run the site on `127.0.0.1:8899` first — `python3 -m http.server 8899`.

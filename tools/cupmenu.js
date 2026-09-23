@@ -16,7 +16,14 @@ const { chromium } = require('playwright-core');
                            showScreen('cup'); OuissyCup.__cup.soundOff();
                            OuissyCup.__cup.shadows(false); OuissyCup.start(); });
   await p.waitForSelector('#cup-overlay .cup-menu', { timeout: 40000 });
-  await p.waitForTimeout(700);
+  /* the how-to comes up on its own the first time, and localStorage is
+     cleared above, so it is always the first time in here */
+  await p.waitForTimeout(500);
+  await p.screenshot({ path: '/tmp/cup-help.png' });
+  if (await p.$('[data-go="back"]')) await p.click('[data-go="back"]');
+  await p.waitForSelector('[data-go="coupe"]', { timeout: 20000 });
+  /* long enough for the line-up to walk out and the camera to settle */
+  await p.waitForTimeout(1400);
   await p.screenshot({ path: '/tmp/cup-title.png' });
 
   await p.click('[data-go="teams"]');

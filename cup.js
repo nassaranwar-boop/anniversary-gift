@@ -31,40 +31,39 @@
    THE RULES THIS REPOSITORY IS BUILT ON, WHICH THIS FILE KEEPS
 
    - There is not an image file or an audio file in here. The pitch, the
-     crowd, the players, the ball, the net, the flags and every sound
-     are made at runtime. The whole chapter adds one script and nothing
-     else to the site.
-   - Sprites are PIXEL MAPS, one character per pixel, not shaded blobs.
-     That rule is written down in HANDOFF.md and it was learned the hard
-     way on the platformer: at sixteen pixels tall a blob-shaded face
-     turns to mush. Every character in here is a grid of letters.
-   - The view is 320x180 like the rest of the site, scaled up with
-     image-rendering: pixelated, and the text is DOM over the top —
-     because pixel text painted into a 320-wide buffer and blown up
-     cannot be read, which the racer and the platformer both found out
-     before this did.
+     crowd, the players, the ball, the net, the crests, the trophy and
+     every sound are made at runtime. The whole chapter adds two scripts
+     and nothing else to the site.
+   - It is modelled in 3D and then rendered through a buffer a couple of
+     hundred pixels tall and blown up with image-rendering: pixelated,
+     so it reads as pixel art like the rest of the site while keeping a
+     camera that can move. No shader, no post pass: the canvas backing
+     store is simply made small.
+   - Everything with words in it is DOM over the top, because pixel text
+     painted into that buffer and blown up cannot be read — which the
+     racer and the platformer both found out before this did.
 
    ---------------------------------------------------------------------
    WHO IS IN IT
 
-   Her side is Morocco and she is the captain. The rest of the squad is
-   borrowed from the other chapters: the cat that narrates the walk up
-   the valley, the bear from the orchard, and Cogsworth out of the toy
-   shop in goal, because a clockwork soldier who only moves when he has
-   to is exactly what a goalkeeper is.
+   Six Moroccan health-sciences faculties, and fourteen original
+   characters who play for them. Her side is FMPM Marrakech and she is
+   the captain; his is FMDC Casablanca. The draw is fixed so that those
+   two meet in the final, because that is the story the chapter is
+   telling and a random bracket would tell a different one.
 
-   Three rounds: Germany, then Brazil, then the final — and the final is
-   against his side, playing under a small paper heart instead of a
-   flag. It is the same paper heart she picks up in the first minute of
-   The Long Way Round.
+   Every one of them — the names, the kits, the squads, the stats, the
+   supers, the campuses, the words between the rounds and the words at
+   the end — is in cup.config.js. There is nothing personal in this
+   file.
 
    ---------------------------------------------------------------------
    WHERE TO EDIT
 
-   TUNE      how it feels to play: speeds, drag, how hard a shot is
-   TEAMS     the four sides, their kits, their squads and their flags
-   CUP       the three rounds and what is said before each of them
-   Sprites   the pixel maps, further down, one section per character
+   cup.config.js   everything above: who, where, what is said
+   TUNE            how it FEELS to play: speeds, drag, how hard a shot
+                   is, how far a challenge reaches, what a stat is worth
+   SUPER_KIND      how each of the eleven Super Shots flies
    ========================================================================= */
 
 window.OuissyCup = (function () {
@@ -142,7 +141,11 @@ window.OuissyCup = (function () {
      has built herself arrives in exactly this shape, so nothing
      downstream knows or cares which kind it is looking at. */
   function squadOf(team) {
-    var ids = (team && team.squad) || [];
+    /* the empty slots of a squad still being picked are dropped rather
+       than filled with a nameless stand-in: the Team Builder shows the
+       side on the grass as she assembles it, and three of the four
+       walking out as PLAYER is worse than three of them walking out */
+    var ids = ((team && team.squad) || []).filter(Boolean);
     return ids.map(function (rid, i) {
       var r = ROSTER[rid] || FALLBACK_LOOK;
       return { id: rid, name: r.name || String(rid).toUpperCase(), face: rid,
@@ -358,20 +361,13 @@ window.OuissyCup = (function () {
      them, which is what lets a cat and a bear and a tin soldier line up
      in the same kit without one of them needing a body of its own.
      ======================================================================= */
-  var CAST = {
-    ouissy:  { skin: "#f0cfae", hair: "#4a2f1c", head: "long",   build: 1.00 },
-    anwar:   { skin: "#e0b189", hair: "#2f231b", head: "crop",   build: 1.06 },
-    cat:     { skin: "#cfd4dc", hair: "#6b6f78", head: "ears",   build: 0.92, muzzle: "#f2f4f7", spot: "#e88fa4" },
-    bear:    { skin: "#d9b98e", hair: "#7a5230", head: "bear",   build: 1.18, muzzle: "#e8d2b0", spot: "#3c2a1c" },
-    soldier: { skin: "#e8c9a8", hair: "#2a2b33", head: "shako",  build: 0.96, spot: "#c8564a" },
-    jester:  { skin: "#f0d8c0", hair: "#b46fd0", head: "jester", build: 0.94, spot: "#f5d020" },
-    ballet:  { skin: "#fbe8dc", hair: "#e6b7cd", head: "bun",    build: 0.88 },
-    zombie:  { skin: "#7d9a5e", hair: "#3f5230", head: "crop",   build: 1.04, eye: "#cfe89a" },
-    blond:   { skin: "#f0cfae", hair: "#d9b25e", head: "crop",   build: 1.00 },
-    dark:    { skin: "#a8764c", hair: "#2a2118", head: "crop",   build: 1.02 },
-    curly:   { skin: "#8a5f3d", hair: "#38281c", head: "afro",   build: 1.00 },
-    keeper:  { skin: "#e8c9a8", hair: "#5a4632", head: "crop",   build: 1.04 },
-  };
+  /* The cast used to be a table here: twelve borrowed characters from
+     the other chapters, each a skin, a hair colour and a head. It was
+     read by nothing by the time the fourteen originals in cup.config.js
+     replaced it — `buildRig` resolves a look out of ROSTER and has done
+     since the roster existed — so it has gone rather than sitting here
+     looking like the place a character is defined. Characters are
+     defined in cup.config.js. */
 
   var INK = "#141a16";        /* the outline. Not black: pure black against
                                  this green reads as a hole, not an edge. */
@@ -1114,10 +1110,61 @@ window.OuissyCup = (function () {
       head.add(back);
 
     } else if (kind === "anwar") {
-      cap(0.50, 0.18);
-      var fr = new THREE.Mesh(new THREE.BoxGeometry(5.0 * b, 0.9 * b, 1.2 * b), hairM);
-      fr.position.set(0, 1.9 * b, 2.2 * b);
-      head.add(fr);
+      /* HIM, AND HE HAS TO BE HIM.
+
+         This was a skullcap and a rectangle for a fringe, which is a
+         generic short-haired man and is not what he looks like anywhere
+         else on this site. The apocalypse builds him curly, bearded and
+         in glasses, so the man in the dental faculty's shirt is built
+         the same way — out of the flags on his ANWAR block in the
+         config, so all three are one edit.
+
+         Curls are eight small spheres round the crown rather than a
+         smooth cap: at this size a curl is a bump in the SILHOUETTE, and
+         a texture would not survive the buffer this is rendered
+         through. */
+      cap(0.48, 0.18);
+      if (look.curly !== false) {
+        [[-2.3, 1.6, 0.9], [-1.4, 2.7, 1.7], [0, 3.1, 1.9], [1.4, 2.7, 1.7],
+         [2.3, 1.6, 0.9], [-2.6, 1.0, -1.2], [0, 2.6, -2.0], [2.6, 1.0, -1.2]]
+          .forEach(function (c, i) {
+            var curl = new THREE.Mesh(
+              new THREE.SphereGeometry((0.95 + (i % 3) * 0.14) * b, 8, 6), hairM);
+            curl.position.set(c[0] * b, c[1] * b, c[2] * b);
+            curl.castShadow = true;
+            head.add(curl);
+          });
+      }
+      if (look.beard !== false) {
+        /* along the jaw and under the chin — three pieces, because a
+           single band round a sphere reads as a chinstrap */
+        var jaw = new THREE.Mesh(new THREE.SphereGeometry(2.95 * b, 14, 10,
+          0, Math.PI * 2, Math.PI * 0.52, Math.PI * 0.30), hairM);
+        jaw.position.set(0, -0.1 * b, 0.35 * b);
+        jaw.scale.set(1.02, 1.12, 1.0);
+        head.add(jaw);
+        var chin = new THREE.Mesh(new THREE.SphereGeometry(1.25 * b, 10, 8), hairM);
+        chin.position.set(0, -2.35 * b, 1.95 * b);
+        chin.scale.set(1.15, 0.85, 0.8);
+        head.add(chin);
+        /* and the moustache, which is the piece that makes it a beard
+           and not a scarf */
+        var tash = new THREE.Mesh(new THREE.BoxGeometry(2.1 * b, 0.55 * b, 0.5 * b), hairM);
+        tash.position.set(0, -0.78 * b, 2.85 * b);
+        head.add(tash);
+      }
+      if (look.glasses !== false) {
+        var frameM = toon("#2a2622");
+        [-1, 1].forEach(function (s) {
+          var lens = new THREE.Mesh(
+            new THREE.TorusGeometry(1.06 * b, 0.17 * b, 6, 14), frameM);
+          lens.position.set(s * 1.0 * b, 0.28 * b, 2.95 * b);
+          head.add(lens);
+        });
+        var bridge = new THREE.Mesh(new THREE.BoxGeometry(0.9 * b, 0.18 * b, 0.18 * b), frameM);
+        bridge.position.set(0, 0.28 * b, 3.05 * b);
+        head.add(bridge);
+      }
 
     } else if (kind === "flame") {
       /* Ember: five spikes of different heights leaning back — the only
@@ -1413,11 +1460,103 @@ window.OuissyCup = (function () {
     },
   };
 
+  /* =======================================================================
+     THE MENUS HAVE A TUNE NOW
+
+     There was nothing under the menus at all: she opened the chapter
+     into total silence and the first sound in it was a whistle. This is
+     eight bars of warm nothing-in-particular — four chords, a soft bass
+     under them and one note picked out on top — made the same way as
+     everything else in here, which is to say out of oscillators, because
+     there is not an audio file anywhere in this repository.
+
+     It schedules one bar at a time, a bar ahead, rather than laying the
+     whole loop down at once: a tab left in the background for ten
+     minutes would otherwise come back with ten minutes of chords queued
+     up inside it, all of which would then play.
+     ======================================================================= */
+  var musicOn = false, musicTimer = null, musicGain = null, musicBar = 0;
+  /* Four chords that do not resolve, so the loop has no seam in it. A
+     progression that lands home every eight bars announces itself every
+     eight bars, and a menu she might sit on for two minutes reading a
+     squad list should not keep arriving anywhere. */
+  var MENU_BARS = [
+    { root: 196.00, notes: [196.00, 293.66, 392.00, 587.33] },   // G
+    { root: 220.00, notes: [220.00, 329.63, 440.00, 659.25] },   // Am
+    { root: 164.81, notes: [164.81, 246.94, 329.63, 493.88] },   // Em
+    { root: 174.61, notes: [174.61, 261.63, 349.23, 523.25] },   // F
+  ];
+  var BAR = 3.1;
+
+  function menuMusic(on) {
+    if (on) {
+      if (musicOn || !soundOn || !audio()) return;
+      musicOn = true;
+      musicBar = 0;
+      musicGain = AC.createGain();
+      musicGain.gain.setValueAtTime(0.0001, AC.currentTime);
+      musicGain.gain.exponentialRampToValueAtTime(0.05, AC.currentTime + 1.4);
+      musicGain.connect(master);
+      musicTick();
+      return;
+    }
+    if (!musicOn) return;
+    musicOn = false;
+    if (musicTimer) { clearTimeout(musicTimer); musicTimer = null; }
+    if (musicGain && AC) {
+      /* taken down over a beat rather than cut, because a chord that
+         stops dead is a bug however deliberate it was */
+      var g = musicGain, t = AC.currentTime;
+      try {
+        g.gain.cancelScheduledValues(t);
+        g.gain.setValueAtTime(Math.max(0.0001, g.gain.value), t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
+        setTimeout(function () { try { g.disconnect(); } catch (e) {} }, 1100);
+      } catch (e) {}
+    }
+    musicGain = null;
+  }
+
+  function musicTick() {
+    if (!musicOn || !AC || !musicGain) return;
+    var bar = MENU_BARS[musicBar % MENU_BARS.length];
+    var t0 = AC.currentTime + 0.05;
+
+    var voice = function (f, at, dur, vol, type, glide) {
+      var o = AC.createOscillator(), g = AC.createGain();
+      o.type = type || "triangle";
+      o.frequency.setValueAtTime(f, t0 + at);
+      if (glide) o.frequency.linearRampToValueAtTime(glide, t0 + at + dur);
+      g.gain.setValueAtTime(0.0001, t0 + at);
+      g.gain.exponentialRampToValueAtTime(vol, t0 + at + Math.min(0.5, dur * 0.3));
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + dur);
+      o.connect(g); g.connect(musicGain);
+      o.start(t0 + at); o.stop(t0 + at + dur + 0.05);
+    };
+
+    /* the bass, held under the whole bar */
+    voice(bar.root / 2, 0, BAR * 0.96, 0.30, "sine");
+    /* the chord, the three of them coming in a fraction apart so it is
+       strummed rather than stamped */
+    bar.notes.slice(0, 3).forEach(function (f, i) {
+      voice(f, 0.04 + i * 0.05, BAR * 0.88, 0.16, "triangle");
+    });
+    /* and one note on top, in a different place each bar */
+    var top = bar.notes[3];
+    voice(top, BAR * 0.34, BAR * 0.5, 0.09, "sine");
+    if (musicBar % 2 === 1) voice(top * 1.5, BAR * 0.66, BAR * 0.3, 0.05, "sine");
+
+    musicBar++;
+    musicTimer = setTimeout(musicTick, BAR * 1000);
+  }
+
   function wakeSound() {
     if (!playing || !soundOn) return;
-    startCrowd();
+    /* whichever of the two belongs to where she actually is */
+    if (G && G.state === "menu") menuMusic(true);
+    else startCrowd();
   }
-  function sleepSound() { stopCrowd(); }
+  function sleepSound() { stopCrowd(); menuMusic(false); }
 
   /* =======================================================================
      9. THE MATCH
@@ -2060,7 +2199,11 @@ window.OuissyCup = (function () {
     var aimX = PITCH.cx + side * PITCH.goalW * 0.36;
 
     G.state = "super"; G.stateT = 0;
-    G.heart[p.team] = 0;
+    /* The meter is NOT spent here. It is spent on contact, in
+       fireSuper — so through the whole wind-up it is still sitting
+       there full, which is the point of the wind-up. Emptying it on the
+       button press means the thing she spent a half earning vanishes
+       from the screen before the shot she earned it for has happened. */
     G.superReady[p.team] = false;
     G.stat.supers[p.team]++;
     G.sup = {
@@ -2256,6 +2399,7 @@ window.OuissyCup = (function () {
     b.y = p.y + Math.sin(ang) * 6;
     b.superK = s;
     s.fired = true;
+    G.heart[p.team] = 0;                 // spent on contact, not on press
     setAnim(p, "superKick", 0.6);
     G.stat.shots[p.team]++;
     G.shake = 1;
@@ -3286,14 +3430,16 @@ window.OuissyCup = (function () {
       var r = 74 - Math.min(16, camMode.t * 6);
       var wx = px2 + Math.sin(orbit) * r * 0.55;
       var wz = pz2 + side * Math.cos(orbit * 0.6) * r * 0.85;
-      var k2 = Math.min(1, 3.0 * dt);
+      /* snap reaches this branch too — see the note in the super
+         branch below; a dt of zero used to mean no movement at all */
+      var k2 = snap ? 1 : Math.min(1, 3.0 * dt);
       camNow.x += (wx - camNow.x) * k2;
       camNow.z += (wz - camNow.z) * k2;
       camNow.tx += (px2 - camNow.tx) * k2;
       camNow.tz += (pz2 - camNow.tz) * k2;
       camNow.ty += (10 - camNow.ty) * k2;
       var hh = 30 - Math.min(8, camMode.t * 3);
-      camNow.h = (camNow.h === undefined ? hh : camNow.h + (hh - camNow.h) * k2);
+      camNow.h = (camNow.h === undefined || snap ? hh : camNow.h + (hh - camNow.h) * k2);
       camera.position.set(camNow.x, camNow.h, camNow.z);
       camera.lookAt(camNow.tx, camNow.ty, camNow.tz);
       if (sun) {
@@ -3313,10 +3459,60 @@ window.OuissyCup = (function () {
        away from it down the pitch, which is the shot that makes a
        hundred units look like sixty yards. A camera that chases a fast
        ball keeps it the same size and the speed disappears. */
+    /* THE MENU SHOT. Slow, low and moving: it drifts along the line of
+       players and breathes in and out, so a screen somebody is reading
+       is never a still photograph. Nothing about it is snapped, which
+       is why arriving at a menu does not jolt. */
+    if (camMode.kind === "menu") {
+      var mt = camMode.t;
+      var mDist = 118 + Math.sin(mt * 0.23) * 8;
+      var mWant = {
+        /* Aimed to one side of the group, which is what puts them in
+           the right of the picture and leaves the left of it for the
+           card. The drift on top is small on purpose: enough that the
+           shot is alive, not so much that the side she is reading about
+           wanders out of frame while she reads.
+
+           WHICH side is not a guess, and it was wrong the first time:
+           this camera looks along +z, and a camera looking down +z has
+           increasing scene x on its LEFT. Offsetting the target the
+           intuitive way moved the whole line-up further behind the card
+           instead of out from under it — measured at NDC -0.02 to
+           -0.42, which is dead centre and leftward, exactly where the
+           card is. It is signed off `side` so it survives the touchline
+           swap too. */
+        x: sceneX(PITCH.cy) - side * 34 + Math.sin(mt * 0.17) * 7,
+        z: side * mDist + Math.sin(mt * 0.11) * 5,
+        h: 27 + Math.sin(mt * 0.31) * 2.5,
+      };
+      var mk = snap ? 1 : Math.min(1, 2.4 * dt);
+      if (!camNow.menu) { camNow.menu = 1; camNow.z = mWant.z; camNow.h = mWant.h; }
+      camNow.tx += (mWant.x - camNow.tx) * mk;
+      camNow.tz += (0 - camNow.tz) * mk;
+      camNow.ty += (10 - camNow.ty) * mk;
+      camNow.x = camNow.tx;
+      camNow.z = (camNow.z || mWant.z) + (mWant.z - (camNow.z || mWant.z)) * mk;
+      camNow.h = (camNow.h === undefined ? mWant.h
+                                         : camNow.h + (mWant.h - camNow.h) * mk);
+      camera.position.set(camNow.x, camNow.h, camNow.z);
+      camera.lookAt(camNow.tx, camNow.ty, camNow.tz);
+      if (sun) {
+        sun.target.position.set(camNow.tx, 0, 0);
+        sun.position.set(camNow.tx - 90, 250, 160);
+        sun.target.updateMatrixWorld();
+      }
+      return;
+    }
+
     if ((camMode.kind === "super" || camMode.kind === "superFly") && camMode.at) {
       var sp3 = camMode.at;
       var spx = sceneX(sp3.y), spz = sceneZ(sp3.x);
-      var kk = Math.min(1, (camMode.kind === "super" ? 3.4 : 2.2) * dt);
+      /* `snap` has to reach here too. It did not: this branch eased off
+         `dt` alone, so a caller asking for the camera to be PUT there
+         rather than eased there — which is what a single-frame render
+         does, with dt of zero — moved it by exactly nothing and got a
+         picture of wherever the camera happened to be already. */
+      var kk = snap ? 1 : Math.min(1, (camMode.kind === "super" ? 3.4 : 2.2) * dt);
       if (camMode.kind === "super") {
         var sw = 0.9 + camMode.t * 0.55;
         camNow.x += (spx + Math.sin(sw) * 30 - camNow.x) * kk;
@@ -3325,7 +3521,7 @@ window.OuissyCup = (function () {
         camNow.tz += (spz - camNow.tz) * kk;
         camNow.ty += (11 - camNow.ty) * kk;
         var sh2 = 15 - Math.min(5, camMode.t * 5);
-        camNow.h = (camNow.h === undefined ? sh2 : camNow.h + (sh2 - camNow.h) * kk);
+        camNow.h = (camNow.h === undefined || snap ? sh2 : camNow.h + (sh2 - camNow.h) * kk);
       } else {
         /* held, low and wide, looking at the ball as it leaves */
         var b3 = G.ball;
@@ -3334,7 +3530,7 @@ window.OuissyCup = (function () {
         camNow.tx += (sceneX(b3.y) - camNow.tx) * Math.min(1, 6 * dt);
         camNow.tz += (sceneZ(b3.x) - camNow.tz) * Math.min(1, 6 * dt);
         camNow.ty += (8 + b3.z * 0.6 - camNow.ty) * Math.min(1, 6 * dt);
-        camNow.h = (camNow.h === undefined ? 18 : camNow.h + (18 - camNow.h) * kk);
+        camNow.h = (camNow.h === undefined || snap ? 18 : camNow.h + (18 - camNow.h) * kk);
       }
       var shk = G.shake > 0 ? (Math.random() - 0.5) * G.shake * 4.2 : 0;
       camera.position.set(camNow.x + shk, camNow.h, camNow.z);
@@ -3497,12 +3693,15 @@ window.OuissyCup = (function () {
   var TRAIL_N = 110;
   function buildTrail() {
     var geo = new THREE.SphereGeometry(1, 8, 6);
-    /* Basic, not toon: a trail is light, and light does not take shading.
-       Additive so that where the beads overlap it goes hot, which is the
-       whole look for about a fifth of a second. */
+    /* Basic, not toon: a trail is light, and light does not take
+       shading. NOT additive, though it was at first — additive over a
+       bright green pitch saturates straight to white, so every super in
+       the game left the same pale wake and the colour each character
+       burns, which is the one thing that tells one super from another
+       at a glance, was thrown away by the blend mode. */
     var mat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color("#ffffff"), transparent: true, opacity: 0.9,
-      depthWrite: false, blending: THREE.AdditiveBlending });
+      color: new THREE.Color("#ffffff"), transparent: true, opacity: 0.88,
+      depthWrite: false });
     trail = new THREE.InstancedMesh(geo, mat, TRAIL_N);
     trail.instanceMatrix.setUsage(THREE.DynamicDrawUsage || 35048);
     trail.frustumCulled = false;
@@ -3543,10 +3742,14 @@ window.OuissyCup = (function () {
         p.x = sceneX(b.y); p.y = BALL_R + b.z; p.z = sceneZ(b.x);
         /* scattered a little across the flight, so it is a wake and not
            a string of beads on a wire */
-        p.x += (Math.random() - 0.5) * 2.4;
-        p.y += (Math.random() - 0.5) * 2.4;
-        p.z += (Math.random() - 0.5) * 2.4;
-        p.r = 2.2 + Math.random() * 1.6;
+        p.x += (Math.random() - 0.5) * 1.8;
+        p.y += (Math.random() - 0.5) * 1.8;
+        p.z += (Math.random() - 0.5) * 1.8;
+        /* smaller than the ball, not bigger. At 2.2 to 3.8 against a
+           ball of 1.7 the "trail" was a line of boulders twice the size
+           of the thing making it, which reads as a bug rather than as
+           speed. A wake is made of things smaller than what left it. */
+        p.r = 0.9 + Math.random() * 0.7;
         break;
       }
     }
@@ -3595,7 +3798,10 @@ window.OuissyCup = (function () {
       depth: 0.9, bevelEnabled: true, bevelSize: 0.22,
       bevelThickness: 0.22, bevelSegments: 3, curveSegments: 10 });
     geo.center();
-    geo.scale(BALL_R * 1.5, BALL_R * 1.5, BALL_R * 1.5);
+    /* the same height as the ball it replaces, near enough. At 1.5x the
+       ball's radius the heart's lower lobe went through the grass,
+       because the whole group is parked one ball-radius off the floor. */
+    geo.scale(BALL_R * 1.05, BALL_R * 1.05, BALL_R * 1.05);
     heartMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
       color: new THREE.Color("#ff5f8f") }));
     heartMesh.visible = false;
@@ -3697,6 +3903,99 @@ window.OuissyCup = (function () {
      size of a thumbnail on a scoreboard, and three letters at that size
      is a smudge.
      ======================================================================= */
+  /* =======================================================================
+     THE TROPHY
+
+     The thing the chapter is named after, and it did not exist in any
+     form: the cup she was playing for was a word on a card. It is drawn
+     rather than modelled because it is only ever wanted flat, on a menu
+     or on the ending, at a size where a mesh would cost a camera and a
+     light for no gain.
+
+     Gold is three tones and a highlight, never one flat yellow: a single
+     colour reads as a yellow shape, and the thing that makes metal look
+     like metal is that one side of it is lit and the other is not.
+     ======================================================================= */
+  var GOLD = { lo: "#8a6218", mid: "#d8a32c", hi: "#ffe27a", lip: "#fff6cf" };
+  function trophyCanvas(w, h) {
+    var f = mkCanvas(w, h);
+    var x = f.x, cx = w / 2, u = Math.min(w, h) / 2;
+    var ink = "rgba(28,18,4,.55)";
+
+    var grad = x.createLinearGradient(cx - u * 0.7, 0, cx + u * 0.7, 0);
+    grad.addColorStop(0, GOLD.lo);
+    grad.addColorStop(0.32, GOLD.mid);
+    grad.addColorStop(0.52, GOLD.hi);
+    grad.addColorStop(0.74, GOLD.mid);
+    grad.addColorStop(1, GOLD.lo);
+
+    x.lineJoin = "round"; x.lineCap = "round";
+    x.lineWidth = Math.max(1, u * 0.09);
+    x.strokeStyle = ink;
+
+    /* the base: two steps, because one is a block and two is a plinth */
+    x.fillStyle = grad;
+    x.beginPath(); x.rect(cx - u * 0.62, h * 0.86, u * 1.24, h * 0.10); x.fill(); x.stroke();
+    x.beginPath(); x.rect(cx - u * 0.44, h * 0.76, u * 0.88, h * 0.11); x.fill(); x.stroke();
+    /* the stem */
+    x.beginPath(); x.rect(cx - u * 0.13, h * 0.58, u * 0.26, h * 0.19); x.fill(); x.stroke();
+
+    /* the bowl */
+    x.beginPath();
+    x.moveTo(cx - u * 0.60, h * 0.20);
+    x.lineTo(cx + u * 0.60, h * 0.20);
+    x.quadraticCurveTo(cx + u * 0.56, h * 0.55, cx, h * 0.60);
+    x.quadraticCurveTo(cx - u * 0.56, h * 0.55, cx - u * 0.60, h * 0.20);
+    x.closePath(); x.fill(); x.stroke();
+
+    /* the handles, one each side */
+    [-1, 1].forEach(function (s) {
+      x.beginPath();
+      x.moveTo(cx + s * u * 0.58, h * 0.24);
+      x.quadraticCurveTo(cx + s * u * 1.02, h * 0.28, cx + s * u * 0.92, h * 0.40);
+      x.quadraticCurveTo(cx + s * u * 0.84, h * 0.50, cx + s * u * 0.50, h * 0.47);
+      x.lineWidth = Math.max(2, u * 0.16);
+      x.strokeStyle = GOLD.mid; x.stroke();
+      x.lineWidth = Math.max(1, u * 0.07);
+      x.strokeStyle = ink; x.stroke();
+    });
+
+    /* the lip, and the shine down one side of the bowl */
+    x.fillStyle = GOLD.lip;
+    x.beginPath(); x.rect(cx - u * 0.66, h * 0.16, u * 1.32, h * 0.06); x.fill();
+    x.strokeStyle = ink; x.lineWidth = Math.max(1, u * 0.08); x.stroke();
+    x.fillStyle = "rgba(255,255,255,.34)";
+    x.beginPath();
+    x.moveTo(cx - u * 0.40, h * 0.24);
+    x.lineTo(cx - u * 0.24, h * 0.24);
+    x.quadraticCurveTo(cx - u * 0.20, h * 0.44, cx - u * 0.30, h * 0.52);
+    x.quadraticCurveTo(cx - u * 0.40, h * 0.42, cx - u * 0.40, h * 0.24);
+    x.closePath(); x.fill();
+
+    /* a heart on the front of it, because of whose cup it is */
+    var s2 = u * 0.24;
+    x.fillStyle = "#e0476f";
+    x.beginPath();
+    x.arc(cx - s2 * 0.46, h * 0.33, s2 * 0.5, 0, Math.PI * 2);
+    x.arc(cx + s2 * 0.46, h * 0.33, s2 * 0.5, 0, Math.PI * 2);
+    x.fill();
+    x.beginPath();
+    x.moveTo(cx - s2 * 0.95, h * 0.345);
+    x.lineTo(cx, h * 0.33 + s2 * 1.05);
+    x.lineTo(cx + s2 * 0.95, h * 0.345);
+    x.closePath(); x.fill();
+    return f.c;
+  }
+  /* the canvases go in after the card is in the DOM, same as the flags */
+  function paintTrophies() {
+    var el = EL["cup-overlay"];
+    if (!el) return;
+    Array.prototype.forEach.call(el.querySelectorAll("[data-cup]"), function (n) {
+      n.innerHTML = "";
+      n.appendChild(trophyCanvas(84, 112));
+    });
+  }
+
   function crestCanvas(kind, base, trim, w, h) {
     var f = mkCanvas(w, h);
     var x = f.x, cx = w / 2, cy = h / 2, u = Math.min(w, h) / 2;
@@ -4140,6 +4439,23 @@ window.OuissyCup = (function () {
     }
   }
 
+  /* The scoreboard's furniture: the two badges, the two short names and
+     the round. It lived inside the kick-off button's handler, which
+     meant it was only ever right if a match had been started through the
+     fixture card — anything else showed whatever was in the HTML. */
+  function dressBoard(roundName) {
+    if (!G || !EL["cup-h-name"]) return;
+    var a = teamById(G.ids[0]), b = teamById(G.ids[1]);
+    setFlag(EL["cup-h-flag"], a);
+    setFlag(EL["cup-a-flag"], b);
+    EL["cup-h-name"].textContent = (a && a.short) || "—";
+    EL["cup-a-name"].textContent = (b && b.short) || "—";
+    if (EL["cup-round"]) {
+      EL["cup-round"].textContent = roundName ||
+        (G.round && G.round.round) || "MATCH";
+    }
+  }
+
   var bannerT = null;
   function banner(text, tone) {
     var el = EL["cup-banner"];
@@ -4194,9 +4510,14 @@ window.OuissyCup = (function () {
     if (!el) return;
     opts = opts || {};
     el.innerHTML =
-      '<div class="cup-card' + (opts.big ? " cup-card-big" : "") + '">' +
-      '<p class="cup-card-k">' + (opts.kicker || "") + '</p>' +
-      '<h3>' + title + '</h3>' +
+      '<div class="cup-card' + (opts.big ? " cup-card-big" : "") +
+      (opts.memory ? " cup-card-mem" : "") +
+      (opts.tone ? " cup-card-" + opts.tone : "") + '">' +
+      (opts.kicker ? '<p class="cup-card-k">' + opts.kicker + "</p>" : "") +
+      /* a card with no heading gets no empty heading: the title screen
+         carries its name inside its own lockup, and an h3 with nothing
+         in it is a gap above it that nothing explains */
+      (title ? "<h3>" + title + "</h3>" : "") +
       (line ? '<p class="cup-card-l">' + line + '</p>' : "") +
       (opts.html || opts.body || "") +
       (opts.note ? '<p class="cup-card-n">' + opts.note + '</p>' : "") +
@@ -4282,7 +4603,12 @@ window.OuissyCup = (function () {
       var t = teamById(n.dataset.team);
       if (!t) return;
       n.innerHTML = "";
-      n.appendChild(badgeCanvas(t, 96, 64));
+      /* the badge is drawn at the size the slot asks for. One size for
+         every crest in the chapter meant the little one on the title
+         chip was a 96-wide canvas squeezed into twenty pixels, which on
+         a pixel-art badge is the one thing that ruins it. */
+      var w = +n.dataset.w || 96, h = +n.dataset.h || 64;
+      n.appendChild(badgeCanvas(t, w, h));
     });
   }
 
@@ -4313,12 +4639,19 @@ window.OuissyCup = (function () {
   }
   /* every side she can pick: the config's, then her own */
   function allTeams() { return cfg("TEAMS", []).concat(loadCustom()); }
+  /* A side that exists only while it is being built. The builder can now
+     put the squad she is assembling on the grass behind the card as she
+     picks it, and the pitch does not care where a team came from — but
+     teamById does, so this is the one place that knows about it. */
+  var previewSide = null;
+
   var customPatched = false;
   function patchTeamLookup() {
     if (customPatched) return;
     customPatched = true;
     var base = teamById;
     teamById = function (id) {
+      if (previewSide && previewSide.id === id) return previewSide;
       var t = base(id);
       if (t) return t;
       var mine = loadCustom();
@@ -4364,26 +4697,163 @@ window.OuissyCup = (function () {
     });
   }
 
+  /* =======================================================================
+     THE MENU IS PLAYED ON THE PITCH
+
+     What was wrong with the menus was not the buttons. It was that they
+     were a cream rectangle in front of an empty dark field: the chapter
+     spent all that effort building a stadium and then covered it with a
+     settings dialog and turned the lights off.
+
+     So the world stays on behind them. The side she is looking at walks
+     out and stands in a line facing the camera, in their own kit, at a
+     campus with the good light on it, and the camera drifts slowly
+     across them the way a broadcast does before kick-off. Pressing the
+     arrow on the carousel does not change a picture of a team — it
+     changes the team standing on the grass.
+
+     It costs almost nothing: the rigs, the pitch and the camera all
+     exist already, and this only tells them where to stand.
+     ======================================================================= */
+  var MENU_VENUE = "marrakech";       // the best light of the five
+  function lineUp(teamId, venueId) {
+    if (!scene) return;               // three.js has not landed yet
+    var ven = venueId || MENU_VENUE;
+    var sideId = teamId || run.myTeam || derbyTeam("hers");
+    /* a side under construction is not saved anywhere yet, so it is
+       remembered here for exactly as long as the card is up */
+    if (teamId && typeof teamId === "object") {
+      previewSide = teamId;
+      sideId = teamId.id;
+      patchTeamLookup();
+    } else {
+      previewSide = null;
+      run.myTeam = sideId;
+    }
+    G = newMatch(0, { mine: sideId, theirs: derbyTeam("his"), venue: ven });
+    G.venue = ven;
+    applyVenue(ven);
+    hideTrail();                  // no beads left over from a last shot
+    buildRigs();
+    G.state = "menu";
+
+    /* The line runs along the pitch's y, because that is the axis the
+       camera sees across — it stands on a touchline, so a row spread
+       along x would be a queue pointing away from it. */
+    var mine = G.players.filter(function (p) { return p.team === 0; });
+    /* looking AT the camera. The rig faces -Z and syncRig turns that by
+       `dir + PI`, so the heading that points a player at the near
+       touchline is the opposite of the one that points there on the
+       pitch's own axes — and getting it the intuitive way round lines
+       four of them up with their backs to her. */
+    var face = camSide() > 0 ? Math.PI : 0;
+    mine.forEach(function (p, i) {
+      /* MEASURED, NOT GUESSED, TWICE.
+
+         At 27 apart and a camera 74 out on a 52° lens, the four of them
+         spanned eighty units in a frame that holds seventy-two, so the
+         ends were off the sides and only one was ever in shot. Then
+         with the camera pulled back they fitted — and three of them
+         were behind the card, which is centred.
+
+         So they are staged like a team photograph instead of a police
+         line-up: closer together, and STEPPED AWAY from the camera, so
+         they overlap and read as a group rather than as four separate
+         people who each need their own column. The card sits to the
+         left of them (see .cup-card-title) and the camera is aimed to
+         put them in the right of the frame. */
+      p.x = PITCH.cx - 6 + i * 9;
+      p.y = PITCH.cy + (i - (mine.length - 1) / 2) * 15;
+      p.vx = p.vy = 0;
+      p.dir = face;
+      p.anim = null;
+    });
+    /* and the other side is not in this shot at all */
+    G.players.filter(function (p) { return p.team === 1; })
+      .forEach(function (p, i) {
+        p.x = PITCH.cx + (i - 1.5) * 18;
+        p.y = PITCH.y0 - 40;
+        p.vx = p.vy = 0;
+      });
+    G.ball.x = PITCH.cx + 22;
+    G.ball.y = PITCH.cy + 46;
+    G.ball.z = 0; G.ball.vx = G.ball.vy = G.ball.vz = 0;
+    G.ball.owner = null;
+    setCamMode("menu");
+    placeCamera(0, true);
+    if (EL["cup-hud"]) EL["cup-hud"].hidden = true;
+    if (EL["cup-pad"]) EL["cup-pad"].hidden = true;
+    if (EL["cup-pause-btn"]) EL["cup-pause-btn"].hidden = true;
+  }
+
   /* ---------------------------------------------------------------- title */
   function titleMenu() {
+    lineUp(run.myTeam);
+    menuMusic(true);
     var modes = cfg("MODES", []);
-    overlay(cfg("TITLE", "Ouissy\u2019s Cup"), "", "", null, {
-      kicker: "QUATRE CONTRE QUATRE",
-      html: '<div class="cup-menu">' +
-        '<p class="cup-menu-sub">' + cfg("TAGLINE", "") + "</p>" +
+    var mine = teamById(run.myTeam) || {};
+    /* an icon per mode, drawn in the button rather than lettered: a
+       menu of six identical beige rectangles is a list, and a list is
+       what this looked like */
+    var ICON = {
+      coupe:  '<svg viewBox="0 0 24 24"><path d="M7 4h10v5a5 5 0 01-10 0zM5 5h2v3a2.5 2.5 0 01-2-2.4zM19 5h-2v3a2.5 2.5 0 002-2.4zM10 14h4l.6 4H9.4zM7 20h10v1.6H7z"/></svg>',
+      amical: '<svg viewBox="0 0 24 24"><path d="M6 11l3-3 3 2 3-2 3 3-3.2 4.5a2 2 0 01-3 .3L12 15l-.8.8a2 2 0 01-3-.3z"/><path d="M3 10.4l3-3 1.4 1.4-3 3zM21 10.4l-3-3L16.6 8.8l3 3z"/></svg>',
+      derby:  '<svg viewBox="0 0 24 24"><path d="M12 3.2l2.3 2.3 3.2-.6-.6 3.2L19.2 10l-2.3 2.3.6 3.2-3.2-.6L12 17.2 9.7 14.9l-3.2.6.6-3.2L4.8 10l2.3-2.3-.6-3.2 3.2.6zM8.6 18.2l-1.4 3.4 3-1 2.2 1.2V18zM15.4 18.2l1.4 3.4-3-1-1 .5V18z"/></svg>',
+      teams:  '<svg viewBox="0 0 24 24"><path d="M9 4a3 3 0 110 6 3 3 0 010-6zM3.5 19c0-3 2.5-5.2 5.5-5.2s5.5 2.2 5.5 5.2zM17 6.5a2.5 2.5 0 110 5 2.5 2.5 0 010-5zM16.2 13.4c2.4.3 4.3 2.2 4.3 4.6h-4a7 7 0 00-1.4-4.2z"/></svg>',
+      help:   '<svg viewBox="0 0 24 24"><path d="M12 2.6A9.4 9.4 0 1012 21.4 9.4 9.4 0 0012 2.6zm.1 14.9a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4zm1.3-3.1v.9h-2.5v-2c0-1.4 2.4-1.6 2.4-3.2A1.4 1.4 0 0010.7 10H8.4a3.7 3.7 0 017.3.6c0 2.2-2.3 2.6-2.3 3.8z"/></svg>',
+      quit:   '<svg viewBox="0 0 24 24"><path d="M10.6 5.4L9.2 4 4.4 8.8a1.7 1.7 0 000 2.4L9.2 16l1.4-1.4-2.8-2.8H20V9.8H7.8z"/><path d="M14 3.4h5.6A1.8 1.8 0 0121.4 5v14a1.8 1.8 0 01-1.8 1.8H14V19h5.4V5.2H14z"/></svg>',
+    };
+    var btn = function (id, name, note, primary) {
+      return '<button class="cup-menu-b' + (primary ? " primary" : "") +
+             '" data-go="' + id + '" data-ico="' + id + '">' +
+             '<span class="cup-menu-ico">' + (ICON[id] || "") + "</span>" +
+             '<span class="cup-menu-t">' + name +
+             (note ? "<small>" + note + "</small>" : "") + "</span>" +
+             '<span class="cup-menu-go" aria-hidden="true">\u25b8</span></button>';
+    };
+
+    overlay("", "", "", null, {
+      kicker: "", tone: "title",
+      html: '<div class="cup-menu cup-title">' +
+        /* THE LOCKUP. A trophy, the name under it, and the line under
+           that \u2014 one block with its own weight, instead of a heading
+           that could have come off any card in the chapter. */
+        '<div class="cup-lock">' +
+          '<span class="cup-cupart" data-cup="1"></span>' +
+          '<h2 class="cup-lock-t">' + cfg("TITLE", "Ouissy\u2019s Cup") + "</h2>" +
+          '<p class="cup-lock-k">QUATRE CONTRE QUATRE</p>' +
+          '<p class="cup-menu-sub">' + cfg("TAGLINE", "") + "</p>" +
+        "</div>" +
+
         '<div class="cup-menu-list">' +
-        modes.map(function (m) {
-          return '<button class="cup-menu-b' + (m.primary ? " primary" : "") +
-                 '" data-go="' + m.id + '">' + m.name +
-                 (m.note ? "<small>" + m.note + "</small>" : "") + "</button>";
-        }).join("") +
-        '<button class="cup-menu-b" data-go="teams">LES \u00c9QUIPES' +
-          "<small>pick a faculty, or build your own squad</small></button>" +
-        '<button class="cup-menu-b" data-go="help">COMMENT JOUER</button>' +
-        '<button class="cup-menu-b" data-go="quit">RETOUR AU LIVRE</button>' +
+        modes.map(function (m) { return btn(m.id, m.name, m.note, m.primary); }).join("") +
+        btn("teams", "LES \u00c9QUIPES", "pick a faculty, or build your own squad") +
+        btn("help", "COMMENT JOUER", "one stick, two buttons") +
+        btn("quit", "RETOUR AU LIVRE", "") +
+        "</div>" +
+
+        /* who she is playing as, and how hard it is. Both were things
+           the game decided for her and never mentioned. */
+        '<div class="cup-title-foot">' +
+          '<button class="cup-chip cup-chip-team" data-go="teams">' +
+            '<i data-team="' + (mine.id || "") + '" data-w="36" data-h="24"></i>' +
+            "<span>" + (mine.short || "\u2014") + "</span></button>" +
+          '<span class="cup-diffs">' +
+            diffList().map(function (d) {
+              return '<button class="cup-chip" data-go="diff" data-c="' + d.id + '"' +
+                     ' data-on="' + (d.id === diffId ? 1 : 0) + '" title="' +
+                     (d.note || "") + '">' + d.name + "</button>";
+            }).join("") +
+          "</span>" +
         "</div></div>",
     });
+    paintTrophies();
+    paintCardFlags();
     wireMenu({
+      diff: function (b) {
+        setDiff(b.dataset.c);
+        titleMenu();
+      },
       coupe: function () {
         run.fixture = null; run.quick = false; run.round = 0;
         hideOverlay(); roundCard();
@@ -4440,10 +4910,16 @@ window.OuissyCup = (function () {
     var sq = squadOf(t);
     var cap = sq.filter(function (m) { return m.captain; })[0] || sq[1] || sq[0];
     var capR = cap ? ROSTER[cap.id] : null;
+    /* the side on the card is the side standing on the grass behind it */
+    patchTeamLookup();
+    lineUp(t.id);
 
     overlay(mode === "quick" ? "VOTRE FACULT\u00c9"
           : mode === "opp" ? "CONTRE QUI ?" : "LES \u00c9QUIPES", "", "", null, {
       kicker: (carAt + 1) + " / " + list.length,
+      /* the same off-centre placing as the title, for the same reason:
+         the side on the card is standing right behind it */
+      tone: "select",
       html: '<div class="cup-menu">' +
         '<div class="cup-car">' +
         '<button class="cup-car-arrow" data-go="prev">&#9664;</button>' +
@@ -4479,8 +4955,11 @@ window.OuissyCup = (function () {
     });
     animateBars();
     wireMenu({
-      prev: function () { carAt--; teamSelect(mode); },
-      next: function () { carAt++; teamSelect(mode); },
+      /* the arrows get their own, quieter sound: stepping through six
+         faculties with the same click the buttons use makes the whole
+         carousel sound like six decisions */
+      prev: function () { SFX.move(); carAt--; teamSelect(mode); },
+      next: function () { SFX.move(); carAt++; teamSelect(mode); },
       use: function () {
         patchTeamLookup();
         if (mode === "quick") {
@@ -4572,12 +5051,18 @@ window.OuissyCup = (function () {
       return '<div class="cup-slot' + (isCap ? " cap" : "") + (r ? "" : " empty") + '">' +
              "<em>" + (i === 0 ? "GK" : ROLE_NAME[r ? r.role : "mid"] || "") + "</em>" +
              "<span>" + (r ? r.name : "\u2014 empty \u2014") + "</span>" +
-             (r && i > 0 ? '<button class="cup-form" data-go="cap" data-id="' + id + '"' +
-                ' data-on="' + (isCap ? 1 : 0) + '">CAPTAIN</button>' : "") +
+             /* the armband. The one wearing it says so; the others offer
+                it, which is a different thing and used to look identical */
+             (r && i > 0 ? '<button class="cup-form cup-cap" data-go="cap" data-id="' + id + '"' +
+                ' data-on="' + (isCap ? 1 : 0) + '" title="' +
+                (isCap ? "wears the armband" : "make " + r.name + " captain") + '">' +
+                (isCap ? "★ CAPTAIN" : "CAPTAIN?") + "</button>" : "") +
              "</div>";
     }).join("");
 
     var capR = build.captain ? ROSTER[build.captain] : null;
+    /* and they walk out as she picks them, in the kit she has chosen */
+    if (chosen.length) lineUp(build);
 
     overlay("BUILD YOUR SQUAD", "", "", null, {
       kicker: "TEAM BUILDER", big: true,
@@ -4598,18 +5083,22 @@ window.OuissyCup = (function () {
           '<div class="cup-row"><label>NAME</label>' +
             '<input type="text" id="cup-bname" maxlength="22" value="' +
             String(build.name).replace(/"/g, "&quot;") + '"></div>' +
-          '<div class="cup-row"><label>KIT</label>' +
+          /* The swatches go inside a group of their own. Loose in the
+             row they are ten flex children beside the label, so the
+             tenth wraps onto a line by itself underneath it and the
+             palette reads as nine colours and an orphan. */
+          '<div class="cup-row"><label>KIT</label><span class="cup-swatches">' +
             SWATCHES.map(function (c) {
               return '<button class="cup-swatch" data-go="kit" data-c="' + c + '"' +
                      ' data-on="' + (build.kit.shirt === c ? 1 : 0) +
-                     '" style="background:' + c + '"></button>';
-            }).join("") + "</div>" +
-          '<div class="cup-row"><label>TRIM</label>' +
+                     '" style="background:' + c + '" aria-label="kit colour"></button>';
+            }).join("") + "</span></div>" +
+          '<div class="cup-row"><label>TRIM</label><span class="cup-swatches">' +
             SWATCHES.map(function (c) {
               return '<button class="cup-swatch" data-go="trim" data-c="' + c + '"' +
                      ' data-on="' + (build.kit.trim === c ? 1 : 0) +
-                     '" style="background:' + c + '"></button>';
-            }).join("") + "</div>" +
+                     '" style="background:' + c + '" aria-label="trim colour"></button>';
+            }).join("") + "</span></div>" +
           '<div class="cup-row"><label>CREST</label><span class="cup-forms">' +
             CRESTS.map(function (k) {
               return '<button class="cup-form" data-go="crest" data-c="' + k + '"' +
@@ -4705,21 +5194,51 @@ window.OuissyCup = (function () {
     build.crest = CRESTS[Math.floor(Math.random() * CRESTS.length)];
   }
 
-  function helpCard(back) {
-    overlay("HOW TO PLAY", "", "", null, {
-      kicker: "CONTROLS", big: true,
-      html: '<div class="cup-menu"><div class="cup-table">' +
-        "<div><b>MOVE</b><span>stick, or W A S D</span><b>&nbsp;</b></div>" +
-        "<div><b>TAP</b><span>pass \u00b7 or tackle when they have it</span><b>&nbsp;</b></div>" +
-        "<div><b>HOLD</b><span>wind up a shot \u00b7 or sprint</span><b>&nbsp;</b></div>" +
-        "<div><b>\u2665 FULL</b><span>tap to unleash the super</span><b>&nbsp;</b></div>" +
+  /* HOW TO PLAY.
+
+     Written for somebody who has never played a football game, because
+     she has not. Four rows for the controls and three for the things
+     the game does on its own that would otherwise look like bugs \u2014 the
+     player swapping under her, the ball never going out, and a meter
+     filling up in the corner for no stated reason.
+
+     `first` is the version that comes up on its own the first time she
+     opens the chapter; it says so, and it has a different button. */
+  var HELP_KEY = "cup_helped_v1";
+  function helpCard(back, first) {
+    var s = superOf(0);
+    overlay(first ? "BEFORE YOU START" : "HOW TO PLAY", "", "", null, {
+      kicker: first ? "ONE STICK, TWO BUTTONS" : "CONTROLS", big: true,
+      html: '<div class="cup-menu"><div class="cup-table cup-help">' +
+        "<div><b>MOVE</b><span>slide anywhere on the left \u00b7 or W A S D</span><b>&nbsp;</b></div>" +
+        "<div><b>TAP \u25cf</b><span>pass \u2014 or tackle, when they have it</span><b>&nbsp;</b></div>" +
+        "<div><b>HOLD \u25cf</b><span>wind up a shot \u2014 or sprint, without the ball</span><b>&nbsp;</b></div>" +
+        '<div><b class="cup-help-h">\u2665</b><span>the heart button, when the meter is full' +
+          (s ? " \u2014 " + s.name : "") + "</span><b>&nbsp;</b></div>" +
         "</div>" +
-        '<p class="cup-note">You are always whoever is nearest the ball. ' +
-        "It never switches away while you are carrying it.</p>" +
-        '<div class="cup-btnrow"><button class="cup-menu-b primary" data-go="back">GOT IT</button></div>' +
+        '<div class="cup-help-notes">' +
+        "<p><b>You are whoever is nearest the ball.</b> The game swaps for " +
+        "you, and it never takes a player away while you are carrying it.</p>" +
+        "<p><b>The meter under the score fills as you play</b> \u2014 a pass that " +
+        "finds someone, a tackle won, a shot had. Fill it and your captain " +
+        "gets one shot that is not a shot.</p>" +
+        "<p><b>The ball never goes out.</b> The pitch is boarded; it comes " +
+        "back off the sides. There are no throw-ins and nothing stops.</p>" +
+        "</div>" +
+        '<div class="cup-btnrow"><button class="cup-menu-b primary" data-go="back">' +
+        (first ? "LET\u2019S GO" : "GOT IT") + "</button></div>" +
         "</div>",
     });
     wireMenu({ back: function () { (back || titleMenu)(); } });
+  }
+  /* shown once, ever, and only if the config asks for it */
+  function helpIfFirstTime(then) {
+    if (!cfg("RULES.showHelpFirstTime", true)) return then();
+    var seen = false;
+    try { seen = !!localStorage.getItem(HELP_KEY); } catch (e) {}
+    if (seen) return then();
+    try { localStorage.setItem(HELP_KEY, "1"); } catch (e) {}
+    helpCard(then, true);
   }
 
   /* =======================================================================
@@ -4733,26 +5252,33 @@ window.OuissyCup = (function () {
   var run = { round: 0, won: 0 };
 
   function roundCard() {
-    var r = CUP[run.round];
-    var them = teamById(r.id);
+    var r = run.fixture && run.fixture.round ? run.fixture.round : CUP[run.round];
+    var them = teamById((run.fixture && run.fixture.theirs) || r.id);
+    /* her side, standing at the campus this one is being played at, so
+       the fixture card is a photograph of the actual fixture */
+    lineUp(run.myTeam, (run.fixture && run.fixture.venue) || r.venue);
+    menuMusic(true);
     overlay(them.name, r.before, "KICK OFF", function () {
       hideOverlay();
+      menuMusic(false);
       G = newMatch(run.round, run.fixture);
       applyVenue(G.venue);
       buildRigs();
-      setFlag(EL["cup-h-flag"], teamById(G.ids[0]));
-      setFlag(EL["cup-a-flag"], teamById(G.ids[1]));
-      EL["cup-h-name"].textContent = teamById(G.ids[0]).short;
-      EL["cup-a-name"].textContent = teamById(G.ids[1]).short;
-      EL["cup-round"].textContent = r.round;
+      dressBoard(r.round);
       resetPositions(0);
       if (EL["cup-hud"]) EL["cup-hud"].hidden = false;
       if (EL["cup-pad"]) EL["cup-pad"].hidden = false;
       if (EL["cup-pause-btn"]) EL["cup-pause-btn"].hidden = false;
       startCrowd();
     }, { kicker: r.round, big: true,
-         body: venueBlock(r.venue) + bracketBlock(run.round) +
-               teamsBlock(run.myTeam || "fmpm", r.id) });
+         /* The bracket only belongs on a cup tie. A friendly and the
+            derby used to print one anyway — and worse, the whole card
+            used to be built from CUP[run.round] whatever she had
+            picked, so choosing LE DERBY put up a card announcing a
+            quarter-final against UM6P and then played the derby. */
+         body: venueBlock((run.fixture && run.fixture.venue) || r.venue) +
+               (run.quick ? "" : bracketBlock(run.round)) +
+               teamsBlock(run.myTeam || derbyTeam("hers"), them.id) });
   }
 
   /* Where the fixture is being played. Half of what makes six matches
@@ -4766,15 +5292,52 @@ window.OuissyCup = (function () {
   }
 
   function finishRound(won) {
-    var r = CUP[run.round];
+    /* the same fixture the card was drawn from, so a friendly is told
+       it was a friendly rather than being congratulated on a semi-final */
+    var r = run.fixture && run.fixture.round ? run.fixture.round : CUP[run.round];
     if (EL["cup-pad"]) EL["cup-pad"].hidden = true;
+    if (EL["cup-sup-btn"]) EL["cup-sup-btn"].hidden = true;
     setTimeout(function () {
       if (!playing) return;
+      stopCrowd();
+      menuMusic(true);
+      /* THE MATCH IS OVER, SO THE BROADCAST FURNITURE GOES.
+         The pad was being hidden and the scoreboard was not, so the
+         memory card between the rounds came up with the score, the
+         clock, the Heart meter and the possession bar still sitting
+         over it — a card that is deliberately not about football,
+         framed by every number in the match she just played. */
+      if (EL["cup-hud"]) EL["cup-hud"].hidden = true;
+
+      /* A FRIENDLY IS NOT A ROUND.
+         Winning one used to advance `run.round` and put up the next cup
+         tie, because this only ever knew about the tournament. A one-off
+         goes back to the menu it was started from. */
+      if (run.quick) {
+        overlay("FULL TIME", scoreLine(), won ? "BACK TO THE MENU" : "PLAY IT AGAIN",
+          function () {
+            hideOverlay();
+            if (won) { run.fixture = null; run.quick = false; titleMenu(); }
+            else roundCard();
+          },
+          { kicker: won ? "WON" : "LOST", note: won ? r.won : r.lost,
+            body: statsBlock(),
+            alt: won ? null : "LEAVE IT FOR NOW",
+            onAlt: function () { run.fixture = null; run.quick = false;
+                                 hideOverlay(); titleMenu(); } });
+        return;
+      }
+
       if (won) {
         run.won++;
         if (run.round >= CUP.length - 1) return theEnd();
         overlay("FULL TIME", scoreLine(), "NEXT ROUND", function () {
-          run.round++; hideOverlay(); roundCard();
+          hideOverlay();
+          /* and between the rounds, something that is not football */
+          memoryCard(run.round, function () {
+            run.round++;
+            roundCard();
+          });
         }, { kicker: "WON", note: r.won,
              body: statsBlock() + bracketBlock(run.round + 1) });
       } else {
@@ -4786,23 +5349,73 @@ window.OuissyCup = (function () {
     }, 1400);
   }
 
+  /* =======================================================================
+     THE MEMORIES
+
+     The tournament stops for a moment between the rounds and says
+     something that has nothing to do with football. They come out of
+     MEMORIES in the config, they are indexed by the round just won, and
+     if there is no card written for a round the tournament simply
+     carries on — so adding or removing one is editing a list, not
+     editing a state machine.
+     ======================================================================= */
+  function memoryCard(i, next) {
+    var list = cfg("MEMORIES", []) || [];
+    var m = list[i];
+    if (!m || (!m.line && !m.title)) { next(); return; }
+    /* a clean pitch behind it rather than the wreckage of the match she
+       has just finished, with eight people standing where the whistle
+       left them */
+    lineUp(run.myTeam);
+    SFX.memory();
+    overlay(m.title || "", "", "GO ON", function () { hideOverlay(); next(); },
+      { kicker: "♥", big: true, memory: true,
+        html: '<div class="cup-mem">' +
+              (m.photo ? '<span class="cup-mem-ph"><img src="' + m.photo +
+                         '" alt="" loading="lazy"></span>' : "") +
+              '<p class="cup-mem-l">' + (m.line || "") + "</p></div>" });
+  }
+
   /* The trophy, and what he says. Every chapter on this site ends with
      him saying something; this one has had a whole stadium shouting for
      ninety minutes, so it ends quietly. */
+  /* THE TROPHY, AND WHAT HE SAYS.
+
+     Every chapter on this site ends with him saying something. This one
+     has had a stadium shouting for ninety minutes, so it ends quietly —
+     and it ends with HIS words rather than mine: the whole card is
+     VICTORY in cup.config.js, which is a block he can rewrite without
+     opening this file. It used to be hard-coded here, and it was still
+     congratulating her on winning with Morocco and a bear at the back
+     three renames after either of those existed. */
   function theEnd() {
     if (EL["cup-hud"]) EL["cup-hud"].hidden = true;
+    if (EL["cup-pad"]) EL["cup-pad"].hidden = true;
+    if (EL["cup-pause-btn"]) EL["cup-pause-btn"].hidden = true;
     stopCrowd();
     try { if (window.markCupDone) window.markCupDone(); } catch (e) {}
-    overlay("THE CUP",
-      "You won it. Morocco, four a side, and a bear at the back.",
-      "TAKE IT HOME",
+
+    var V = cfg("VICTORY", {}) || {};
+    var lines = V.lines || (V.message ? [V.message] : []);
+    /* her side, on the grass, under the floodlights, while she reads it */
+    lineUp(run.myTeam, "night");
+    SFX.trophy();
+    menuMusic(true);
+    confettiBurst({ x: PITCH.cx, y: PITCH.cy }, 200, "#ffd45e");
+
+    overlay(V.title || "YOU WON IT", "", V.button || "TAKE IT HOME",
       function () { quit(); },
-      { kicker: "FULL TIME",
-        big: true,
-        note: "I put you in a shirt and a stadium and gave you the whole " +
-              "thing to win, and you still went and won it. Of course you " +
-              "did. I have watched you do the harder version of this all " +
-              "year with nobody in the stands at all." });
+      { kicker: V.kicker || "FULL TIME", big: true, tone: "win",
+        html: '<div class="cup-end">' +
+              '<span class="cup-cupart" data-cup="1"></span>' +
+              (V.photo ? '<span class="cup-mem-ph"><img src="' + V.photo +
+                         '" alt="" loading="lazy"></span>' : "") +
+              '<div class="cup-end-lines">' +
+              lines.map(function (l) { return "<p>" + l + "</p>"; }).join("") +
+              "</div>" +
+              (V.signOff ? '<p class="cup-end-sign">' + V.signOff + "</p>" : "") +
+              "</div>" });
+    paintTrophies();
   }
 
   /* =======================================================================
@@ -5014,7 +5627,10 @@ window.OuissyCup = (function () {
       placeCamera(0, true);
       renderer.render(scene, camera);
       patchTeamLookup();
-      titleMenu();
+      /* the first time she ever opens it, the controls come up on their
+         own — helpCard has existed since the chapter did and nothing
+         ever showed it unless she went looking for it in the menu */
+      helpIfFirstTime(titleMenu);
       if (raf) cancelAnimationFrame(raf);
       raf = requestAnimationFrame(frame);
     }).catch(function (e) {
@@ -5028,6 +5644,8 @@ window.OuissyCup = (function () {
     if (raf) cancelAnimationFrame(raf);
     raf = null;
     stopCrowd();
+    menuMusic(false);
+    clearSuperBanner();
     hideOverlay();
     clearBanner();
     IN.keys = {}; IN.stickId = null; IN.btnId = null; IN.held = false;
@@ -5190,11 +5808,33 @@ window.OuissyCup = (function () {
     /* the handful of read-outs tools/cupfeel.js needs to judge whether
        the football is any good, rather than whether it runs */
     reset: function (r) {
-      run.round = r || 0; run.quick = false;
+      run.round = r || 0; run.quick = false; run.fixture = null;
       G = newMatch(run.round);
+      applyVenue(G.venue);
       buildRigs();
       resetPositions(0);
       G.state = "play"; G.stateT = 0;
+      /* and it clears the screen. A reset used to leave whatever card
+         was up still up — so a harness that ran a half, reset, and then
+         photographed the result came back with a picture of the
+         half-time card sitting over a match in progress. */
+      hideOverlay();
+      clearBanner();
+      clearSuperBanner();
+      /* Beads from a previous shot are still alive until they decay,
+         and they only decay inside draw() — which a harness that has
+         stopped the frame loop never calls. A new match starts with a
+         clean sky. */
+      hideTrail();
+      superGlow(false);
+      menuMusic(false);
+      /* and it dresses the scoreboard, which only roundCard used to do —
+         so a harness that reset straight into a match photographed the
+         two placeholder names sitting in index.html */
+      dressBoard();
+      if (EL["cup-hud"]) EL["cup-hud"].hidden = false;
+      if (EL["cup-pad"]) EL["cup-pad"].hidden = false;
+      syncHud();
       return hooks.state();
     },
     me: function () {
@@ -5268,6 +5908,12 @@ window.OuissyCup = (function () {
       if (!renderer) return;
       draw(0.016);
       placeCamera(0, true);
+      /* the HUD too. frame() is what normally keeps the scoreboard, the
+         Heart meter and the button label in step with the simulation,
+         and a harness has stopped frame() — so without this every
+         photograph shows the numbers the page loaded with. */
+      syncRing();
+      syncHud();
       renderer.render(scene, camera);
     },
     /* build one, unattached, so a harness can line the whole squad up

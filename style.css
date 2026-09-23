@@ -7909,13 +7909,23 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 
 /* ---------- the cards ---------- */
+/* THE BACKDROP USED TO BE A BLACKOUT.
+
+   It was a radial gradient at between 72% and 93% opacity, which is
+   another way of saying the chapter built a stadium, lit it, put four
+   players on the grass and then painted over all of it every time a
+   card came up. It is a VIGNETTE now: dark at the corners so the card
+   still has something to sit against, nearly clear in the middle so the
+   pitch behind it is a place rather than a rumour. */
 .cup-overlay{
   position:absolute; inset:0; z-index:6;
   display:flex; align-items:center; justify-content:center;
-  background:radial-gradient(ellipse at 50% 42%, rgba(8,30,14,.72), rgba(3,10,5,.93) 76%);
+  background:radial-gradient(ellipse at 50% 46%,
+    rgba(4,14,7,.18) 18%, rgba(3,10,5,.52) 62%, rgba(2,7,4,.80) 100%);
 }
 .cup-overlay[hidden]{display:none;}
 .cup-card{
+  position:relative;
   width:min(74cqw, 88%); text-align:center;
   /* A card is allowed to be long — the squad builder is — but never
      taller than the stage: overflowing it centred clips the heading off
@@ -7924,9 +7934,25 @@ img{-webkit-user-drag:none; user-select:none;}
   max-height:92cqh; overflow-y:auto; overscroll-behavior:contain;
   padding:3.2cqh 3.2cqw;
   border-radius:1.6cqw;
-  background:linear-gradient(180deg,#f7f1e0,#e9dec6);
-  box-shadow:0 1.6cqh 4cqh rgba(0,0,0,.55), inset 0 0 0 .3cqh #c8b48a;
+  /* Paper with a light on it, and then a real frame round it: a hairline
+     of pale board, a gold rule, and a dark rim outside that. Three rings
+     is the difference between a printed card and a div with a border. */
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.6), rgba(255,255,255,0) 34%),
+    radial-gradient(ellipse at 50% 0%, #fbf6ea, #ecdfc4 62%, #e0d0ae);
+  box-shadow:
+    0 0 0 .22cqh #fbf3dd,
+    0 0 0 .62cqh #bb9c52,
+    0 0 0 .92cqh #5d4718,
+    0 2cqh 5cqh rgba(0,0,0,.6);
   animation:cupCard .34s cubic-bezier(.2,1.3,.4,1) both;
+}
+/* and one hairline rule inside the padding, which is what makes it read
+   as printed rather than as filled */
+.cup-card::before{
+  content:""; position:absolute; inset:1.1cqh 1.1cqw;
+  border-radius:1cqw; pointer-events:none;
+  box-shadow:inset 0 0 0 .14cqh rgba(93,71,24,.24);
 }
 @keyframes cupCard{from{transform:scale(.88) translateY(2cqh); opacity:0;} to{transform:none; opacity:1;}}
 .cup-card-k{
@@ -8033,23 +8059,114 @@ img{-webkit-user-drag:none; user-select:none;}
   margin:0 0 2.6cqh; font-family:'Poppins',sans-serif;
   font-size:2.1cqh; color:#8a6f42; font-style:italic;
 }
-.cup-menu-list{display:flex; flex-direction:column; gap:1.2cqh; align-items:center;}
-.cup-menu-b{
-  width:min(44cqw,320px); padding:1.5cqh 2cqw; border:0; cursor:pointer;
-  border-radius:1cqw; font-family:'Silkscreen',monospace; font-size:2.4cqh;
-  letter-spacing:.06em; color:#3d2a12;
-  background:linear-gradient(180deg,#f7f1e0,#e4d7ba);
+.cup-menu-list{display:flex; flex-direction:column; gap:1.1cqh; align-items:center;}
 
-  box-shadow:0 .7cqh 0 #bca877, 0 1.2cqh 2.2cqh rgba(0,0,0,.28);
-  transition:transform .08s ease, box-shadow .08s ease;
+/* THE MENU BUTTONS.
+
+   They were six identical beige rectangles with the text centred, which
+   is a list of links wearing a bevel. Each is a ROW now — an icon in a
+   sunken well on the left, the name and its line in the middle, a
+   chevron on the right — so the eye has somewhere to start and the
+   shapes differ from each other before the words do. The primary one is
+   gold and is the only one that catches the light. */
+.cup-menu-b{
+  display:flex; align-items:center; gap:1.4cqw; text-align:left;
+  width:min(50cqw,380px); padding:1.25cqh 1.6cqw; border:0; cursor:pointer;
+  border-radius:1cqw; font-family:'Silkscreen',monospace; font-size:2.2cqh;
+  letter-spacing:.06em; color:#3d2a12;
+  background:linear-gradient(180deg,#fbf5e6,#e2d4b4);
+  box-shadow:0 .7cqh 0 #b5a071, 0 1.2cqh 2.2cqh rgba(0,0,0,.30),
+             inset 0 .12cqh 0 rgba(255,255,255,.75);
+  transition:transform .08s ease, box-shadow .08s ease, filter .12s ease;
 }
-.cup-menu-b:active{transform:translateY(.45cqh); box-shadow:0 .25cqh 0 #bca877;}
-.cup-menu-b.primary{
-  color:#0f2a16; background:linear-gradient(180deg,#ffe98a,#f0c24a);
-  box-shadow:0 .7cqh 0 #b98c22, 0 1.2cqh 2.2cqh rgba(0,0,0,.32);
-}
+.cup-menu-b:hover{filter:brightness(1.05);}
+.cup-menu-b:active{transform:translateY(.45cqh);
+  box-shadow:0 .25cqh 0 #b5a071, inset 0 .12cqh 0 rgba(255,255,255,.6);}
+.cup-menu-b[disabled]{opacity:.45; cursor:default; filter:saturate(.4);}
+.cup-menu-t{flex:1 1 auto; min-width:0;}
 .cup-menu-b small{display:block; font-family:'Poppins',sans-serif;
-  font-size:1.5cqh; letter-spacing:0; color:#7a6236; margin-top:.3cqh;}
+  font-size:1.45cqh; letter-spacing:0; color:#7a6236; margin-top:.25cqh;
+  white-space:normal; line-height:1.3;}
+.cup-menu-go{flex:0 0 auto; font-size:2cqh; color:#a8905c;}
+
+/* the icon, in a well of its own */
+.cup-menu-ico{
+  flex:0 0 auto; display:flex; align-items:center; justify-content:center;
+  width:4.6cqh; height:4.6cqh; border-radius:.7cqw;
+  background:linear-gradient(180deg,#d9c79f,#c5b087);
+  box-shadow:inset 0 .16cqh .3cqh rgba(61,42,18,.35),
+             inset 0 -.12cqh 0 rgba(255,255,255,.4);
+}
+.cup-menu-ico svg{width:2.9cqh; height:2.9cqh; fill:#4a3616;}
+
+.cup-menu-b.primary{
+  color:#2a1c06; font-size:2.5cqh;
+  background:linear-gradient(180deg,#fff2ad,#f4c94f 58%,#e0ae2e);
+  box-shadow:0 .8cqh 0 #a8781a, 0 1.4cqh 2.6cqh rgba(0,0,0,.36),
+             inset 0 .14cqh 0 rgba(255,255,255,.85);
+}
+.cup-menu-b.primary small{color:#6d5316;}
+.cup-menu-b.primary .cup-menu-go{color:#8a6a1c;}
+.cup-menu-b.primary .cup-menu-ico{
+  background:linear-gradient(180deg,#ffe58a,#e9bb3c);
+  box-shadow:inset 0 .16cqh .3cqh rgba(90,64,8,.4),
+             inset 0 -.12cqh 0 rgba(255,255,255,.6);
+}
+.cup-menu-b.primary .cup-menu-ico svg{fill:#3f2d06;}
+/* the one light sweep in the chapter, on the one button that matters */
+.cup-menu-b.primary{position:relative; overflow:hidden;}
+.cup-menu-b.primary::after{
+  content:""; position:absolute; top:0; bottom:0; width:38%;
+  background:linear-gradient(100deg, transparent, rgba(255,255,255,.62), transparent);
+  animation:cupShine 3.6s ease-in-out infinite;
+  pointer-events:none;
+}
+@keyframes cupShine{
+  0%, 62% {transform:translateX(-160%);}
+  92%,100%{transform:translateX(420%);}
+}
+
+/* ---- the title lockup ----
+   A trophy, the name, and the line under it as one block with its own
+   weight — rather than a heading that could have come off any card. */
+.cup-title{padding-top:.4cqh;}
+.cup-lock{display:flex; flex-direction:column; align-items:center; margin-bottom:1.8cqh;}
+.cup-cupart{display:block; width:9cqh; height:12cqh; margin-bottom:.4cqh;}
+.cup-cupart canvas{width:100%; height:100%; display:block; image-rendering:pixelated;
+  filter:drop-shadow(0 .5cqh .8cqh rgba(40,26,4,.45));}
+.cup-lock-t{
+  margin:0; font-family:'Cinzel',serif; font-weight:700;
+  font-size:6.2cqh; line-height:1.05; color:#3d2a12; letter-spacing:.01em;
+  text-shadow:0 .16cqh 0 #fff8e6, 0 .5cqh 1cqh rgba(61,42,18,.28);
+}
+.cup-lock-k{
+  margin:.3cqh 0 0; font-family:'Silkscreen',monospace;
+  font-size:1.7cqh; letter-spacing:.3em; color:#a8834a;
+}
+.cup-title .cup-menu-sub{margin:.7cqh 0 0;}
+
+/* ---- the foot of the title: who she is, and how hard it is ---- */
+.cup-title-foot{
+  display:flex; align-items:center; justify-content:center;
+  flex-wrap:wrap; gap:.8cqw; margin-top:1.8cqh;
+  padding-top:1.4cqh; border-top:.14cqh solid rgba(93,71,24,.22);
+}
+.cup-diffs{display:flex; gap:.5cqw;}
+.cup-chip{
+  display:flex; align-items:center; gap:.5cqw; cursor:pointer; border:0;
+  padding:.55cqh 1cqw; border-radius:.6cqw;
+  font-family:'Silkscreen',monospace; font-size:1.5cqh; letter-spacing:.06em;
+  color:#6a5330; background:rgba(61,42,18,.10);
+  box-shadow:inset 0 0 0 .14cqh rgba(61,42,18,.20);
+  transition:background .12s ease, color .12s ease;
+}
+.cup-chip:hover{background:rgba(61,42,18,.17);}
+.cup-chip[data-on="1"]{
+  color:#2a1c06; background:linear-gradient(180deg,#ffe28a,#efc247);
+  box-shadow:0 .25cqh 0 #b58c22;
+}
+.cup-chip-team i{display:block; width:3.6cqh; height:2.4cqh;}
+.cup-chip-team i canvas{width:100%; height:100%; display:block; image-rendering:pixelated;}
 
 /* ---- the carousel of sides ---- */
 .cup-car{display:flex; align-items:center; justify-content:center; gap:1.6cqw; margin-bottom:2cqh;}
@@ -8209,3 +8326,128 @@ img{-webkit-user-drag:none; user-select:none;}
   font-size:1.9cqh; color:#3d2a12; letter-spacing:.06em;}
 .cup-venue i{font-family:'Poppins',sans-serif; font-size:1.65cqh;
   color:#8a6f42; font-style:italic;}
+
+/* =========================================================================
+   OUISSY'S CUP — THE MEMORIES AND THE ENDING
+
+   The two cards in the chapter that are not about football. They are
+   deliberately quieter than everything around them: no gold, no bevel,
+   no button that looks like it wants pressing. The tournament has been
+   shouting for ninety seconds and these are the bits where it stops.
+   ========================================================================= */
+.cup-card-mem{
+  width:min(58cqw, 84%);
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.5), rgba(255,255,255,0) 30%),
+    radial-gradient(ellipse at 50% 0%, #fdf8ee, #f2e7d2 66%, #e8dabb);
+  box-shadow:
+    0 0 0 .22cqh #fdf6e6,
+    0 0 0 .62cqh #d9b9c4,          /* rose, not gold: it is not a prize */
+    0 0 0 .92cqh #8a5a68,
+    0 2cqh 5cqh rgba(0,0,0,.6);
+}
+.cup-card-mem .cup-card-k{color:#b0697f; font-size:2.6cqh; letter-spacing:.1em;}
+.cup-card-mem h3{
+  font-family:'Silkscreen',monospace; font-weight:400;
+  font-size:2.5cqh; letter-spacing:.09em; color:#8a5a68; line-height:1.4;
+}
+.cup-mem{display:flex; flex-direction:column; align-items:center; gap:1.6cqh;}
+.cup-mem-l{
+  margin:0; max-width:46cqw;
+  font-family:'Poppins',sans-serif; font-size:2.1cqh; line-height:1.62;
+  color:#4a3524;
+}
+/* a photo, if one is ever put in the config: taped down, slightly off
+   square, the way the scrapbook does it */
+.cup-mem-ph{
+  display:block; padding:1cqh 1cqh 2.4cqh; background:#fffdf7;
+  transform:rotate(-1.6deg);
+  box-shadow:0 1cqh 2.4cqh rgba(0,0,0,.38), inset 0 0 0 .1cqh rgba(0,0,0,.08);
+}
+.cup-mem-ph img{display:block; width:min(30cqw,260px); height:auto;}
+
+/* ---- the ending ---- */
+.cup-card-win{
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.6), rgba(255,255,255,0) 30%),
+    radial-gradient(ellipse at 50% 0%, #fffaec, #f4e6c4 62%, #e8d5a8);
+  box-shadow:
+    0 0 0 .22cqh #fffae8,
+    0 0 0 .70cqh #e0b64a,
+    0 0 0 1.0cqh #7a5a16,
+    0 2cqh 6cqh rgba(0,0,0,.66),
+    0 0 8cqh rgba(255,214,110,.30);
+}
+.cup-end{display:flex; flex-direction:column; align-items:center; gap:1.4cqh;}
+.cup-end .cup-cupart{width:11cqh; height:14.5cqh; margin:0;}
+.cup-end-lines{max-width:50cqw;}
+.cup-end-lines p{
+  margin:0 0 1.2cqh; font-family:'Poppins',sans-serif;
+  font-size:2cqh; line-height:1.66; color:#43301a;
+  /* left, not centred. It is a letter, and centred prose with a ragged
+     left edge is a poster. */
+  text-align:left;
+}
+.cup-end-lines p:last-child{margin-bottom:0;}
+.cup-end-sign{
+  margin:0; align-self:flex-end;
+  font-family:'Cinzel',serif; font-size:2.4cqh; color:#8a6f42;
+}
+
+/* the trophy has a slow shine on it, and nothing else on the card moves */
+.cup-card-win .cup-cupart{animation:cupGleam 4.4s ease-in-out infinite;}
+@keyframes cupGleam{
+  0%,100%{filter:drop-shadow(0 .5cqh .8cqh rgba(40,26,4,.45));}
+  50%    {filter:drop-shadow(0 .5cqh .8cqh rgba(40,26,4,.45))
+                 drop-shadow(0 0 1.6cqh rgba(255,216,110,.9));}
+}
+
+@media (prefers-reduced-motion: reduce){
+  .cup-menu-b.primary::after, .cup-card-win .cup-cupart,
+  .cup-heart[data-ready="1"], .cup-heart-bar::after,
+  .cup-sup-btn, .cup-sup-btn[data-armed="1"] .cup-sup-ring{ animation:none; }
+}
+
+/* The title card is narrower than the rest. It used to be the same
+   74cqw every other card is, which filled the stage corner to corner
+   and hid the very line-up it was standing in front of. */
+.cup-card-title{
+  width:min(44cqw, 440px); padding:2.4cqh 2cqw;
+  /* Pushed to the left rather than centred, so the side standing on the
+     grass has the other half of the frame to stand in. Centred, the card
+     sat on top of three of the four players it had just walked out. */
+  margin-left:4cqw; margin-right:auto;
+}
+.cup-card-title .cup-menu{width:100%;}
+.cup-card-title .cup-menu-b{width:100%;}
+/* on a narrow stage there is no room beside it, so it goes back to the
+   middle and the line-up is simply a backdrop */
+@container cupstage (max-width: 720px){
+  .cup-card-title{width:min(80cqw, 440px); margin-left:auto;}
+}
+
+/* ---- how to play ---- */
+.cup-help div b:first-child{min-width:9cqw;}
+.cup-help-h{color:#e0507f;}
+.cup-help-notes{margin-top:1.6cqh; text-align:left;}
+.cup-help-notes p{
+  margin:0 0 .9cqh; font-family:'Poppins',sans-serif;
+  font-size:1.75cqh; line-height:1.55; color:#5a452c;
+}
+.cup-help-notes b{color:#3d2a12;}
+
+/* the carousel sits off-centre too — the side it is describing is on the
+   grass directly behind it */
+.cup-card-select{
+  width:min(50cqw, 520px); margin-left:4cqw; margin-right:auto;
+}
+.cup-card-select .cup-tcard{max-width:none;}
+@container cupstage (max-width: 720px){
+  .cup-card-select{width:min(86cqw, 580px); margin-left:auto;}
+}
+
+/* the palette is one wrapping group, not ten loose flex children */
+.cup-swatches{display:flex; flex-wrap:wrap; gap:.6cqw; flex:1 1 0; min-width:0;}
+/* the armband: worn, or offered */
+.cup-cap[data-on="0"]{opacity:.5; font-size:1.35cqh;}
+.cup-cap[data-on="0"]:hover{opacity:1;}

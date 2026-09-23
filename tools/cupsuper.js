@@ -310,6 +310,33 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
   console.log('  --   their meter after five seconds, by round: ' +
               theirs.map(t => 'R' + (t.round + 1) + '=' + t.grew.toFixed(0)).join('  '));
 
+  /* ---- and what it looks like -------------------------------------- */
+  await p.evaluate(() => {
+    const C = OuissyCup.__cup;
+    C.saveChance(0);
+    C.reset(0);
+    C.shadows(true);
+    C.armAt(0, 120);
+    C.fire();
+  });
+  /* ALL THE STEPPING INSIDE ONE CALL.
+
+     Thirty round trips to the page at eighty milliseconds each is two
+     and a half seconds of real time for less than half a second of
+     simulation — which is longer than the nameplate stays up, so the
+     photographs came back with the cinematic's caption already gone. */
+  const advance = (n) => p.evaluate((k) => {
+    const C = OuissyCup.__cup;
+    for (let i = 0; i < k; i++) C.step(1, 0, 0, false);
+    C.render();
+  }, n);
+
+  await advance(30);                     // half a second into the wind-up
+  await p.screenshot({ path: '/tmp/cup-super-wind.png' });
+  await advance(26);                     // the strike, and the trail lit
+  await p.screenshot({ path: '/tmp/cup-super-fly.png' });
+  console.log('  --   photographed the wind-up and the strike');
+
   ok('no page errors', errs.length === 0, errs.slice(0, 4));
   console.log(pass + ' passed, ' + fail + ' failed');
   await b.close();

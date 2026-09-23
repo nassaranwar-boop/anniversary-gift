@@ -35,8 +35,17 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
   /* The chapter opens on its own title menu now rather than straight
      into a fixture, so the route she takes has one more step in it and
      so does this: PLAY THE CUP, then the round card, then kick off. */
-  await p.waitForSelector('[data-go="coupe"]', { timeout: 40000 });
-  ok('it opens on its own menu', true);
+  /* THE FIRST THING SHE EVER SEES is the controls, not the menu —
+     RULES.showHelpFirstTime, once per browser. The harness clears
+     localStorage, so it is always the first time in here. */
+  await p.waitForSelector('#cup-overlay .cup-card', { timeout: 40000 });
+  ok('it opens on the how-to the first time',
+     await p.evaluate(() => /BEFORE YOU START/.test(document.querySelector('#cup-overlay').textContent)));
+  await p.click('[data-go="back"]');
+  await p.waitForSelector('[data-go="coupe"]', { timeout: 20000 });
+  ok('and then on its own menu', true);
+  ok('with a trophy drawn on it',
+     await p.evaluate(() => !!document.querySelector('.cup-cupart canvas')));
   await p.click('[data-go="coupe"]');
   await p.waitForSelector('.cup-card-b', { timeout: 20000 });
   ok('and LA COUPE puts up the fixture',
