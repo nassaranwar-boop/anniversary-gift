@@ -7660,6 +7660,133 @@ img{-webkit-user-drag:none; user-select:none;}
 .cup-stam i{display:block; height:100%; width:100%;
   background:linear-gradient(90deg,#7fd4f5,#5fe0a8); transition:width .12s linear;}
 
+/* ---------- the Heart meter ----------
+   The second scoreboard. It sits under the first one in the captain's
+   own super colour (--hc, set from the roster when a match starts) with
+   their super's name written along it, so it is teaching her what it is
+   for the entire time it is filling. When it is full the whole thing
+   lifts, brightens and breathes, which is the only animation in the HUD
+   and is therefore impossible to miss. */
+.cup-heart{
+  position:absolute; left:50%; top:13.4cqh; transform:translateX(-50%);
+  display:flex; align-items:center; gap:.8cqw;
+  padding:.5cqh .9cqw; border-radius:1cqh;
+  background:rgba(11,18,25,.62);
+  box-shadow:inset 0 0 0 .16cqh rgba(255,255,255,.12);
+  --hc:#ff5f8f;
+  transition:box-shadow .2s ease, transform .2s ease;
+}
+.cup-heart-i{
+  font-size:2.2cqh; line-height:1; color:var(--hc);
+  text-shadow:0 0 .8cqh color-mix(in srgb, var(--hc) 70%, transparent);
+}
+.cup-heart-bar{
+  position:relative; display:block; width:26cqw; height:1.7cqh;
+  border-radius:1cqh; overflow:hidden;
+  background:rgba(0,0,0,.45);
+  box-shadow:inset 0 0 0 .14cqh rgba(255,255,255,.14);
+}
+.cup-heart-bar i{
+  display:block; height:100%; width:0;
+  background:linear-gradient(90deg,
+    color-mix(in srgb, var(--hc) 55%, #000 0%),
+    var(--hc) 70%,
+    color-mix(in srgb, var(--hc) 40%, #fff));
+  transition:width .16s linear;
+}
+/* a sheen running along the filled part, so a meter that is filling
+   reads as filling even when the number is barely moving */
+.cup-heart-bar::after{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background:linear-gradient(90deg, transparent 0 40%,
+    rgba(255,255,255,.35) 50%, transparent 60% 100%);
+  background-size:220% 100%;
+  animation:cupSheen 2.4s linear infinite;
+  opacity:.5;
+}
+.cup-heart-n{
+  font-family:'Silkscreen',monospace; font-weight:400;
+  font-size:1.5cqh; letter-spacing:.06em; color:#cfd8dd;
+  max-width:24cqw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.cup-heart[data-ready="1"]{
+  transform:translateX(-50%) scale(1.06);
+  box-shadow:inset 0 0 0 .2cqh var(--hc),
+             0 0 2.4cqh color-mix(in srgb, var(--hc) 55%, transparent);
+  animation:cupHeartBeat 1.1s ease-in-out infinite;
+}
+.cup-heart[data-ready="1"] .cup-heart-n{color:#fff;}
+@keyframes cupSheen{from{background-position:120% 0;} to{background-position:-120% 0;}}
+@keyframes cupHeartBeat{
+  0%,100%{box-shadow:inset 0 0 0 .2cqh var(--hc), 0 0 1.6cqh color-mix(in srgb, var(--hc) 40%, transparent);}
+  50%    {box-shadow:inset 0 0 0 .2cqh var(--hc), 0 0 4cqh   color-mix(in srgb, var(--hc) 75%, transparent);}
+}
+/* theirs: thinner, dimmer, and not in the document until they can use it */
+.cup-heart-a{
+  position:absolute; left:50%; top:17.4cqh; transform:translateX(-50%);
+  width:18cqw; height:.7cqh; border-radius:1cqh;
+  background:rgba(0,0,0,.45);
+  box-shadow:inset 0 0 0 .12cqh rgba(255,255,255,.12);
+  overflow:hidden;
+}
+.cup-heart-a[hidden]{display:none;}
+.cup-heart-a::after{
+  content:""; position:absolute; left:0; top:0; bottom:0;
+  width:calc(var(--f,0) * 100%);
+  background:linear-gradient(90deg,#7a3b46,#d0546a);
+  transition:width .16s linear;
+}
+
+/* ---------- the wash over everything ----------
+   One div at the full resolution of the screen rather than a fill in the
+   320-wide buffer, so a goal flash has a clean edge instead of a pixel
+   staircase across the whole picture. */
+.cup-flash{
+  position:absolute; inset:0; pointer-events:none; z-index:4;
+  mix-blend-mode:screen; opacity:0;
+}
+.cup-flash[hidden]{display:none;}
+
+/* ---------- the super's nameplate ----------
+   Slid in from the side that fired it, held, and gone. It is the only
+   thing in the chapter allowed to cover the middle of the pitch, and it
+   is allowed because for the second and a half it is up, the pitch is
+   one person pulling their leg back. */
+.cup-super-card{
+  position:absolute; left:50%; top:28%; z-index:5;
+  transform:translate(-50%,-50%);
+  display:flex; flex-direction:column; align-items:center; gap:.2cqh;
+  padding:1.2cqh 3.4cqw; border-radius:1.2cqw;
+  pointer-events:none; text-align:center;
+  --sc:#ff5f8f;
+  background:linear-gradient(180deg, rgba(10,14,20,.90), rgba(10,14,20,.74));
+  box-shadow:inset 0 0 0 .28cqh var(--sc),
+             0 0 5cqh color-mix(in srgb, var(--sc) 60%, transparent),
+             0 1.6cqh 3cqh rgba(0,0,0,.5);
+}
+.cup-super-card[hidden]{display:none;}
+.cup-sup-who{
+  font-family:'Silkscreen',monospace; font-size:1.8cqh; letter-spacing:.14em;
+  color:color-mix(in srgb, var(--sc) 70%, #ffffff);
+}
+.cup-sup-name{
+  font-family:'Silkscreen',monospace; font-weight:400;
+  font-size:5.2cqh; letter-spacing:.05em; line-height:1.1;
+  color:#fff;
+  text-shadow:0 0 1.6cqh var(--sc), 0 .4cqh 0 rgba(0,0,0,.55);
+}
+.cup-sup-note{
+  font-family:'Poppins',sans-serif; font-style:italic;
+  font-size:1.7cqh; color:#c9d2d8;
+}
+.cup-super-card.in{animation:cupSupIn .42s cubic-bezier(.16,1.3,.3,1) both;}
+.cup-super-card[data-side="them"]{--sc:#d0546a;}
+@keyframes cupSupIn{
+  0%  {transform:translate(-50%,-50%) scale(.72) rotate(-3deg); opacity:0;}
+  60% {transform:translate(-50%,-50%) scale(1.06) rotate(.8deg); opacity:1;}
+  100%{transform:translate(-50%,-50%) scale(1) rotate(0); opacity:1;}
+}
+
 /* ---------- what just happened ---------- */
 .cup-banner{
   position:absolute; left:50%; top:34%; transform:translate(-50%,-50%);
@@ -7671,6 +7798,12 @@ img{-webkit-user-drag:none; user-select:none;}
 .cup-banner[hidden]{display:none;}
 .cup-banner[data-tone="good"]{color:#0f2a16; background:#ffe066; box-shadow:0 .8cqh 0 #c9a410, 0 1.6cqh 3cqh rgba(0,0,0,.45);}
 .cup-banner[data-tone="bad"]{color:#f6faf0; background:#8f2630; box-shadow:0 .8cqh 0 #5e161d, 0 1.6cqh 3cqh rgba(0,0,0,.45);}
+/* the third tone, for the meter and the super: the same plate, lit */
+.cup-banner[data-tone="super"]{
+  color:#fff; background:linear-gradient(180deg,#ff77a6,#e0416f);
+  box-shadow:0 .8cqh 0 #9c2547, 0 1.6cqh 3cqh rgba(0,0,0,.45),
+             0 0 3.4cqh rgba(255,120,166,.55);
+}
 @keyframes cupPop{from{transform:translate(-50%,-50%) scale(.6); opacity:0;} to{transform:translate(-50%,-50%) scale(1); opacity:1;}}
 
 /* ---------- the controls ---------- */
@@ -7714,6 +7847,52 @@ img{-webkit-user-drag:none; user-select:none;}
   -webkit-mask:radial-gradient(farthest-side, transparent calc(100% - 1.1cqh), #000 calc(100% - 1cqh));
   mask:radial-gradient(farthest-side, transparent calc(100% - 1.1cqh), #000 calc(100% - 1cqh));
   pointer-events:none;
+}
+
+/* ---------- the super button ----------
+   Above the main one and smaller, in the captain's colour. It is only in
+   the document while the meter is full, and it says one of two things:
+   the super's name when the captain has the ball and it will actually
+   fire, or where to put the ball when he has not. A lit button that
+   silently does nothing is the worst control in any game. */
+.cup-sup-btn{
+  position:absolute; right:4.4cqw; bottom:21cqh;
+  width:11cqh; height:11cqh; border-radius:50%;
+  border:0; padding:0; cursor:pointer; touch-action:none; z-index:3;
+  --sc:#ff5f8f;
+  background:radial-gradient(circle at 36% 30%,
+    color-mix(in srgb, var(--sc) 35%, #fff),
+    var(--sc) 66%,
+    color-mix(in srgb, var(--sc) 70%, #000));
+  box-shadow:0 .8cqh 0 color-mix(in srgb, var(--sc) 55%, #000),
+             0 1.6cqh 2.8cqh rgba(0,0,0,.45),
+             0 0 3cqh color-mix(in srgb, var(--sc) 60%, transparent);
+  display:flex; align-items:center; justify-content:center;
+  animation:cupSupPop .34s cubic-bezier(.2,1.5,.4,1) both;
+}
+.cup-sup-btn[hidden]{display:none;}
+.cup-sup-btn.on{transform:translateY(.6cqh);
+  box-shadow:0 .2cqh 0 color-mix(in srgb, var(--sc) 55%, #000), 0 .8cqh 1.4cqh rgba(0,0,0,.4);}
+/* armed — the captain has it — pulses; not armed sits still and dim */
+.cup-sup-btn[data-armed="0"]{filter:saturate(.55) brightness(.82);}
+.cup-sup-btn[data-armed="1"] .cup-sup-ring{
+  position:absolute; inset:-1.2cqh; border-radius:50%;
+  box-shadow:0 0 0 .3cqh color-mix(in srgb, var(--sc) 80%, transparent);
+  animation:cupSupRing 1.2s ease-out infinite;
+}
+.cup-sup-face{display:flex; flex-direction:column; align-items:center; line-height:1;}
+.cup-sup-face em{font-style:normal; font-size:3.2cqh; color:#fff;
+  text-shadow:0 .2cqh .6cqh rgba(0,0,0,.45);}
+.cup-sup-face b{
+  font-family:'Silkscreen',monospace; font-weight:400;
+  font-size:1.2cqh; letter-spacing:.04em; color:#fff; margin-top:.3cqh;
+  max-width:10cqh; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  text-shadow:0 .2cqh .4cqh rgba(0,0,0,.5);
+}
+@keyframes cupSupPop{from{transform:scale(.5); opacity:0;} to{transform:scale(1); opacity:1;}}
+@keyframes cupSupRing{
+  from{transform:scale(1); opacity:.8;}
+  to  {transform:scale(1.45); opacity:0;}
 }
 
 .cup-pause-btn{

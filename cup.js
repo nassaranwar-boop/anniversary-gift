@@ -90,6 +90,48 @@ window.OuissyCup = (function () {
                         head: "crop", build: { h: 1, w: 1 },
                         stats: { speed: 75, power: 75, skill: 75, defence: 75 } };
 
+  /* HIM.
+     The ANWAR block in the config is the one place his name and his
+     colouring are written down, and it is copied over the roster entry
+     here rather than kept in two places that can disagree. The values it
+     ships with are the ones the apocalypse builds him with, so the man in
+     the dental faculty's shirt is the same man throughout the site. */
+  (function applyAnwar() {
+    var A = cfg("ANWAR", null), r = ROSTER.anwar;
+    if (!A || !r) return;
+    if (A.name) r.name = A.name;
+    if (A.skin) r.skin = A.skin;
+    if (A.hair) r.hair = A.hair;
+    ["beard", "glasses", "curly"].forEach(function (k) {
+      if (A[k] !== undefined) r[k] = A[k];
+    });
+    if (A.celebrationWith) r.pairWith = A.celebrationWith;
+  })();
+
+  /* ---------------------------------------------------------- difficulty
+     Three settings, and each moves three different things rather than
+     one: how good the opponents are, how fast her Heart meter fills, and
+     how sharp the keepers are. A difficulty that only makes the other
+     side slower is a difficulty you can feel being condescending. */
+  var DIFF_KEY = "cup_diff_v1";
+  var diffId = (function () {
+    var d = null;
+    try { d = localStorage.getItem(DIFF_KEY); } catch (e) {}
+    return d || cfg("RULES.difficulty", "normal");
+  })();
+  function diffList() {
+    return cfg("DIFFICULTIES", [{ id: "normal", name: "NORMAL", skill: 1, heart: 1, gk: 1 }]);
+  }
+  function diff() {
+    var list = diffList();
+    for (var i = 0; i < list.length; i++) if (list[i].id === diffId) return list[i];
+    return list[Math.min(1, list.length - 1)] || list[0];
+  }
+  function setDiff(id) {
+    diffId = id;
+    try { localStorage.setItem(DIFF_KEY, id); } catch (e) {}
+  }
+
   /* A team, by id, out of the config. */
   function teamById(id) {
     var list = cfg("TEAMS", []);
@@ -190,6 +232,14 @@ window.OuissyCup = (function () {
     /* --- passing and shooting --- */
     passSpeed: 150,
     passLead: 0.30,         // seconds of lead given to a moving target
+    passErr: 0.24,          // radians of scatter on a pass at mid skill —
+                            //   divided by the passer's accuracy, so the
+                            //   good ones find a foot and the rest find
+                            //   the area
+    shotSpread: 0.80,       // how much of the goal mouth a shot can land
+                            //   across at mid skill. Above 1 the ball can
+                            //   drag past a post, which is where a weak
+                            //   finisher ends up
     shotMin: 130, shotMax: 260,
     chargeTime: 0.62,       // to a full-power shot
     shotLift: 0.42,         // how much of a full shot goes upward
@@ -207,12 +257,46 @@ window.OuissyCup = (function () {
     gkAnticipate: 0.34,     // how far ahead of the ball he reads
     gkHold: 1.1,            // seconds he holds it before rolling it out
 
-    /* --- the match --- */
-    halfSeconds: 52,        // real seconds per half; the clock on screen
-                            //   runs 0' to 45' across it
+    /* --- the match ---
+       These three are the config's, not this file's: RULES in
+       cup.config.js is the one place a match's length is written down,
+       and it used to be written here as well, which meant editing it
+       there did nothing at all. */
+    halfSeconds: cfg("RULES.halfSeconds", 52),   // real seconds per half;
+                            //   the clock on screen runs 0' to 45' across it
     kickoffWait: 1.5,
     goalCheer: 3.2,
-    goldenGoal: 60,         // sudden death if the final is level
+    goldenGoal: cfg("RULES.goldenGoal", 60),     // sudden death if level
+
+    /* --- how much a stat is worth ---------------------------------------
+       A stat of 76 is the middle of the roster and moves nothing. Every
+       point either side of it moves the thing it names by this much, so
+       the whole table is a spread of about a quarter between Comet's legs
+       and Boulder's.
+
+       They are deliberately modest. A roster where the fast one is twice
+       as fast as the slow one is a roster with three usable players in
+       it; what makes stats worth having is that they change how a side
+       FEELS to play, not which side wins. */
+    statMid: 76,
+    wSpeed: 0.0038,         // top pace, per point
+    wPower: 0.0052,         // how hard a shot leaves the boot
+    wTouch: 0.0030,         // how tightly the ball stays under the foot
+    wAim: 0.0075,           // how straight a pass goes
+    wTackle: 0.0042,        // how far a challenge reaches
+    wShield: 0.0026,        // how hard it is to shove off the ball
+    wGk: 0.0060,            // a keeper's reach and reactions
+
+    /* --- the Heart meter and the Super Shot ------------------------- */
+    superCost: cfg("RULES.superCost", 100),
+    heartPass: cfg("RULES.heartPerPass", 9),
+    heartTackle: cfg("RULES.heartPerTackle", 14),
+    heartShot: cfg("RULES.heartPerShot", 11),
+    heartConcede: cfg("RULES.heartPerConcede", 18),
+    superWind: 0.85,        // seconds of wind-up before the ball is struck
+    superFly: 1.05,         // and roughly how long the flight lasts
+    superSpeed: 400,        // the base pace of one, before the kind
+    superSaveMax: 0.22,     // the very best a keeper can do against one
 
     /* --- the camera --- */
     camEase: 5.2,
@@ -1284,6 +1368,49 @@ window.OuissyCup = (function () {
     },
     concede: function () { tone("sawtooth", 200, 120, 0.5, 0.10); crowdSwell(0.05, 1.6); },
     pick:    function () { tone("square", 620, 900, 0.07, 0.07); },
+    move:    function () { tone("square", 480, 620, 0.05, 0.05); },
+    back:    function () { tone("square", 620, 400, 0.07, 0.05); },
+
+    /* ---- the Heart and the Super ------------------------------------
+       Three sounds that have to be tellable from each other with the
+       game shouting over them: a rising two-note ping when the meter
+       fills, a long swelling drone under the wind-up, and a sweep down
+       through an octave on the strike. */
+    superReady: function () {
+      [0, 0.10].forEach(function (d, i) {
+        tone("triangle", [784, 1175][i], [784, 1175][i], 0.22, 0.10, d);
+      });
+      tone("sine", 392, 588, 0.34, 0.07, 0.04);
+    },
+    superCharge: function () {
+      /* the room going quiet and then not: a slow rise under the
+         wind-up, in two voices a fifth apart so it sits under a crowd */
+      tone("sawtooth", 110, 330, 0.85, 0.08);
+      tone("sine", 165, 495, 0.85, 0.06, 0.02);
+      burst(0.85, 0.05, 240, 0.5);
+    },
+    superFire: function (kind) {
+      /* the strike itself, coloured a little by which super it is:
+         the heavy ones land lower, the placed ones land higher */
+      var low = kind === "quake" || kind === "rocket" ? 0.6
+              : kind === "finesse" || kind === "curl" ? 1.3 : 1;
+      burst(0.20, 0.34, 1500 * low, 0.9);
+      tone("square", 880 * low, 110 * low, 0.32, 0.20);
+      tone("sine", 320 * low, 60 * low, 0.42, 0.16, 0.01);
+      tone("triangle", 1760 * low, 440 * low, 0.24, 0.08, 0.02);
+    },
+    superSave: function () {
+      burst(0.16, 0.30, 620, 0.8);
+      tone("square", 300, 180, 0.28, 0.12);
+    },
+    /* the memory cards between rounds, and the trophy at the end */
+    memory:  function () { tone("sine", 660, 660, 0.7, 0.07); tone("sine", 990, 990, 0.9, 0.04, 0.08); },
+    trophy:  function () {
+      [523, 659, 784, 1046, 1318].forEach(function (f, i) {
+        tone("triangle", f, f, 0.55, 0.08, i * 0.11);
+      });
+      crowdSwell(0.22, 4.0);
+    },
   };
 
   function wakeSound() {
@@ -1336,8 +1463,46 @@ window.OuissyCup = (function () {
     mid: { up: 0.50,  across: 0.34 },
     st:  { up: 0.70,  across: 0.62 },
   };
+
+  /* WHICH SHAPE A SIDE IS PLAYING.
+
+     The four numbers above used to be the only formation in the game.
+     FORMATIONS in the config was read by the builder, printed on a
+     button, saved with the squad — and then thrown away, because the
+     thing that positions a player never looked at it. A side set to FLAT
+     defended exactly as high as a side set to WIDE. It is read now, and
+     it is read where it matters: `slot` is resolved once per match, per
+     player, and the AI steers to it every frame. */
+  function formationOf(teamId) {
+    var t = teamById(teamId);
+    var want = (t && t.formation) || "diamond";
+    var list = cfg("FORMATIONS", []);
+    for (var i = 0; i < list.length; i++) if (list[i].id === want) return list[i];
+    return list[0] || { id: "diamond", name: "DIAMOND", slots: SLOTS };
+  }
+  /* A squad is four players picked by name, so two of them can easily
+     share a role — she can put three strikers out if she wants, and the
+     Team Builder lets her. Three players standing on the same coordinate
+     is not a formation, so the second of a role mirrors across the pitch
+     and any after that pull towards the middle. */
+  function assignSlots(g) {
+    [0, 1].forEach(function (t) {
+      var f = formationOf(g.ids[t]);
+      var seen = {};
+      g.players.forEach(function (p) {
+        if (p.team !== t) return;
+        var s = (f.slots && (f.slots[p.role] || f.slots.mid)) || SLOTS[p.role] || SLOTS.mid;
+        var n = seen[p.role] = (seen[p.role] || 0) + 1;
+        var across = s.across;
+        if (n === 2) across = 1 - s.across;
+        else if (n > 2) across = 0.5 + (across - 0.5) * 0.35;
+        p.slot = { up: s.up, across: across };
+        p.formation = f.id;
+      });
+    });
+  }
   function slotPos(pl) {
-    var s = SLOTS[pl.role] || SLOTS.mid;
+    var s = pl.slot || SLOTS[pl.role] || SLOTS.mid;
     var d = attackDir(pl.team);
     var own = ownGoalY(pl.team);
     return {
@@ -1346,10 +1511,51 @@ window.OuissyCup = (function () {
     };
   }
 
+  /* WHAT A STAT ACTUALLY DOES.
+
+     For a long time the answer was: nothing. speed/power/skill/defence
+     were read in exactly two places — the team-rating number on the card
+     and the animated bars under it — and the match never looked at them.
+     Ouissy at 95 skill and Boulder at 62 ran at the same pace, struck
+     the ball at the same speed and passed with the same accuracy, which
+     makes a fourteen-player roster a fourteen-colour palette.
+
+     Each stat is turned into a multiplier once, when the player is made,
+     and the multiplier is what the simulation reads. 76 is the middle of
+     the roster and moves nothing either way.
+
+       speed    top pace, running and chasing
+       power    how hard a shot leaves the boot, how far out they will
+                try one from, and how well they shield the ball
+       skill    first touch (how tight the ball sits), passing accuracy,
+                shooting accuracy, and how cheaply they can turn
+       defence  how far a challenge reaches — and, for a keeper, his
+                reach, his pace across the line and his hands */
+  function statMuls(st) {
+    st = st || FALLBACK_LOOK.stats;
+    var m = TUNE.statMid;
+    var f = function (v, w) { return 1 + ((v === undefined ? m : v) - m) * w; };
+    return {
+      speed:  f(st.speed, TUNE.wSpeed),
+      power:  f(st.power, TUNE.wPower),
+      aim:    f(st.skill, TUNE.wAim),
+      agil:   f(st.skill, TUNE.wTouch),
+      touch:  1 / f(st.skill, TUNE.wTouch),     // more skill, tighter touch
+      shield: f(st.power, TUNE.wShield),
+      tackle: f(st.defence, TUNE.wTackle),
+      gk:     f(st.defence, TUNE.wGk),
+    };
+  }
+  var FLAT_MUL = { speed: 1, power: 1, aim: 1, agil: 1, touch: 1,
+                   shield: 1, tackle: 1, gk: 1 };
+
   function makePlayer(teamIdx, teamId, def, i) {
     return {
       team: teamIdx, teamId: teamId, def: def, name: def.name,
       face: def.face, role: def.role, gk: def.role === "gk", star: !!def.star,
+      stats: def.stats || FALLBACK_LOOK.stats,
+      mul: statMuls(def.stats),
+      captain: !!def.captain,
       x: 0, y: 0, vx: 0, vy: 0,
       dir: attackDirSafe(teamIdx), anim: 0, legs: "stand",
       facing: "down", flip: false,
@@ -1377,14 +1583,45 @@ window.OuissyCup = (function () {
       timeScale: 1, scoredBy: 0, scorerP: null, celebration: "armsUp",
       cam: { y: PITCH.cy },
       controlled: null, kickoffTeam: 0, golden: false, over: false,
-      shake: 0, flash: 0, scorer: "", stat: { shots: [0, 0], poss: [0, 0] },
+      shake: 0, flash: 0, flashCol: null, scorer: "",
+      stat: { shots: [0, 0], poss: [0, 0], passes: [0, 0], supers: [0, 0] },
+      /* THE HEART. One meter per side, out of TUNE.superCost, filled by
+         playing football rather than by waiting. `sup` is the shot in
+         flight and everything the cinematic needs to draw it. */
+      heart: [0, 0], superReady: [false, false], sup: null,
     };
     g.ids.forEach(function (id, t) {
       squadOf(teamById(id)).forEach(function (def, i) {
         g.players.push(makePlayer(t, id, def, i));
       });
     });
+    assignSlots(g);
+    heartSuper = null;             // whose super the meter is wearing
+    /* the one dial the opponents get, through the difficulty she chose */
+    g.skill = clamp((round.skill === undefined ? 0.5 : round.skill) * diff().skill, 0.15, 0.98);
     return g;
+  }
+
+  /* Whoever wears the armband, since the team's super is theirs. Falls
+     back to the star, then to anybody outfield, so a side assembled by a
+     harness or an old save still has one. */
+  function captainOf(team) {
+    var cap = null, star = null, any = null;
+    G.players.forEach(function (p) {
+      if (p.team !== team || p.gk) return;
+      if (p.captain) cap = p;
+      if (p.star && !star) star = p;
+      if (!any) any = p;
+    });
+    return cap || star || any;
+  }
+  /* The super a side fires: the captain's, out of the roster. */
+  function superOf(team) {
+    var cap = captainOf(team);
+    var look = cap && (ROSTER[cap.face] || ROSTER[cap.id]);
+    var s = look && look.super;
+    return s ? { name: s.name, colour: s.colour || "#ff5f8f", kind: s.kind || "rocket",
+                 note: s.note || "", by: cap } : null;
   }
 
   /* everybody back to their own half for a kickoff; the side taking it
@@ -1486,7 +1723,11 @@ window.OuissyCup = (function () {
          dribbling is; a ball welded a fixed distance ahead cannot be
          shielded and cannot be knocked off anybody. */
       var osp = len(o.vx, o.vy);
-      var push = TUNE.dribblePush * (0.20 + Math.min(0.42, osp * 0.0062));
+      /* and how far in front is skill: a good first touch keeps it under
+         the foot at pace, a poor one runs it two yards away and invites
+         the tackle. This is the stat you can see without being told. */
+      var push = TUNE.dribblePush * (0.20 + Math.min(0.42, osp * 0.0062)) *
+                 (o.mul || FLAT_MUL).touch;
       var tx = o.x + Math.cos(o.dir) * push;
       var ty = o.y + Math.sin(o.dir) * push;
       b.x += (tx - b.x) * Math.min(1, dt * 11);
@@ -1617,18 +1858,32 @@ window.OuissyCup = (function () {
     if (b.owner) {
       var o = b.owner;
       var away = len(o.x - b.x, o.y - b.y);
-      if (away > TUNE.keepReach) b.owner = null;       // knocked off it
+      /* a strong player holds it off for longer, which is what Atlas and
+         Boulder are for */
+      if (away > TUNE.keepReach * (o.mul || FLAT_MUL).shield) b.owner = null;
       return;
     }
 
-    var best = null, bd = TUNE.dribbleReach;
+    var best = null, bd = 1e9;
     G.players.forEach(function (p) {
       if (p.tackleT > 0 && !p.gk) return;
       var d = len(p.x - b.x, p.y - b.y);
-      var reach = p.gk && inBox(p, b) ? TUNE.gkReach : TUNE.dribbleReach;
+      /* a loose ball is won on distance alone and nothing else, so that
+         a scramble is never decided by a number she cannot see. The one
+         exception is a keeper in his own area, whose hands are his stat. */
+      var reach = p.gk && inBox(p, b)
+        ? TUNE.gkReach * (p.mul || FLAT_MUL).gk * diff().gk
+        : TUNE.dribbleReach;
       if (d < reach && d < bd) { bd = d; best = p; }
     });
     if (!best) return;
+    /* a pass that found somebody. Worth something to the meter, and
+       worth counting, because "passes completed" is the one statistic
+       that says whether a side is playing football or chasing it. */
+    if (b.lastTouch && b.lastTouch !== best && b.lastTouch.team === best.team) {
+      G.stat.passes[best.team]++;
+      addHeart(best.team, TUNE.heartPass);
+    }
     b.owner = best;
     b.lastTouch = best;
     /* a settle, so the instant after a tackle is not a scramble in which
@@ -1652,16 +1907,396 @@ window.OuissyCup = (function () {
   }
 
   /* =======================================================================
+     11b. THE HEART, AND THE SUPER SHOT
+
+     The one thing in this chapter that is not football.
+
+     Every side has a meter. It fills by PLAYING — a pass that finds
+     somebody, a tackle won, a shot had — and it fills a little when you
+     go behind, because a game that punishes you twice for conceding is a
+     game people put down. Fill it and the captain can hit one shot that
+     is not a shot: their own, named in the config, in their own colour,
+     with the clock slowed and the camera down on the grass for it.
+
+     WHY IT IS BUILT THE WAY IT IS
+
+       - It is a STATE, not an effect. `G.state` goes to "super" and the
+         normal match loop stops dead, exactly the way it does for a
+         goal. Nothing has to know to get out of the way.
+       - It is the CAPTAIN'S, always. The armband is already drawn in the
+         captain's super colour, the Team Builder already says whose
+         super a side is carrying, and the match now honours both.
+       - It can be SAVED, but only just. A keeper's defence buys him a
+         small chance and nothing else does, so a super is not a cutscene
+         that ends in a goal — it is a shot she has earned that will
+         almost certainly go in, which is a different and better feeling.
+       - The opponents get one too, from the semi-final onwards. Meeting
+         one before she has fired one herself is how a mechanic becomes
+         something done TO you.
+     ======================================================================= */
+
+  /* Every super flies differently. `kind` comes out of the roster, and
+     each one is a handful of numbers rather than a special case in the
+     physics: the ball is struck the same way and then told what sort of
+     thing it is. `lift` is how much of it goes upwards, `bend` how hard
+     it curls, `accel` whether it is still gathering pace after it has
+     gone, and `shake` what it does to the camera. */
+  /* A NOTE ON `bend`, BECAUSE THE FIRST SET OF NUMBERS WAS WRONG.
+
+     These were originally written on the same scale as an ordinary
+     shot's curve, where 74 is a heavy one. Measured, LANTERN — the super
+     whose whole description is "it bends around whoever is in the way" —
+     deviated 2.8 units from its own launch line over the entire flight,
+     which is under two pixels on screen. The reason is that a super is
+     over in about a quarter of a second: bend is an ACCELERATION, and
+     acceleration needs time it does not have. At this speed the numbers
+     have to be an order of magnitude larger to be seen at all, and the
+     strike is now aimed to allow for them (see fireSuper). */
+  var SUPER_KIND = {
+    rocket:  { speed: 1.22, lift: 0.00, bend: 0,    accel: 1.30, shake: 0.55,
+               trail: 9,  wind: 0.80, say: "straight, and it does not drop" },
+    heart:   { speed: 1.02, lift: 0.22, bend: 380,  accel: 1.12, shake: 0.40,
+               trail: 13, wind: 0.95, say: "it stops being a football" },
+    flame:   { speed: 1.12, lift: 0.02, bend: 620,  accel: 1.18, shake: 0.45,
+               trail: 12, wind: 0.80, say: "low, and it curls, and it scorches" },
+    /* THE LOB, WHICH NEEDS TIME TO COME BACK DOWN.
+
+       `lift` as a flat fraction does not work for this one and measuring
+       it said so: SHOOTING STAR scored once in eight and was twenty-six
+       units in the air at the moment it crossed the line — over the bar
+       every time, because at four hundred pixels a second a shot from
+       the edge of the box is over in a quarter of a second and there is
+       no quarter-second lob in physics. So `lob` computes the launch
+       from the distance instead, and the whole thing is slowed right
+       down: a lob that arrives as fast as a rocket is not a lob, it is a
+       rocket that went up a bit on the way. */
+    arc:     { speed: 0.62, lift: 0.86, lob: true, bend: 120, accel: 1.02,
+               shake: 0.30, trail: 11, wind: 0.90,
+               say: "up, over, and down behind him" },
+    curl:    { speed: 0.98, lift: 0.18, bend: 1000, accel: 1.06, shake: 0.30,
+               trail: 10, wind: 0.95, say: "round everything in the way" },
+    finesse: { speed: 0.94, lift: 0.10, bend: 160,  accel: 1.02, shake: 0.26,
+               trail: 8,  wind: 1.05, say: "placed, not hit" },
+    feint:   { speed: 0.70, lift: 0.04, bend: 500,  accel: 2.05, shake: 0.40,
+               trail: 10, wind: 0.75, say: "it leaves as a pass" },
+    quake:   { speed: 1.16, lift: 0.04, bend: 0,    accel: 1.22, shake: 1.00,
+               trail: 10, wind: 1.00, say: "the whole ground feels it" },
+    counter: { speed: 1.18, lift: 0.06, bend: 350,  accel: 1.24, shake: 0.50,
+               trail: 9,  wind: 0.55, say: "won and hit in one movement" },
+    surge:   { speed: 1.06, lift: 0.08, bend: 280,  accel: 1.16, shake: 0.42,
+               trail: 14, wind: 1.00, say: "she arrives with it" },
+    /* a keeper's. It is never a team super — the builder only lets an
+       outfielder wear the armband — so it lives here as the defensive
+       half of the same idea: see superSaveChance below. */
+    wall:    { speed: 1.00, lift: 0.10, bend: 0,    accel: 1.00, shake: 0.40,
+               trail: 8,  wind: 0.90, say: "nobody goes past him" },
+  };
+  function superKind(k) { return SUPER_KIND[k] || SUPER_KIND.rocket; }
+
+  function addHeart(team, amount) {
+    if (!G || G.state !== "play" || G.sup) return;   // not mid-cinematic
+    addHeartAlways(team, amount);
+  }
+  /* the same, without the state gate: conceding fills the meter, and by
+     the time a goal is known about the state has already left "play" */
+  function addHeartAlways(team, amount) {
+    if (!G || !amount) return;
+    /* hers fills at the difficulty's rate; theirs never does, so Easy is
+       more supers for her rather than more supers all round */
+    var gain = team === 0 ? amount * diff().heart : amount;
+    if (team === 1 && G.skill < cfg("RULES.aiSupersFrom", 0.62)) return;
+    var was = G.heart[team];
+    G.heart[team] = clamp(was + gain, 0, TUNE.superCost);
+    if (G.heart[team] >= TUNE.superCost && was < TUNE.superCost) {
+      G.superReady[team] = true;
+      if (team === 0) {
+        var s = superOf(0);
+        banner((s ? s.name : "SUPER") + " READY", "super");
+        SFX.superReady();
+        crowdSwell(0.06, 1.6);
+      }
+    }
+  }
+
+  /* Can this side fire one at this instant? Charged, playing, nothing
+     already in flight, and the ball at the captain's feet. */
+  function superArmed(team) {
+    if (!G || G.state !== "play" || G.sup) return false;
+    if (G.heart[team] < TUNE.superCost) return false;
+    var cap = captainOf(team);
+    return !!(cap && G.ball.owner === cap);
+  }
+  /* And separately: is it charged at all? The button lights up on this,
+     not on the above, so she can see it is ready while she is still
+     running towards the ball. */
+  function superCharged(team) {
+    return !!G && G.heart[team] >= TUNE.superCost && !G.sup;
+  }
+
+  function aiWantsSuper(p, toGoal) {
+    if (p.team === 0) return false;              // hers is hers to fire
+    if (!superArmed(1) || captainOf(1) !== p) return false;
+    /* and only from somewhere it makes sense, so it is a moment rather
+       than a thing that happens on the halfway line */
+    return toGoal < 150 && Math.abs(p.x - PITCH.cx) < 96;
+  }
+
+  /* THE UNLEASH.
+
+     Three beats, and the state machine in step() runs them: WIND (the
+     player pulls back, the world slows, the name comes up), STRIKE (the
+     ball goes, the trail lights, the camera drops), FLIGHT (it travels
+     until it is a goal or it is not). */
+  function unleash(p) {
+    var s = superOf(p.team);
+    if (!s) return;
+    var K = superKind(s.kind);
+    var gy = goalY(p.team);
+    /* aimed at a corner rather than at a random point: a super that
+       goes down the middle is a super the keeper is already standing in
+       front of */
+    var side = p.x < PITCH.cx ? 1 : -1;
+    if (Math.abs(p.x - PITCH.cx) < 12) side = Math.random() < 0.5 ? 1 : -1;
+    var aimX = PITCH.cx + side * PITCH.goalW * 0.36;
+
+    G.state = "super"; G.stateT = 0;
+    G.heart[p.team] = 0;
+    G.superReady[p.team] = false;
+    G.stat.supers[p.team]++;
+    G.sup = {
+      by: p, team: p.team, def: s, kind: K, phase: "wind", t: 0,
+      aimX: aimX, gy: gy, fired: false,
+      saved: false,
+      chance: G.saveOverride === undefined ? superSaveChance(p.team) : G.saveOverride,
+      wind: TUNE.superWind * K.wind,
+    };
+    setAnim(p, "superWind", G.sup.wind + 0.5);
+    setCamMode("super", p, 3.2);
+    G.timeScale = 0.3;
+    superBanner(s, p);
+    SFX.superCharge();
+    crowdSwell(0.10, 2.2);
+  }
+
+  /* HOW GOOD THE KEEPER FACING IT IS.
+
+     Small, and deliberately: a super she has spent a half earning should
+     go in about four times in five, so that it is a moment rather than a
+     coin. The numbers here are the second set. The first read
+     `(d - 62) / 160`, doubled for a keeper whose own super is a WALL —
+     and measured, a third of all supers were being saved, which is not a
+     reward, it is a tax.
+
+     Two things were wrong. The scale was too generous, and BOTH keepers
+     in the roster have a wall super, so the bonus that was meant to make
+     one of them special was being handed to every keeper in the game and
+     pinning all of them at the cap. The multiplier is kept, because it
+     is honest about the intent and it will mean something the moment a
+     keeper without one is added; the base is set so that having it still
+     lands under the ceiling. */
+  function superSaveChance(team) {
+    var gk = null;
+    G.players.forEach(function (p) { if (p.team !== team && p.gk) gk = p; });
+    if (!gk) return 0;
+    var look = ROSTER[gk.face] || ROSTER[gk.id];
+    var wall = look && look.super && look.super.kind === "wall" ? 1.6 : 1;
+    var d = (gk.stats && gk.stats.defence) || 75;
+    return clamp(((d - 62) / 240) * wall * diff().gk, 0, TUNE.superSaveMax);
+  }
+
+  function superStep(dt) {
+    var s = G.sup;
+    if (!s) return;
+    s.t += dt;
+    var b = G.ball;
+
+    if (s.phase === "wind") {
+      /* everybody else stops and looks, which is the cheapest way to say
+         that what is about to happen is not a normal shot */
+      G.players.forEach(function (p) {
+        if (p === s.by) { p.vx *= 0.82; p.vy *= 0.82; return; }
+        p.vx *= 0.88; p.vy *= 0.88;
+        if (!p.gk) setAnim(p, "watch", 0.4);
+      });
+      /* the ball stays at his feet through the wind-up */
+      b.owner = s.by;
+      if (s.t >= s.wind) {
+        s.phase = "flight"; s.t = 0;
+        fireSuper(s);
+      }
+      return;
+    }
+
+    /* in flight. The ball is a normal free body with three things done
+       to it every tick: it gathers pace instead of losing it, it bends,
+       and it leaves a trail. */
+    var K = s.kind;
+    var sp = len(b.vx, b.vy);
+    if (sp > 1 && s.t < TUNE.superFly) {
+      var g2 = Math.pow(K.accel, dt);
+      b.vx *= g2; b.vy *= g2;
+    }
+    if (!s.saved) superSteer(b, s, dt);
+    superTrail(b, s, dt);
+    G.shake = Math.max(G.shake, K.shake * 0.5);
+
+    /* the keeper's one chance, taken at the moment it reaches him */
+    if (!s.resolved && !s.saved) {
+      var gk = null;
+      G.players.forEach(function (p) { if (p.team !== s.team && p.gk) gk = p; });
+      if (gk && Math.abs(b.y - s.gy) < 22 && b.z < 9) {
+        s.resolved = true;
+        if (Math.random() < s.chance) {
+          s.saved = true;
+          gk.diveDir = (b.x < gk.x) ? 1 : -1;
+          setAnim(gk, "dive", 0.8);
+          b.vx = -b.vx * 0.35 + (Math.random() - 0.5) * 90;
+          b.vy = -b.vy * 0.45;
+          b.vz = 70;
+          b.lock = 0.4;
+          banner("SAVED!", "bad");
+          SFX.superSave();
+          crowdSwell(0.14, 2.0);
+        }
+      }
+    }
+
+    /* and it is over when it is a goal, when it has stopped, or when it
+       has been in the air long enough that something has gone wrong */
+    if (G.state !== "super") { endSuper(); return; }
+    if (s.t > 3.4 || (s.t > 0.5 && len(b.vx, b.vy) < 16)) {
+      endSuper();
+      G.state = "play"; G.stateT = 0;
+    }
+  }
+
+  /* THE CURL, STEERED.
+
+     A super bends towards the corner it was called on rather than along
+     a fixed arc, and `bend` is the most sideways acceleration this kind
+     is allowed to use doing it. That one change fixes three things at
+     once: a heavy curl always arrives (so LANTERN is a curl and not a
+     throw-in), the shape still differs per kind (a big number swings
+     late and hard, a small one barely leans), and none of it cares what
+     the ball's pace is doing — which is what broke the open-loop version
+     on the two kinds that change speed in flight.
+
+     It stops steering once a keeper has got a hand to it, because a
+     saved shot that still homes at the goal is not a save. */
+  function superSteer(b, s, dt) {
+    var K = s.kind;
+    if (!K.bend) return;
+    var sp = len(b.vx, b.vy);
+    if (sp < 40) return;
+    var wantA = Math.atan2(s.gy - b.y, s.aimX - b.x);
+    var nowA = Math.atan2(b.vy, b.vx);
+    var off = Math.atan2(Math.sin(wantA - nowA), Math.cos(wantA - nowA));
+    var a = clamp(off * K.bend * 2.6, -K.bend, K.bend);
+    /* Velocity turned a quarter turn: adding acceleration along this
+       raises the heading angle, which is the direction `off` measures.
+       Both components are read BEFORE either is written — updating vx
+       first and then deriving vy from it is not a rotation, it is a
+       shear, and it slowly winds the ball's speed up out of nothing. */
+    var px = -b.vy / sp, py = b.vx / sp;
+    b.vx += px * a * dt;
+    b.vy += py * a * dt;
+  }
+
+  function fireSuper(s) {
+    var p = s.by, b = G.ball, K = s.kind;
+    var mul = (p.mul || FLAT_MUL).power;
+    var speed = TUNE.superSpeed * K.speed * mul;
+    var side = s.aimX > PITCH.cx ? 1 : -1;
+
+    /* WHERE IT IS ACTUALLY STRUCK.
+
+       Not at the corner. A shot aimed at the corner that then bends
+       further is a shot that goes out for a throw-in, so a bending super
+       leaves the boot pointing at the middle of the goal — or, for the
+       heaviest of them, slightly the WRONG side of it — and the curl
+       brings it back. Which is, as it happens, exactly what bending a
+       ball round a wall looks like from behind the goal.
+
+       How far back it is aimed is simply how bendy this kind is: a
+       rocket is launched straight at the corner because a rocket has no
+       curl to allow for. */
+    var bendFrac = Math.min(1, K.bend / 1000);
+    var launchX = s.aimX - side * PITCH.goalW * 0.48 * bendFrac;
+    var ang = Math.atan2(s.gy - p.y, launchX - p.x);
+
+    b.owner = null;
+    b.lastTouch = p;
+    b.lock = TUNE.controlLock;
+    b.vx = Math.cos(ang) * speed;
+    b.vy = Math.sin(ang) * speed;
+    /* A LOB IS AIMED AT A TIME, NOT AT AN ANGLE.
+
+       Everything else takes its height straight off `lift`. A lob has to
+       be under the bar at the moment it arrives, which means solving for
+       it: over a flight of T seconds, leaving at vz and falling at g, it
+       is back down to height h when vz = (h + ½gT²) / T. Aim it at three
+       units, which is under the four-and-a-bit the bar sits at, and it
+       drops in off the underside of it. */
+    if (K.lob) {
+      var away2 = Math.abs(s.gy - p.y);
+      var T = clamp(away2 / Math.max(60, speed), 0.25, 1.1);
+      b.vz = clamp((3 + 0.5 * TUNE.gravity * T * T) / T, 50, 240);
+    } else {
+      b.vz = K.lift * 150;
+    }
+    /* The ordinary shot curve is switched OFF for a super. It is
+       open-loop — a fixed sideways acceleration that decays — and open
+       loop cannot work here: the kinds change their own pace mid-flight
+       (a FEINT more than doubles it, an arc loses most of it), so the
+       same number produced a shot that curled a yard and one that curled
+       a hundred and sixty. It is steered instead, in superSteer. */
+    b.curve = 0;
+    b.struck = 1;
+    b.x = p.x + Math.cos(ang) * 6;
+    b.y = p.y + Math.sin(ang) * 6;
+    b.superK = s;
+    s.fired = true;
+    setAnim(p, "superKick", 0.6);
+    G.stat.shots[p.team]++;
+    G.shake = 1;
+    G.flash = 1;
+    G.flashCol = s.def.colour;
+    setCamMode("superFly", p, 2.6);
+    SFX.superFire(s.def.kind);
+    crowdSwell(0.18, 2.4);
+    superGlow(true, s.def.colour);
+  }
+
+  function endSuper() {
+    if (!G) return;
+    superGlow(false);
+    if (G.ball) G.ball.superK = null;
+    G.sup = null;
+    G.timeScale = 1;
+    clearBanner();
+    if (G.state === "super") setCamMode("play");
+  }
+
+  /* =======================================================================
      12. A GOAL
      ======================================================================= */
   function scored(team) {
-    if (G.state !== "play") return;
+    if (G.state !== "play" && G.state !== "super") return;
+    /* a super that goes in is still a goal, and everything below has to
+       run — but the cinematic has to be taken down first or the camera
+       stays on the grass through the celebration */
+    var wasSuper = G.sup && G.sup.fired && G.sup.team === team ? G.sup : null;
+    if (G.sup) endSuper();
     G.score[team]++;
     G.state = "goal"; G.stateT = 0;
     var by = G.ball.lastTouch && G.ball.lastTouch.team === team ? G.ball.lastTouch : null;
     G.scorer = by ? by.name : "";
     G.scoredBy = team;
     G.scorerP = by || nearestTo(G.ball, team, true);
+    G.superGoal = wasSuper ? wasSuper.def : null;
+    /* going behind hands the other side something back, which is the one
+       rule in here that exists purely so that losing stays playable */
+    addHeartAlways(1 - team, TUNE.heartConcede);
     G.celebration = G.scorerP && G.scorerP.face === "ouissy"
       ? "heart"                                  // hers is her own
       : CELEBRATIONS[Math.floor(Math.random() * CELEBRATIONS.length)];
@@ -1671,7 +2306,8 @@ window.OuissyCup = (function () {
        happening. */
     G.timeScale = 0.35;
     setCamMode("goal", G.scorerP, TUNE.goalCheer);
-    confettiBurst(G.scorerP || G.ball, team === 0 ? 150 : 40);
+    confettiBurst(G.scorerP || G.ball, team === 0 ? 150 : 40,
+                  G.superGoal ? G.superGoal.colour : null);
     G.kickoffTeam = 1 - team;
     G.flash = 1; G.shake = 1;
     G.ball.vx = G.ball.vy = G.ball.vz = 0; G.ball.owner = null;
@@ -1681,9 +2317,17 @@ window.OuissyCup = (function () {
     if (gg) gg.userData.bulge = 1;
     SFX.net();
     if (team === 0) SFX.goal(); else SFX.concede();
-    banner(team === 0
-      ? (G.scorer ? G.scorer + "!" : "GOAL!")
-      : "THEY SCORE", team === 0 ? "good" : "bad");
+    /* a super that goes in is announced by its own name, not by the
+       scorer's — it is the thing she just spent a half earning */
+    if (G.superGoal) {
+      banner(G.superGoal.name + "!", team === 0 ? "super" : "bad");
+      G.flash = 1; G.flashCol = G.superGoal.colour;
+      G.shake = 1.4;
+    } else {
+      banner(team === 0
+        ? (G.scorer ? G.scorer + "!" : "GOAL!")
+        : "THEY SCORE", team === 0 ? "good" : "bad");
+    }
     if (G.golden) endMatch();
   }
 
@@ -1704,7 +2348,11 @@ window.OuissyCup = (function () {
   function driveP(p, ux, uy, dt, speedMul) {
     var carrying = G.ball.owner === p;
     var base = carrying ? TUNE.runSpeed : TUNE.freeSpeed;
-    var top = base * (speedMul || 1);
+    var mul = p.mul || FLAT_MUL;
+    /* the legs, out of the roster. Comet covers about fifteen per cent
+       more ground a second than Boulder does, which is the difference
+       between getting to a through ball and watching it. */
+    var top = base * (speedMul || 1) * mul.speed;
     /* TURNING COSTS SOMETHING. Steering used to be free: full speed in
        one direction became full speed in the opposite one inside a
        frame, and what that feels like is a cursor rather than a person.
@@ -1714,7 +2362,10 @@ window.OuissyCup = (function () {
     if (sp0 > 12) {
       var dot = (p.vx * ux + p.vy * uy) / sp0;
       if (dot < 0.5) {
-        var bite = (0.5 - dot) * TUNE.turnCost * dt;
+        /* and skill is what buys the turn back: a good one sheds less
+           pace changing direction, which is most of what "he can turn"
+           means when anybody says it about a footballer */
+        var bite = (0.5 - dot) * (TUNE.turnCost / mul.agil) * dt;
         p.vx -= p.vx * bite; p.vy -= p.vy * bite;
       }
     }
@@ -1774,7 +2425,9 @@ window.OuissyCup = (function () {
      one, and it takes about ten seconds to feel the difference.
      ======================================================================= */
   function think(p, dt) {
-    var skill = p.team === 0 ? 0.55 : G.round.skill;
+    /* her seven teammates play at a fixed, decent level; the opposition
+       plays at the round's, scaled by the difficulty she chose */
+    var skill = p.team === 0 ? 0.55 : G.skill;
     var b = G.ball;
     if (p.gk) return thinkKeeper(p, dt, skill);
 
@@ -1822,9 +2475,13 @@ window.OuissyCup = (function () {
       var lead = TUNE.gkAnticipate * skill;
       var tx2 = b.x + b.vx * lead, ty2 = b.y + b.vy * lead;
       moveTo(p, tx2, ty2, dt, 1 + skill * 0.10);
-      /* a tackle, when it is worth one */
+      /* a tackle, when it is worth one — and a defender goes in from
+         further out and comes away with it more often, which is what
+         the defence stat is */
+      var pm = p.mul || FLAT_MUL;
       if (b.owner && b.owner.team !== p.team && p.coolT <= 0 &&
-          dist(p, b) < TUNE.tackleReach + 3 && Math.random() < 0.6 * skill) {
+          dist(p, b) < TUNE.tackleReach * pm.tackle + 3 &&
+          Math.random() < 0.6 * skill * pm.tackle) {
         startTackle(p);
       }
       return;
@@ -1838,13 +2495,20 @@ window.OuissyCup = (function () {
   }
 
   function thinkCarrier(p, dt, skill) {
+    var mul = p.mul || FLAT_MUL;
     var gy = goalY(p.team), d = attackDir(p.team);
     var toGoal = Math.abs(p.y - gy);
     var press = nearestOpponent(p);
     var pressed = press && dist(press, p) < 22;
 
-    /* shoot */
-    if (toGoal < 95 + skill * 45 && Math.abs(p.x - PITCH.cx) < 70) {
+    /* the super, if this side has one charged and this is the player to
+       take it. Checked before the ordinary shot, because a captain in
+       range with a full meter should never settle for a tap-in */
+    if (aiWantsSuper(p, toGoal)) return unleash(p);
+
+    /* shoot — and how far out they will try one from is power. Atlas
+       has a go from thirty yards; Lumi carries it another ten first. */
+    if (toGoal < (95 + skill * 45) * mul.power && Math.abs(p.x - PITCH.cx) < 70) {
       if (Math.random() < (0.02 + skill * 0.06) || (pressed && Math.random() < 0.05)) {
         return shoot(p, 0.55 + Math.random() * 0.45);
       }
@@ -1884,7 +2548,11 @@ window.OuissyCup = (function () {
       ty = gl + d * (8 + (1 - skill) * 4);
       if (!b.owner && Math.abs(b.y - gl) < 30) { tx = b.x; ty = b.y; }
     }
-    moveTo(p, tx, ty, dt, TUNE.gkSpeed / TUNE.freeSpeed);
+    /* his legs are his defence stat and the difficulty setting, which is
+       the honest way to make a keeper harder: a sharper one gets across
+       his goal faster, not one who saves things he never reached */
+    moveTo(p, tx, ty, dt,
+           (TUNE.gkSpeed / TUNE.freeSpeed) * (p.mul || FLAT_MUL).gk * diff().gk);
   }
 
   function nearestTo(thing, team, outfieldOnly, except) {
@@ -1926,9 +2594,14 @@ window.OuissyCup = (function () {
   }
 
   function passTo(p, mate, soft) {
+    var mul = p.mul || FLAT_MUL;
     var lead = TUNE.passLead;
     var tx = mate.x + mate.vx * lead, ty = mate.y + mate.vy * lead;
     var ang = Math.atan2(ty - p.y, tx - p.x);
+    /* and it does not go exactly where it was aimed. A pass from Lumi
+       arrives at a foot; a pass from Boulder arrives in the general
+       area. Without this, skill 93 and skill 62 pass identically. */
+    ang += (Math.random() - 0.5) * (TUNE.passErr / mul.aim);
     var far = len(tx - p.x, ty - p.y);
     var sp = clamp(far * 1.9, 95, TUNE.passSpeed * 1.35);
     kickBall(p, ang, soft ? sp * 0.8 : sp, 0);
@@ -1937,15 +2610,21 @@ window.OuissyCup = (function () {
   }
 
   function shoot(p, power) {
+    var mul = p.mul || FLAT_MUL;
     var gy = goalY(p.team);
-    /* aimed at a random point inside the mouth rather than at the middle,
-       which is what stops every shot in the game being the same shot */
-    var aimX = PITCH.cx + (Math.random() - 0.5) * PITCH.goalW * 0.62;
+    /* Aimed at a point inside the mouth rather than at the middle, which
+       is what stops every shot in the game being the same shot — and how
+       WIDE that scatter is, is skill. At the top of the roster it is
+       comfortably inside the posts; at the bottom of it a shot can drag
+       past one, which is the only honest way to make accuracy a stat. */
+    var spread = TUNE.shotSpread / mul.aim;
+    var aimX = PITCH.cx + (Math.random() - 0.5) * PITCH.goalW * spread;
     var ang = Math.atan2(gy - p.y, aimX - p.x);
-    var sp = TUNE.shotMin + (TUNE.shotMax - TUNE.shotMin) * power;
+    var sp = (TUNE.shotMin + (TUNE.shotMax - TUNE.shotMin) * power) * mul.power;
     kickBall(p, ang, sp, power * TUNE.shotLift * 46, p);
     setAnim(p, "kick", 0.34);
     G.stat.shots[p.team]++;
+    addHeart(p.team, TUNE.heartShot);
     SFX.shot();
     crowdSwell(0.03, 0.8);
   }
@@ -1954,11 +2633,13 @@ window.OuissyCup = (function () {
     p.tackleT = TUNE.tackleTime;
     setAnim(p, "slide", TUNE.tackleTime + 0.12);
     var b = G.ball;
-    if (dist(p, b) < TUNE.tackleReach && b.owner && b.owner.team !== p.team) {
+    var reach = TUNE.tackleReach * (p.mul || FLAT_MUL).tackle;
+    if (dist(p, b) < reach && b.owner && b.owner.team !== p.team) {
       var ang = Math.atan2(b.y - p.y, b.x - p.x);
       b.owner = null; b.lastTouch = p; b.lock = TUNE.controlLock;
       b.vx = Math.cos(ang) * TUNE.tacklePush;
       b.vy = Math.sin(ang) * TUNE.tacklePush;
+      addHeart(p.team, TUNE.heartTackle);
       SFX.tackle();
     }
   }
@@ -2000,6 +2681,30 @@ window.OuissyCup = (function () {
   function pressButton() {
     if (G.state !== "play") { skipState(); return; }
     IN.held = true; IN.heldT = 0;
+  }
+
+  /* THE SECOND BUTTON.
+
+     The super gets one of its own rather than being another meaning
+     hung off the first. The first button already means four things
+     depending on context, and a fifth that only exists sometimes is how
+     you end up firing the thing she saved for two minutes by accident
+     while trying to pass.
+
+     It only appears when the meter is full, and it only fires when the
+     captain actually has the ball — which the label says, so a tap on a
+     lit button that does nothing has already explained itself. */
+  function pressSuper() {
+    if (!G || G.state !== "play") { skipState(); return; }
+    if (!superArmed(0)) {
+      /* charged but not at her feet: say so rather than doing nothing */
+      if (superCharged(0)) {
+        var cap = captainOf(0);
+        banner("GET IT TO " + (cap ? cap.name : "YOUR CAPTAIN"), "super");
+      }
+      return;
+    }
+    unleash(captainOf(0));
   }
   function releaseButton() {
     if (!IN.held) return;
@@ -2061,6 +2766,7 @@ window.OuissyCup = (function () {
         setCamMode("play");
         resetPositions(G.kickoffTeam);
         G.state = "kickoff"; G.stateT = 0;
+        G.superGoal = null;
         clearBanner();
       }
     } else if (G.state === "play") {
@@ -2071,6 +2777,17 @@ window.OuissyCup = (function () {
         else if (G.half === 1) halfTime();
         else endMatch();
       }
+    }
+
+    /* THE SUPER runs its own loop. The clock does not advance, the
+       teammates do not think, and nothing can take the ball — it is the
+       one moment in the match where the game is watching itself. */
+    if (G.state === "super") {
+      superStep(dt);
+      G.players.forEach(function (p) { playerStep(p, dt); });
+      if (G.sup && G.sup.phase === "flight") { ballStep(dt); }
+      cameraStep(dt);
+      return;
     }
 
     if (G.state === "play" || G.state === "goal") {
@@ -2132,6 +2849,13 @@ window.OuissyCup = (function () {
 
   function halfTime() {
     G.state = "half"; G.stateT = 0; G.clock = 0;
+    endSuper();
+    /* a meter she filled in the first half is hers to take into the
+       second, unless the config says otherwise. Wiping it at the break
+       punishes her for the clock rather than for anything she did. */
+    if (!cfg("RULES.superKeepOnHalf", true)) {
+      G.heart = [0, 0]; G.superReady = [false, false];
+    }
     SFX.longWhistle();
     overlay("HALF TIME", scoreLine(), "PLAY THE SECOND HALF", function () {
       G.half = 2; G.kickoffTeam = 1;
@@ -2362,6 +3086,44 @@ window.OuissyCup = (function () {
       r.head.rotation.x = -0.3;
       g.position.y = Math.max(0, Math.sin(t * 4)) * 1.4;
 
+    } else if (state === "superWind") {
+      /* THE WIND-UP. Everything pulls back and away from where the ball
+         is about to go: the striking leg cocks, the torso twists open,
+         the arms go wide for balance and the head comes up to look at
+         the goal. It is held rather than swung, because the whole point
+         of the beat is that it is longer than a shot. */
+      var w = clamp(t / (G.sup ? G.sup.wind : 0.85), 0, 1);
+      var ease = w * w * (3 - 2 * w);
+      L[0].rotation.x = 1.15 * ease;                   // cocked behind
+      L[1].rotation.x = -0.22 * ease;
+      armsOut(A, 0.55 + 1.05 * ease, -0.15 * ease);
+      r.torso.rotation.y = -0.42 * ease;
+      r.torso.rotation.x = -0.16 * ease;
+      r.head.rotation.x = -0.26 * ease;
+      /* and up onto the toes at the top of it, so the strike has
+         somewhere to come down from */
+      g.position.y = ease * 1.1 + Math.sin(t * 26) * 0.16 * ease;
+
+    } else if (state === "superKick") {
+      /* THE STRIKE. The same curve the ordinary kick uses, taken much
+         further through: the leg comes all the way across, the body
+         follows it round, and it finishes leaning after the ball. */
+      var sk = clamp(t / 0.6, 0, 1);
+      L[0].rotation.x = 1.15 - 2.6 * Math.min(1, sk * 3.2);
+      L[1].rotation.x = -0.35;
+      armsOut(A, 1.35);
+      A[0].rotation.x = 0.95; A[1].rotation.x = -1.15;
+      r.torso.rotation.y = -0.42 + 0.9 * Math.min(1, sk * 2.6);
+      g.rotation.x = -0.34 * Math.min(1, sk * 2.2);
+      g.position.y = Math.max(0, Math.sin(sk * Math.PI * 0.8)) * 1.6;
+
+    } else if (state === "watch") {
+      /* what the other seven do while it happens: stop, and look at it */
+      r.head.rotation.y = Math.sin(t * 1.6) * 0.12;
+      r.torso.rotation.x = -0.10;
+      armsOut(A, 0.30, 0.18);
+      g.position.y = Math.sin(t * 2.2) * 0.12;
+
     } else if (state === "dejected") {
       r.head.rotation.x = 0.55;
       r.torso.rotation.x = 0.26;
@@ -2395,6 +3157,20 @@ window.OuissyCup = (function () {
     if (sp > 1) {
       var uX = b.vy / sp, uZ = b.vx / sp;
       ballMesh.rotateOnWorldAxis(new THREE.Vector3(uZ, 0, -uX), sp * 0.0166 / BALL_R);
+    }
+    /* and if there is a super on it, it is bigger than a football and it
+       pulses — the heart one turns to face the camera rather than
+       rolling, because a heart tumbling end over end is a shape you
+       cannot read at this size */
+    if (b.superK) {
+      var pu = 1.35 + Math.sin(G.stateT * 26) * 0.10;
+      ballGroup.scale.multiplyScalar(pu);
+      if (heartMesh && heartMesh.visible && camera) {
+        heartMesh.rotation.set(0, 0, Math.sin(G.stateT * 9) * 0.18);
+        heartMesh.quaternion.setFromEuler(heartMesh.rotation);
+        heartMesh.lookAt(camera.position);
+        heartMesh.rotateZ(Math.sin(G.stateT * 9) * 0.22);
+      }
     }
   }
 
@@ -2528,6 +3304,49 @@ window.OuissyCup = (function () {
       return;
     }
 
+    /* THE SUPER, IN TWO SHOTS.
+
+       A wind-up shot, which comes down off the camera's usual perch to
+       roughly boot height and swings round in front of the striker while
+       they pull back; and then a flight shot, which does not follow the
+       ball at all. It sits where the ball was struck from and lets it go
+       away from it down the pitch, which is the shot that makes a
+       hundred units look like sixty yards. A camera that chases a fast
+       ball keeps it the same size and the speed disappears. */
+    if ((camMode.kind === "super" || camMode.kind === "superFly") && camMode.at) {
+      var sp3 = camMode.at;
+      var spx = sceneX(sp3.y), spz = sceneZ(sp3.x);
+      var kk = Math.min(1, (camMode.kind === "super" ? 3.4 : 2.2) * dt);
+      if (camMode.kind === "super") {
+        var sw = 0.9 + camMode.t * 0.55;
+        camNow.x += (spx + Math.sin(sw) * 30 - camNow.x) * kk;
+        camNow.z += (spz + side * (44 - Math.min(14, camMode.t * 12)) - camNow.z) * kk;
+        camNow.tx += (spx - camNow.tx) * kk;
+        camNow.tz += (spz - camNow.tz) * kk;
+        camNow.ty += (11 - camNow.ty) * kk;
+        var sh2 = 15 - Math.min(5, camMode.t * 5);
+        camNow.h = (camNow.h === undefined ? sh2 : camNow.h + (sh2 - camNow.h) * kk);
+      } else {
+        /* held, low and wide, looking at the ball as it leaves */
+        var b3 = G.ball;
+        camNow.x += (spx * 0.35 + sceneX(b3.y) * 0.65 - camNow.x) * kk * 0.5;
+        camNow.z += (spz + side * 62 - camNow.z) * kk;
+        camNow.tx += (sceneX(b3.y) - camNow.tx) * Math.min(1, 6 * dt);
+        camNow.tz += (sceneZ(b3.x) - camNow.tz) * Math.min(1, 6 * dt);
+        camNow.ty += (8 + b3.z * 0.6 - camNow.ty) * Math.min(1, 6 * dt);
+        camNow.h = (camNow.h === undefined ? 18 : camNow.h + (18 - camNow.h) * kk);
+      }
+      var shk = G.shake > 0 ? (Math.random() - 0.5) * G.shake * 4.2 : 0;
+      camera.position.set(camNow.x + shk, camNow.h, camNow.z);
+      camera.lookAt(camNow.tx, camNow.ty, camNow.tz);
+      if (sun) {
+        sun.target.position.set(spx, 0, spz);
+        sun.position.set(spx - 90, 250, spz + 160);
+        sun.target.updateMatrixWorld();
+      }
+      return;
+    }
+
     want = wantFraming();
     var k = snap ? 1 : Math.min(1, CAM.ease * dt);
     camNow.tx += (want.x - camNow.tx) * k;
@@ -2568,6 +3387,7 @@ window.OuissyCup = (function () {
       u.netBack.position.z = u.restZ + u.sgn * push;
     });
     confettiStep(dt || 0);
+    trailStep(dt || 0);
     placeCamera(dt || 0, false);
     renderer.render(scene, camera);
   }
@@ -2612,12 +3432,26 @@ window.OuissyCup = (function () {
     }
     confetti.instanceMatrix.needsUpdate = true;
   }
-  function confettiBurst(at, n) {
+  /* `colour` overrides the stand's colours for the particles this burst
+     uses, so a super goal throws its own colour into the air rather than
+     the same crowd confetti every other goal gets. */
+  function confettiBurst(at, n, colour) {
     if (!confetti) return;
+    var attr = confetti.geometry.getAttribute("color");
+    var tint = colour ? new THREE.Color(colour) : null;
     var used = 0;
     for (var i = 0; i < CONF_N && used < n; i++) {
       var p = confParts[i];
       if (p.life > 0) continue;
+      if (attr) {
+        var c2 = tint ? tint : new THREE.Color(CROWD_COLS[i % CROWD_COLS.length]);
+        /* two tones of it, so a single-colour burst still reads as
+           confetti rather than as one flat sheet of paper */
+        var lift = tint && (i % 3 === 0) ? 1.35 : 1;
+        attr.setXYZ(i, Math.min(1, c2.r * lift), Math.min(1, c2.g * lift),
+                    Math.min(1, c2.b * lift));
+        attr.needsUpdate = true;
+      }
       used++;
       p.life = 2.6 + Math.random() * 1.8;
       p.x = sceneX(at.y) + (Math.random() - 0.5) * 120;
@@ -2648,6 +3482,143 @@ window.OuissyCup = (function () {
       confetti.setMatrixAt(i, confDummy.matrix);
     }
     if (any) confetti.instanceMatrix.needsUpdate = true;
+  }
+
+  /* =======================================================================
+     THE SUPER, AS SOMETHING YOU CAN SEE
+
+     Three pieces, and none of them is a shader: a trail of shrinking
+     beads dropped along the ball's path, a glow put on the ball itself,
+     and — for the one super that asks for it — a ball that stops being
+     a ball. All of it instanced or reused, because this happens at the
+     loudest moment in the match and it must not cost a frame.
+     ======================================================================= */
+  var trail = null, trailParts = [], trailDummy = null;
+  var TRAIL_N = 110;
+  function buildTrail() {
+    var geo = new THREE.SphereGeometry(1, 8, 6);
+    /* Basic, not toon: a trail is light, and light does not take shading.
+       Additive so that where the beads overlap it goes hot, which is the
+       whole look for about a fifth of a second. */
+    var mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color("#ffffff"), transparent: true, opacity: 0.9,
+      depthWrite: false, blending: THREE.AdditiveBlending });
+    trail = new THREE.InstancedMesh(geo, mat, TRAIL_N);
+    trail.instanceMatrix.setUsage(THREE.DynamicDrawUsage || 35048);
+    trail.frustumCulled = false;
+    for (var i = 0; i < TRAIL_N; i++) trailParts.push({ life: 0 });
+    trailDummy = new THREE.Object3D();
+    scene.add(trail);
+    hideTrail();
+  }
+  function hideTrail() {
+    if (!trail) return;
+    for (var i = 0; i < TRAIL_N; i++) {
+      trailParts[i].life = 0;
+      trailDummy.position.set(0, -500, 0);
+      trailDummy.scale.set(0.001, 0.001, 0.001);
+      trailDummy.updateMatrix();
+      trail.setMatrixAt(i, trailDummy.matrix);
+    }
+    trail.instanceMatrix.needsUpdate = true;
+  }
+  /* Dropped at a fixed rate in SIMULATION time rather than per frame, so
+     the same shot leaves the same trail on a phone at 30fps and a laptop
+     at 144. */
+  function superTrail(b, s, dt) {
+    if (!trail || !s.fired) return;
+    if (trail.material.color.getHexString() !== s.def.colour.replace("#", "")) {
+      trail.material.color.set(s.def.colour);
+    }
+    s.drop = (s.drop || 0) + dt;
+    var every = 1 / (s.kind.trail * 7);
+    var guard = 0;
+    while (s.drop > every && guard++ < 8) {
+      s.drop -= every;
+      for (var i = 0; i < TRAIL_N; i++) {
+        var p = trailParts[i];
+        if (p.life > 0) continue;
+        p.life = 0.42;
+        p.max = 0.42;
+        p.x = sceneX(b.y); p.y = BALL_R + b.z; p.z = sceneZ(b.x);
+        /* scattered a little across the flight, so it is a wake and not
+           a string of beads on a wire */
+        p.x += (Math.random() - 0.5) * 2.4;
+        p.y += (Math.random() - 0.5) * 2.4;
+        p.z += (Math.random() - 0.5) * 2.4;
+        p.r = 2.2 + Math.random() * 1.6;
+        break;
+      }
+    }
+  }
+  function trailStep(dt) {
+    if (!trail) return;
+    var any = false;
+    for (var i = 0; i < TRAIL_N; i++) {
+      var p = trailParts[i];
+      if (p.life <= 0) continue;
+      any = true;
+      p.life -= dt;
+      if (p.life <= 0) {
+        trailDummy.position.set(0, -500, 0);
+        trailDummy.scale.set(0.001, 0.001, 0.001);
+      } else {
+        /* it fades by SHRINKING rather than by going transparent: one
+           instanced mesh has one opacity between all of them, and a
+           bead that shrinks to nothing reads the same way */
+        var f = p.life / p.max;
+        trailDummy.position.set(p.x, p.y, p.z);
+        var sc = p.r * f * f;
+        trailDummy.scale.set(sc, sc, sc);
+      }
+      trailDummy.rotation.set(0, 0, 0);
+      trailDummy.updateMatrix();
+      trail.setMatrixAt(i, trailDummy.matrix);
+    }
+    if (any) trail.instanceMatrix.needsUpdate = true;
+  }
+
+  /* The ball while a super is on it: lit from inside, bigger, and — for
+     HEARTBEAT STRIKE — not a football any more. The heart is built once
+     and kept, because a goal is not the moment to be extruding a shape. */
+  var heartMesh = null;
+  function buildHeartBall() {
+    var sh = new THREE.Shape();
+    /* half of it drawn with two curves and mirrored, which is the only
+       way a heart ever looks right */
+    sh.moveTo(0, -1.05);
+    sh.bezierCurveTo(1.15, -0.10, 1.05, 0.95, 0.40, 0.95);
+    sh.bezierCurveTo(0.12, 0.95, 0.02, 0.72, 0, 0.58);
+    sh.bezierCurveTo(-0.02, 0.72, -0.12, 0.95, -0.40, 0.95);
+    sh.bezierCurveTo(-1.05, 0.95, -1.15, -0.10, 0, -1.05);
+    var geo = new THREE.ExtrudeGeometry(sh, {
+      depth: 0.9, bevelEnabled: true, bevelSize: 0.22,
+      bevelThickness: 0.22, bevelSegments: 3, curveSegments: 10 });
+    geo.center();
+    geo.scale(BALL_R * 1.5, BALL_R * 1.5, BALL_R * 1.5);
+    heartMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+      color: new THREE.Color("#ff5f8f") }));
+    heartMesh.visible = false;
+    ballGroup.add(heartMesh);
+  }
+  function superGlow(on, colour) {
+    if (!ballMesh) return;
+    var m = ballMesh.material;
+    if (on) {
+      var c = new THREE.Color(colour || "#ff5f8f");
+      if (m.emissive) { m.emissive.copy(c); m.emissiveIntensity = 1; }
+      m.color.set("#ffffff");
+      if (heartMesh && G && G.sup && G.sup.def.kind === "heart") {
+        heartMesh.material.color.set(c);
+        heartMesh.visible = true;
+        ballMesh.visible = false;
+      }
+    } else {
+      if (m.emissive) { m.emissive.set("#000000"); }
+      m.color.set("#f8f8f4");
+      if (heartMesh) heartMesh.visible = false;
+      ballMesh.visible = true;
+    }
   }
 
   /* The ring under whoever she is driving. It is a mesh on the grass
@@ -2944,7 +3915,9 @@ window.OuissyCup = (function () {
      "cup-banner", "cup-overlay", "cup-pause-btn", "cup-pad", "cup-half",
      "cup-stick", "cup-stick-k", "cup-btn", "cup-btn-ring", "cup-btn-lab",
      "cup-btn-ico", "cup-poss-h", "cup-poss-a", "cup-poss-lab",
-     "cup-shot-h", "cup-shot-a", "cup-keys", "cup-stats"]
+     "cup-shot-h", "cup-shot-a", "cup-keys", "cup-stats",
+     "cup-heart", "cup-heart-f", "cup-heart-n", "cup-heart-a",
+     "cup-sup-btn", "cup-sup-lab", "cup-super-card", "cup-flash"]
       .forEach(function (id) { EL[id] = $(id); });
     stage = EL["cup-stage"];
     cvs = EL["cup-canvas"];
@@ -3097,6 +4070,7 @@ window.OuissyCup = (function () {
     if (EL["cup-stam-f"]) {
       EL["cup-stam-f"].style.width = Math.round(G.controlled ? G.controlled.stamina * 100 : 100) + "%";
     }
+    syncHeart();
     var p = G.controlled;
     var carrying = p && G.ball.owner === p;
     setBtn(carrying ? (IN.held ? "shoot" : "pass") : "tackle");
@@ -3104,6 +4078,65 @@ window.OuissyCup = (function () {
       var f = (carrying && IN.held) ? clamp(IN.heldT / TUNE.chargeTime, 0, 1) : 0;
       EL["cup-btn-ring"].style.setProperty("--f", f.toFixed(3));
       EL["cup-btn"].dataset.f = f > 0.92 ? "1" : "0";
+    }
+  }
+
+  /* THE METER.
+
+     Under the score, in the captain's own super colour, with their
+     super's name written along it — so the first time it fills she does
+     not have to be told what she has got, she has been reading it fill
+     for two minutes. Their meter is the thin one on the other side, and
+     it is only there at all once they can actually use it.  */
+  var heartSuper = null;
+  function syncHeart() {
+    var el = EL["cup-heart-f"];
+    if (!el) return;
+    var mine = G.heart[0] / TUNE.superCost;
+    el.style.width = (clamp(mine, 0, 1) * 100).toFixed(1) + "%";
+    var ready = superCharged(0);
+    if (EL["cup-heart"]) {
+      EL["cup-heart"].dataset.ready = ready ? "1" : "0";
+      /* the colour is the captain's, resolved once a match rather than
+         every frame — it cannot change while a match is being played */
+      if (heartSuper === null) {
+        heartSuper = superOf(0) || false;
+        if (heartSuper) {
+          EL["cup-heart"].style.setProperty("--hc", heartSuper.colour);
+          if (EL["cup-heart-n"]) EL["cup-heart-n"].textContent = heartSuper.name;
+        }
+      }
+    }
+    /* theirs */
+    if (EL["cup-heart-a"]) {
+      var them = cfg("RULES.aiSupersFrom", 0.62) <= G.skill;
+      EL["cup-heart-a"].hidden = !them;
+      if (them) {
+        EL["cup-heart-a"].style.setProperty("--f",
+          clamp(G.heart[1] / TUNE.superCost, 0, 1).toFixed(3));
+      }
+    }
+    /* the button, which only exists while it can be pressed */
+    var btn = EL["cup-sup-btn"];
+    if (btn) {
+      var armed = superArmed(0);
+      btn.hidden = !ready;
+      btn.dataset.armed = armed ? "1" : "0";
+      if (ready && heartSuper) {
+        btn.style.setProperty("--sc", heartSuper.colour);
+        if (EL["cup-sup-lab"]) EL["cup-sup-lab"].textContent =
+          armed ? heartSuper.name : "GET ON THE BALL";
+      }
+    }
+    /* the full-screen wash: the goal flash, tinted by whatever caused it */
+    var fl = EL["cup-flash"];
+    if (fl) {
+      var v = G.flash || 0;
+      fl.hidden = v <= 0.01;
+      if (v > 0.01) {
+        fl.style.opacity = (v * 0.55).toFixed(3);
+        fl.style.background = G.flashCol || "#ffffff";
+      }
     }
   }
 
@@ -3120,6 +4153,39 @@ window.OuissyCup = (function () {
   function clearBanner() {
     if (bannerT) { clearTimeout(bannerT); bannerT = null; }
     if (EL["cup-banner"]) EL["cup-banner"].hidden = true;
+  }
+
+  /* THE NAMEPLATE.
+
+     The super's own name, in its own colour, with whose it is under it.
+     It is DOM rather than something drawn in the world for the same
+     reason every other word in this chapter is: at the size the pitch
+     is rendered, painted text is a smudge. It is also the only piece of
+     the cinematic that tells her WHAT just happened, so it goes up
+     before the strike rather than after it. */
+  var superT = null;
+  function superBanner(s, p) {
+    var el = EL["cup-super-card"];
+    if (!el) return;
+    el.style.setProperty("--sc", s.colour);
+    el.innerHTML =
+      '<span class="cup-sup-who">' + (p ? p.name : "") + "</span>" +
+      '<b class="cup-sup-name">' + s.name + "</b>" +
+      '<i class="cup-sup-note">' + (superKind(s.kind).say || s.note || "") + "</i>";
+    el.hidden = false;
+    el.dataset.side = s.by && s.by.team === 1 ? "them" : "us";
+    /* restarted rather than merely re-shown, so a second super inside
+       one card's lifetime plays its entrance again */
+    el.classList.remove("in");
+    void el.offsetWidth;
+    el.classList.add("in");
+    if (superT) clearTimeout(superT);
+    superT = setTimeout(clearSuperBanner, 2600);
+  }
+  function clearSuperBanner() {
+    if (superT) { clearTimeout(superT); superT = null; }
+    var el = EL["cup-super-card"];
+    if (el) { el.hidden = true; el.classList.remove("in"); }
   }
 
   var overlayGo = null;
@@ -3753,8 +4819,17 @@ window.OuissyCup = (function () {
        physics still run at a fixed tick and nothing changes behaviour
        just because the world got slower to watch. */
     if (G) {
-      G.timeScale += ((G.state === "goal" && G.stateT < 1.1 ? 0.35 : 1) - G.timeScale)
-                     * Math.min(1, dt * 3.2);
+      /* What speed the world is running at. A goal stretches for about a
+         second; a super stretches harder and for longer, and then snaps
+         back to full on the strike so the shot itself is not in slow
+         motion — the wind-up is the slow part and the ball is the fast
+         one, which is the whole shape of the moment. */
+      var want2 = 1;
+      if (G.state === "goal" && G.stateT < 1.1) want2 = 0.35;
+      else if (G.state === "super" && G.sup) {
+        want2 = G.sup.phase === "wind" ? 0.34 : (G.sup.t < 0.18 ? 0.5 : 1);
+      }
+      G.timeScale += (want2 - G.timeScale) * Math.min(1, dt * (G.state === "super" ? 7 : 3.2));
       dt *= G.timeScale;
     }
     acc += dt;
@@ -3782,6 +4857,10 @@ window.OuissyCup = (function () {
       else if (k === "ArrowUp" || k === "w" || k === "W") IN.keys.up = true;
       else if (k === "ArrowDown" || k === "s" || k === "S") IN.keys.down = true;
       else if (k === " " || k === "Spacebar" || k === "Enter") { pressButton(); }
+      /* the super, on its own key. Shift because it is under the little
+         finger of the hand that is not on the arrows, and E because
+         somebody playing WASD has no little finger to spare. */
+      else if (k === "Shift" || k === "e" || k === "E") { pressSuper(); }
       else if (k === "Escape") { quit(); return; }
       else return;
       e.preventDefault();
@@ -3849,6 +4928,21 @@ window.OuissyCup = (function () {
       bt.addEventListener("pointercancel", up);
     }
 
+    var sb = EL["cup-sup-btn"];
+    if (sb) {
+      sb.addEventListener("pointerdown", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (EL["cup-pad"]) EL["cup-pad"].classList.add("touch");
+        sb.classList.add("on");
+        pressSuper();
+      });
+      var supUp = function () { sb.classList.remove("on"); };
+      sb.addEventListener("pointerup", supUp);
+      sb.addEventListener("pointercancel", supUp);
+      sb.addEventListener("pointerleave", supUp);
+    }
+
     var pb = EL["cup-pause-btn"];
     if (pb) pb.addEventListener("click", function () { pause(); });
 
@@ -3909,7 +5003,10 @@ window.OuissyCup = (function () {
 
     return loadThree().then(function () {
       if (!playing) return;
-      if (!scene) { buildWorld(); buildRenderer(); buildMarkers(); buildBall(); buildConfetti(); }
+      if (!scene) {
+        buildWorld(); buildRenderer(); buildMarkers(); buildBall();
+        buildHeartBall(); buildConfetti(); buildTrail();
+      }
       sizeRenderer();
       G = newMatch(0);
       buildRigs();
@@ -3990,6 +5087,106 @@ window.OuissyCup = (function () {
     setClock: function (c) { G.clock = c; },
     setScore: function (a, b) { G.score[0] = a; G.score[1] = b; },
     round: function () { return run.round; },
+
+    /* ---- the Heart and the Super ------------------------------------
+       A super needs three things lined up that never line up on demand:
+       a full meter, the ball, and the captain's boot on it. `arm` puts
+       all three together so the cinematic can be fired, watched and
+       photographed without playing half a match first. */
+    heart: function (t, v) {
+      if (v !== undefined) {
+        G.heart[t] = v;
+        G.superReady[t] = v >= TUNE.superCost;
+      }
+      return { heart: G.heart.slice(), cost: TUNE.superCost,
+               ready: G.superReady.slice(), charged: superCharged(0),
+               armed: superArmed(0) };
+    },
+    arm: function (team) {
+      team = team || 0;
+      var cap = captainOf(team);
+      if (!cap) return null;
+      G.ball.owner = cap; G.ball.lock = 0;
+      G.ball.x = cap.x; G.ball.y = cap.y; G.ball.z = 0;
+      G.ball.vx = G.ball.vy = G.ball.vz = 0;
+      G.heart[team] = TUNE.superCost;
+      G.superReady[team] = true;
+      if (team === 0) G.controlled = cap;
+      var s = superOf(team);
+      return { captain: cap.name, name: s && s.name, kind: s && s.kind,
+               colour: s && s.colour };
+    },
+    /* put the captain a sensible distance from goal first, so a super is
+       fired from where one would actually be fired from */
+    armAt: function (team, fromGoal) {
+      var cap = captainOf(team || 0);
+      if (!cap) return null;
+      var d = attackDir(cap.team);
+      cap.x = PITCH.cx + 18;
+      cap.y = goalY(cap.team) - d * (fromGoal === undefined ? 110 : fromGoal);
+      cap.vx = cap.vy = 0;
+      return hooks.arm(team);
+    },
+    fire: pressSuper,
+    /* Take the keeper out of it, or put him back (undefined). Whether a
+       super is ON TARGET and whether it is SAVED are two different
+       questions, and measuring them together means every reading is a
+       coin toss wearing a flight path. */
+    saveChance: function (v) { G.saveOverride = v; return v; },
+    /* Swap the captain's super for another kind, so all eleven flights
+       can be looked at without assembling eleven squads. It writes to
+       the roster and does not put it back, which is fine in a harness
+       and would not be anywhere else. */
+    setKind: function (k) {
+      var cap = captainOf(0);
+      var look = cap && (ROSTER[cap.face] || ROSTER[cap.id]);
+      if (look && look.super) look.super.kind = k;
+      return k;
+    },
+    superState: function () {
+      var s = G.sup;
+      if (!s) return null;
+      return { phase: s.phase, t: +s.t.toFixed(2), name: s.def.name,
+               kind: s.def.kind, colour: s.def.colour, by: s.by.name,
+               fired: !!s.fired, saved: !!s.saved,
+               chance: +s.chance.toFixed(3),
+               ballSpeed: +len(G.ball.vx, G.ball.vy).toFixed(1),
+               /* the velocity, not just its size: a harness cannot tell
+                  a curl from an aimed diagonal without the direction the
+                  ball actually left in */
+               vx: +G.ball.vx.toFixed(1), vy: +G.ball.vy.toFixed(1),
+               curve: +(G.ball.curve || 0).toFixed(1) };
+    },
+    trail: function () {
+      var live = 0;
+      trailParts.forEach(function (p) { if (p.life > 0) live++; });
+      return { live: live, of: TRAIL_N,
+               colour: trail ? "#" + trail.material.color.getHexString() : null,
+               heart: !!(heartMesh && heartMesh.visible) };
+    },
+    tally: function () {
+      return { shots: G.stat.shots.slice(), passes: G.stat.passes.slice(),
+               supers: G.stat.supers.slice(), heart: G.heart.slice(),
+               score: G.score.slice() };
+    },
+
+    /* ---- the two things that used to be decoration ------------------ */
+    difficulty: function (id) { if (id) setDiff(id); return { id: diffId, now: diff() }; },
+    slots: function () {
+      return G.players.map(function (p) {
+        return { name: p.name, team: p.team, role: p.role,
+                 formation: p.formation, slot: p.slot,
+                 at: { x: +slotPos(p).x.toFixed(1), y: +slotPos(p).y.toFixed(1) } };
+      });
+    },
+    muls: function () {
+      return G.players.map(function (p) {
+        var m = p.mul || FLAT_MUL;
+        return { name: p.name, speed: +m.speed.toFixed(3), power: +m.power.toFixed(3),
+                 aim: +m.aim.toFixed(3), touch: +m.touch.toFixed(3),
+                 tackle: +m.tackle.toFixed(3), gk: +m.gk.toFixed(3) };
+      });
+    },
     /* the handful of read-outs tools/cupfeel.js needs to judge whether
        the football is any good, rather than whether it runs */
     reset: function (r) {

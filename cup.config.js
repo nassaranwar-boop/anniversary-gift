@@ -15,15 +15,20 @@
      TITLE / TAGLINE   the hub card's words
      ANWAR             the second special slot — the one that is you
      ROSTER            the fourteen players, their stats and their supers
-     TEAMS             the ready-made sides, including the placeholders
+     TEAMS             the six faculties, their kits and their squads
+     VENUES            the campuses, and the light at each of them
+     MODES             the cup, the friendly and the derby
      FORMATIONS        shapes, and what each does to the teammates' AI
      MEMORIES          the cards between rounds — YOUR words go here
      VICTORY           the ending card — YOUR words go here
-     RULES             match length, difficulty, how fast the meter fills
+     RULES             match length, the Heart meter, the Super Shot
+     DIFFICULTIES      the three settings and what each one moves
      PIXEL             the retro render layer
 
-   Anything marked PLACEHOLDER is mine and is meant to be replaced.
-   Nothing in here invents anything about the two of you.
+   Nothing in here invents anything about the two of you: the memories
+   and the ending are written out of what this site already knows —
+   medicine, dentistry, a hard year — and they are meant to be replaced
+   with the real ones. The `photo` fields are empty on purpose.
    ========================================================================= */
 
 window.CUP_CONFIG = {
@@ -45,18 +50,43 @@ window.CUP_CONFIG = {
      chunkier look; set `on` to false to see it smooth. */
   PIXEL: { on: true, height: 270, snap: true },
 
-  /* -------------------------------------------------------------- rules */
+  /* -------------------------------------------------------------- rules
+     Every one of these is read by the game. Change a number here and the
+     match changes; nothing below is decoration. */
   RULES: {
     halfSeconds: 52,        // real seconds per half; the clock shows 45'
-    difficulty: "normal",   // "easy" | "normal" | "hard" — the default
+    difficulty: "normal",   // "easy" | "normal" | "hard" — the starting one
     goldenGoal: 60,         // sudden death if a knockout tie is level
-    heartPerPass: 6,        // what fills the Heart meter, out of 100
-    heartPerTackle: 11,
-    heartPerShot: 9,
-    heartPerConcede: 14,    // going behind gives you something back
+
+    /* ---- the Heart meter ----------------------------------------------
+       What fills it, out of `superCost`. These are balanced so that a
+       half of decent football gets her one Super Shot and a very good
+       half gets her two: often enough to be the thing she plays FOR,
+       rare enough that it still stops the room when it happens. */
+    heartPerPass: 9,        // a pass that actually finds a teammate
+    heartPerTackle: 14,     // winning it back
+    heartPerShot: 11,       // having a go
+    heartPerConcede: 18,    // going behind hands you something back
     superCost: 100,
+    superKeepOnHalf: true,  // a charged meter survives half time
+    aiSupersFrom: 0.62,     // opponents only get supers at this skill and
+                            //   above — so the quarter-final never has one
+                            //   fired at her before she knows what they are
     showHelpFirstTime: true,
   },
+
+  /* The three difficulties. `skill` multiplies every opponent's one dial
+     (how tightly they close down, how far they read a pass, how willing
+     they are to shoot). `heart` multiplies how fast her meter fills, so
+     Easy is not merely a slower opponent — it is more supers for her. */
+  DIFFICULTIES: [
+    { id: "easy",   name: "TRANQUILLE", note: "they give you room · the meter fills fast",
+      skill: 0.74, heart: 1.35, gk: 0.90 },
+    { id: "normal", name: "NORMAL", note: "a real match",
+      skill: 1.00, heart: 1.00, gk: 1.00 },
+    { id: "hard",   name: "SÉRIEUX", note: "they press, and their keeper is awake",
+      skill: 1.22, heart: 0.80, gk: 1.10 },
+  ],
 
   /* ================================================================
      ANWAR — THE SECOND SPECIAL SLOT
@@ -66,6 +96,13 @@ window.CUP_CONFIG = {
      ================================================================ */
   ANWAR: {
     name: "ANWAR",                       // <- your name
+    /* The same colouring he has everywhere else on this site — the
+       apocalypse builds him at exactly these two values, so the man in
+       the dental faculty's shirt is the same man who walks out of the
+       bad world at the end of that chapter. Change them here and the
+       roster entry below follows; nothing else needs touching. */
+    skin: "#c2905f", hair: "#2e2018",
+    beard: true, glasses: true, curly: true,
     shirt: "#1d6b6e", shirtDark: "#12494b",
     shorts: "#f2e6cf", shortsDark: "#cdbf9f",
     socks: "#1d6b6e", trim: "#e8b23c",
@@ -103,8 +140,11 @@ window.CUP_CONFIG = {
     {
       id: "anwar", name: "ANWAR", role: "st", star: true, captainable: true,
       tag: "Co-Star · Striker",
+      /* his skin and hair are not really set here: ANWAR above wins, and
+         cup.js copies them down over this entry as it loads. They are
+         written out anyway so this table reads true on its own. */
       build: { h: 1.09, w: 1.04 }, head: "anwar",
-      skin: "#e0b189", hair: "#2f231b",
+      skin: "#c2905f", hair: "#2e2018",
       colour: { a: "#1d6b6e", b: "#e8b23c", c: "#f6f2ea" },
       stats: { speed: 82, power: 90, skill: 84, defence: 70 },
       super: { name: "HOMECOMING", colour: "#ffc63c", kind: "rocket",
@@ -435,28 +475,70 @@ window.CUP_CONFIG = {
   /* ================================================================
      THE MEMORIES — between the rounds
 
-     One shows after each round she wins. Write your own; `photo` is
-     optional and takes any path under /assets (the same folder the
-     scrapbook uses). Leave photo null for words on their own.
+     One comes up after each round she wins, before the next fixture is
+     drawn: the tournament stops for a moment and says something that is
+     not about football. They are indexed by round, so MEMORIES[0] shows
+     after the quarter-final and MEMORIES[1] after the semi.
+
+     These are written to be replaced. They deliberately contain nothing
+     invented about the two of you — no dates, no places, no borrowed
+     anecdotes — only the things that are already true of this site: two
+     people studying medicine and dentistry, a hard year, and him making
+     games about it. Put the real ones in and they will be better.
+
+       title   the small line above, in caps
+       line    the memory itself
+       photo   optional, any path under /assets, same as the scrapbook.
+               Leave it null for words on their own.
      ================================================================ */
   MEMORIES: [
-    { title: "PLACEHOLDER — after the first round",
-      line: "Write the first memory here. A place, a date, a thing one of you said.",
+    { title: "BEFORE ANY OF THIS HAD A TIMETABLE",
+      line: "There was a version of me that had not met you yet, and he was " +
+            "fine, and he had no idea. I think about him sometimes. He is " +
+            "about to have a very good year and he does not know it.",
       photo: null },
-    { title: "PLACEHOLDER — after the semi-final",
-      line: "And the second one here. Something from further along the way.",
+
+    { title: "SAME BUILDING, DIFFERENT FLOOR",
+      line: "You are learning how to keep people alive. I am learning how to " +
+            "stop them hurting. It is the same job from two directions, which " +
+            "is more or less the story of us. The final is your faculty " +
+            "against mine and I would like to state for the record that I am " +
+            "hoping you win it.",
+      photo: null },
+
+    { title: "THE YEAR YOU NEVER COMPLAINED",
+      line: "Not enough sleep, a phone propped against a textbook, and you " +
+            "never once made any of it my problem. I noticed. I notice all of " +
+            "it. That is most of the reason this exists.",
       photo: null },
   ],
 
   /* ================================================================
      THE ENDING — after she wins the final
+
+     The last thing she reads. Every chapter on this site ends with him
+     saying something; this one has had a stadium shouting for ninety
+     minutes, so it ends quietly.
+
+     `lines` is a list, shown one under the other. Replace the lot.
      ================================================================ */
   VICTORY: {
     kicker: "FULL TIME",
-    title: "YOU FOUND EACH OTHER",
-    message: "PLACEHOLDER — your message goes here. This is the last " +
-             "thing she reads, so it should sound like you and not like a " +
-             "game. Keep it as long or as short as you like.",
+    title: "YOU WON IT",
+    lines: [
+      "You have just beaten my faculty in front of everybody, which is " +
+      "roughly what you have been doing to me since the day we met.",
+
+      "The other games I made you were all about getting somewhere — up " +
+      "the valley, through the night shift, out of a bad world. This one " +
+      "is not. This one is ninety minutes of you being good at something " +
+      "with a whole stand shouting your name, because you do the hard " +
+      "version of that every day with nobody watching at all.",
+
+      "You are going to be a doctor. I am the one in the stands who " +
+      "already knew.",
+    ],
+    signOff: "— Anwar",
     photo: null,          // e.g. "assets/photo-12.jpg"
     button: "TAKE IT HOME",
   },
