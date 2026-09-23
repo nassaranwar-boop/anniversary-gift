@@ -26,20 +26,43 @@ const { chromium } = require('playwright-core');
   await p.waitForTimeout(1400);
   await p.screenshot({ path: '/tmp/cup-title.png' });
 
+  /* TEAM SELECT IS NOT DOM ANY MORE.
+
+     It is drawn into the pixel UI canvas, so there is nothing here to
+     query with a selector and nothing to click with one either — its
+     buttons are rectangles inside a canvas. tools/cupui.js drives and
+     checks that screen properly through the widget table the chapter
+     exposes. This file goes straight on to the squad builder, which is
+     still DOM. */
+  const ui = () => p.evaluate(() => OuissyCup.__cup.ui());
+  const uiClick = async (id) => {
+    const el = await p.evaluate((wid) => {
+      const w = OuissyCup.__cup.ui().widgets.find(v => v.id === wid);
+      const c = document.getElementById('cup-ui');
+      const r = c.getBoundingClientRect();
+      return w ? { x: r.left + (w.x + w.w / 2) / c.width * r.width,
+                   y: r.top + (w.y + w.h / 2) / c.height * r.height } : null;
+    }, id);
+    if (!el) throw new Error('no widget ' + id);
+    await p.mouse.click(el.x, el.y);
+  };
+
   await p.click('[data-go="teams"]');
-  await p.waitForTimeout(800);
+  await p.waitForFunction(() => OuissyCup.__cup.ui().on, null, { timeout: 30000 });
+  await p.waitForFunction(() => OuissyCup.__cup.ui().age > 1.2, null,
+                          { timeout: 120000, polling: 250 });
   await p.screenshot({ path: '/tmp/cup-select.png' });
-  console.log('carousel team:', await p.evaluate(() =>
-    document.querySelector('.cup-tcard-name h4').textContent));
+  console.log('carousel at:', (await ui()).carAt);
 
-  await p.click('[data-go="next"]');
-  await p.waitForTimeout(600);
+  await uiClick('next');
+  await p.waitForFunction(() => OuissyCup.__cup.ui().age > 1.2, null,
+                          { timeout: 120000, polling: 250 });
   await p.screenshot({ path: '/tmp/cup-select2.png' });
-  console.log('next team:', await p.evaluate(() =>
-    document.querySelector('.cup-tcard-name h4').textContent));
+  console.log('next team at:', (await ui()).carAt);
 
-  await p.click('[data-go="build"]');
-  await p.waitForTimeout(600);
+  await uiClick('build');
+  await p.waitForSelector('.cup-build', { timeout: 20000 });
+  await p.waitForTimeout(400);
   await p.screenshot({ path: '/tmp/cup-builder-empty.png' });
 
   await p.click('[data-go="rand"]');
@@ -51,10 +74,13 @@ const { chromium } = require('playwright-core');
     Array.from(document.querySelectorAll('.cup-slot span')).map(s => s.textContent).join(' / ')));
 
   await p.click('[data-go="save"]');
-  await p.waitForTimeout(700);
+  /* saving drops back onto the pixel carousel */
+  await p.waitForFunction(() => OuissyCup.__cup.ui().on, null, { timeout: 30000 });
+  await p.waitForFunction(() => OuissyCup.__cup.ui().age > 1.2, null,
+                          { timeout: 120000, polling: 250 });
   await p.screenshot({ path: '/tmp/cup-saved.png' });
-  console.log('saved as:', await p.evaluate(() =>
-    document.querySelector('.cup-tcard-name h4').textContent));
+  console.log('saved, carousel at:', (await ui()).carAt);
+
   console.log(errs.length ? 'ERRORS: ' + errs.slice(0, 4).join(' | ') : 'no page errors');
   await b.close();
 })();

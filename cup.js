@@ -825,6 +825,10 @@ window.OuissyCup = (function () {
 
   function buildStands(fullW, fullH) {
     var ct = tex(crowdTexture(), 8, 1);
+    /* kept, so the crowd can be made to sway. It is one texture shared
+       by all four stands, so nudging its offset moves every person in
+       the ground at once for the price of one number. */
+    crowdTex = ct;
     var bt = tex(boardTexture(), 3, 1);
     var crowdMat = toon("#ffffff", { map: ct });
     var boardMat = toon("#ffffff", { map: bt });
@@ -3368,6 +3372,22 @@ window.OuissyCup = (function () {
     ease: 3.2,
     lookUp: 9,          // the point it aims at, above the grass
   };
+  /* The portrait lens. `ndc` is where across the frame the subject
+     stands: 0 is dead centre, +1 is the right edge. */
+  var CAMHERO = { dist: 31, high: 11.5, look: 10.5, ndc: 0.30 };
+  /* How much of the world the shadow map is asked to cover. One
+     thousand texels stretched over the whole pitch is a fifth of a unit
+     each; pulled in around one character it is a twentieth. Changing it
+     costs an updateProjectionMatrix and nothing else. */
+  var shadowHalf = 0;
+  function shadowSpan(half, normalBias) {
+    if (!sun || !sun.shadow || shadowHalf === half) return;
+    shadowHalf = half;
+    var c = sun.shadow.camera;
+    c.left = -half; c.right = half; c.top = half; c.bottom = -half;
+    sun.shadow.normalBias = normalBias === undefined ? 0.6 : normalBias;
+    c.updateProjectionMatrix();
+  }
   var camNow = { x: 0, z: 0, dist: 150, tx: 0, ty: CAM.lookUp, tz: 0, side: 1 };
   var camMode = { kind: "play", t: 0, at: null, hold: 0 };
 
@@ -3459,6 +3479,58 @@ window.OuissyCup = (function () {
        away from it down the pitch, which is the shot that makes a
        hundred units look like sixty yards. A camera that chases a fast
        ball keeps it the same size and the speed disappears. */
+    /* THE PORTRAIT.
+
+       Close enough that one player fills more than half the height of
+       the frame, low enough to be looking slightly up at them, and
+       aimed off to one side so they stand in the right of the picture
+       with the panel in the left. That last part is arithmetic, not
+       taste: at this distance the half-width of the frame is about
+       0.87 of the distance, so putting somebody at a given fraction of
+       the way across means offsetting the camera's aim by that fraction
+       of it — and towards the camera's own left, because this camera
+       looks along +z and has increasing scene x on that side. */
+    if (camMode.kind === "hero" && camMode.at) {
+      var hp = camMode.at;
+      var hd = CAMHERO.dist;
+      var halfW = hd * 0.867;
+      var hx = sceneX(hp.y), hz = sceneZ(hp.x);
+      var aimX = hx + CAMHERO.ndc * halfW;
+      var hk = snap ? 1 : Math.min(1, 3.2 * dt);
+      /* a slow drift around them, so a still screen is never still */
+      var sway = Math.sin(camMode.t * 0.42) * 3.4;
+      camNow.tx += (aimX - camNow.tx) * hk;
+      camNow.tz += (hz - camNow.tz) * hk;
+      camNow.ty += (CAMHERO.look - camNow.ty) * hk;
+      var wantZ = hz + side * hd;
+      var wantH = CAMHERO.high + Math.sin(camMode.t * 0.31) * 0.6;
+      camNow.x = camNow.tx + sway;
+      camNow.z = (camNow.z === undefined || snap) ? wantZ
+                 : camNow.z + (wantZ - camNow.z) * hk;
+      camNow.h = (camNow.h === undefined || snap) ? wantH
+                 : camNow.h + (wantH - camNow.h) * hk;
+      camera.position.set(camNow.x, camNow.h, camNow.z);
+      camera.lookAt(camNow.tx, camNow.ty, camNow.tz);
+      if (sun) {
+        /* the spotlight: the key light swings round to the front of
+           whoever is being shown off */
+        sun.target.position.set(hx, 8, hz);
+        sun.position.set(hx - 40, 120, hz + side * 90);
+        sun.target.updateMatrixWorld();
+        /* AND THE SHADOW MAP COMES IN WITH IT.
+
+           The map covers 220 units of pitch on a thousand texels, which
+           is about a fifth of a unit each — fine at match distance and
+           useless at portrait distance, where a player fifteen units
+           tall gets seventy texels and his own arm casts a hard grey
+           blob across his shirt. Pulled in to the character he is
+           rendered five times sharper for nothing, because it is the
+           same thousand texels either way. */
+        shadowSpan(24, 0.12);
+      }
+      return;
+    }
+
     /* THE MENU SHOT. Slow, low and moving: it drifts along the line of
        players and breathes in and out, so a screen somebody is reading
        is never a still photograph. Nothing about it is snapped, which
@@ -3543,6 +3615,9 @@ window.OuissyCup = (function () {
       return;
     }
 
+    /* back out to the pitch for anything that is not a portrait */
+    shadowSpan(110, 0.6);
+
     want = wantFraming();
     var k = snap ? 1 : Math.min(1, CAM.ease * dt);
     camNow.tx += (want.x - camNow.tx) * k;
@@ -3584,6 +3659,7 @@ window.OuissyCup = (function () {
     });
     confettiStep(dt || 0);
     trailStep(dt || 0);
+    crowdSway(UI.t);
     placeCamera(dt || 0, false);
     renderer.render(scene, camera);
   }
@@ -3597,6 +3673,18 @@ window.OuissyCup = (function () {
      screen for three seconds, and a goal is the one moment in the game
      that must not stutter.
      ======================================================================= */
+  var crowdTex = null;
+  /* A GROUND THAT IS NOT A PHOTOGRAPH.
+     The stands were a still image wrapped round a box, which at this
+     distance is a wall with a pattern on it. Rocking the texture up and
+     down by under a pixel makes the whole crowd shift its weight, and
+     it costs one assignment a frame. */
+  function crowdSway(t) {
+    if (!crowdTex) return;
+    crowdTex.offset.y = Math.sin(t * 1.1) * 0.006;
+    crowdTex.offset.x = Math.sin(t * 0.37) * 0.004;
+  }
+
   var confetti = null, confParts = [], confDummy = null;
   var CONF_N = 220;
   function buildConfetti() {
@@ -4216,10 +4304,13 @@ window.OuissyCup = (function () {
      "cup-btn-ico", "cup-poss-h", "cup-poss-a", "cup-poss-lab",
      "cup-shot-h", "cup-shot-a", "cup-keys", "cup-stats",
      "cup-heart", "cup-heart-f", "cup-heart-n", "cup-heart-a",
-     "cup-sup-btn", "cup-sup-lab", "cup-super-card", "cup-flash"]
+     "cup-sup-btn", "cup-sup-lab", "cup-super-card", "cup-flash", "cup-ui"]
       .forEach(function (id) { EL[id] = $(id); });
     stage = EL["cup-stage"];
     cvs = EL["cup-canvas"];
+    uiCvs = EL["cup-ui"];
+    if (uiCvs) { UIX = uiCvs.getContext("2d"); UIX.imageSmoothingEnabled = false; }
+    wireUI();
   }
 
   /* The renderer is sized to the element and capped at two device
@@ -4261,6 +4352,9 @@ window.OuissyCup = (function () {
       if (cvs) cvs.classList.remove("px");
     }
     if (camera) { camera.aspect = aspect; camera.updateProjectionMatrix(); }
+    /* the UI shares the pitch's backing store exactly, which is the one
+       thing that makes it the same pixels rather than a layer on top */
+    uiSize();
   }
 
   function buildRenderer() {
@@ -4523,6 +4617,9 @@ window.OuissyCup = (function () {
   function overlay(title, line, action, onGo, opts) {
     var el = EL["cup-overlay"];
     if (!el) return;
+    /* the pixel UI and the DOM cards are never both up: whichever is
+       asked for last is the one on screen */
+    uiClose();
     opts = opts || {};
     el.innerHTML =
       '<div class="cup-card' + (opts.big ? " cup-card-big" : "") +
@@ -4625,6 +4722,651 @@ window.OuissyCup = (function () {
       var w = +n.dataset.w || 96, h = +n.dataset.h || 64;
       n.appendChild(badgeCanvas(t, w, h));
     });
+  }
+
+  /* =======================================================================
+     THE PIXEL UI
+
+     WHAT WAS WRONG, AND IT WAS NOT THE BUTTONS
+
+     The menus were built out of CSS: rounded cards, blurred box-shadows,
+     a serif title, flat pill buttons, smooth gradients. All of it laid
+     over a game rendered through a 270-pixel buffer with hard edges. So
+     the chapter had two visual languages in it at once, and every menu
+     announced that it was a web page sitting in front of a video game
+     rather than part of one. No amount of choosing better beige fixes
+     that, because the problem is the RESOLUTION, not the palette.
+
+     So the UI is not CSS any more. It is drawn, pixel by pixel, into a
+     canvas whose backing store is exactly the size of the one the pitch
+     is rendered into, and stretched over the top with nearest-neighbour.
+     A button is a hard bevel and a one-pixel offset shadow. A panel is a
+     nine-slice frame with a drawn border and corner details. A letter is
+     a bitmap. There is not a border-radius or a blur anywhere in it,
+     because at this resolution neither of those things exists.
+
+     This is also the repository's own rule, which this chapter had been
+     quietly exempting its menus from: sprites here are PIXEL MAPS, one
+     character per pixel. So is the font.
+     ======================================================================= */
+
+  /* ---------------------------------------------------------------- font
+     Five by seven, proportional — each glyph is as wide as it needs to
+     be, which is what stops pixel text reading like a ransom note. Rows
+     are separated by slashes, '#' is ink and '.' is not, exactly the way
+     every other sprite on this site is written down.
+
+     Accented capitals are not glyphs. É is an E with an acute drawn two
+     pixels above it and Ç is a C with a cedilla below, because carrying
+     a second copy of a letter just to put a mark over it is how a font
+     gets to four hundred lines. */
+  var GLYPH = {
+    A: ".###./#...#/#...#/#####/#...#/#...#/#...#",
+    B: "####./#...#/#...#/####./#...#/#...#/####.",
+    C: ".###./#...#/#..../#..../#..../#...#/.###.",
+    D: "####./#...#/#...#/#...#/#...#/#...#/####.",
+    E: "#####/#..../#..../####./#..../#..../#####",
+    F: "#####/#..../#..../####./#..../#..../#....",
+    G: ".###./#...#/#..../#.###/#...#/#...#/.####",
+    H: "#...#/#...#/#...#/#####/#...#/#...#/#...#",
+    I: "###/.#./.#./.#./.#./.#./###",
+    J: "..###/....#/....#/....#/#...#/#...#/.###.",
+    K: "#...#/#..#./#.#../##.../#.#../#..#./#...#",
+    L: "#..../#..../#..../#..../#..../#..../#####",
+    M: "#...#/##.##/#.#.#/#.#.#/#...#/#...#/#...#",
+    N: "#...#/##..#/#.#.#/#.#.#/#..##/#...#/#...#",
+    O: ".###./#...#/#...#/#...#/#...#/#...#/.###.",
+    P: "####./#...#/#...#/####./#..../#..../#....",
+    Q: ".###./#...#/#...#/#...#/#.#.#/#..#./.##.#",
+    R: "####./#...#/#...#/####./#.#../#..#./#...#",
+    S: ".####/#..../#..../.###./....#/....#/####.",
+    T: "#####/..#../..#../..#../..#../..#../..#..",
+    U: "#...#/#...#/#...#/#...#/#...#/#...#/.###.",
+    V: "#...#/#...#/#...#/#...#/#...#/.#.#./..#..",
+    W: "#...#/#...#/#...#/#.#.#/#.#.#/##.##/#...#",
+    X: "#...#/#...#/.#.#./..#../.#.#./#...#/#...#",
+    Y: "#...#/#...#/.#.#./..#../..#../..#../..#..",
+    Z: "#####/....#/...#./..#../.#.../#..../#####",
+
+    a: "...../...../.###./....#/.####/#...#/.####",
+    b: "#..../#..../####./#...#/#...#/#...#/####.",
+    c: "...../...../.###./#..../#..../#...#/.###.",
+    d: "....#/....#/.####/#...#/#...#/#...#/.####",
+    e: "...../...../.###./#...#/#####/#..../.###.",
+    f: "..##/.#../.#../###./.#../.#../.#..",
+    g: "...../...../.####/#...#/.####/....#/.###.",
+    h: "#..../#..../####./#...#/#...#/#...#/#...#",
+    i: ".#/../.#/.#/.#/.#/.#",
+    j: "..#/.../..#/..#/..#/#.#/.#.",
+    k: "#..../#..../#..#./#.#../##.../#.#../#..#.",
+    l: "##/.#/.#/.#/.#/.#/.#",
+    m: "...../...../##.#./#.#.#/#.#.#/#.#.#/#.#.#",
+    n: "...../...../####./#...#/#...#/#...#/#...#",
+    o: "...../...../.###./#...#/#...#/#...#/.###.",
+    p: "...../...../####./#...#/####./#..../#....",
+    q: "...../...../.####/#...#/.####/....#/....#",
+    r: "..../..../#.##/##../#.../#.../#...",
+    s: "...../...../.####/#..../.###./....#/####.",
+    t: ".#../.#../###./.#../.#../.#.#/..##",
+    u: "...../...../#...#/#...#/#...#/#..##/.##.#",
+    v: "...../...../#...#/#...#/#...#/.#.#./..#..",
+    w: "...../...../#...#/#.#.#/#.#.#/#.#.#/.#.#.",
+    x: "...../...../#...#/.#.#./..#../.#.#./#...#",
+    y: "...../...../#...#/#...#/.####/....#/.###.",
+    z: "...../...../#####/...#./..#../.#.../#####",
+
+    0: ".###./#...#/#..##/#.#.#/##..#/#...#/.###.",
+    1: "..#../.##../..#../..#../..#../..#../.###.",
+    2: ".###./#...#/....#/...#./..#../.#.../#####",
+    3: "####./....#/....#/.###./....#/....#/####.",
+    4: "...#./..##./.#.#./#..#./#####/...#./...#.",
+    5: "#####/#..../####./....#/....#/#...#/.###.",
+    6: "..##./.#.../#..../####./#...#/#...#/.###.",
+    7: "#####/....#/...#./..#../.#.../.#.../.#...",
+    8: ".###./#...#/#...#/.###./#...#/#...#/.###.",
+    9: ".###./#...#/#...#/.####/....#/...#./.##..",
+
+    " ": "../../../../../../..",
+    ".": "../../../../../../#.",
+    ",": "../../../../../.#/#.",
+    ":": "../../.#/../../.#/..",
+    ";": "../../.#/../../.#/#.",
+    "!": "#/#/#/#/#/./#",
+    "?": ".###./#...#/....#/..##./..#../...../..#..",
+    "'": "#/#/./././././",
+    "-": "..../..../..../####/..../..../....",
+    "–": "...../...../...../#####/...../...../.....",
+    "/": "....#/....#/...#./..#../.#.../#..../#....",
+    "(": ".#/#./#./#./#./#./.#",
+    ")": "#./.#/.#/.#/.#/.#/#.",
+    "%": "##..#/##..#/...#./..#../.#.../#..##/#..##",
+    "+": "...../..#../..#../#####/..#../..#../.....",
+    "·": "../../../.#/../../..",
+    "°": "##/##/../../../../..",
+    "★": "..#../..#../#####/.###./.#.#./#...#/.....",     // star
+    "♥": ".#.#./#####/#####/#####/.###./..#../.....",     // heart
+    "▸": "#../##./###/##./#../.../...",                   // right arrow
+    "◂": "..#/.##/###/.##/..#/.../...",                   // left arrow
+    "×": "...../#...#/.#.#./..#../.#.#./#...#/.....",
+  };
+  /* what goes over (or under) a letter to make it an accented one */
+  var ACCENTED = {
+    "É": ["E", "acute"], "È": ["E", "grave"], "Ê": ["E", "hat"],
+    "é": ["e", "acute"], "è": ["e", "grave"], "ê": ["e", "hat"],
+    "À": ["A", "grave"], "à": ["a", "grave"],
+    "Û": ["U", "hat"],   "û": ["u", "hat"],
+    "Ç": ["C", "cedilla"], "ç": ["c", "cedilla"],
+    "Î": ["I", "hat"],   "î": ["i", "hat"],
+  };
+  var ACCENT_ART = {
+    acute:   "..##/.##./....",
+    grave:   "##../.##./....",
+    hat:     ".##./##.#/....",
+    cedilla: "..../.##./##..",
+  };
+
+  /* Each glyph compiled once into a list of [x, y] pixels, because a
+     menu redraws sixty times a second and splitting the same strings on
+     every frame is the kind of thing that turns a still screen into a
+     warm phone. */
+  var glyphCache = {};
+  function glyph(ch) {
+    if (glyphCache[ch]) return glyphCache[ch];
+    var art = GLYPH[ch];
+    if (art === undefined) {
+      var acc = ACCENTED[ch];
+      if (acc) {
+        var base = glyph(acc[0]);
+        var g2 = { w: base.w, px: base.px.slice(), accent: acc[1] };
+        return (glyphCache[ch] = g2);
+      }
+      art = GLYPH["?"];
+    }
+    var rows = art.split("/");
+    var px = [];
+    for (var y = 0; y < rows.length; y++) {
+      for (var x = 0; x < rows[y].length; x++) {
+        if (rows[y][x] === "#") px.push([x, y]);
+      }
+    }
+    return (glyphCache[ch] = { w: rows[0].length, px: px, accent: null });
+  }
+
+  var FONT_H = 7;
+  /* Cut a line to a width, on a word boundary, and say so with an
+     ellipsis. Text that overflows a pixel panel does not wrap or clip
+     politely — it simply carries on off the side of the screen. */
+  function fitText(str, maxW, scale, track) {
+    if (textWidth(str, scale, track) <= maxW) return str;
+    var cut = str;
+    while (cut.length > 1 && textWidth(cut + "...", scale, track) > maxW) {
+      var sp = cut.lastIndexOf(" ");
+      cut = sp > 0 ? cut.slice(0, sp) : cut.slice(0, -1);
+    }
+    return cut + "...";
+  }
+  function textWidth(str, scale, track) {
+    scale = scale || 1; track = track === undefined ? 1 : track;
+    var w = 0;
+    for (var i = 0; i < str.length; i++) {
+      w += (glyph(str[i]).w + track) * scale;
+    }
+    return w - track * scale;
+  }
+
+  /* DRAWING A WORD.
+
+     One fillRect per lit pixel, scaled. It sounds extravagant and it is
+     not: a line of twenty characters is about four hundred rectangles,
+     and the whole screen redraws in well under a millisecond. Doing it
+     this way is what makes the text genuinely part of the picture —
+     canvas fillText cannot be turned off antialiasing, so real text at
+     this size arrives grey and soft and gives the whole game away. */
+  function drawText(x2, str, y2, opts) {
+    opts = opts || {};
+    var scale = opts.scale || 1;
+    var track = opts.track === undefined ? 1 : opts.track;
+    var col = opts.colour || "#ffffff";
+    var cx2 = x2;
+    if (opts.align === "center") cx2 = x2 - Math.round(textWidth(str, scale, track) / 2);
+    else if (opts.align === "right") cx2 = x2 - textWidth(str, scale, track);
+    cx2 = Math.round(cx2); y2 = Math.round(y2);
+
+    /* the outline first, as eight offset copies — at one pixel it is a
+       keyline and it is what lets a caption sit on top of a crowd */
+    if (opts.outline) {
+      var o = opts.outlineW || scale;
+      UIX.fillStyle = opts.outline;
+      for (var dy = -o; dy <= o; dy += o) {
+        for (var dx = -o; dx <= o; dx += o) {
+          if (!dx && !dy) continue;
+          blitText(cx2 + dx, y2 + dy, str, scale, track);
+        }
+      }
+    }
+    /* a hard drop shadow under it, never a blur */
+    if (opts.shadow) {
+      UIX.fillStyle = opts.shadow;
+      blitText(cx2 + (opts.shadowX || scale), y2 + (opts.shadowY || scale), str, scale, track);
+    }
+    UIX.fillStyle = col;
+    blitText(cx2, y2, str, scale, track);
+    return textWidth(str, scale, track);
+  }
+  function blitText(x2, y2, str, scale, track) {
+    var pen = x2;
+    for (var i = 0; i < str.length; i++) {
+      var g = glyph(str[i]);
+      for (var k = 0; k < g.px.length; k++) {
+        UIX.fillRect(pen + g.px[k][0] * scale, y2 + g.px[k][1] * scale, scale, scale);
+      }
+      if (g.accent) {
+        var ar = ACCENT_ART[g.accent].split("/");
+        var ay = g.accent === "cedilla" ? FONT_H * scale : -3 * scale;
+        var ax = pen + Math.round((g.w - 4) / 2) * scale;
+        for (var ry = 0; ry < ar.length; ry++) {
+          for (var rx = 0; rx < ar[ry].length; rx++) {
+            if (ar[ry][rx] === "#") {
+              UIX.fillRect(ax + rx * scale, y2 + ay + ry * scale, scale, scale);
+            }
+          }
+        }
+      }
+      pen += (g.w + track) * scale;
+    }
+  }
+
+  /* =======================================================================
+     THE PIXEL UI — PANELS, BEVELS, BUTTONS
+
+     Depth in a pixel interface is not a shadow, it is an EDGE: one line
+     of a lighter colour along the top and left, one of a darker colour
+     along the bottom and right, and a hard offset block underneath. That
+     is the whole trick, it is forty years old, and it is the only way a
+     button at this resolution reads as something you can press.
+     ======================================================================= */
+  var uiCvs = null, UIX = null, UIW = 0, UIH = 0;
+
+  /* A colour, lightened or darkened by a fixed step rather than by a
+     percentage — at eight bits a proportional shade of a dark colour is
+     no change at all. */
+  function lift(hex, amt) {
+    var n = parseInt(hex.slice(1), 16);
+    var r = clamp(((n >> 16) & 255) + amt, 0, 255);
+    var g = clamp(((n >> 8) & 255) + amt, 0, 255);
+    var b2 = clamp((n & 255) + amt, 0, 255);
+    return "#" + ((1 << 24) + (r << 16) + (g << 8) + b2).toString(16).slice(1);
+  }
+  function box(x2, y2, w, h, col) {
+    UIX.fillStyle = col;
+    UIX.fillRect(Math.round(x2), Math.round(y2), Math.round(w), Math.round(h));
+  }
+  /* a one-pixel rule, so a border is four rules and not a stroke */
+  function line(x2, y2, w, h, col) { box(x2, y2, w, h, col); }
+
+  /* THE PANEL. A nine-slice frame built out of rules and corner blocks:
+     an outer ink border, a bright bevel inside it on the top and left, a
+     dark one on the bottom and right, the fill, and a stud in each
+     corner. `tone` is the team's own colour, so the same frame is a
+     different object on every screen. */
+  function panel(x2, y2, w, h, tone, opts) {
+    opts = opts || {};
+    x2 = Math.round(x2); y2 = Math.round(y2); w = Math.round(w); h = Math.round(h);
+    var ink = opts.ink || "#0d1412";
+    var fill = opts.fill || "#1b2a34";
+    var hi = opts.hi || lift(tone, 60);
+    var lo = opts.lo || lift(tone, -55);
+
+    /* the hard offset shadow — a block, not a blur */
+    if (opts.drop !== false) box(x2 + 3, y2 + 3, w, h, "rgba(4,8,10,.55)");
+    box(x2, y2, w, h, ink);                       // the outer keyline
+    box(x2 + 1, y2 + 1, w - 2, h - 2, tone);      // the frame itself
+    line(x2 + 1, y2 + 1, w - 2, 1, hi);           // lit along the top
+    line(x2 + 1, y2 + 1, 1, h - 2, hi);           // and down the left
+    line(x2 + 1, y2 + h - 2, w - 2, 1, lo);       // dark underneath
+    line(x2 + w - 2, y2 + 1, 1, h - 2, lo);       // and down the right
+    box(x2 + 3, y2 + 3, w - 6, h - 6, ink);       // the inner keyline
+    box(x2 + 4, y2 + 4, w - 8, h - 8, fill);      // and the paper
+
+    /* corner studs, which is the detail that stops it being a rectangle */
+    [[x2 + 2, y2 + 2], [x2 + w - 4, y2 + 2],
+     [x2 + 2, y2 + h - 4], [x2 + w - 4, y2 + h - 4]].forEach(function (c) {
+      box(c[0], c[1], 2, 2, hi);
+      box(c[0], c[1], 1, 1, lift(tone, 110));
+    });
+    /* and a title tab across the top, if the panel is announcing itself */
+    if (opts.title) {
+      var tw = textWidth(opts.title, 1, 1) + 10;
+      var tx = x2 + Math.round((w - tw) / 2);
+      box(tx, y2 - 5, tw, 11, ink);
+      box(tx + 1, y2 - 4, tw - 2, 9, tone);
+      line(tx + 1, y2 - 4, tw - 2, 1, hi);
+      drawText(tx + Math.round(tw / 2), opts.title, y2 - 1,
+               { align: "center", colour: opts.titleInk || "#0d1412" });
+    }
+  }
+
+  /* THE BUTTON. Three states and they are three different SHAPES, not
+     three different colours: at rest it stands two pixels proud of its
+     own shadow, hovered it lifts and brightens, pressed it drops onto
+     the shadow and the shadow disappears. That collapse is the whole
+     feeling of pressing something. */
+  function button(b, t) {
+    var x2 = Math.round(b.x), y2 = Math.round(b.y);
+    var w = Math.round(b.w), h = Math.round(b.h);
+    var tone = b.tone || "#3a5a6a";
+    var ink = "#0d1412";
+    var lifted = b.hover && !b.down;
+    var drop = b.down ? 0 : 3;
+    var oy = b.down ? 3 : (lifted ? -1 : 0);
+
+    if (!b.down) box(x2 + 2, y2 + drop + oy, w, h, "rgba(4,8,10,.5)");
+    var face = lifted ? lift(tone, 26) : tone;
+    if (b.on) face = lift(tone, 16);
+    box(x2, y2 + oy, w, h, ink);
+    box(x2 + 1, y2 + oy + 1, w - 2, h - 2, face);
+    line(x2 + 1, y2 + oy + 1, w - 2, 1, lift(face, 70));
+    line(x2 + 1, y2 + oy + 1, 1, h - 2, lift(face, 45));
+    line(x2 + 1, y2 + oy + h - 2, w - 2, 1, lift(face, -60));
+    line(x2 + w - 2, y2 + oy + 1, 1, h - 2, lift(face, -45));
+
+    /* the selected one wears a marching keyline, so which button is
+       about to fire is never a matter of a slightly different beige */
+    if (b.on) {
+      var ph = Math.floor(t * 14) % 4;
+      UIX.fillStyle = "#ffe066";
+      for (var i = 0; i < w - 2; i++) {
+        if ((i + ph) % 4 < 2) {
+          UIX.fillRect(x2 + 1 + i, y2 + oy - 1, 1, 1);
+          UIX.fillRect(x2 + 1 + i, y2 + oy + h, 1, 1);
+        }
+      }
+      for (var j = 0; j < h; j++) {
+        if ((j + ph) % 4 < 2) {
+          UIX.fillRect(x2 - 1, y2 + oy + j, 1, 1);
+          UIX.fillRect(x2 + w, y2 + oy + j, 1, 1);
+        }
+      }
+    }
+
+    var ty = y2 + oy + Math.round((h - FONT_H * (b.scale || 1)) / 2);
+    drawText(x2 + Math.round(w / 2), b.label, ty,
+             { align: "center", colour: b.ink || "#ffffff",
+               scale: b.scale || 1, shadow: "rgba(0,0,0,.55)" });
+    if (b.sub) {
+      drawText(x2 + Math.round(w / 2), b.sub, ty + FONT_H * (b.scale || 1) + 2,
+               { align: "center", colour: b.subInk || lift(tone, 90) });
+    }
+  }
+
+  /* A STAT BAR. Stepped blocks rather than a smooth fill, because a
+     smooth fill is a progress bar and blocks are a meter — and blocks
+     are the thing that can overshoot and settle, which is where the
+     whole feeling of a stat landing comes from. */
+  function statBar(x2, y2, w, h, frac, tone, label, value) {
+    var ink = "#0d1412";
+    box(x2 - 1, y2 - 1, w + 2, h + 2, ink);
+    box(x2, y2, w, h, "#121c22");
+    var cells = Math.floor(w / 4);
+    var lit = Math.round(clamp(frac, 0, 1.08) * cells);
+    for (var i = 0; i < cells; i++) {
+      if (i >= lit) break;
+      var bx = x2 + i * 4;
+      var over = i >= cells;
+      box(bx, y2, 3, h, over ? "#ffffff" : tone);
+      line(bx, y2, 3, 1, lift(tone, 55));
+      line(bx, y2 + h - 1, 3, 1, lift(tone, -50));
+    }
+    if (label) drawText(x2 - 4, label, y2 + Math.round((h - FONT_H) / 2),
+                        { align: "right", colour: "#9fb4c2" });
+    if (value !== undefined) {
+      drawText(x2 + w + 5, String(value), y2 + Math.round((h - FONT_H) / 2),
+               { colour: "#ffffff", shadow: "rgba(0,0,0,.6)" });
+    }
+  }
+
+  /* =======================================================================
+     THE UI RUNTIME
+
+     Immediate mode: a screen is a function that draws itself every
+     frame, and the widgets it draws register their own rectangles as it
+     goes. There is no retained tree and nothing to keep in step — which
+     matters here because almost everything on these screens is moving,
+     so a retained tree would be rebuilt every frame anyway.
+     ======================================================================= */
+  var UI = { screen: null, name: "", t: 0, widgets: [], hot: null,
+             down: null, focus: 0, born: 0, hearts: [], on: false };
+
+  function uiSize() {
+    if (!uiCvs || !renderer) return;
+    var size = renderer.getSize(new THREE.Vector2());
+    var w = Math.max(2, Math.round(size.x)), h = Math.max(2, Math.round(size.y));
+    if (w === UIW && h === UIH) return;
+    UIW = uiCvs.width = w;
+    UIH = uiCvs.height = h;
+    UIX = uiCvs.getContext("2d");
+    UIX.imageSmoothingEnabled = false;
+  }
+
+  /* Open a screen. Everything is staggered off `UI.born`, so a screen
+     does not appear, it arrives — each panel a couple of frames after
+     the one before it. */
+  function uiOpen(name, drawFn) {
+    uiSize();
+    UI.screen = drawFn; UI.name = name;
+    UI.born = UI.t; UI.focus = 0; UI.hot = null; UI.down = null;
+    UI.widgets = [];
+    if (uiCvs) { uiCvs.hidden = false; uiCvs.classList.add("on"); }
+    UI.on = true;
+    hideOverlay();                 // the DOM cards and this are never both up
+  }
+  function uiClose() {
+    UI.screen = null; UI.name = ""; UI.widgets = []; UI.on = false;
+    if (uiCvs) { uiCvs.hidden = true; uiCvs.classList.remove("on"); }
+  }
+
+  /* the ease everything arrives on: overshoots a little, then settles */
+  function pop(age, delay, len) {
+    var u = clamp((age - (delay || 0)) / (len || 0.26), 0, 1);
+    if (u <= 0) return 0;
+    return 1 + 2.2 * Math.pow(1 - u, 3) * Math.sin(u * 7.2) * (1 - u);
+  }
+  function slideIn(age, delay, dist) {
+    var u = clamp((age - (delay || 0)) / 0.3, 0, 1);
+    var e = 1 - Math.pow(1 - u, 3);
+    return { off: Math.round((1 - e) * (dist || 40)), a: u };
+  }
+
+  /* A widget registers where it is and what it does, and draws itself.
+     Returns true on the frame it fires. */
+  function uiButton(id, x2, y2, w, h, label, opts) {
+    opts = opts || {};
+    var b = { id: id, x: x2, y: y2, w: w, h: h, label: label,
+              tone: opts.tone || "#2f5d72", ink: opts.ink, sub: opts.sub,
+              scale: opts.scale, subInk: opts.subInk,
+              hover: UI.hot === id, down: UI.down === id,
+              on: opts.on || UI.widgets.length === UI.focus && UI.kb };
+    UI.widgets.push({ id: id, x: x2, y: y2, w: w, h: h, go: opts.go });
+    button(b, UI.t);
+    return b;
+  }
+
+  /* where a pointer is, in the game's own pixels */
+  function uiPoint(e) {
+    if (!uiCvs) return null;
+    var r = uiCvs.getBoundingClientRect();
+    if (!r.width || !r.height) return null;
+    return { x: (e.clientX - r.left) / r.width * UIW,
+             y: (e.clientY - r.top) / r.height * UIH };
+  }
+  function uiHit(p) {
+    if (!p) return null;
+    for (var i = UI.widgets.length - 1; i >= 0; i--) {
+      var w = UI.widgets[i];
+      if (p.x >= w.x && p.x <= w.x + w.w && p.y >= w.y && p.y <= w.y + w.h) return w;
+    }
+    return null;
+  }
+  var uiWired = false;
+  function wireUI() {
+    if (uiWired || !uiCvs) return;
+    uiWired = true;
+    uiCvs.addEventListener("pointermove", function (e) {
+      if (!UI.screen) return;
+      var w = uiHit(uiPoint(e));
+      var id = w && w.id;
+      if (id !== UI.hot) { if (id) SFX.move(); UI.hot = id; UI.kb = false; }
+    });
+    uiCvs.addEventListener("pointerdown", function (e) {
+      if (!UI.screen) return;
+      var w = uiHit(uiPoint(e));
+      if (!w) return;
+      UI.down = w.id; UI.hot = w.id; UI.kb = false;
+      try { uiCvs.setPointerCapture(e.pointerId); } catch (err) {}
+      e.preventDefault();
+    });
+    var release = function (e) {
+      if (!UI.screen || !UI.down) { UI.down = null; return; }
+      var w = uiHit(uiPoint(e));
+      var fired = w && w.id === UI.down ? w : null;
+      UI.down = null;
+      if (fired && fired.go) { SFX.pick(); fired.go(); }
+    };
+    uiCvs.addEventListener("pointerup", release);
+    uiCvs.addEventListener("pointercancel", function () { UI.down = null; });
+    uiCvs.addEventListener("pointerleave", function () {
+      UI.down = null; UI.hot = null;
+    });
+  }
+  /* the keyboard, because a menu you cannot tab through is a menu half
+     the people who open it cannot use */
+  function uiKey(k) {
+    if (!UI.screen || !UI.widgets.length) return false;
+    if (k === "ArrowDown" || k === "ArrowRight" || k === "Tab") {
+      UI.focus = (UI.focus + 1) % UI.widgets.length; UI.kb = true; SFX.move(); return true;
+    }
+    if (k === "ArrowUp" || k === "ArrowLeft") {
+      UI.focus = (UI.focus - 1 + UI.widgets.length) % UI.widgets.length;
+      UI.kb = true; SFX.move(); return true;
+    }
+    if (k === "Enter" || k === " " || k === "Spacebar") {
+      var w = UI.widgets[UI.focus];
+      if (w && w.go) { SFX.pick(); w.go(); }
+      return true;
+    }
+    return false;
+  }
+
+  function uiPaint() {
+    if (!UI.screen || !UIX) return;
+    UIX.clearRect(0, 0, UIW, UIH);
+    UI.widgets = [];
+    UI.screen(UI.t - UI.born);
+  }
+
+  /* ------------------------------------------------------- the trimmings */
+
+  /* A DITHERED VIGNETTE, which is how a pixel screen does a spotlight.
+     A radial gradient would be a blur and a blur is the one thing this
+     whole rebuild is about not having: this is a checkerboard that gets
+     denser towards the edges, which is exactly how the machines that
+     invented this look faked a gradient out of two colours. */
+  function vignette(strength) {
+    var step = 26;
+    UIX.fillStyle = "rgba(6,10,14," + (0.44 * (strength || 1)).toFixed(2) + ")";
+    for (var y2 = 0; y2 < UIH; y2 += 2) {
+      for (var x2 = 0; x2 < UIW; x2 += 2) {
+        var dx = (x2 - UIW / 2) / (UIW / 2), dy = (y2 - UIH / 2) / (UIH / 2);
+        var d = Math.sqrt(dx * dx + dy * dy * 0.8);
+        if (d < 0.72) continue;
+        var lvl = Math.min(3, Math.floor((d - 0.72) * 6));
+        /* four dither densities: every fourth pixel, every other, three
+           in four, then solid */
+        var cell = ((x2 >> 1) & 1) + (((y2 >> 1) & 1) << 1);
+        if (lvl === 0 && cell !== 0) continue;
+        if (lvl === 1 && (cell & 1)) continue;
+        if (lvl === 2 && cell === 3) continue;
+        UIX.fillRect(x2, y2, 2, 2);
+      }
+    }
+    void step;
+  }
+
+  /* Hearts drifting up the screen. Eight of them, wrapping, at three
+     different speeds so there is a foreground and a background to them. */
+  function heartsStep(dt, tone) {
+    if (!UI.hearts.length) {
+      for (var i = 0; i < 9; i++) {
+        UI.hearts.push({ x: Math.random() * UIW, y: Math.random() * UIH,
+                         v: 8 + Math.random() * 16, s: 1 + (i % 3),
+                         w: Math.random() * 6.28 });
+      }
+    }
+    UI.hearts.forEach(function (h) {
+      h.y -= h.v * dt;
+      h.w += dt * 1.4;
+      if (h.y < -10) { h.y = UIH + 6; h.x = Math.random() * UIW; }
+      var g = glyph("♥");
+      UIX.fillStyle = h.s === 1 ? "rgba(255,120,166,.30)"
+                    : h.s === 2 ? "rgba(255,150,186,.42)" : "rgba(255,190,210,.55)";
+      var hx = Math.round(h.x + Math.sin(h.w) * 5), hy = Math.round(h.y);
+      for (var k = 0; k < g.px.length; k++) {
+        UIX.fillRect(hx + g.px[k][0] * h.s, hy + g.px[k][1] * h.s, h.s, h.s);
+      }
+    });
+    void tone;
+  }
+
+  /* The banner strip along the top: pennants on a string, waving. All
+     four of a team's colours, so the strip is that team's strip. */
+  function bunting(y2, cols, t) {
+    var n = Math.ceil(UIW / 14) + 1;
+    line(0, y2, UIW, 1, "#0d1412");
+    for (var i = 0; i < n; i++) {
+      var x2 = i * 14;
+      var sag = Math.round(Math.sin(t * 1.6 + i * 0.7) * 1.6);
+      var col = cols[i % cols.length];
+      for (var r = 0; r < 8; r++) {
+        var w = 11 - r * 1.3;
+        if (w <= 0) break;
+        box(x2 + Math.round((11 - w) / 2), y2 + 1 + r + sag, w, 1,
+            r === 0 ? lift(col, 50) : col);
+      }
+      box(x2 + 5, y2 + 9 + sag, 1, 1, "#0d1412");
+    }
+  }
+
+  /* A crest, drawn into the pixel layer rather than composited as a
+     smooth canvas: crestCanvas already draws one at any size, so it is
+     rendered small and blitted with smoothing off. */
+  var crestCache = {};
+  function pixCrest(team, x2, y2, w, h, t) {
+    var key = team.id + ":" + w + "x" + h;
+    if (!crestCache[key]) crestCache[key] = badgeCanvas(team, w, h);
+    UIX.imageSmoothingEnabled = false;
+    x2 = Math.round(x2); y2 = Math.round(y2);
+    UIX.drawImage(crestCache[key], x2, y2, w, h);
+
+    /* THE SHIMMER. A bright diagonal band travelling across the badge
+       every few seconds — three pixels wide, hard edges, clipped to the
+       crest. It is the one thing that stops a badge being a sticker,
+       and it is the pixel version of the sweep a polished surface makes
+       rather than a CSS gradient pretending to be one. */
+    if (t === undefined) return;
+    var cyc = (t * 0.42) % 3;
+    if (cyc > 1) return;
+    var sweep = -h + cyc * (w + h * 2);
+    UIX.save();
+    UIX.beginPath();
+    UIX.rect(x2, y2, w, h);
+    UIX.clip();
+    UIX.fillStyle = "rgba(255,255,255,.42)";
+    for (var r = 0; r < h; r++) {
+      var sx = x2 + Math.round(sweep + r);
+      UIX.fillRect(sx, y2 + r, 2, 1);
+      UIX.fillRect(sx + 4, y2 + r, 1, 1);
+    }
+    UIX.restore();
   }
 
   /* =======================================================================
@@ -4915,101 +5657,290 @@ window.OuissyCup = (function () {
     });
   }
 
-  /* ------------------------------------------------------------ carousel */
+  /* =======================================================================
+     THE HERO
+
+     One character, big, lit, and doing something. The old team select
+     put four of them eighty units away in the background behind a card,
+     which is a team photograph seen from the car park. This is a poster:
+     the captain front and centre, the other three arranged behind them
+     and much further off, and nobody standing still.
+     ======================================================================= */
+  var hero = { p: null, next: 0, idle: 0 };
+  /* what a character does while she reads about them. Weighted towards
+     doing nothing, because a hero who celebrates every two seconds is a
+     hero who looks broken. */
+  var FLOURISH = [
+    { a: "armsUp", t: 1.5 }, { a: "heart", t: 1.6 }, { a: "knee", t: 1.7 },
+    { a: "kick", t: 0.34 }, { a: "planeRun", t: 1.4 }, { a: "ready", t: 1.2 },
+  ];
+
+  function heroStage(teamId, ndc) {
+    if (!scene) return null;
+    lineUp(teamId, MENU_VENUE);
+    CAMHERO.ndc = ndc === undefined ? 0.30 : ndc;
+    var mine = G.players.filter(function (p) { return p.team === 0; });
+    if (!mine.length) return null;
+    var cap = mine.filter(function (p) { return p.captain; })[0] ||
+              mine.filter(function (p) { return !p.gk; })[0] || mine[0];
+    var face = camSide() > 0 ? Math.PI : 0;
+
+    /* the captain, on the spot, facing the camera */
+    cap.x = PITCH.cx; cap.y = PITCH.cy;
+    cap.dir = face; cap.vx = cap.vy = 0; cap.anim = null;
+
+    /* and the rest, well behind and spread, so they read as depth
+       rather than as four people queueing */
+    var others = mine.filter(function (p) { return p !== cap; });
+    others.forEach(function (p, i) {
+      p.x = PITCH.cx + 34 + (i % 2) * 11;
+      p.y = PITCH.cy + (i - (others.length - 1) / 2) * 26 - 6;
+      p.dir = face; p.vx = p.vy = 0; p.anim = null;
+    });
+    /* the ball at the captain's feet, because a footballer without one
+       is a person standing on some grass */
+    G.ball.x = cap.x + 5; G.ball.y = cap.y + 7; G.ball.z = 0;
+    G.ball.vx = G.ball.vy = G.ball.vz = 0; G.ball.owner = null;
+
+    hero.p = cap; hero.next = 2.2 + Math.random() * 2;
+    setCamMode("hero", cap, 0);
+    placeCamera(0, true);
+    return cap;
+  }
+
+  /* The performance. It runs off the same pose machine the match uses,
+     so a celebration on a menu is the celebration, not a second copy of
+     one that can drift out of step with it. */
+  function heroStep(dt) {
+    if (!hero.p || !G) return;
+    var p = hero.p;
+    animStep(p, dt);
+    G.players.forEach(function (q) { if (q !== p) animStep(q, dt); });
+    hero.next -= dt;
+    if (hero.next <= 0) {
+      var f = FLOURISH[Math.floor(Math.random() * FLOURISH.length)];
+      setAnim(p, f.a, f.t);
+      if (f.a === "kick") {
+        /* and if they kick it, the ball goes — then comes back, because
+           a menu cannot afford to lose it */
+        G.ball.vx = (Math.random() - 0.5) * 40;
+        G.ball.vy = -70;
+        G.ball.vz = 44;
+        setTimeout(function () {
+          if (!G || !hero.p) return;
+          G.ball.x = hero.p.x + 5; G.ball.y = hero.p.y + 7; G.ball.z = 0;
+          G.ball.vx = G.ball.vy = G.ball.vz = 0;
+        }, 900);
+      }
+      hero.next = 3.4 + Math.random() * 3.2;
+    }
+    /* the ball is a free body even here, so it falls and settles */
+    if (G.ball.vz || G.ball.z > 0) {
+      G.ball.vz -= TUNE.gravity * dt;
+      G.ball.z = Math.max(0, G.ball.z + G.ball.vz * dt);
+      if (G.ball.z <= 0) G.ball.vz = 0;
+    }
+    G.ball.x += G.ball.vx * dt; G.ball.y += G.ball.vy * dt;
+    G.ball.vx *= Math.pow(0.4, dt); G.ball.vy *= Math.pow(0.4, dt);
+  }
+
+  /* =======================================================================
+     TEAM SELECT, REBUILT
+
+     The first screen done in the new language, and the one the rest are
+     measured against. Everything on it is drawn at the pitch's own
+     resolution: the frame, the bevels, the bars, the crest, the arrows
+     and every letter.
+     ======================================================================= */
+  var selAnim = { team: null, at: 0, rating: 0, bars: [0, 0, 0, 0] };
+
   function teamSelect(mode) {
     var list = allTeams();
     if (!list.length) return titleMenu();
     carAt = ((carAt % list.length) + list.length) % list.length;
     var t = list[carAt];
-    var st = teamStats(t);
-    var sq = squadOf(t);
-    var cap = sq.filter(function (m) { return m.captain; })[0] || sq[1] || sq[0];
-    var capR = cap ? ROSTER[cap.id] : null;
-    /* the side on the card is the side standing on the grass behind it */
+    if (selAnim.team !== t.id) {
+      selAnim.team = t.id; selAnim.at = UI.t;
+      selAnim.rating = 0; selAnim.bars = [0, 0, 0, 0];
+    }
     patchTeamLookup();
-    lineUp(t.id);
+    heroStage(t.id, 0.32);
+    menuMusic(true);
 
-    overlay(mode === "quick" ? "VOTRE FACULT\u00c9"
-          : mode === "opp" ? "CONTRE QUI ?" : "LES \u00c9QUIPES", "", "", null, {
-      kicker: (carAt + 1) + " / " + list.length,
-      /* the same off-centre placing as the title, for the same reason:
-         the side on the card is standing right behind it */
-      tone: "select",
-      html: '<div class="cup-menu">' +
-        '<div class="cup-car">' +
-        '<button class="cup-car-arrow" data-go="prev">&#9664;</button>' +
-        '<div class="cup-tcard">' +
-          '<div class="cup-tcard-top">' +
-            '<span class="cup-tcard-badge" data-team="' + t.id + '"></span>' +
-            '<span class="cup-tcard-name"><h4>' + t.name + "</h4>" +
-            "<span>" + (t.sub ? t.sub + " \u00b7 " : "") +
-            (t.custom ? "your own squad" : "rated " + teamRating(t)) +
-            "</span></span>" +
-          "</div>" +
-          '<div class="cup-tcard-body">' +
-            '<ol class="cup-tcard-squad">' + sq.map(function (m) {
-              return "<li><em>" + (ROLE_NAME[m.role] || "") + "</em> " +
-                     (m.captain ? "<b>" + m.name + "</b>" : m.name) + "</li>";
-            }).join("") + "</ol>" +
-            barsHtml(st) +
-          "</div>" +
-          (capR && capR.super ?
-            '<p class="cup-super"><b style="background:' + capR.super.colour + '">\u2665 ' +
-            capR.super.name + "</b> \u2014 " + capR.super.note + "</p>" : "") +
-        "</div>" +
-        '<button class="cup-car-arrow" data-go="next">&#9654;</button>' +
-        "</div>" +
-        '<div class="cup-btnrow">' +
-        '<button class="cup-menu-b primary" data-go="use">' +
-          (mode === "quick" ? "JOUER AVEC EUX"
-           : mode === "opp" ? "LES AFFRONTER" : "CHOISIR") + "</button>" +
-        '<button class="cup-menu-b" data-go="build">BUILD YOUR OWN</button>' +
-        (t.custom ? '<button class="cup-menu-b" data-go="del">DELETE</button>' : "") +
-        '<button class="cup-menu-b" data-go="back">BACK</button>' +
-        "</div></div>",
-    });
-    animateBars();
-    wireMenu({
-      /* the arrows get their own, quieter sound: stepping through six
-         faculties with the same click the buttons use makes the whole
-         carousel sound like six decisions */
-      prev: function () { SFX.move(); carAt--; teamSelect(mode); },
-      next: function () { SFX.move(); carAt++; teamSelect(mode); },
-      use: function () {
-        patchTeamLookup();
-        if (mode === "quick") {
-          /* a friendly is two choices: her side, then theirs. The second
-             pass through the same carousel picks the opponent, and the
-             match is played at whichever campus THEY are at home on. */
-          run.myTeam = t.id;
-          carAt = (carAt + 1) % list.length;
-          return teamSelect("opp");
-        }
-        if (mode === "opp") {
-          var them = t;
-          run.quick = true;
-          run.fixture = { mine: run.myTeam, theirs: them.id,
-            venue: them.venue || "rabat",
-            round: { round: "MATCH AMICAL", skill: 0.58, venue: them.venue || "rabat",
-                     before: "A friendly, on their grass.",
-                     won: "Won it. It counts for nothing and it counts for everything.",
-                     lost: "Lost a friendly. It is called a friendly for a reason." } };
-          run.round = 0;
-          hideOverlay(); roundCard();
-          return;
-        }
-        run.myTeam = t.id;
-        hideOverlay();
-        titleMenu();
-      },
-      build: function () { openBuilder(mode); },
-      del: function () {
-        saveCustom(loadCustom().filter(function (c) { return c.id !== t.id; }));
-        carAt = 0; teamSelect(mode);
-      },
-      back: function () { titleMenu(); },
+    var accent = (t.kit && t.kit.shirt) || "#c1272d";
+    var trim = (t.kit && t.kit.trim) || "#e8b23c";
+    var cols = [accent, trim, (t.kit && t.kit.shorts) || "#f6efdd", lift(accent, -40)];
+
+    uiOpen("teams", function (age) {
+      var st = teamStats(t);
+      var sq = squadOf(t);
+      var cap = sq.filter(function (m) { return m.captain; })[0] || sq[1] || sq[0];
+      var capR = cap ? ROSTER[cap.id] : null;
+      var dt = 1 / 60;
+
+      heartsStep(dt, accent);
+      vignette(0.95);
+      bunting(0, cols, UI.t);
+
+      /* ---- the title, as a logo rather than as a heading ---- */
+      var tp = slideIn(age, 0, -26);
+      var head = mode === "quick" ? "VOTRE FACULTÉ"
+               : mode === "opp" ? "CONTRE QUI ?" : "LES ÉQUIPES";
+      drawText(Math.round(UIW / 2), head, 14 + tp.off,
+               { align: "center", scale: 2, colour: "#ffffff",
+                 outline: "#0d1412", outlineW: 2,
+                 shadow: accent, shadowX: 0, shadowY: 4 });
+      drawText(Math.round(UIW / 2), (carAt + 1) + " / " + list.length, 32 + tp.off,
+               { align: "center", colour: trim, outline: "#0d1412" });
+
+      /* ---- the panel: who they are, what they are, who plays ---- */
+      var pn = slideIn(age, 0.06, -70);
+      var px2 = 10 - pn.off, py = 44, pw = 168, ph2 = UIH - 44 - 66;
+      panel(px2, py, pw, ph2, accent,
+            { fill: "#16222a", title: t.short || "TEAM", titleInk: "#0d1412" });
+
+      var ix = px2 + 10, iy = py + 12;
+      pixCrest(t, ix, iy, 34, 23, UI.t);
+      drawText(ix + 40, t.name, iy + 1, { colour: "#ffffff" });
+      drawText(ix + 40, t.sub || (t.custom ? "your own squad" : ""), iy + 11,
+               { colour: "#8fa6b4" });
+
+      /* The rating counts up rather than appearing — off the screen's
+         own age, not off a per-frame lerp. A lerp is frame-rate
+         dependent: the same count takes a third of a second at sixty
+         frames and four seconds at six, so on a cold phone the number
+         crawls up while she is already reading the rest of the card,
+         and it never quite lands on the real value at all. */
+      var want = teamRating(t);
+      var ru = clamp((age - 0.18) / 0.65, 0, 1);
+      selAnim.rating = want * (1 - Math.pow(1 - ru, 3));
+      if (ru >= 1) selAnim.rating = want;
+      /* The number is drawn at three times size, so the label cannot sit
+         at a guessed offset from it — two digits is 33 pixels and three
+         is 51, and the label was parked at 30 and printed straight
+         through the middle of it. Measure the number and put the words
+         after it. */
+      var rtxt = String(Math.round(selAnim.rating));
+      drawText(ix, rtxt, iy + 26,
+               { scale: 3, colour: trim, outline: "#0d1412", outlineW: 1 });
+      var rw = textWidth(rtxt, 3, 1) + 7;
+      drawText(ix + rw, "TEAM", iy + 28, { colour: "#8fa6b4" });
+      drawText(ix + rw, "RATING", iy + 38, { colour: "#8fa6b4" });
+
+      /* ---- the bars: they sweep, and they overshoot ---- */
+      var rows = [["SPEED", st.speed, "#5fd6cc"], ["POWER", st.power, "#e8764a"],
+                  ["SKILL", st.skill, "#e8a63c"], ["DEF", st.defence, "#7f9ad6"]];
+      var by = iy + 52;
+      rows.forEach(function (r, i) {
+        var target = r[1] / 100;
+        var d2 = clamp((age - 0.24 - i * 0.07) / 0.42, 0, 1);
+        var e = d2 >= 1 ? 1 : 1 - Math.pow(1 - d2, 3);
+        /* the overshoot: it goes past and settles back, which is the
+           difference between a bar arriving and a bar being set */
+        var over = d2 < 1 ? Math.sin(d2 * Math.PI) * 0.06 : 0;
+        selAnim.bars[i] = target * e + over;
+        statBar(ix + 34, by + i * 11, 96, 7, selAnim.bars[i], r[2], r[0],
+                d2 > 0.9 ? r[1] : "");
+      });
+
+      /* ---- the squad, secondary and small ---- */
+      var sy = by + 4 * 11 + 8;
+      line(ix, sy - 3, pw - 20, 1, "#0d1412");
+      sq.forEach(function (m, i) {
+        var s2 = slideIn(age, 0.3 + i * 0.05, -20);
+        var isCap = !!m.captain;
+        drawText(ix - s2.off, ROLE_NAME[m.role] || "", sy + 2 + i * 10,
+                 { colour: "#6e8694" });
+        drawText(ix + 24 - s2.off, m.name, sy + 2 + i * 10,
+                 { colour: isCap ? trim : "#d6e2ea" });
+        if (isCap) drawText(ix + 24 + textWidth(m.name, 1, 1) + 4 - s2.off,
+                            "★", sy + 2 + i * 10, { colour: trim });
+      });
+
+      /* ---- the arrows: big, and they are the whole side of the screen ---- */
+      var ay = Math.round(UIH / 2) - 14;
+      if (uiButton("prev", 186, ay, 22, 30, "◂",
+                   { tone: lift(accent, -30), scale: 2,
+                     go: function () { carAt--; teamSelect(mode); } }).hover) { /* */ }
+      uiButton("next", UIW - 32, ay, 22, 30, "▸",
+               { tone: lift(accent, -30), scale: 2,
+                 go: function () { carAt++; teamSelect(mode); } });
+
+      /* ---- the captain's super, on a plate of its own ---- */
+      if (capR && capR.super) {
+        var sp = slideIn(age, 0.36, 40);
+        var spw = UIW - 206;
+        var spy = UIH - 70 + sp.off;
+        /* TWO LINES, AND THE SECOND ONE IS CUT TO FIT.
+
+           On one line the name and the description came to more than
+           the plate is wide, so the sentence simply ran off the right
+           edge of the screen mid-word. The name gets its own line and
+           the note gets the one under it, trimmed on a word boundary
+           with an ellipsis if the character's description is a long
+           one — nothing is allowed to leave the plate. */
+        panel(196, spy, spw, 30, capR.super.colour, { fill: "#141c22" });
+        drawText(206, "♥", spy + 6, { colour: capR.super.colour });
+        drawText(216, capR.super.name, spy + 6,
+                 { colour: "#ffffff", shadow: "rgba(0,0,0,.6)" });
+        drawText(206, fitText(capR.super.note || "", spw - 22), spy + 17,
+                 { colour: "#93a8b6" });
+      }
+
+      /* ---- the actions. The primary one is gold and nothing else is ---- */
+      var bp = slideIn(age, 0.42, 46);
+      var byy = UIH - 34 + bp.off;
+      uiButton("use", 10, byy, 118, 26,
+               mode === "quick" ? "JOUER" : mode === "opp" ? "LES AFFRONTER" : "CHOISIR",
+               { tone: "#e0a81e", ink: "#2a1c06", scale: 2, on: true,
+                 go: function () { chooseTeam(mode, t, list); } });
+      uiButton("build", 136, byy, 116, 26, "BUILD YOUR OWN",
+               { tone: "#2f5d72",
+                 go: function () { uiClose(); openBuilder(mode); } });
+      var bx = 260;
+      if (t.custom) {
+        uiButton("del", bx, byy, 60, 26, "DELETE",
+                 { tone: "#7a2b34",
+                   go: function () {
+                     saveCustom(loadCustom().filter(function (c) { return c.id !== t.id; }));
+                     carAt = 0; teamSelect(mode);
+                   } });
+        bx += 68;
+      }
+      uiButton("back", bx, byy, 60, 26, "BACK",
+               { tone: "#3b4a54", go: function () { uiClose(); titleMenu(); } });
     });
   }
+
+  /* what CHOISIR does, which depends on why she is looking at teams */
+  function chooseTeam(mode, t, list) {
+    patchTeamLookup();
+    if (mode === "quick") {
+      run.myTeam = t.id;
+      carAt = (carAt + 1) % list.length;
+      return teamSelect("opp");
+    }
+    if (mode === "opp") {
+      run.quick = true;
+      run.fixture = { mine: run.myTeam, theirs: t.id,
+        venue: t.venue || "rabat",
+        round: { round: "MATCH AMICAL", skill: 0.58, venue: t.venue || "rabat",
+                 before: "A friendly, on their grass.",
+                 won: "Won it. It counts for nothing and it counts for everything.",
+                 lost: "Lost a friendly. It is called a friendly for a reason." } };
+      run.round = 0;
+      uiClose(); roundCard();
+      return;
+    }
+    run.myTeam = t.id;
+    uiClose(); titleMenu();
+  }
+
+  /* The DOM carousel that used to live here has gone. It was a cream
+     card with the four players eighty units away behind it; what
+     replaced it is above, and it is drawn at the pitch's own resolution
+     with the captain front and centre. Nothing referenced it but the
+     button that opened it. */
 
   /* ------------------------------------------------------------- builder */
   var SWATCHES = ["#c1272d", "#1d6b6e", "#e8a63c", "#7a4fb0", "#2f7fc4",
@@ -5442,6 +6373,13 @@ window.OuissyCup = (function () {
     if (!lastT) lastT = now;
     var dt = Math.min(0.05, (now - lastT) / 1000);
     lastT = now;
+    /* The menus run on real time, not on the match's. `dt` below gets
+       scaled by the slow-motion, and a UI that slowed down with a goal
+       replay would be a UI with a bug in it. */
+    var raw = dt;
+    /* The UI clock runs whether a menu is up or not, because the crowd
+       sways off it during a match as well. */
+    UI.t += raw;
     /* SLOW MOTION. The goal stretches time and then lets it go. It is
        applied to the accumulator rather than to the step, so the
        physics still run at a fixed tick and nothing changes behaviour
@@ -5467,9 +6405,13 @@ window.OuissyCup = (function () {
     var guard = 0;
     while (acc >= FIXED && guard++ < 6) { step(FIXED); acc -= FIXED; }
     if (acc > 0.4) acc = 0;
+    /* a menu is not a still picture: the hero performs, and the UI is
+       repainted every frame because almost everything on it is moving */
+    if (UI.on) heroStep(raw);
     syncRing();
     draw(dt);
     syncHud();
+    if (UI.on) uiPaint(raw);
   }
 
   var wired = false;
@@ -5480,6 +6422,12 @@ window.OuissyCup = (function () {
     document.addEventListener("keydown", function (e) {
       if (!playing) return;
       var k = e.key;
+      /* a menu takes the keyboard while it is up */
+      if (UI.on) {
+        if (k === "Escape") { uiClose(); titleMenu(); e.preventDefault(); return; }
+        if (uiKey(k)) { e.preventDefault(); return; }
+        return;
+      }
       if (k === "ArrowLeft" || k === "a" || k === "A") IN.keys.left = true;
       else if (k === "ArrowRight" || k === "d" || k === "D") IN.keys.right = true;
       else if (k === "ArrowUp" || k === "w" || k === "W") IN.keys.up = true;
@@ -5720,6 +6668,32 @@ window.OuissyCup = (function () {
     setClock: function (c) { G.clock = c; },
     setScore: function (a, b) { G.score[0] = a; G.score[1] = b; },
     round: function () { return run.round; },
+    /* the pixel UI, so a harness can see what it registered and which
+       widget is lit rather than having to guess from a photograph */
+    ui: function () {
+      return { on: UI.on, name: UI.name, hot: UI.hot, down: UI.down,
+               carAt: carAt, t: +UI.t.toFixed(2),
+               /* how far into its own entrance the screen is. Wall time
+                  is no guide: the frame loop clamps dt at 50ms, so a
+                  machine rendering at six frames a second advances this
+                  at a tenth of real time and a harness that sleeps for
+                  a second and a half photographs the animation. */
+               age: +(UI.t - UI.born).toFixed(2),
+               size: [UIW, UIH],
+               widgets: UI.widgets.map(function (w) {
+                 return { id: w.id, x: w.x, y: w.y, w: w.w, h: w.h };
+               }) };
+    },
+    teamStats: function (id) {
+      var t = teamById(id);
+      return t ? { stats: teamStats(t), rating: teamRating(t),
+                   squad: squadOf(t).map(function (m) { return m.name; }) } : null;
+    },
+    selAnim: function () { return JSON.parse(JSON.stringify(selAnim)); },
+    hero: function () {
+      return hero.p ? { name: hero.p.name, x: hero.p.x, y: hero.p.y,
+                        anim: hero.p.anim && hero.p.anim.state } : null;
+    },
 
     /* ---- the Heart and the Super ------------------------------------
        A super needs three things lined up that never line up on demand:

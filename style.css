@@ -7579,6 +7579,20 @@ img{-webkit-user-drag:none; user-select:none;}
 #cup-canvas.px{
   image-rendering:pixelated; image-rendering:crisp-edges;
 }
+/* THE PIXEL UI LAYER.
+
+   The menus are drawn into this at the same resolution as the pitch and
+   blown up the same way. It carries no CSS appearance of its own at all
+   — no radius, no shadow, no gradient — because everything it shows is
+   painted pixel by pixel inside it. `touch-action:none` because it
+   handles its own pointers, and it only takes them while a menu is up. */
+#cup-ui{
+  position:absolute; inset:0; width:100%; height:100%; display:block;
+  z-index:7; pointer-events:none; touch-action:none;
+  image-rendering:pixelated; image-rendering:crisp-edges;
+}
+#cup-ui.on{pointer-events:auto;}
+#cup-ui[hidden]{display:none;}
 
 /* ---------- the scoreboard ----------
    Broadcast furniture: the score in the middle of the top edge with the
