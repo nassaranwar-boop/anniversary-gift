@@ -166,14 +166,22 @@ window.OuissyCup = (function () {
                             //   about direction, not about momentum
     turnEase: 15,           // how fast the sprite's facing catches up
     turnCost: 3.2,          // pace shed for turning hard at speed
+    switchHold: 0.65,       // she keeps a player at least this long
+    switchGap: 26,          // and a swap needs this much of a gap
 
     /* --- the ball --- */
     ballDrag: 0.86,         // per second, ground friction
     ballAirDrag: 0.30,      // in the air it keeps going
     gravity: 300,           // px/sec^2 for lofted balls
     bounce: 0.46,           // how much of the drop comes back
-    dribbleReach: 9,        // how close a foot has to be to be on the ball
+    dribbleReach: 9,        // how close a loose ball has to be to be won
+    keepReach: 17,          // and how far the carrier can be shoved off it
+                            //   before it counts as lost. Bigger than the
+                            //   reach above on purpose: that asymmetry IS
+                            //   shielding, and without it being crowded
+                            //   loses you the ball for nothing
     dribblePush: 26,        // how far in front the carrier nudges it
+    settle: 0.28,           // after winning it, nobody can touch it
     controlLock: 0.20,      // seconds after a touch before anyone else can
                             //   take it — without this two players standing
                             //   on the ball trade it sixty times a second
@@ -233,20 +241,12 @@ window.OuissyCup = (function () {
      an opponent who simply runs faster than you is not harder, it is
      unfair, and the difference is obvious within about ten seconds.
      ======================================================================= */
-  var CUP = [
-    { id: "ger", round: "QUARTER-FINAL", skill: 0.44,
-      before: "Germany first. He said they always come first.",
-      won: "One down. He is somewhere behind the goal with his hands on his head.",
-      lost: "Germany, then. It happens to better teams than us." },
-    { id: "bra", round: "SEMI-FINAL", skill: 0.66,
-      before: "Brazil in the semi. Nobody expected you to still be here.",
-      won: "Into the final. The whole stand is standing up.",
-      lost: "Brazil were better. Nobody who watched that is going to say otherwise." },
-    { id: "anw", round: "THE FINAL", skill: 0.80,
-      before: "And the final is against him. Of course it is.",
-      won: "You beat him. In front of everybody.",
-      lost: "He beat you, and he has the decency to look sorry about it." },
-  ];
+  /* The rounds, the opponents and the campuses all come out of
+     cup.config.js. The draw is fixed so that the final is the derby —
+     his faculty against hers — because that is the story the chapter is
+     telling, and a random bracket would tell a different one. */
+  var CUP = cfg("ROUNDS", []);
+
 
   /* =======================================================================
      5. THE CAST, AS THINGS IN A WORLD
@@ -311,6 +311,9 @@ window.OuissyCup = (function () {
      hold both ideas in its head at once.
      ======================================================================= */
   var THREE = null, renderer = null, scene = null, camera = null, goals = [];
+  /* what a venue changes when the fixture moves to another campus */
+  var VEN = { sky: null, ground: null, hemi: null, amb: null,
+              stands: [], seats: [], masts: [], lamps: [], cur: null };
   var sun = null, pitchGroup = null, rigs = [], ballMesh = null, ballGroup = null;
   var shadowsOn = true;
 
@@ -382,7 +385,8 @@ window.OuissyCup = (function () {
        scuffed where everybody has been standing. */
     for (var i = 0; i < H; i++) {
       var band = Math.floor(i / (11 * TPX)) % 2;
-      x.fillStyle = band ? "#3f9b46" : "#4bab52";
+      x.fillStyle = band ? (VEN.cur && VEN.cur.stripe || "#3f9b46")
+                         : (VEN.cur && VEN.cur.grass || "#4bab52");
       x.fillRect(0, i, W, 1);
     }
     for (var n = 0; n < 5200; n++) {
@@ -497,14 +501,22 @@ window.OuissyCup = (function () {
     return c.c;
   }
 
-  function skyTexture() {
+  function skyTexture(v) {
+    v = v || {};
     var c = mkCanvas(8, 256);
     var g = c.x.createLinearGradient(0, 0, 0, 256);
-    g.addColorStop(0, "#2f7fc4");
-    g.addColorStop(0.55, "#8fc9e8");
-    g.addColorStop(1, "#dfeef5");
+    g.addColorStop(0, v.sky || "#2f7fc4");
+    g.addColorStop(0.62, mixHex(v.sky || "#2f7fc4", v.horizon || "#dfeef5", 0.55));
+    g.addColorStop(1, v.horizon || "#dfeef5");
     c.x.fillStyle = g; c.x.fillRect(0, 0, 8, 256);
     return c.c;
+  }
+  function mixHex(a, b, t) {
+    var A = parseInt(a.slice(1), 16), B = parseInt(b.slice(1), 16);
+    var r = Math.round((((A >> 16) & 255) * (1 - t)) + (((B >> 16) & 255) * t));
+    var g2 = Math.round(((((A >> 8) & 255)) * (1 - t)) + ((((B >> 8) & 255)) * t));
+    var b2 = Math.round(((A & 255) * (1 - t)) + ((B & 255) * t));
+    return "#" + ((1 << 24) + (r << 16) + (g2 << 8) + b2).toString(16).slice(1);
   }
 
   /* ---- materials ---- */
@@ -545,6 +557,7 @@ window.OuissyCup = (function () {
       new THREE.MeshBasicMaterial({ map: tex(skyTexture()), side: THREE.BackSide, fog: false })
     );
     scene.add(sky);
+    VEN.sky = sky;
 
     /* the grass the stadium is standing on, beyond the pitch itself */
     var around = new THREE.Mesh(
@@ -570,6 +583,7 @@ window.OuissyCup = (function () {
     ground.rotation.x = -Math.PI / 2;
     ground.receiveShadow = true;
     pitchGroup.add(ground);
+    VEN.ground = ground;
 
     buildGoal(0);
     buildGoal(1);
@@ -579,8 +593,9 @@ window.OuissyCup = (function () {
     /* ---- light. A cartoon wants one strong key and a lot of bounce:
        the shadows are what put the players ON the grass, and the fill is
        what stops the shaded side of a head going muddy. ---- */
-    scene.add(new THREE.HemisphereLight(new THREE.Color("#cfe9ff"),
-                                        new THREE.Color("#2f6b34"), 1.15));
+    VEN.hemi = new THREE.HemisphereLight(new THREE.Color("#cfe9ff"),
+                                         new THREE.Color("#2f6b34"), 1.15);
+    scene.add(VEN.hemi);
     sun = new THREE.DirectionalLight(new THREE.Color("#fff6e0"), 2.1);
     sun.position.set(-120, 240, 150);
     sun.castShadow = true;
@@ -597,7 +612,82 @@ window.OuissyCup = (function () {
     sun.shadow.normalBias = 0.6;
     scene.add(sun);
     scene.add(sun.target);
-    scene.add(new THREE.AmbientLight(new THREE.Color("#ffffff"), 0.35));
+    VEN.amb = new THREE.AmbientLight(new THREE.Color("#ffffff"), 0.35);
+    scene.add(VEN.amb);
+  }
+
+  /* =======================================================================
+     THE VENUE
+
+     Six faculties, five campuses, and every fixture played at one of
+     them. A venue is an hour of the day more than it is a place: the
+     sky, the key light, how much bounce there is, the turf and the
+     concrete all move together, and that is enough to make the same
+     pitch read as Marrakech at half six and Casablanca at eleven.
+
+     The floodlit one is the important one. It is the final, and the
+     derby, and it needs far more ambient than a daylight match or
+     every face on the pitch goes to silhouette and the game stops
+     being readable — which is the whole trap with night lighting.
+     ======================================================================= */
+  function venueById(id) {
+    var list = cfg("VENUES", []);
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return list[0] || null;
+  }
+
+  function applyVenue(id) {
+    var v = venueById(id);
+    if (!v || !scene) return;
+    VEN.cur = v;
+
+    scene.background = new THREE.Color(v.horizon || "#8fc9e8");
+    if (scene.fog) {
+      scene.fog.color.set(v.horizon || "#a8d6ea");
+      if (v.fog) { scene.fog.near = v.fog[0]; scene.fog.far = v.fog[1]; }
+    }
+    if (VEN.sky) {
+      if (VEN.sky.material.map) VEN.sky.material.map.dispose();
+      VEN.sky.material.map = tex(skyTexture(v));
+      VEN.sky.material.needsUpdate = true;
+    }
+    if (sun) {
+      sun.color.set(v.sun || "#fff6e0");
+      sun.intensity = v.sunStrength || 2.1;
+    }
+    if (VEN.hemi) {
+      VEN.hemi.color.set(mixHex(v.sky || "#cfe9ff", "#ffffff", 0.35));
+      VEN.hemi.groundColor.set(v.stripe || "#2f6b34");
+      VEN.hemi.intensity = v.floodlit ? 0.75 : 1.15;
+    }
+    if (VEN.amb) VEN.amb.intensity = v.ambient || 0.35;
+
+    /* the turf is baked into a texture, so a new campus means a new one.
+       Once per fixture, which is nothing. */
+    if (VEN.ground) {
+      if (VEN.ground.material.map) VEN.ground.material.map.dispose();
+      var pt = tex(pitchTexture());
+      pt.center.set(0.5, 0.5); pt.rotation = Math.PI / 2;
+      VEN.ground.material.map = pt;
+      VEN.ground.material.needsUpdate = true;
+    }
+    VEN.stands.forEach(function (m) { if (m.material.color) m.material.color.set(v.stand || "#5b6570"); });
+    /* the crowd goes darker at night and brighter in the sun, which is
+       what stops a night stand reading as a black wall */
+    var seatTone = v.seats === "warm" ? "#c8a878" : v.seats === "bright" ? "#ffffff" : "#e8eef2";
+    VEN.seats.forEach(function (m) { if (m.material.color) m.material.color.set(seatTone); });
+    /* floodlights only burn when the fixture needs them */
+    VEN.lamps.forEach(function (l) {
+      l.material.color.set(v.floodlit ? "#fffbe8" : "#7e8894");
+    });
+    /* Under lights the grass goes cooler and a shade down, and the key
+       light comes from above rather than across. Left at daylight
+       values a night match is simply a dark sky over a sunny pitch,
+       which reads as a mistake rather than as an evening. */
+    if (VEN.ground && VEN.ground.material.color) {
+      VEN.ground.material.color.set(v.floodlit ? "#cfe0e8" : "#ffffff");
+    }
+    VEN.masts.forEach(function (m) { m.visible = true; });
   }
 
   function buildGoal(end) {
@@ -709,6 +799,8 @@ window.OuissyCup = (function () {
       if (sd.axis === "z") grp.position.set(0, 0, sd.sign * sd.out);
       else grp.position.set(sd.sign * sd.out, 0, 0);
       pitchGroup.add(grp);
+      VEN.stands.push(kerb, roof);
+      VEN.seats.push(rake);
     });
 
     /* four floodlights, one per corner, because a stadium at this hour
@@ -726,9 +818,11 @@ window.OuissyCup = (function () {
           new THREE.MeshBasicMaterial({ color: new THREE.Color("#fff7d8") }));
         lamp.position.set((a - 1) * 7, 98 + (b2 ? 3.2 : -3.2), 1.9);
         m.add(lamp);
+        VEN.lamps.push(lamp);
       }
       m.position.set(c[0] * (fullH / 2 + 46), 0, c[1] * (fullW / 2 + 40));
       pitchGroup.add(m);
+      VEN.masts.push(m);
     });
   }
 
@@ -1266,11 +1360,15 @@ window.OuissyCup = (function () {
      attackDir which needs G.half */
   function attackDirSafe(teamIdx) { return teamIdx === 0 ? -Math.PI / 2 : Math.PI / 2; }
 
-  function newMatch(roundIdx) {
-    var round = CUP[roundIdx];
+  function newMatch(roundIdx, opts) {
+    opts = opts || {};
+    var round = (opts && opts.round) || CUP[roundIdx] || CUP[0] ||
+                { skill: 0.5, round: "MATCH", venue: "rabat" };
     var g = {
       roundIdx: roundIdx, round: round,
-      ids: ["mar", round.id],
+      ids: [(opts && opts.mine) || run.myTeam || "fmpm",
+            (opts && opts.theirs) || round.id],
+      venue: (opts && opts.venue) || round.venue || "rabat",
       score: [0, 0], half: 1, clock: 0,
       state: "kickoff", stateT: 0, msg: "",
       players: [], ball: { x: PITCH.cx, y: PITCH.cy, z: 0, vx: 0, vy: 0, vz: 0,
@@ -1324,16 +1422,44 @@ window.OuissyCup = (function () {
      teammate drifted a pixel closer to the ball than the carrier's own
      centre point.
      ======================================================================= */
-  function pickControlled(force) {
+  var switchT = 0;
+  function pickControlled(force, dt) {
+    switchT += dt || 0;
     var mine = G.players.filter(function (p) { return p.team === 0 && !p.gk; });
+    if (!mine.length) return;
+
+    /* if one of hers has the ball, that IS the one she is driving —
+       no distance test, no cooldown, no argument */
+    if (G.ball.owner && G.ball.owner.team === 0 && !G.ball.owner.gk) {
+      if (G.controlled !== G.ball.owner) { G.controlled = G.ball.owner; switchT = 0; }
+      return;
+    }
+    /* and it never switches away while she is carrying it */
     if (!force && G.controlled && G.ball.owner === G.controlled) return;
+
     var best = null, bd = 1e9;
     mine.forEach(function (p) {
       var d = dist(p, G.ball);
       if (d < bd) { bd = d; best = p; }
     });
-    if (G.ball.owner && G.ball.owner.team === 0 && !G.ball.owner.gk) best = G.ball.owner;
-    if (best && best !== G.controlled) G.controlled = best;
+    if (!best) return;
+    if (force || !G.controlled) { G.controlled = best; switchT = 0; return; }
+    if (best === G.controlled) return;
+
+    /* HYSTERESIS, AND A MINIMUM STAY.
+
+       Picking the nearest player every frame switched control five
+       hundred and forty-seven times in a hundred-second match —
+       measured — which is about five times a second. Nobody can play
+       that: the moment you start running somewhere, you are somebody
+       else standing somewhere different. So a swap now needs the new
+       candidate to be properly closer, not a pixel closer, and she
+       gets to keep whoever she has for a beat first. */
+    if (switchT < TUNE.switchHold) return;
+    var mineD = dist(G.controlled, G.ball);
+    if (bd > mineD - TUNE.switchGap) return;
+    G.controlled = best;
+    switchT = 0;
   }
 
   /* =======================================================================
@@ -1459,29 +1585,57 @@ window.OuissyCup = (function () {
     b.y = from.y + Math.sin(ang) * 6;
   }
 
-  /* who, if anybody, is on the ball this frame */
+  /* WHO IS ON THE BALL.
+
+     This was the worst thing in the game and it did not look like a bug.
+     Anyone whose feet came within nine pixels of the ball took it — so
+     with eight players converging, and separate() shoving them through
+     each other, the ball changed hands about seven times a second.
+     Measured: an average possession lasted 0.14 SECONDS and two thirds
+     of the match had nobody in charge of the ball at all. What that
+     feels like to play is a rolling object being chased by a crowd, and
+     no amount of camera work or celebration rescues it.
+
+     So possession is now something you TAKE, not something you walk
+     into:
+
+       - a loose ball goes to the nearest player who can reach it
+       - a carried ball CANNOT be taken by proximity, at any distance,
+         by anybody. It comes loose when it is tackled, when it is
+         kicked, or when the carrier is knocked far enough off it
+       - the carrier's own reach is bigger than a challenger's, so
+         shielding works and being crowded does not simply lose it
+
+     That single change is the difference between a football game and a
+     game of bulldog with a ball in it. */
   function resolvePossession() {
     var b = G.ball;
     if (b.lock > 0) return;
-    if (b.z > 7) return;                 // it is over everybody's head
+    if (b.z > 7) { if (b.owner) b.owner = null; return; }
+
+    /* somebody already has it: they keep it until it is taken off them */
+    if (b.owner) {
+      var o = b.owner;
+      var away = len(o.x - b.x, o.y - b.y);
+      if (away > TUNE.keepReach) b.owner = null;       // knocked off it
+      return;
+    }
+
     var best = null, bd = TUNE.dribbleReach;
     G.players.forEach(function (p) {
       if (p.tackleT > 0 && !p.gk) return;
       var d = len(p.x - b.x, p.y - b.y);
-      /* the keeper has hands, so he reaches further — and only inside
-         his own box, which is the one rule of football this game keeps */
       var reach = p.gk && inBox(p, b) ? TUNE.gkReach : TUNE.dribbleReach;
       if (d < reach && d < bd) { bd = d; best = p; }
     });
-    if (!best) { if (b.owner) b.owner = null; return; }
-    if (best === b.owner) return;
-    if (b.owner && b.owner.team !== best.team) SFX.tackle();
+    if (!best) return;
     b.owner = best;
     b.lastTouch = best;
+    /* a settle, so the instant after a tackle is not a scramble in which
+       the same two players trade it forty times */
+    b.lock = TUNE.settle;
     if (best.gk && inBox(best, b)) {
       best.hold = TUNE.gkHold;
-      /* a save is only a save if it looked like one: he goes the way
-         the ball was, and only when it was actually going somewhere */
       if (len(b.vx, b.vy) > 90) {
         best.diveDir = (b.x < best.x) ? 1 : -1;
         setAnim(best, "dive", 0.55);
@@ -1490,6 +1644,7 @@ window.OuissyCup = (function () {
       SFX.save();
     }
   }
+
   function inBox(p, b) {
     var gl = ownGoalY(p.team);
     var near = Math.abs(b.y - gl) < PITCH.boxH;
@@ -1641,9 +1796,27 @@ window.OuissyCup = (function () {
 
     /* the nearest one chases; on her team the controlled player is the
        chaser, so the rest hold shape instead of all piling in */
+    /* WHO GOES FOR IT.
+
+       This line is why her team lost every match 0-4 without having a
+       single shot. It read: I am the chaser if I am nearest AND NOT
+       (this is her team and she is driving an outfielder). She is
+       ALWAYS driving an outfielder — that is what the chapter does —
+       so on her side the condition was permanently false and none of
+       her players ever chased the ball. The one she was steering was
+       excluded from think() anyway, being hers to run, so between them
+       nobody on her team went for it at all: measured at 0% possession,
+       0 shots, and 0% of the match spent in the opposition box.
+
+       The rule that was meant: the nearest player chases — and if the
+       nearest happens to be the one she is driving, the next nearest
+       goes instead, so her team is never standing about waiting for
+       her to do all of it herself. */
     var chaser = nearestTo(b, p.team, true);
-    var iAmChaser = chaser === p && !(p.team === 0 && G.controlled && !G.controlled.gk);
-    if (p.team === 1) iAmChaser = chaser === p;
+    if (p.team === 0 && chaser === G.controlled) {
+      chaser = nearestTo(b, 0, true, G.controlled);
+    }
+    var iAmChaser = chaser === p;
 
     if (iAmChaser) {
       var lead = TUNE.gkAnticipate * skill;
@@ -1714,11 +1887,12 @@ window.OuissyCup = (function () {
     moveTo(p, tx, ty, dt, TUNE.gkSpeed / TUNE.freeSpeed);
   }
 
-  function nearestTo(thing, team, outfieldOnly) {
+  function nearestTo(thing, team, outfieldOnly, except) {
     var best = null, bd = 1e9;
     G.players.forEach(function (p) {
       if (p.team !== team) return;
       if (outfieldOnly && p.gk) return;
+      if (except && p === except) return;
       var d = len(p.x - thing.x, p.y - thing.y);
       if (d < bd) { bd = d; best = p; }
     });
@@ -1909,7 +2083,7 @@ window.OuissyCup = (function () {
       }
       G.players.forEach(function (p) { playerStep(p, dt); });
       separate();
-      if (G.state === "play") { ballStep(dt); resolvePossession(); pickControlled(false); }
+      if (G.state === "play") { ballStep(dt); resolvePossession(); pickControlled(false, dt); }
     }
     cameraStep(dt);
   }
@@ -2642,6 +2816,91 @@ window.OuissyCup = (function () {
       x.fillRect(cx - s * 0.55, cy - s * 0.3, s * 1.1, s * 1.05);
       for (var g2 = 0; g2 < 3; g2++)
         x.fillRect(cx - s * 0.5 + g2 * s * 0.38, cy - s * 0.95, s * 0.26, s * 0.7);
+    } else if (kind === "tooth") {
+      /* his faculty. A molar: two roots and a crown. */
+      x.beginPath();
+      x.moveTo(cx - s * 0.75, cy - s * 0.35);
+      x.quadraticCurveTo(cx, cy - s * 1.05, cx + s * 0.75, cy - s * 0.35);
+      x.lineTo(cx + s * 0.55, cy + s * 0.9);
+      x.quadraticCurveTo(cx + s * 0.28, cy + s * 0.15, cx + s * 0.06, cy + s * 0.95);
+      x.quadraticCurveTo(cx - s * 0.2, cy + s * 0.15, cx - s * 0.5, cy + s * 0.9);
+      x.closePath(); x.fill();
+    } else if (kind === "caduceus") {
+      /* hers. A staff with two wings and a serpent turn. */
+      x.beginPath(); x.moveTo(cx, cy - s * 1.0); x.lineTo(cx, cy + s * 1.0); x.stroke();
+      [-1, 1].forEach(function (sg) {
+        x.beginPath();
+        x.moveTo(cx, cy - s * 0.72);
+        x.quadraticCurveTo(cx + sg * s * 0.95, cy - s * 0.95, cx + sg * s * 0.85, cy - s * 0.35);
+        x.stroke();
+      });
+      x.beginPath();
+      x.moveTo(cx - s * 0.5, cy - s * 0.1);
+      x.quadraticCurveTo(cx + s * 0.55, cy + s * 0.12, cx - s * 0.45, cy + s * 0.55);
+      x.stroke();
+    } else if (kind === "mortar") {
+      /* pharmacy: a mortar and pestle */
+      x.beginPath();
+      x.moveTo(cx - s * 0.7, cy - s * 0.05);
+      x.quadraticCurveTo(cx, cy + s * 1.05, cx + s * 0.7, cy - s * 0.05);
+      x.closePath(); x.fill();
+      x.fillRect(cx - s * 0.9, cy - s * 0.3, s * 1.8, s * 0.26);
+      x.beginPath(); x.moveTo(cx + s * 0.15, cy - s * 0.45);
+      x.lineTo(cx + s * 0.85, cy - s * 1.05); x.stroke();
+    } else if (kind === "molecule" || kind === "atom") {
+      x.beginPath(); x.arc(cx, cy, s * 0.30, 0, Math.PI * 2); x.fill();
+      for (var mi = 0; mi < 3; mi++) {
+        var ma = (mi / 3) * Math.PI;
+        x.save(); x.translate(cx, cy); x.rotate(ma);
+        x.beginPath();
+        if (kind === "atom") x.ellipse(0, 0, s * 1.0, s * 0.42, 0, 0, Math.PI * 2);
+        else { x.moveTo(0, 0); x.lineTo(s * 0.95, 0); }
+        x.stroke();
+        if (kind === "molecule") { x.beginPath(); x.arc(s * 0.95, 0, s * 0.26, 0, Math.PI * 2); x.fill(); }
+        x.restore();
+      }
+    } else if (kind === "tooth") {
+      /* his faculty: a molar, two roots and a crown */
+      x.beginPath();
+      x.moveTo(cx - s * 0.75, cy - s * 0.35);
+      x.quadraticCurveTo(cx, cy - s * 1.05, cx + s * 0.75, cy - s * 0.35);
+      x.lineTo(cx + s * 0.55, cy + s * 0.9);
+      x.quadraticCurveTo(cx + s * 0.28, cy + s * 0.15, cx + s * 0.06, cy + s * 0.95);
+      x.quadraticCurveTo(cx - s * 0.2, cy + s * 0.15, cx - s * 0.5, cy + s * 0.9);
+      x.closePath(); x.fill();
+    } else if (kind === "caduceus") {
+      /* hers: a staff, two wings and a serpent turn */
+      x.beginPath(); x.moveTo(cx, cy - s * 1.0); x.lineTo(cx, cy + s * 1.0); x.stroke();
+      [-1, 1].forEach(function (sg) {
+        x.beginPath();
+        x.moveTo(cx, cy - s * 0.72);
+        x.quadraticCurveTo(cx + sg * s * 0.95, cy - s * 0.95, cx + sg * s * 0.85, cy - s * 0.35);
+        x.stroke();
+      });
+      x.beginPath();
+      x.moveTo(cx - s * 0.5, cy - s * 0.1);
+      x.quadraticCurveTo(cx + s * 0.55, cy + s * 0.12, cx - s * 0.45, cy + s * 0.55);
+      x.stroke();
+    } else if (kind === "mortar") {
+      x.beginPath();
+      x.moveTo(cx - s * 0.7, cy - s * 0.05);
+      x.quadraticCurveTo(cx, cy + s * 1.05, cx + s * 0.7, cy - s * 0.05);
+      x.closePath(); x.fill();
+      x.fillRect(cx - s * 0.9, cy - s * 0.3, s * 1.8, s * 0.26);
+      x.beginPath(); x.moveTo(cx + s * 0.15, cy - s * 0.45);
+      x.lineTo(cx + s * 0.85, cy - s * 1.05); x.stroke();
+    } else if (kind === "molecule" || kind === "atom") {
+      x.beginPath(); x.arc(cx, cy, s * 0.30, 0, Math.PI * 2); x.fill();
+      for (var mi = 0; mi < 3; mi++) {
+        x.save(); x.translate(cx, cy); x.rotate((mi / 3) * Math.PI);
+        x.beginPath();
+        if (kind === "atom") { x.ellipse(0, 0, s * 1.0, s * 0.42, 0, 0, Math.PI * 2); x.stroke(); }
+        else {
+          x.moveTo(0, 0); x.lineTo(s * 0.95, 0); x.stroke();
+          x.beginPath(); x.arc(s * 0.95, 0, s * 0.26, 0, Math.PI * 2); x.fill();
+        }
+        x.restore();
+      }
     } else {
       x.fillRect(cx - s * 0.8, cy - s * 0.2, s * 1.6, s * 0.4);
       x.fillRect(cx - s * 0.2, cy - s * 0.8, s * 0.4, s * 1.6);
@@ -3041,29 +3300,55 @@ window.OuissyCup = (function () {
 
   /* ---------------------------------------------------------------- title */
   function titleMenu() {
-    var d = cfg("RULES.difficulty", "normal");
+    var modes = cfg("MODES", []);
     overlay(cfg("TITLE", "Ouissy\u2019s Cup"), "", "", null, {
-      kicker: "FOUR A SIDE",
+      kicker: "QUATRE CONTRE QUATRE",
       html: '<div class="cup-menu">' +
         '<p class="cup-menu-sub">' + cfg("TAGLINE", "") + "</p>" +
         '<div class="cup-menu-list">' +
-        '<button class="cup-menu-b primary" data-go="cup">PLAY THE CUP' +
-          "<small>quarter-final, semi, final</small></button>" +
-        '<button class="cup-menu-b" data-go="quick">QUICK MATCH' +
-          "<small>one game, any two sides</small></button>" +
-        '<button class="cup-menu-b" data-go="teams">TEAMS &amp; SQUADS' +
-          "<small>pick a side, or build your own</small></button>" +
-        '<button class="cup-menu-b" data-go="help">HOW TO PLAY</button>' +
-        '<button class="cup-menu-b" data-go="quit">BACK TO THE BOOK</button>' +
+        modes.map(function (m) {
+          return '<button class="cup-menu-b' + (m.primary ? " primary" : "") +
+                 '" data-go="' + m.id + '">' + m.name +
+                 (m.note ? "<small>" + m.note + "</small>" : "") + "</button>";
+        }).join("") +
+        '<button class="cup-menu-b" data-go="teams">LES \u00c9QUIPES' +
+          "<small>pick a faculty, or build your own squad</small></button>" +
+        '<button class="cup-menu-b" data-go="help">COMMENT JOUER</button>' +
+        '<button class="cup-menu-b" data-go="quit">RETOUR AU LIVRE</button>' +
         "</div></div>",
     });
     wireMenu({
-      cup: function () { hideOverlay(); run.round = 0; roundCard(); },
-      quick: function () { teamSelect("quick"); },
-      teams: function () { teamSelect("pick"); },
+      coupe: function () {
+        run.fixture = null; run.quick = false; run.round = 0;
+        hideOverlay(); roundCard();
+      },
+      /* the derby is its own fixture: his faculty against hers, under
+         the lights, and it does not need a bracket to matter */
+      derby: function () {
+        var mine = derbyTeam("hers"), theirs = derbyTeam("his");
+        run.myTeam = mine;
+        run.quick = true;
+        run.fixture = { mine: mine, theirs: theirs, venue: "night",
+          round: { round: "LE DERBY", skill: 0.72, venue: "night",
+                   before: "Dentaire contre m\u00e9decine. He has been talking " +
+                           "about this one for a fortnight.",
+                   won: "You beat his faculty. He will hear about it all year.",
+                   lost: "His faculty took it. He is being very gracious, which is worse." } };
+        run.round = 0;
+        hideOverlay(); roundCard();
+      },
+      amical: function () { carAt = 0; teamSelect("quick"); },
+      teams: function () { carAt = 0; teamSelect("pick"); },
       help: function () { helpCard(titleMenu); },
       quit: function () { quit(); },
     });
+  }
+
+  /* whose faculty is whose, out of the config rather than by name */
+  function derbyTeam(side) {
+    var list = cfg("TEAMS", []);
+    for (var i = 0; i < list.length; i++) if (list[i].derby === side) return list[i].id;
+    return side === "hers" ? "fmpm" : "fmdc";
   }
 
   function wireMenu(map) {
@@ -3090,7 +3375,8 @@ window.OuissyCup = (function () {
     var cap = sq.filter(function (m) { return m.captain; })[0] || sq[1] || sq[0];
     var capR = cap ? ROSTER[cap.id] : null;
 
-    overlay(mode === "quick" ? "QUICK MATCH" : "TEAMS", "", "", null, {
+    overlay(mode === "quick" ? "VOTRE FACULT\u00c9"
+          : mode === "opp" ? "CONTRE QUI ?" : "LES \u00c9QUIPES", "", "", null, {
       kicker: (carAt + 1) + " / " + list.length,
       html: '<div class="cup-menu">' +
         '<div class="cup-car">' +
@@ -3099,8 +3385,8 @@ window.OuissyCup = (function () {
           '<div class="cup-tcard-top">' +
             '<span class="cup-tcard-badge" data-team="' + t.id + '"></span>' +
             '<span class="cup-tcard-name"><h4>' + t.name + "</h4>" +
-            "<span>" + (t.custom ? "your own squad" :
-                        t.home ? "her side" : t.final ? "his side" : "rated " + teamRating(t)) +
+            "<span>" + (t.sub ? t.sub + " \u00b7 " : "") +
+            (t.custom ? "your own squad" : "rated " + teamRating(t)) +
             "</span></span>" +
           "</div>" +
           '<div class="cup-tcard-body">' +
@@ -3118,7 +3404,8 @@ window.OuissyCup = (function () {
         "</div>" +
         '<div class="cup-btnrow">' +
         '<button class="cup-menu-b primary" data-go="use">' +
-          (mode === "quick" ? "PLAY AS THIS SIDE" : "USE THIS SIDE") + "</button>" +
+          (mode === "quick" ? "JOUER AVEC EUX"
+           : mode === "opp" ? "LES AFFRONTER" : "CHOISIR") + "</button>" +
         '<button class="cup-menu-b" data-go="build">BUILD YOUR OWN</button>' +
         (t.custom ? '<button class="cup-menu-b" data-go="del">DELETE</button>' : "") +
         '<button class="cup-menu-b" data-go="back">BACK</button>' +
@@ -3130,10 +3417,30 @@ window.OuissyCup = (function () {
       next: function () { carAt++; teamSelect(mode); },
       use: function () {
         patchTeamLookup();
+        if (mode === "quick") {
+          /* a friendly is two choices: her side, then theirs. The second
+             pass through the same carousel picks the opponent, and the
+             match is played at whichever campus THEY are at home on. */
+          run.myTeam = t.id;
+          carAt = (carAt + 1) % list.length;
+          return teamSelect("opp");
+        }
+        if (mode === "opp") {
+          var them = t;
+          run.quick = true;
+          run.fixture = { mine: run.myTeam, theirs: them.id,
+            venue: them.venue || "rabat",
+            round: { round: "MATCH AMICAL", skill: 0.58, venue: them.venue || "rabat",
+                     before: "A friendly, on their grass.",
+                     won: "Won it. It counts for nothing and it counts for everything.",
+                     lost: "Lost a friendly. It is called a friendly for a reason." } };
+          run.round = 0;
+          hideOverlay(); roundCard();
+          return;
+        }
         run.myTeam = t.id;
         hideOverlay();
-        if (mode === "quick") { run.quick = true; run.round = 0; roundCard(); }
-        else titleMenu();
+        titleMenu();
       },
       build: function () { openBuilder(mode); },
       del: function () {
@@ -3364,7 +3671,8 @@ window.OuissyCup = (function () {
     var them = teamById(r.id);
     overlay(them.name, r.before, "KICK OFF", function () {
       hideOverlay();
-      G = newMatch(run.round);
+      G = newMatch(run.round, run.fixture);
+      applyVenue(G.venue);
       buildRigs();
       setFlag(EL["cup-h-flag"], teamById(G.ids[0]));
       setFlag(EL["cup-a-flag"], teamById(G.ids[1]));
@@ -3377,7 +3685,18 @@ window.OuissyCup = (function () {
       if (EL["cup-pause-btn"]) EL["cup-pause-btn"].hidden = false;
       startCrowd();
     }, { kicker: r.round, big: true,
-         body: bracketBlock(run.round) + teamsBlock("mar", r.id) });
+         body: venueBlock(r.venue) + bracketBlock(run.round) +
+               teamsBlock(run.myTeam || "fmpm", r.id) });
+  }
+
+  /* Where the fixture is being played. Half of what makes six matches
+     feel like six occasions rather than one pitch six times is simply
+     being told, before each one, whose campus you are standing on. */
+  function venueBlock(id) {
+    var v = venueById(id);
+    if (!v) return "";
+    return '<div class="cup-venue"><span class="cup-venue-h">' + v.hour + "</span>" +
+           "<span><b>" + v.name + "</b><i>" + (v.note || "") + "</i></span></div>";
   }
 
   function finishRound(won) {
@@ -3671,6 +3990,44 @@ window.OuissyCup = (function () {
     setClock: function (c) { G.clock = c; },
     setScore: function (a, b) { G.score[0] = a; G.score[1] = b; },
     round: function () { return run.round; },
+    /* the handful of read-outs tools/cupfeel.js needs to judge whether
+       the football is any good, rather than whether it runs */
+    reset: function (r) {
+      run.round = r || 0; run.quick = false;
+      G = newMatch(run.round);
+      buildRigs();
+      resetPositions(0);
+      G.state = "play"; G.stateT = 0;
+      return hooks.state();
+    },
+    me: function () {
+      var p = G.controlled;
+      return p ? { name: p.name, x: +p.x.toFixed(1), y: +p.y.toFixed(1) } : null;
+    },
+    attackSign: function () { return attackDir(0); },
+    /* which touchline the camera is on. The stick is read in the
+       camera's frame, so a harness that drives in pitch coordinates
+       steers her at ninety degrees to where it meant to. */
+    camSide: function () { return camSide(); },
+    goalY: function () { return goalY(0); },
+    charged: function () { return IN.held ? clamp(IN.heldT / TUNE.chargeTime, 0, 1) : 0; },
+    shots: function () { return G.stat.shots[0] + G.stat.shots[1]; },
+    shotsBy: function () { return G.stat.shots.slice(); },
+    possBy: function () { return [+G.stat.poss[0].toFixed(1), +G.stat.poss[1].toFixed(1)]; },
+    /* where each side's attacks die, which is the only way to tell a
+       team that cannot shoot from one that never gets there */
+    probe: function () {
+      var d = attackDir(0);
+      var inTheirHalf = (G.ball.y - PITCH.cy) * d > 0;
+      return { half: inTheirHalf ? 1 : 0,
+               owner: G.ball.owner ? G.ball.owner.team : -1,
+               box: Math.abs(G.ball.y - goalY(0)) < PITCH.boxH &&
+                    Math.abs(G.ball.x - PITCH.cx) < PITCH.boxW / 2 };
+    },
+    reach: function () {
+      var d = attackDir(0), own = ownGoalY(0);
+      return clamp(Math.abs(G.ball.y - own) / PITCH.h, 0, 1);
+    },
     /* hold one player in one pose so every animation can be looked at
        instead of waited for */
     pose: function (idx, state, t) {
@@ -3705,6 +4062,17 @@ window.OuissyCup = (function () {
     },
     roster: function () { return cfg("ROSTER", []); },
     teams: function () { return cfg("TEAMS", []); },
+    venues: function () { return cfg("VENUES", []); },
+    venue: function (id) { applyVenue(id); },
+    /* a full frame, not just a camera move: draw() is what walks the
+       players out to where the simulation says they are, and without it
+       every rig sits stacked on the centre spot */
+    render: function () {
+      if (!renderer) return;
+      draw(0.016);
+      placeCamera(0, true);
+      renderer.render(scene, camera);
+    },
     /* build one, unattached, so a harness can line the whole squad up
        and photograph it from close range */
     rig: function (spec) { return buildRig(spec); },

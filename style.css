@@ -8014,3 +8014,19 @@ img{-webkit-user-drag:none; user-select:none;}
   .cup-pool{max-height:22cqh;}
   .cup-tcard-body{flex-direction:column; gap:1cqh;}
 }
+
+/* where the fixture is being played */
+.cup-venue{
+  display:flex; align-items:center; gap:1.2cqw; justify-content:center;
+  margin:0 auto 1.6cqh; padding:1cqh 1.6cqw; border-radius:.9cqw;
+  background:rgba(61,42,18,.09); max-width:60cqw;
+}
+.cup-venue-h{
+  font-family:'Silkscreen',monospace; font-size:2.6cqh; color:#3d2a12;
+  padding:.3cqh .9cqw; border-radius:.5cqw; background:rgba(224,168,106,.45);
+}
+.cup-venue span{display:flex; flex-direction:column; text-align:left;}
+.cup-venue b{font-family:'Silkscreen',monospace; font-weight:400;
+  font-size:1.9cqh; color:#3d2a12; letter-spacing:.06em;}
+.cup-venue i{font-family:'Poppins',sans-serif; font-size:1.65cqh;
+  color:#8a6f42; font-style:italic;}

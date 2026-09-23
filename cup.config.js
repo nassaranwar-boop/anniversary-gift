@@ -244,145 +244,172 @@ window.CUP_CONFIG = {
   ],
 
   /* ================================================================
-     THE TEAMS
+     THE FACULTIES
 
-     Morocco is hers and stays as the flagship. Germany and Brazil are
-     kept as opponents. Everything below them is a PLACEHOLDER named
-     after a moment or a place — rename them, recolour them, pick a
-     different crest, and the game follows.
+     Six Moroccan health-sciences schools. The names and abbreviations
+     are the real ones; the crests, the colours and the squads are
+     invented for this game — no real logo, badge or mark is copied or
+     imitated anywhere in this chapter.
 
-     `squad` is four ids from the ROSTER above, keeper first.
-     `crest` is one of: heart star flame mountain lantern leaf note
-             shield rose branch glove wave key book moon
+     FMDC is his (dentistry). FMPM is hers (medicine). The cup is drawn
+     so that those two meet in the final, which is the whole point of
+     it, and `derby` marks them so the game knows.
+
+     `venue` is the campus a side plays its home games at — see VENUES.
+     `squad` is four ids from the ROSTER, keeper first.
      ================================================================ */
   TEAMS: [
     {
-      id: "mar", name: "MOROCCO", short: "MAR", flag: "mar", crest: "star",
-      home: true,
-      kit: { shirt: "#c1272d", shirtDark: "#8f1a20", shorts: "#0e6b3c",
-             shortsDark: "#08492a", socks: "#c1272d", trim: "#ffffff" },
-      gkKit: { shirt: "#1f6f4a", shirtDark: "#134a31", shorts: "#12241c",
-               shortsDark: "#0b1712", socks: "#1f6f4a", trim: "#ffd45e" },
-      squad: ["gustav", "ouissy", "lumi", "atlas"],
-      captain: "ouissy",
-      formation: "diamond",
-    },
-    {
-      id: "ger", name: "GERMANY", short: "GER", flag: "ger", crest: "shield",
-      kit: { shirt: "#f2f2ef", shirtDark: "#c8c8c2", shorts: "#1c1c22",
-             shortsDark: "#0e0e12", socks: "#f2f2ef", trim: "#1c1c22" },
-      gkKit: { shirt: "#3a3f6b", shirtDark: "#252945", shorts: "#1c1c22",
-               shortsDark: "#0e0e12", socks: "#3a3f6b", trim: "#e0c24a" },
-      squad: ["marina", "comet", "sage", "boulder"],
-      captain: "comet", formation: "flat",
-    },
-    {
-      id: "bra", name: "BRAZIL", short: "BRA", flag: "bra", crest: "star",
-      kit: { shirt: "#f5d020", shirtDark: "#c9a410", shorts: "#1d4fa0",
-             shortsDark: "#123268", socks: "#f5f2e8", trim: "#0f7a3c" },
-      gkKit: { shirt: "#1b8a4a", shirtDark: "#115c31", shorts: "#1d4fa0",
-               shortsDark: "#123268", socks: "#1b8a4a", trim: "#f5d020" },
-      squad: ["gustav", "ember", "echo", "willow"],
-      captain: "ember", formation: "wide",
-    },
-
-    /* ---- HIS SIDE, the final. Not a country: a paper heart. ---- */
-    {
-      id: "anw", name: "HIS SIDE", short: "ANW", flag: "heart", crest: "heart",
-      final: true,
+      id: "fmdc", name: "FMDC CASABLANCA", short: "FMDC",
+      sub: "Facult\u00e9 de M\u00e9decine Dentaire",
+      crest: "tooth", flag: "crest", derby: "his", venue: "casa",
       kit: { shirt: "#1d6b6e", shirtDark: "#12494b", shorts: "#f2e6cf",
              shortsDark: "#cdbf9f", socks: "#1d6b6e", trim: "#e8b23c" },
       gkKit: { shirt: "#2a2438", shirtDark: "#1a1626", shorts: "#12101c",
                shortsDark: "#0a0812", socks: "#2a2438", trim: "#f2b8c6" },
-      squad: ["marina", "anwar", "sage", "thorn"],
-      captain: "anwar", formation: "diamond",
-    },
-
-    /* ================= MEMORY LANE — PLACEHOLDERS =================
-       Eight of them. Rename each `name` and `short`, pick colours and
-       a crest, and choose four from the ROSTER. Nothing here knows
-       anything about you yet — that is deliberate.
-       ============================================================== */
-    {
-      id: "m1", name: "PLACEHOLDER — WHERE YOU MET", short: "MET",
-      crest: "key", flag: "crest",
-      kit: { shirt: "#b8556e", shirtDark: "#8a3a50", shorts: "#f6efdd",
-             shortsDark: "#cdbf9f", socks: "#b8556e", trim: "#ffd9a0" },
-      gkKit: { shirt: "#4a3550", shirtDark: "#2f2035", shorts: "#1c1622",
-               shortsDark: "#100c14", socks: "#4a3550", trim: "#ffd9a0" },
-      squad: ["gustav", "lumi", "echo", "willow"], captain: "lumi",
+      squad: ["marina", "anwar", "sage", "thorn"], captain: "anwar",
       formation: "diamond",
     },
     {
-      id: "m2", name: "PLACEHOLDER — THE FIRST TRIP", short: "TRP",
-      crest: "moon", flag: "crest",
-      kit: { shirt: "#3f6ea8", shirtDark: "#2a4c76", shorts: "#f6f8fb",
-             shortsDark: "#c8ced6", socks: "#3f6ea8", trim: "#ffd45e" },
+      id: "fmpm", name: "FMPM MARRAKECH", short: "FMPM",
+      sub: "M\u00e9decine et Pharmacie",
+      crest: "caduceus", flag: "crest", derby: "hers", home: true, venue: "marrakech",
+      kit: { shirt: "#c1272d", shirtDark: "#8f1a20", shorts: "#f6efdd",
+             shortsDark: "#cdbf9f", socks: "#c1272d", trim: "#e8b23c" },
+      gkKit: { shirt: "#1f6f4a", shirtDark: "#134a31", shorts: "#12241c",
+               shortsDark: "#0b1712", socks: "#1f6f4a", trim: "#ffd45e" },
+      squad: ["gustav", "ouissy", "lumi", "atlas"], captain: "ouissy",
+      formation: "diamond",
+    },
+    {
+      id: "uir", name: "UIR RABAT", short: "UIR",
+      sub: "Universit\u00e9 Internationale de Rabat",
+      crest: "shield", flag: "crest", venue: "rabat",
+      kit: { shirt: "#2f5fa8", shirtDark: "#1f4076", shorts: "#f6f8fb",
+             shortsDark: "#c8ced6", socks: "#2f5fa8", trim: "#ffd45e" },
       gkKit: { shirt: "#1f2b3c", shirtDark: "#141c28", shorts: "#0f151d",
                shortsDark: "#080c11", socks: "#1f2b3c", trim: "#7fd4f5" },
       squad: ["marina", "comet", "sage", "boulder"], captain: "comet",
       formation: "wide",
     },
     {
-      id: "m3", name: "PLACEHOLDER — THE SONG", short: "SNG",
-      crest: "note", flag: "crest",
-      kit: { shirt: "#7a4fb0", shirtDark: "#553578", shorts: "#2a2438",
-             shortsDark: "#1a1626", socks: "#7a4fb0", trim: "#f2b8c6" },
-      gkKit: { shirt: "#2f2a3e", shirtDark: "#1e1a2a", shorts: "#14111c",
-               shortsDark: "#0c0a12", socks: "#2f2a3e", trim: "#e87ab0" },
-      squad: ["gustav", "echo", "lumi", "thorn"], captain: "echo",
-      formation: "flat",
-    },
-    {
-      id: "m4", name: "PLACEHOLDER — THE LONG WINTER", short: "WNT",
-      crest: "lantern", flag: "crest",
-      kit: { shirt: "#5a7d8c", shirtDark: "#3d5763", shorts: "#e8eef0",
-             shortsDark: "#c0c8cc", socks: "#5a7d8c", trim: "#ffd9a0" },
-      gkKit: { shirt: "#243038", shirtDark: "#161e24", shorts: "#101418",
-               shortsDark: "#0a0d0f", socks: "#243038", trim: "#9fe8ff" },
-      squad: ["marina", "sage", "willow", "boulder"], captain: "sage",
-      formation: "flat",
-    },
-    {
-      id: "m5", name: "PLACEHOLDER — THE KITCHEN", short: "KIT",
-      crest: "flame", flag: "crest",
+      id: "upm", name: "UPM MARRAKECH", short: "UPM",
+      sub: "Universit\u00e9 Priv\u00e9e de Marrakech",
+      crest: "mortar", flag: "crest", venue: "marrakech",
       kit: { shirt: "#e08a3c", shirtDark: "#b06428", shorts: "#3a2a1e",
              shortsDark: "#241a12", socks: "#e08a3c", trim: "#f6efdd" },
       gkKit: { shirt: "#7a3a1e", shirtDark: "#502414", shorts: "#2a1810",
                shortsDark: "#180e09", socks: "#7a3a1e", trim: "#ffd45e" },
-      squad: ["gustav", "ember", "atlas", "thorn"], captain: "atlas",
+      squad: ["gustav", "ember", "echo", "willow"], captain: "ember",
       formation: "wide",
     },
     {
-      id: "m6", name: "PLACEHOLDER — THE GARDEN", short: "GDN",
-      crest: "leaf", flag: "crest",
+      id: "um6ss", name: "UM6SS CASABLANCA", short: "UM6SS",
+      sub: "Sciences de la Sant\u00e9",
+      crest: "molecule", flag: "crest", venue: "casa",
       kit: { shirt: "#5f9a5c", shirtDark: "#3f6e3c", shorts: "#f4f1e6",
              shortsDark: "#cdc8b6", socks: "#5f9a5c", trim: "#e8b23c" },
       gkKit: { shirt: "#2a4a2c", shirtDark: "#1a301c", shorts: "#142016",
                shortsDark: "#0c140e", socks: "#2a4a2c", trim: "#bfe8a8" },
-      squad: ["marina", "willow", "sage", "lumi"], captain: "willow",
-      formation: "diamond",
+      squad: ["marina", "willow", "lumi", "boulder"], captain: "willow",
+      formation: "flat",
     },
     {
-      id: "m7", name: "PLACEHOLDER — THE SEA", short: "SEA",
-      crest: "wave", flag: "crest",
-      kit: { shirt: "#2f9aa8", shirtDark: "#1f6a74", shorts: "#f6f8fb",
-             shortsDark: "#c8ced6", socks: "#2f9aa8", trim: "#f08a72" },
-      gkKit: { shirt: "#14424a", shirtDark: "#0c2a30", shorts: "#0a1c20",
-               shortsDark: "#061013", socks: "#14424a", trim: "#5fd0f0" },
-      squad: ["marina", "comet", "echo", "willow"], captain: "marina",
-      formation: "wide",
+      id: "um6p", name: "UM6P BEN GUERIR", short: "UM6P",
+      sub: "Mohammed VI Polytechnique",
+      crest: "atom", flag: "crest", venue: "benguerir",
+      kit: { shirt: "#7a4fb0", shirtDark: "#553578", shorts: "#2a2438",
+             shortsDark: "#1a1626", socks: "#7a4fb0", trim: "#f2b8c6" },
+      gkKit: { shirt: "#2f2a3e", shirtDark: "#1e1a2a", shorts: "#14111c",
+               shortsDark: "#0c0a12", socks: "#2f2a3e", trim: "#e87ab0" },
+      squad: ["gustav", "echo", "atlas", "thorn"], captain: "atlas",
+      formation: "flat",
     },
-    {
-      id: "m8", name: "PLACEHOLDER — HOME", short: "HME",
-      crest: "book", flag: "crest",
-      kit: { shirt: "#a8543c", shirtDark: "#7a3828", shorts: "#f6efdd",
-             shortsDark: "#cdbf9f", socks: "#a8543c", trim: "#e8b23c" },
-      gkKit: { shirt: "#4a2a1e", shirtDark: "#301a12", shorts: "#20120c",
-               shortsDark: "#140b07", socks: "#4a2a1e", trim: "#ffd9a0" },
-      squad: ["gustav", "atlas", "lumi", "boulder"], captain: "lumi",
-      formation: "diamond",
-    },
+  ],
+
+  /* ================================================================
+     THE VENUES
+
+     Every match is hosted somewhere, and the somewhere is a campus.
+     Each one has its own hour of the day and its own light, which is
+     the cheapest way to make six matches feel like six different
+     occasions rather than one pitch reskinned.
+
+       sky / horizon   the two colours the sky runs between
+       sun             the key light, and how strong it is
+       ambient         the bounce, which decides how dark a shaded face
+                       goes — a night match needs far more of it than
+                       you would expect or everybody turns to silhouette
+       grass / stripe  the turf, and the mown band over it
+       stand / seats   the concrete and the crowd
+       hour            shown on the fixture card
+     ================================================================ */
+  VENUES: [
+    { id: "rabat", name: "CAMPUS DE RABAT", city: "Rabat", hour: "16:00",
+      note: "wind off the river, and the whole faculty on the far side",
+      sky: "#3e8fd0", horizon: "#cfe8f4", sun: "#fff6e0", sunStrength: 2.1,
+      ambient: 0.36, grass: "#4bab52", stripe: "#3f9b46",
+      stand: "#5b6570", seats: "cool", fog: [420, 820] },
+
+    { id: "marrakech", name: "CAMPUS DE MARRAKECH", city: "Marrakech", hour: "18:30",
+      note: "the light goes orange about twenty minutes in",
+      sky: "#e86a3c", horizon: "#ffd9a0", sun: "#ffd08a", sunStrength: 2.4,
+      ambient: 0.42, grass: "#4f9e4a", stripe: "#428a3f",
+      stand: "#8a5a3c", seats: "warm", fog: [360, 720] },
+
+    { id: "casa", name: "CAMPUS DE CASABLANCA", city: "Casablanca", hour: "11:00",
+      note: "sea fog that never quite burns off",
+      sky: "#8fb8cc", horizon: "#e8f0f2", sun: "#f4f2e8", sunStrength: 1.7,
+      ambient: 0.52, grass: "#46a04e", stripe: "#3c9044",
+      stand: "#7c858e", seats: "cool", fog: [300, 640] },
+
+    { id: "benguerir", name: "CAMPUS DE BEN GUERIR", city: "Ben Guerir", hour: "14:00",
+      note: "no shade anywhere and the ball runs fast",
+      sky: "#4aa8e0", horizon: "#f2e0bc", sun: "#fffaf0", sunStrength: 2.6,
+      ambient: 0.40, grass: "#5aa84c", stripe: "#4d963f",
+      stand: "#b09a74", seats: "warm", fog: [460, 900] },
+
+    /* the final, and the derby: under the lights */
+    { id: "night", name: "LE DERBY \u00b7 SOUS LES PROJECTEURS", city: "Casablanca",
+      hour: "21:00", note: "floodlights, and nobody has gone home",
+      sky: "#101a2e", horizon: "#2a3a58", sun: "#cfe0ff", sunStrength: 1.5,
+      ambient: 0.58, grass: "#3f8f46", stripe: "#35803c",
+      stand: "#3a424e", seats: "bright", fog: [280, 620], floodlit: true },
+  ],
+
+  /* ================================================================
+     THE MODES
+
+     AMICAL      a friendly. Any two faculties, any campus.
+     COUPE       the tournament: six faculties, quarter, semi, final —
+                 and the draw is fixed so that the final is the derby.
+     DERBY       his faculty against hers, under the lights, on its own.
+     ================================================================ */
+  MODES: [
+    { id: "coupe", name: "LA COUPE INTER-FACULT\u00c9S",
+      note: "six faculties \u00b7 three rounds \u00b7 one trophy",
+      primary: true },
+    { id: "amical", name: "MATCH AMICAL",
+      note: "one game, any two sides, any campus" },
+    { id: "derby", name: "LE DERBY",
+      note: "dentaire contre m\u00e9decine \u00b7 sous les projecteurs" },
+  ],
+
+  /* The cup's three rounds. `id` is who she meets; the final is fixed
+     to his faculty because that is the story the chapter is telling. */
+  ROUNDS: [
+    { id: "um6p",  round: "QUART DE FINALE", venue: "benguerir", skill: 0.44,
+      before: "UM6P first. They have a pitch nobody likes playing on.",
+      won: "Through. Somebody from the faculty is already posting about it.",
+      lost: "UM6P, then. It happens to better sides than us." },
+    { id: "uir",   round: "DEMI-FINALE", venue: "rabat", skill: 0.64,
+      before: "Rabat in the semi. Nobody had you getting this far.",
+      won: "Into the final. The whole faculty is standing up.",
+      lost: "Rabat were better. Nobody who watched it will say otherwise." },
+    { id: "fmdc",  round: "LA FINALE", venue: "night", skill: 0.80, derby: true,
+      before: "And the final is against his faculty. Of course it is.",
+      won: "You beat him. In front of everybody.",
+      lost: "He beat you, and he has the decency to look sorry about it." },
   ],
 
   /* ================================================================

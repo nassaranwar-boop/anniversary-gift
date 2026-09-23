@@ -35,12 +35,12 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
   /* The chapter opens on its own title menu now rather than straight
      into a fixture, so the route she takes has one more step in it and
      so does this: PLAY THE CUP, then the round card, then kick off. */
-  await p.waitForSelector('[data-go="cup"]', { timeout: 40000 });
+  await p.waitForSelector('[data-go="coupe"]', { timeout: 40000 });
   ok('it opens on its own menu', true);
-  await p.click('[data-go="cup"]');
+  await p.click('[data-go="coupe"]');
   await p.waitForSelector('.cup-card-b', { timeout: 20000 });
-  ok('and PLAY THE CUP puts up the fixture',
-     /QUARTER-FINAL|GERMANY/.test(await p.evaluate(() =>
+  ok('and LA COUPE puts up the fixture',
+     /QUART DE FINALE|UM6P/.test(await p.evaluate(() =>
        document.querySelector('#cup-overlay .cup-card').textContent)));
   await p.click('.cup-card-b');
   /* Drive the clock rather than waiting on one. requestAnimationFrame in
