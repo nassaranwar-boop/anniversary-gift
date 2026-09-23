@@ -130,7 +130,13 @@ window.CUP_CONFIG = {
       id: "ouissy", name: "OUISSY", role: "st", star: true, captainable: true,
       tag: "Star Captain · Playmaker",
       build: { h: 1.00, w: 1.00 }, head: "ouissy",
-      skin: "#f0cfae", hair: "#4a2f1c",
+      /* HER OWN COLOURS, the ones she has in every other chapter on this
+         site: super-ouissy.js builds her at exactly these, long blonde
+         hair and all, and a version of her with brown hair in one game
+         is a different person. `eye` is the site's ink purple rather
+         than black, which is what keeps her readable against a pale
+         sky. */
+      skin: "#ffe6d4", hair: "#e0b34e", eye: "#3d2340", blush: true,
       colour: { a: "#c1272d", b: "#f6efdd", c: "#e8b23c" },
       stats: { speed: 88, power: 78, skill: 95, defence: 65 },
       super: { name: "HEARTBEAT STRIKE", colour: "#ff5f8f", kind: "heart",
