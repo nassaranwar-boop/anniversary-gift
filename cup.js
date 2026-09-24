@@ -261,6 +261,14 @@ window.OuissyCup = (function () {
 
     /* --- tackling --- */
     tackleReach: 13,
+    /* HOW READY A DEFENDER IS TO COMMIT, per frame, once the carrier is
+       inside his reach and before his defence stat and the angle are
+       taken into account. It is a small number by nature — sixty of
+       these go by every second — and it is the single most powerful
+       dial on how the match feels. Too high and nobody can keep the
+       ball for long enough to do anything with it; too low and a
+       dribbler walks through the whole side. */
+    tackleUrge: 0.039,
     tackleTime: 0.34,
     tackleCool: 0.55,
     tacklePush: 70,         // how hard the ball is knocked away
@@ -2068,8 +2076,9 @@ window.OuissyCup = (function () {
       var n = 0;
       outs.forEach(function (q) {
         if (q === carrier) return;
-        q.job = n === 0 ? "run" : (n === 1 ? "support" : "hold");
         q.mark = null; q.markT = 0;
+        if (q === G.controlled) { q.job = null; return; }
+        q.job = n === 0 ? "run" : (n === 1 ? "support" : "hold");
         n++;
       });
       return;
@@ -2101,6 +2110,13 @@ window.OuissyCup = (function () {
     if (best) best.job = "press";
     outs.forEach(function (q) {
       if (q.job) return;
+      /* THE ONE SHE IS DRIVING GETS NO JOB.
+
+         She is excluded from think(), so a job given to her is a job
+         nobody carries out — and worse, "mark" given to her left a
+         stale man pinned to her forever, which the register that stops
+         two defenders marking the same striker went on believing. */
+      if (q === G.controlled) { q.job = null; q.mark = null; q.markT = 0; return; }
       q.job = q === second ? "cover" : "mark";
     });
     /* A MAN YOU ARE NO LONGER MARKING IS NOT YOUR MAN.
@@ -2191,10 +2207,16 @@ window.OuissyCup = (function () {
          arriving rather than waiting. */
       var last = lastDefender(1 - p.team);
       if (last) {
-        var limit = last.y + d * 10;
+        /* SHORT of him, not past him: `+ d * 10` put the limit ten
+           units BEYOND the last defender, which is the opposite of what
+           the comment above it says and the opposite of what is wanted */
+        var limit = last.y - d * 10;
         if ((ty - limit) * d > 0) ty = limit;
       }
-      urgency = 1.0;
+      /* a run in behind is a sprint by definition: it is an attempt to
+         get somewhere before a defender does, and at jogging pace it is
+         not a run in behind, it is standing in a different place */
+      urgency = 1.0 * aiSprint(p, dist(p, car) > 30, dt);
     } else if (p.job === "support") {
       /* THE SHORT OPTION: level with the ball and a good way to the
          side of it, which is the pass that is always on and the reason
@@ -2203,6 +2225,7 @@ window.OuissyCup = (function () {
       tx = clamp(sx, PITCH.x0 + 14, PITCH.x1 - 14);
       ty = clamp(car.y - d * 6, PITCH.y0 + 16, PITCH.y1 - 16);
       urgency = 0.94;
+      aiSprint(p, false, dt);
     } else {
       /* THE ONE WHO DOES NOT GO. Somebody has to be behind the ball
          when it is lost, and the whole of the counter-attack the other
@@ -2216,6 +2239,7 @@ window.OuissyCup = (function () {
       ty = (back + home.y) / 2;
       tx = (tx + PITCH.cx) / 2;
       urgency = 0.82;
+      aiSprint(p, false, dt);
     }
 
     /* DO NOT STAND ON A TEAMMATE. Two players converging on the same
@@ -2253,6 +2277,7 @@ window.OuissyCup = (function () {
         ay -= d * 7;
       }
       urgency = gap > 30 ? 1.06 + skill * 0.10 : 0.78;
+      urgency *= aiSprint(p, gap > 46, dt);
       moveTo(p, ax, ay, dt, urgency);
       tryChallenge(p, skill, pm);
       return;
@@ -2269,6 +2294,10 @@ window.OuissyCup = (function () {
          defender standing on his own keeper */
       if ((ty - home.y) * dd < -46) ty = home.y - dd * 46;
       urgency = 0.96;
+      /* cover does not sprint — holding a position IS the job — but its
+         stamina still has to tick back up, or a player would come back
+         from a spell of covering with an empty tank */
+      aiSprint(p, false, dt);
     } else {
       /* MARKING: goal-side and a shoulder off him, not on top of him.
          Standing ON a striker means the first touch takes him past;
@@ -2331,6 +2360,8 @@ window.OuissyCup = (function () {
          ball rolls past your feet is the other classic way an AI looks
          like it is not playing the same sport. */
       if (!car && dist(p, b) < 34) { tx = b.x + b.vx * 0.2; ty = b.y + b.vy * 0.2; urgency = 1.05; }
+      /* recovering is the one moment a marker is allowed everything */
+      urgency *= aiSprint(p, !!(m && !goalSide(p, m) && dist(p, m) > 16), dt);
     }
 
     /* KEEPING OFF EACH OTHER MUST NOT COST THE GOAL SIDE.
@@ -2364,6 +2395,51 @@ window.OuissyCup = (function () {
       if (v < bs) { bs = v; best = o; }
     });
     return best;
+  }
+
+  /* =======================================================================
+     THE AI CAN RUN, AND IT CAN GET TIRED
+
+     Stamina existed on every player and moved on exactly one of them:
+     the one she was driving. Every other player on the pitch ran at the
+     same speed for the whole match and could never go faster, which
+     removes the single most dramatic thing in football — somebody
+     getting back, or not getting back.
+
+     Now the AI sprints, and only in the three places where a real
+     player does: a defender who has been got in front of and has to
+     recover, a presser closing a gap that is still big, and a chase for
+     a ball nobody owns that the other side might reach first. Each of
+     those is a moment where the alternative is losing something.
+
+     It costs stamina at the same rate hers does, so it lasts about two
+     seconds and then it is gone until they have jogged for a while.
+     That is what stops it being a permanent speed increase: a side that
+     presses flat out for a minute is a side with nothing left, which is
+     the whole reason teams do not. */
+  function aiSprint(p, want, dt) {
+    if (want && p.stamina > 0.06) {
+      p.stamina = Math.max(0, p.stamina - TUNE.sprintDrain * dt);
+      /* HOW MUCH OF A GEAR IT ACTUALLY IS — and it is much less than
+         her sprint, for a reason that only shows up in the arithmetic.
+
+         The urgency multipliers this gets applied ON TOP OF are already
+         doing most of the work: a presser closing from distance runs at
+         1.16, which is 94 px/s against a carrier's 68 — already 1.4
+         times the man on the ball, which is about what a recovering
+         defender manages in life. Stacking her full 1.34 sprint on that
+         came to 121 px/s, or 1.77 times the carrier, at which point a
+         dribble cannot beat anybody and committing to a challenge costs
+         nothing because you simply catch him again.
+
+         A third of her sprint keeps the peak at about 1.4 times the
+         carrier while still being a real decision: a twelve per cent
+         gear for under two seconds, paid for with three and a half
+         seconds of jogging. */
+      return 1 + (TUNE.sprintMul - 1) * 0.35;
+    }
+    p.stamina = Math.min(1, p.stamina + TUNE.sprintFill * dt);
+    return 1;
   }
 
   /* a small push away from the nearest teammate who is too close */
@@ -2402,7 +2478,18 @@ window.OuissyCup = (function () {
     var odds = (infront ? 0.85 : 0.45) * skill * pm.tackle;
     /* and the closer he is to being past you, the more you have to */
     if (gap < reach * 0.6) odds *= 1.4;
-    if (Math.random() < odds * 1.4 * 0.06) startTackle(p);
+    /* HOW OFTEN A DEFENDER ACTUALLY GOES IN.
+
+       At the first setting a defender inside reach committed roughly
+       every four hundred milliseconds, which is not defending, it is a
+       turnstile: measured over three halves the ball spent more than
+       half of every one of them loose, possession ran at three seconds
+       against fourteen, and no side ever strung anything together
+       because nobody was allowed to keep the ball long enough to. A
+       challenge is a decision with a cost — it is meant to be the thing
+       that ENDS a passage of play, not the thing that happens during
+       one. Halved, a carrier gets long enough to look up. */
+    if (Math.random() < odds * TUNE.tackleUrge) startTackle(p);
   }
 
   /* ------------------------------------------------------- ON THE BALL */
@@ -2626,15 +2713,18 @@ window.OuissyCup = (function () {
        his goal faster, not one who saves things he never reached */
     moveTo(p, tx, ty, dt, (TUNE.gkSpeed / TUNE.freeSpeed) * mul.gk * diff().gk);
 
-    /* THE DIVE. A shot hit past him, inside his reach, gets a full
-       stretch — which is the animation the sprite sheet has had all
-       along and which nothing ever played. */
-    if (loose && b.owner === null && p.coolT <= 0 && p.tackleT <= 0) {
-      var closing = (b.y - gl) * d < 0 ? 0 : (-(b.vy) * d);
-      if (closing > 60 && Math.abs(b.y - gl) < 46 && dist(p, b) < TUNE.gkReach * 2.4 * mul.gk) {
-        startTackle(p);
-      }
-    }
+    /* AND NO DIVE FROM HERE.
+
+       A first pass at this had the keeper call startTackle on a shot
+       inside his reach, on the grounds that the sprite sheet has a dive
+       in it and nothing was playing it. Something already was: a keeper
+       inside his own area is given a much longer reach than anybody
+       else in resolvePossession, and when he claims a ball that was
+       travelling he plays the dive and the save lands. Adding a second
+       path did not add a save — it added a SLIDE TACKLE animation
+       fighting the dive for the same frames, and a keeper carrying
+       tackle physics away from the position he had just got himself
+       into. The save belongs where possession is decided. */
   }
 
   function nearestTo(thing, team, outfieldOnly, except) {
@@ -3479,6 +3569,9 @@ window.OuissyCup = (function () {
         wx: wX(p.x), wy: wY(p.y),
         shadow: 3.2 * ((p.build && p.build.w) || 1),
         ring: (p === G.controlled && G.state !== "goal") ? UI.t * 0.5 : null,
+        /* in her side's own colour, so the marker agrees with the shirt
+           it is drawn under rather than adding a third one */
+        ringCol: ringColour(p),
       });
     }
 
@@ -4033,6 +4126,15 @@ window.OuissyCup = (function () {
     return atlasCache[key];
   }
 
+  /* the accent a player's marker ring is drawn in: their kit's trim if
+     it has one that reads against grass, and the shirt otherwise */
+  function ringColour(pl) {
+    var t = teamById(pl.teamId) || {};
+    var kit = pl.kit || t.kit || null;
+    if (!kit) return null;
+    return lift(kit.trim || kit.shirt, 40);
+  }
+
   function spriteFacing(pl) {
     /* down the screen is towards the camera, which is +y on the pitch;
        right across the screen is +x. Octant 0 is facing the lens. */
@@ -4416,7 +4518,6 @@ window.OuissyCup = (function () {
       var lift2 = armed ? beat : (part >= 1 && frac < 1 && q2 === Math.floor(frac * N) - 1 ? 1 : 0);
       pixHeart(qx2, hy - lift2, hs, part, hc);
     }
-    if (false) hudBar(hx, hy, hw, 6, frac, hc);
     if (armed) {
       /* a marching keyline while it is ready, so a full meter is not
          just a wider meter */
@@ -4516,14 +4617,13 @@ window.OuissyCup = (function () {
       UIX.restore();
     } else {
       UIX.save(); UIX.globalAlpha = legend;
-      /* UP IN THE CORNER, NOT DOWN BY THE BUTTON. Set against the
-         bottom-right it landed straight on top of the thumb button —
-         a legend explaining a control, printed across it. */
-      /* below the meter, not beside it: at the top of the frame the
-         legend and the super's nameplate were printed over each other */
-      /* LOW ENOUGH TO BE ON GRASS. At sixty-four it printed across the
-         advertising hoardings and the front rows of the stand, which is
-         the busiest band in the whole frame. */
+      /* WHERE IT SITS, after three attempts that each landed it on
+         something else: hard against the bottom-right it covered the
+         thumb button, beside the meter it collided with the super's
+         nameplate, and at sixty-four from the top it printed across the
+         advertising hoardings and the front rows of the stand. This is
+         low enough to be on grass and high enough to clear the
+         possession strip. */
       var kz = UIH - 58;
       [["W A S D", "run"],
        ["SPACE", "tap to pass \u00b7 hold to shoot"],
@@ -4710,9 +4810,11 @@ window.OuissyCup = (function () {
   function superBanner(s, p) {
     superCard = { s: s, p: p, t: 0 };
     /* the words still go to the accessibility mirror, because a drawn
-       banner is invisible to everything that is not an eye */
-    uiSay((p ? p.name + " \u2014 " : "") + s.name + ". " +
-          (superKind(s.kind).say || s.note || ""));
+       banner is invisible to everything that is not an eye — and it has
+       to be the live one, because this happens mid-match with no card
+       on screen to carry it */
+    announce((p ? p.name + " \u2014 " : "") + s.name + ". " +
+             (superKind(s.kind).say || s.note || ""));
   }
   function clearSuperBanner() { superCard = null; }
 
@@ -4822,7 +4924,7 @@ window.OuissyCup = (function () {
     paintCardFlags();
     var a = el.querySelector(".cup-card-alt");
     if (a && opts.onAlt) a.addEventListener("click", function (e) {
-      e.stopPropagation(); SFX.pick(); opts.onAlt();
+      e.stopPropagation(); SFX.back(); opts.onAlt();
     });
   }
   function hideOverlay() {
@@ -5468,7 +5570,7 @@ window.OuissyCup = (function () {
               hover: UI.hot === id, down: UI.down === id,
               on: opts.on || UI.widgets.length === UI.focus && UI.kb };
     UI.widgets.push({ id: id, x: x2, y: y2, w: w, h: h, go: opts.go,
-                      label: label, sub: opts.sub });
+                      label: label, sub: opts.sub, back: !!opts.back });
     button(b, UI.t);
     return b;
   }
@@ -5481,6 +5583,30 @@ window.OuissyCup = (function () {
     return { x: (e.clientX - r.left) / r.width * UIW,
              y: (e.clientY - r.top) / r.height * UIH };
   }
+  /* WHICH SOUND A DRAWN BUTTON MAKES.
+
+     There has been a `back` sound in the bank since the bank was
+     written and nothing has ever played it: every widget in every menu
+     answered with the same rising `pick`, including the ones that take
+     you backwards. Going back and going forward sounding identical is
+     the kind of thing nobody points at and everybody feels, because the
+     ear reads pitch direction as progress or retreat. A widget that
+     undoes, cancels, leaves or goes back falls instead of rising. */
+  function uiBackish(w) {
+    if (!w) return false;
+    if (w.back) return true;
+    var id = String(w.id || "").toLowerCase();
+    if (id === "back" || id === "cancel" || id.indexOf("_back") >= 0) return true;
+    var lab = String(w.label || "").toUpperCase();
+    return lab === "BACK" || lab === "CANCEL" ||
+           lab.indexOf("LEAVE") === 0 || lab.indexOf("NOT NOW") === 0;
+  }
+  function uiGo(w) {
+    if (!w || !w.go) return;
+    if (uiBackish(w)) SFX.back(); else SFX.pick();
+    w.go();
+  }
+
   function uiHit(p) {
     if (!p) return null;
     for (var i = UI.widgets.length - 1; i >= 0; i--) {
@@ -5513,7 +5639,7 @@ window.OuissyCup = (function () {
       var w = uiHit(uiPoint(e));
       var fired = w && w.id === UI.down ? w : null;
       UI.down = null;
-      if (fired && fired.go) { SFX.pick(); fired.go(); }
+      if (fired && fired.go) uiGo(fired);
     };
     uiCvs.addEventListener("pointerup", release);
     uiCvs.addEventListener("pointercancel", function () { UI.down = null; });
@@ -5588,7 +5714,7 @@ window.OuissyCup = (function () {
     }
     if (k === "Enter" || k === " " || k === "Spacebar") {
       var w = UI.widgets[UI.focus];
-      if (w && w.go) { SFX.pick(); w.go(); }
+      if (w && w.go) uiGo(w);
       return true;
     }
     return false;
@@ -5618,6 +5744,36 @@ window.OuissyCup = (function () {
      draws, and it lands in the mirror above the buttons. */
   function uiSay(str) {
     if (str) UI.say.push(String(str));
+  }
+
+  /* SAYING SOMETHING WHILE THE MATCH IS RUNNING.
+
+     `uiSay` only works inside a card. It pushes onto UI.say, and UI.say
+     is cleared and mirrored into the DOM by uiPaint — which does
+     nothing at all unless a card is open. So a line pushed during play
+     is never announced, and worse, it sits in the array until the next
+     card opens and then turns up at the top of THAT card's mirror.
+
+     The drawn super nameplate is the first thing in the chapter that
+     has to speak while the football is still going, so it needs a live
+     region of its own: straight into the mirror beside the canvas, and
+     taken down again afterwards so the mirror stays a description of
+     what is on screen rather than a transcript of the match. */
+  var sayTimer = null;
+  function announce(str) {
+    if (!str) return;
+    if (UI.screen) return uiSay(str);
+    var host = EL["cup-ui-a11y"];
+    if (!host) return;
+    var el = document.createElement("p");
+    el.className = "cup-a11y-live";
+    el.textContent = String(str);
+    host.appendChild(el);
+    if (sayTimer) clearTimeout(sayTimer);
+    sayTimer = setTimeout(function () {
+      if (el.parentNode) el.parentNode.removeChild(el);
+      sayTimer = null;
+    }, 4200);
   }
 
   function syncA11y() {
@@ -6995,8 +7151,10 @@ window.OuissyCup = (function () {
         uiButton("card_go", ix, by + bp.off, bw, 22, spec.action,
                  { tone: "#c8912f", ink: "#2a1c08", go: spec.onGo });
         if (spec.alt) {
+          /* the second button on a card is always the way out of it —
+             leave, not now, go back — so it is the one that falls */
           uiButton("card_alt", ix + bw + 8, by + bp.off, iw - bw - 8, 22,
-                   spec.alt, { tone: "#2f5d72", go: spec.onAlt });
+                   spec.alt, { tone: "#2f5d72", go: spec.onAlt, back: true });
         }
       }
       if (spec.foot) {
@@ -7758,8 +7916,7 @@ window.OuissyCup = (function () {
     press: function (id) {
       var w = UI.widgets.filter(function (v) { return v.id === id; })[0];
       if (!w || !w.go) return false;
-      SFX.pick();
-      w.go();
+      uiGo(w);
       return true;
     },
     /* STRAIGHT INTO A MATCH, WITH NO MENUS IN THE WAY.
@@ -7887,6 +8044,17 @@ window.OuissyCup = (function () {
        useless to a harness that only wants to photograph the
        cinematic, so this is the back door: it puts the ball at the
        captain's feet, fills the meter, and unleashes. */
+    /* PUT THE CAMERA WHERE IT WOULD BE.
+
+       The simulation is stepped by hand in a harness — hundreds of
+       ticks inside one JS turn — but the camera eases on the RENDER
+       clock, a tenth of the remaining distance per frame. So after a
+       block of hand-stepping the camera is still pointing at wherever
+       the ball was several hundred ticks ago, and a screenshot comes
+       back as an empty patch of grass with the play off the side of
+       it. This snaps it to where it is heading, which is what every
+       screenshot of the match actually wants. */
+    camSnap: function () { placeCamera(0, true); return hooks.state(); },
     superNow: function (team) {
       team = team || 0;
       if (!G || G.state !== "play") return false;

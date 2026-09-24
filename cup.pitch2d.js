@@ -692,8 +692,49 @@ window.CupPitch2D = (function () {
         drawText(ctx, word, tx2, ty2, "#f2f6f4");
       }
     }
+    /* the tunnel goes on AFTER the boards, because it interrupts them:
+       drawn first, the hoarding loop simply painted over it */
+    this.drawTunnel(lip, bh, base);
     ctx.fillStyle = C.grassDk;
     ctx.fillRect(0, base, this.vw, 2);
+  };
+
+  /* THE TUNNEL.
+
+     A dark mouth cut into the boards with a lit lip over it and a step
+     down into it. It is about fourteen pixels of black and it
+     does more for the stand than any of the seats do: a wall of crowd
+     with no way in or out of it is a backdrop, and a wall of crowd with
+     a hole in it is a place the players came from. */
+  Pitch.prototype.drawTunnel = function (lip, bh, base) {
+    var ctx = this.ctx;
+    if (bh < 5) return;
+    /* ANCHORED TO THE GROUND, NOT TO THE FRAME.
+
+       Placed at the middle of the SCREEN it sits dead centre of every
+       shot and slides along the stand as the camera pans, which is a
+       tunnel on rails. It belongs at a fixed place on the pitch — off
+       to one side, so it is not permanently hidden behind the goal —
+       and the projection puts it where that lands. */
+    var w = 26, h = bh + 6;
+    var anchor = this.project(-this.raw.halfW * 0.62,
+                              this.swap ? 0 : this.raw.len + 7 / this.k);
+    var x = Math.round(anchor.x - w / 2);
+    if (x + w < 0 || x > this.vw) return;
+    var y = Math.round(lip - 6);
+    /* the surround, then the mouth, then the dark inside it */
+    ctx.fillStyle = mix(C.board, "#ffffff", 0.14);
+    ctx.fillRect(x - 2, y - 2, w + 4, h + 2);
+    ctx.fillStyle = "#07090c";
+    ctx.fillRect(x, y, w, h);
+    /* a little light spilling out of it onto the boards */
+    ctx.globalAlpha = 0.18;
+    ctx.fillStyle = "#cfe0d8";
+    ctx.fillRect(x + 3, y + h - 3, w - 6, 3);
+    ctx.globalAlpha = 1;
+    /* the lintel */
+    ctx.fillStyle = mix(C.board, "#ffffff", 0.3);
+    ctx.fillRect(x - 2, y - 2, w + 4, 1);
   };
 
   /* =======================================================================
@@ -1271,18 +1312,37 @@ window.CupPitch2D = (function () {
                 Math.max(1, p.ky * r * f * 1.8), C.shadow);
   };
 
-  /* the ring under whoever the player is driving. A projected annulus
-     with two gaps that rotate, so it reads as a live marker rather than
-     a decal, and in the trophy gold so it is never lost in a kit. */
-  Pitch.prototype.ring = function (wx, wy, phase, rad) {
-    var ctx = this.ctx, n = 96, r = (rad || 1.7) / this.k;
+  /* THE RING UNDER THE PLAYER BEING DRIVEN.
+
+     A projected annulus with two rotating gaps, so it reads as a live
+     marker rather than a decal. Two things on top of that:
+
+     It BREATHES. A ring that only spins reads as decoration; a ring
+     that changes size reads as a thing that is SELECTED — and on a
+     pitch with eight near-identical figures on it, knowing which one is
+     yours at a glance is the most important piece of information on the
+     screen.
+
+     And it carries the team's hue without losing the gold's brightness.
+     The original was flat trophy gold specifically so that it could
+     never be lost against a kit, which is a real constraint and not a
+     preference: a dark trim on a dark pitch is a ring you cannot see.
+     Tinting it the whole way to the team colour would have thrown that
+     away, so the colour is blended half and half — the hue says whose
+     it is, the luminance keeps it legible on any grass. */
+  Pitch.prototype.ring = function (wx, wy, phase, rad, col) {
+    var ctx = this.ctx, n = 96;
+    var pulse = 1 + Math.sin(this.t * 4.2) * 0.075;
+    var r = (rad || 1.7) * pulse / this.k;
+    var lit = col ? mix(C.ring, col, 0.5) : C.ring;
+    var dk = col ? mix(lit, "#000000", 0.45) : C.ringDk;
     for (var i = 0; i < n; i++) {
       var a = (i / n) * Math.PI * 2;
       var g = ((i / n) + (phase || 0)) % 1;
       if (g < 0.07 || (g > 0.5 && g < 0.57)) continue;
       var p = this.project(wx + Math.cos(a) * r, wy + Math.sin(a) * r);
-      px(ctx, p.x, p.y, C.ring);
-      px(ctx, p.x, p.y + 1, C.ringDk);
+      px(ctx, p.x, p.y, lit);
+      px(ctx, p.x, p.y + 1, dk);
     }
   };
 
@@ -1365,7 +1425,7 @@ window.CupPitch2D = (function () {
         ? self.depthScale(self.project(o.wx, o.wy)) : o.scale;
       /* the shadow shrinks with the player standing on it */
       self.shadow(o.wx, o.wy, (o.shadow || 4) * sc, (o.air || 0) * sc);
-      if (o.ring !== undefined && o.ring !== null) self.ring(o.wx, o.wy, o.ring);
+      if (o.ring !== undefined && o.ring !== null) self.ring(o.wx, o.wy, o.ring, null, o.ringCol);
       self.sprite(o.at, o.anim, o.face, o.frame, o.wx, o.wy, o.flip, o.air, sc);
     });
   };
@@ -1411,7 +1471,17 @@ window.CupPitch2D = (function () {
       /* AND IT TURNS. Three panels carried round on the ball's own
          rolled angle: at this size that is the difference between a ball
          and a white dot. */
-      var a0 = o.spin || 0;
+      /* ROLLED IN STEPS, NOT SWEPT.
+
+         Carried round on a continuous angle, three panels on a six-pixel
+         ball spend most of their time halfway between two pixels, and
+         what that looks like is not rotation — it is three dots
+         twitching. Snapped to eighths of a turn, each panel sits
+         somewhere definite and moves in visible increments, which is
+         what actually reads as a ball rolling. It is the same argument
+         as the sprite scale being quantised, for the same reason. */
+      var STEPS = 8;
+      var a0 = Math.round((o.spin || 0) / (Math.PI * 2 / STEPS)) * (Math.PI * 2 / STEPS);
       for (var i = 0; i < 3; i++) {
         var a = a0 + i * (Math.PI * 2 / 3);
         px(ctx, Math.round(p.x + Math.cos(a) * rx * 0.55),
