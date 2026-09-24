@@ -141,3 +141,58 @@ for the element box to be stable and never gets it. Either call
 `window.__soHalt()` first and capture through CDP (`Page.captureScreenshot`),
 as `screens.js` does, or pull the canvas out with `toDataURL` and skip
 playwright's screenshot entirely, as `play.js` does.
+
+## Ouissy's Cup
+
+The football chapter has its own set, and they have one thing in common
+worth knowing before you run any of them: **the simulation is stepped by
+hand and the renderer is not.**
+
+`OuissyCup.__cup.step(n)` advances the match n fixed ticks inside a
+single JS turn, which is the only way to play a whole half in a
+container that gives you three frames a second. But the camera eases on
+the RENDER clock, and so do the goal flash, the screen shake and the
+super's nameplate. So after a block of hand-stepping, the camera is
+still pointing where the ball was several hundred ticks ago and the
+flash from a goal is still at full strength — which is why an
+unsuspecting screenshot of the match comes back as a pink rectangle with
+the play off the side of it. `camSnap()` puts the camera where it is
+heading; waiting for `state().state === 'play'` lets the flash decay.
+
+- **`cupflow.js`** — the route she actually takes: hub card, chapter
+  loads, menus, kick-off, a goal, half time, the way out. 17 assertions.
+  This is the one that would catch the chapter failing to load at all.
+- **`cupui.js`** — the drawn UI: hit rectangles, entrance animations, the
+  bitmap font against every string in the config, and that the game is
+  in English. 22 assertions.
+- **`cupwords.js`** — a whole run through the cup, round by round, with
+  the memory cards between them. Slow: it plays three matches.
+- **`cupmatch.js`** — *is it football?* Shape, pressing, cover, marking,
+  goal-side, territory, passing and shooting, measured over three
+  fixtures with nobody driving (`auto(true)` hands all eight players to
+  the AI, so what is measured is the AI and not the statue the harness
+  is not steering). Read the notes in it before tuning against any
+  single number: a four-a-side half is chaotic, and the goal-side figure
+  swings from 5% to 52% between runs of the IDENTICAL build.
+- **`cupsides.js`** — tells a CODE asymmetry from a SQUAD one by swapping
+  which team is which. An effect that stays with the index is the code;
+  one that follows the squad is the teams; one that does neither is
+  luck. It is how the keeper's off-his-line clamp was caught being
+  correct for one end of the pitch and nonsense for the other.
+- **`cupaxis.js`** — the same moment drawn up-and-down and sideways, with
+  the real baked atlas. It exists because a greybox cannot answer the
+  question that decides the camera: its blocks scale and a 64-pixel
+  sprite never does.
+- **`cuplook.js`** — four frames, fast, straight in through `quick()`:
+  open play, the heart meter, a goalmouth, the super's nameplate.
+- **`cupgrey.js`**, **`cupshot.js`**, **`cuphero.js`**, **`cupsprite.js`**,
+  **`cupsquad.js`**, **`cuppitch.js`**, **`cupcards.js`**, **`cupmenu.js`**,
+  **`cupsuper.js`**, **`cupfeel.js`**, **`cupvenue.js`** — renders rather
+  than assertions, for looking at one thing closely.
+
+**Crop and zoom before you judge a sprite.** Nearly every defect in the
+character work — an eye that read as a fish, a ponytail drawn inside the
+skull, a sleeve outside the chest it belonged to — was invisible at 1:1
+and obvious at 4x in PIL. The same goes for the pitch: the markings
+shimmered for weeks because nobody looked at them while the camera was
+moving.
