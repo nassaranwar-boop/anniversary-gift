@@ -248,6 +248,17 @@ window.OuissyCup = (function () {
     shotLift: 0.42,         // how much of a full shot goes upward
     lobSpeed: 120,
 
+    /* --- hit-stop ---
+       Three numbers in milliseconds, because that is how they are
+       judged. Under about fifty the pause is invisible; over about a
+       hundred and twenty the game feels like it is dropping frames
+       rather than punctuating itself, which is the failure mode to
+       avoid — the whole point is that the player never consciously
+       notices a stop, only that the hit felt solid. */
+    hitStopShot: 0.055,
+    hitStopTackle: 0.085,
+    hitStopGoal: 0.12,
+
     /* --- tackling --- */
     tackleReach: 13,
     tackleTime: 0.34,
@@ -488,6 +499,22 @@ window.OuissyCup = (function () {
     if (!v) return;
     VEN.cur = v;
     if (window.CupPitch2D) window.CupPitch2D.venue(v);
+    dressCrowd();
+  }
+
+  /* WHOSE GROUND IT IS.
+
+     A stadium full of identically-coloured strangers is scenery. A
+     stadium with blocks of both kits in it is an occasion, and it costs
+     two colours — which the renderer already has, because they are the
+     shirts the two teams are wearing. The venue has to be applied
+     first, because applying one rebuilds the crowd palette from
+     scratch and would throw this away. */
+  function dressCrowd() {
+    if (!R2 || !R2.setCrowd) return;
+    var h = G && G.ids && teamById(G.ids[0]);
+    var a = G && G.ids && teamById(G.ids[1]);
+    R2.setCrowd(h && h.kit ? h.kit.shirt : null, a && a.kit ? a.kit.shirt : null);
   }
 
   /* =======================================================================
@@ -925,7 +952,7 @@ window.OuissyCup = (function () {
       players: [], ball: { x: PITCH.cx, y: PITCH.cy, z: 0, vx: 0, vy: 0, vz: 0,
                            owner: null, lastTouch: null, lock: 0, spin: 0,
                            curve: 0, struck: 0 },
-      timeScale: 1, scoredBy: 0, scorerP: null, celebration: "armsUp",
+      timeScale: 1, hitStop: 0, scoredBy: 0, scorerP: null, celebration: "armsUp",
       cam: { y: PITCH.cy },
       controlled: null, kickoffTeam: 0, golden: false, over: false,
       shake: 0, flash: 0, flashCol: null, scorer: "",
@@ -1005,7 +1032,19 @@ window.OuissyCup = (function () {
      centre point.
      ======================================================================= */
   var switchT = 0;
+  /* NOBODY DRIVING.
+
+     Measuring the AI with a human player on the pitch measures the
+     wrong thing: the player she is steering is excluded from think(),
+     so in a harness that presses no keys her side plays with a statue
+     at the heart of it — which was read, on the first run of the
+     match harness, as "her team never shoots". It holds the ball and
+     stands there. With this on, all eight are AI and what comes back
+     is the football. */
+  var AUTOPLAY = false;
+
   function pickControlled(force, dt) {
+    if (AUTOPLAY) { G.controlled = null; return; }
     switchT += dt || 0;
     var mine = G.players.filter(function (p) { return p.team === 0 && !p.gk; });
     if (!mine.length) return;
@@ -1679,6 +1718,16 @@ window.OuissyCup = (function () {
                   G.superGoal ? G.superGoal.colour : null);
     G.kickoffTeam = 1 - team;
     G.flash = 1; G.shake = 1;
+    /* A GOAL IS THE ONE MOMENT THAT GETS EVERYTHING.
+
+       Hit-stop first, so the net bulging is a held frame rather than a
+       blur; then the flash, the shake, the slow motion, the confetti
+       and the wave round the ground. The order matters because they are
+       not simultaneous — the stop is the hit, and everything else is
+       the reaction to it. */
+    G.hitStop = Math.max(G.hitStop, TUNE.hitStopGoal);
+    turfBurst(G.ball.x, G.ball.y, 16);
+    if (R2 && R2.startWave) R2.startWave();
     G.ball.vx = G.ball.vy = G.ball.vz = 0; G.ball.owner = null;
     /* WHICH NET JUST BULGED. The renderer's two goals are the near one
        (her line, y1) and the far one (theirs, y0), and which of those
@@ -1796,135 +1845,796 @@ window.OuissyCup = (function () {
      who simply runs faster than you is not a harder game, it is a rigged
      one, and it takes about ten seconds to feel the difference.
      ======================================================================= */
+  /* =======================================================================
+     THE FOOTBALL
+
+     What was here before worked, in the sense that a ball went in a net
+     and a scoreline changed. It was not football. Three players stood
+     on their formation marks; one of them — whoever happened to be
+     nearest — sprinted at the ball; and the other two drifted along a
+     line drawn between the ball and their own goal. Nobody marked
+     anybody. Nobody covered anybody. A pass was thrown at whichever
+     teammate scored best on a sum that never once asked whether there
+     was an opponent standing in the way, so balls went straight THROUGH
+     defenders several times a minute. Attack and defence were the same
+     shape with a slightly different blend factor.
+
+     A game of football is four things happening at once, and this is
+     all four of them:
+
+       SHAPE     — eleven (here, four) players holding relative
+                   positions that slide together. The team moves as a
+                   block toward the ball and up and down with it. The
+                   block is the thing; individuals are offsets from it.
+       PHASE     — the block is a different block when you have the ball
+                   than when you do not. Attacking, it stretches: high
+                   and wide, to make the pitch big. Defending, it
+                   compresses: deep and narrow, to make the pitch small.
+       JOBS      — out of possession exactly one player presses the ball
+                   and exactly one covers behind them; everybody else
+                   picks up an opponent and stays goal-side of him. In
+                   possession one player carries and the others offer
+                   themselves at different distances and angles.
+       THE LANE  — a pass, a shot and a tackle are all a question about
+                   the straight line between two points and who is
+                   standing on it. Almost everything that reads as
+                   "stupid" in a football game is a decision taken
+                   without asking that question.
+
+     Every number below is in the simulation's own units: the pitch is
+     288 across and 404 long.
+     ======================================================================= */
+
+  /* ------------------------------------------------------- the geometry */
+
+  /* HOW CLOSE THE NEAREST OPPONENT COMES TO A LINE.
+
+     The one piece of arithmetic the old AI never did, and the reason it
+     passed through people. Returns the perpendicular distance from the
+     closest opponent to the segment a->b, but only counting opponents
+     who are actually ALONGSIDE the segment — somebody standing behind
+     the passer is not in the way of a ball going forwards. */
+  function laneClear(team, ax, ay, bx, by, ignore) {
+    var dx = bx - ax, dy = by - ay;
+    var L2 = dx * dx + dy * dy;
+    if (L2 < 1) return 999;
+    var worst = 999;
+    for (var i = 0; i < G.players.length; i++) {
+      var o = G.players[i];
+      if (o.team === team || o === ignore) continue;
+      /* where along the segment this opponent is, 0 at a, 1 at b */
+      var t = ((o.x - ax) * dx + (o.y - ay) * dy) / L2;
+      if (t < 0.05 || t > 0.98) continue;
+      var px = ax + dx * t, py = ay + dy * t;
+      var gap = len(o.x - px, o.y - py);
+      /* A DEFENDER IS WORTH MORE NEAR THE END OF THE PASS than near the
+         start of it: he has longer to read it and gets there with the
+         ball. The taper is what stops the AI threading everything
+         through the eye of a needle at forty yards. */
+      gap /= (0.55 + 0.45 * (1 - t));
+      if (gap < worst) worst = gap;
+    }
+    return worst;
+  }
+
+  /* =======================================================================
+     HOW GOOD A PLACE THIS IS TO HAVE THE BALL
+
+     Everything an attacking side decides is a comparison between two
+     positions, and for a long time the comparison here was "which one
+     is nearer the opposition goal line". That single number is wrong in
+     the one place it matters most. A player standing ON the byline, two
+     yards from the corner flag, is nearer the goal line than a team-
+     mate arriving at the penalty spot — so a cut-back, which is the
+     best pass in football, scored NEGATIVELY and was never played.
+     Measured: her side's carrier spent 1,098 frames of a half dribbling
+     along the goal line with a shooting angle of nothing, refusing
+     every pass, because every pass available to it "went backwards".
+
+     Distance and CENTRALITY together are what make a chance. Both are
+     needed, and they multiply rather than add: a yard from the line but
+     out by the flag is worth almost nothing, and so is dead centre from
+     sixty yards. The result is a number from 0 to 1 that the passing,
+     the dribbling and the shooting all read, so all three of them agree
+     about where they are trying to get the ball to.
+     ======================================================================= */
+  function threatAt(team, x, y) {
+    var gy = goalY(team);
+    var far = len(x - PITCH.cx, y - gy);
+    var wide = Math.min(1, Math.abs(x - PITCH.cx) / (PITCH.w * 0.46));
+    var near = clamp(1 - far / 250, 0, 1);
+    return near * near * (0.30 + 0.70 * (1 - wide * wide));
+  }
+
+  /* is this player between the ball and their own goal? */
+  function goalSide(p, of) {
+    var d = attackDir(p.team);
+    return (of.y - p.y) * d > 0;
+  }
+
+  /* WHERE THE TEAM'S BLOCK IS, as two numbers.
+
+     `height` is how far up the pitch the whole shape has slid, as a
+     fraction of its own half-to-half travel; `drift` is how far it has
+     slid across toward the ball. Both come off the ball, because in
+     football the ball is what everybody is positioned relative to —
+     which is why a side with the ball on its own left touchline has its
+     right back tucked inside, and why a team pinned in its own box has
+     its striker on the edge of it. */
+  function teamBlock(team) {
+    var b = G.ball, d = attackDir(team), own = ownGoalY(team);
+    /* how far up the pitch the ball is, from this team's point of view */
+    var up = clamp((b.y - own) * d / PITCH.h, 0, 1);
+    var mine = b.owner && b.owner.team === team;
+    /* IN POSSESSION THE BLOCK PUSHES UP AND STRETCHES; OUT OF IT, IT
+       DROPS AND SQUEEZES. The two numbers are deliberately not
+       symmetrical: a side defends deeper than it attacks high, because
+       conceding is worse than not scoring. */
+    var height = mine ? 0.10 + up * 0.62 : -0.06 + up * 0.44;
+    /* and it is not a narrow one: squeezed to three-quarters of the
+       formation's width, three players holding one line ended up
+       standing on each other in the middle of the pitch */
+    var width = mine ? 1.06 : 0.92;
+    var drift = clamp((b.x - PITCH.cx) / (PITCH.w / 2), -1, 1) * (mine ? 0.20 : 0.34);
+    /* THE DEFENSIVE LINE.
+
+       A block whose depth comes only off the BALL sits where the ball
+       is, which is not where the defending is done: with an attack
+       camped on the edge of the box, the ball is deep but the runners
+       are deeper, and a back line taking its cue from the ball ends up
+       marking people from in front of them. Measured, markers were
+       goal-side of their man a quarter of the time — worse than
+       guessing, because the error is systematic.
+
+       So the line also reads the DEEPEST OPPONENT, and never sits
+       further from its own goal than he is. That one rule is what a
+       defensive line is, and it is the difference between defending and
+       following people about. */
+    var deep = 1e9;
+    G.players.forEach(function (o) {
+      if (o.team === team || o.gk) return;
+      var v = (o.y - own) * d;              // small = close to our goal
+      if (v < deep) deep = v;
+    });
+    var lineUp = deep < 1e8 ? clamp((deep + 22) / PITCH.h, 0.05, 1) : 1;
+    return { up: up, mine: !!mine, height: height, width: width,
+             drift: drift, d: d, own: own, line: lineUp };
+  }
+
+  /* a player's place in the block: their formation slot, moved */
+  function shapeTarget(p, blk) {
+    var s = p.slot || SLOTS[p.role] || SLOTS.mid;
+    var across = 0.5 + (s.across - 0.5) * blk.width + blk.drift * 0.5;
+    var upF = clamp(s.up + blk.height, 0.02, 0.96);
+    /* OUT OF POSSESSION, EVERYBODY HOLDS THE LINE.
+
+       This used to exempt anybody whose formation slot was high up the
+       pitch, on the reasoning that a striker should stay up for the
+       counter. With four a side there is no such thing as a player who
+       is not defending: all three outfielders are given a defensive job
+       the moment the ball is lost, and the striker's slot — 0.70 in
+       DIAMOND, 0.76 in WIDE — put him two hundred and eighty units from
+       his own goal while he was supposedly marking somebody inside it.
+       That one exemption was most of the goal-side failures, and it
+       showed up as wild variation BETWEEN fixtures rather than as a
+       steady error, because which formation a side happens to be
+       playing decided whether it happened at all.
+
+       The line stays permissive when it should: it is worked out from
+       the deepest opponent, so while the other side is playing out from
+       their own goal it is up around the halfway line and nothing is
+       clamped at all. */
+    /* A BLOCK HAS LAYERS. Clamping all three of them to the same line
+       put them on one row of the pitch — measured at nearly nine per
+       cent of frames with two team-mates inside a body's width, and it
+       left the side attacking it no way through and no shots. Each
+       player is held to the line PLUS a slice of his own slot depth, so
+       the shape stays a back man, a middle man and a front man rather
+       than a wall. */
+    if (!blk.mine) upF = Math.min(upF, blk.line + (s.up - 0.26) * 0.26);
+    return {
+      x: clamp(PITCH.x0 + across * PITCH.w, PITCH.x0 + 10, PITCH.x1 - 10),
+      y: clamp(blk.own + blk.d * upF * PITCH.h, PITCH.y0 + 12, PITCH.y1 - 12),
+    };
+  }
+
+  /* ------------------------------------------------------------ the jobs
+
+     Worked out ONCE a frame for each side rather than once per player,
+     because "am I the one pressing" is a question about the whole team
+     and four players each answering it privately is how you get two
+     pressers and no cover. */
+  function assignJobs(team) {
+    var b = G.ball;
+    var carrier = b.owner;
+    var mine = carrier && carrier.team === team;
+    var outs = [];
+    G.players.forEach(function (q) {
+      if (q.team !== team || q.gk) return;
+      q.job = null;
+      outs.push(q);
+    });
+    if (!outs.length) return;
+
+    if (mine) {
+      /* IN POSSESSION: one short option, one wide option, one holding.
+
+         Sorted by how far up they already are, so the runner is the one
+         already highest rather than whoever the loop reached first —
+         which is what stops a centre half being nominated to sprint in
+         behind while the striker drops to take a square ball. */
+      var d = attackDir(team);
+      outs.sort(function (a, c) { return (c.y - a.y) * d; });
+      var n = 0;
+      outs.forEach(function (q) {
+        if (q === carrier) return;
+        q.job = n === 0 ? "run" : (n === 1 ? "support" : "hold");
+        q.mark = null; q.markT = 0;
+        n++;
+      });
+      return;
+    }
+
+    /* OUT OF POSSESSION: press, cover, and mark.
+
+       The presser is the closest to the ball — but measured with a bias
+       toward whoever is ALREADY goal-side of it, because a defender who
+       has to run round the carrier to reach him is not closest in any
+       sense that matters. */
+    var target = carrier || b;
+    var best = null, bs = 1e9, second = null, ss = 1e9;
+    outs.forEach(function (q) {
+      var c = len(q.x - target.x, q.y - target.y);
+      if (!goalSide(q, target)) c += 26;
+      if (q.coolT > 0) c += 30;
+      if (c < bs) { second = best; ss = bs; best = q; bs = c; }
+      else if (c < ss) { second = q; ss = c; }
+    });
+    /* HER TEAM NEVER PRESSES WITH THE PLAYER SHE IS DRIVING.
+
+       It used to, and the effect was that the moment she took manual
+       control of the nearest defender the AI kept giving that same
+       defender the pressing job, so the two of them fought over the
+       controls: she steered one way, the press steered the other, and
+       what it felt like was a player refusing to move. */
+    if (team === 0 && best === G.controlled) { best = second; second = null; }
+    if (best) best.job = "press";
+    outs.forEach(function (q) {
+      if (q.job) return;
+      q.job = q === second ? "cover" : "mark";
+    });
+    /* A MAN YOU ARE NO LONGER MARKING IS NOT YOUR MAN.
+
+       `mark` was only ever written by the marking branch and never
+       cleared, so a defender promoted to presser or cover carried his
+       old mark around with him — and the register, which is what stops
+       two defenders picking up the same striker, went on seeing that
+       stale claim. Measured at 98% of defending frames with a
+       duplicate in them. It is cleared where the job is decided,
+       because that is the moment it stops being true. */
+    outs.forEach(function (q) {
+      if (q.job !== "mark") { q.mark = null; q.markT = 0; }
+    });
+  }
+
+  /* WHO A MARKER PICKS UP.
+
+     The most dangerous unmarked opponent, where "dangerous" is how far
+     up the pitch they are plus how free they are, and where "unmarked"
+     is checked against the players who have already chosen — so two
+     defenders do not both follow the same striker and leave the other
+     one standing on the penalty spot on his own. */
+  function pickMark(p, taken) {
+    var own = ownGoalY(p.team);
+    var best = null, bs = -1e9;
+    G.players.forEach(function (o) {
+      if (o.team === p.team || o.gk) return;
+      if (taken[o.idx + "|" + o.team]) return;
+      /* DANGER IS CLOSENESS TO THE GOAL BEING DEFENDED.
+
+         This used to read `clamp((own - o.y) * d / PITCH.h, 0, 1)`,
+         which is negative for every player on the pitch and therefore
+         clamped to zero for every player on the pitch — so the whole
+         term vanished and a defender simply picked up whoever was
+         NEAREST him, which is very often the man he has already gone
+         past. It is written out longhand now, because the compact
+         version of this is exactly the kind of thing that can be wrong
+         for months without looking wrong. */
+      var danger = clamp(1 - Math.abs(o.y - own) / PITCH.h, 0, 1);
+      /* and a man in the middle is worth more than a man by the flag */
+      var central = 1 - Math.min(1, Math.abs(o.x - PITCH.cx) / (PITCH.w * 0.5));
+      var far = dist(p, o);
+      var sc = danger * 150 * (0.55 + 0.45 * central) - far * 0.5;
+      if (sc > bs) { bs = sc; best = o; }
+    });
+    if (best) taken[best.idx + "|" + best.team] = 1;
+    return best;
+  }
+
+  /* =======================================================================
+     ONE PLAYER, ONE FRAME
+     ======================================================================= */
   function think(p, dt) {
     /* her seven teammates play at a fixed, decent level; the opposition
        plays at the round's, scaled by the difficulty she chose */
     var skill = p.team === 0 ? 0.55 : G.skill;
     var b = G.ball;
     if (p.gk) return thinkKeeper(p, dt, skill);
-
-    var mineHasBall = b.owner && b.owner.team === p.team;
-    var slot = slotPos(p);
-    var d = attackDir(p.team);
-
     if (b.owner === p) return thinkCarrier(p, dt, skill);
 
-    if (mineHasBall) {
-      /* make a run: push up the pitch, and get away from whoever has it
-         so there is somewhere to pass to */
-      var tx = slot.x + (p.x < b.owner.x ? -18 : 18);
-      var ty = slot.y + d * PITCH.h * 0.12 + (b.y - PITCH.cy) * 0.45;
-      moveTo(p, clamp(tx, PITCH.x0 + 8, PITCH.x1 - 8),
-             clamp(ty, PITCH.y0 + 10, PITCH.y1 - 10), dt, 0.92);
-      return;
-    }
+    var blk = teamBlock(p.team);
+    var home = shapeTarget(p, blk);
 
-    /* the nearest one chases; on her team the controlled player is the
-       chaser, so the rest hold shape instead of all piling in */
-    /* WHO GOES FOR IT.
-
-       This line is why her team lost every match 0-4 without having a
-       single shot. It read: I am the chaser if I am nearest AND NOT
-       (this is her team and she is driving an outfielder). She is
-       ALWAYS driving an outfielder — that is what the chapter does —
-       so on her side the condition was permanently false and none of
-       her players ever chased the ball. The one she was steering was
-       excluded from think() anyway, being hers to run, so between them
-       nobody on her team went for it at all: measured at 0% possession,
-       0 shots, and 0% of the match spent in the opposition box.
-
-       The rule that was meant: the nearest player chases — and if the
-       nearest happens to be the one she is driving, the next nearest
-       goes instead, so her team is never standing about waiting for
-       her to do all of it herself. */
-    var chaser = nearestTo(b, p.team, true);
-    if (p.team === 0 && chaser === G.controlled) {
-      chaser = nearestTo(b, 0, true, G.controlled);
-    }
-    var iAmChaser = chaser === p;
-
-    if (iAmChaser) {
-      var lead = TUNE.gkAnticipate * skill;
-      var tx2 = b.x + b.vx * lead, ty2 = b.y + b.vy * lead;
-      moveTo(p, tx2, ty2, dt, 1 + skill * 0.10);
-      /* a tackle, when it is worth one — and a defender goes in from
-         further out and comes away with it more often, which is what
-         the defence stat is */
-      var pm = p.mul || FLAT_MUL;
-      if (b.owner && b.owner.team !== p.team && p.coolT <= 0 &&
-          dist(p, b) < TUNE.tackleReach * pm.tackle + 3 &&
-          Math.random() < 0.6 * skill * pm.tackle) {
-        startTackle(p);
-      }
-      return;
-    }
-    /* everybody else drops between the ball and their own goal */
-    var goalx = PITCH.cx, goaly = ownGoalY(p.team);
-    var mix = 0.34 + skill * 0.18;
-    moveTo(p, clamp(slot.x * (1 - mix) + (b.x * 0.6 + goalx * 0.4) * mix, PITCH.x0 + 8, PITCH.x1 - 8),
-           clamp(slot.y * (1 - mix) + (b.y * 0.55 + goaly * 0.45) * mix, PITCH.y0 + 10, PITCH.y1 - 10),
-           dt, 0.9);
+    if (blk.mine) return thinkAttack(p, dt, skill, blk, home);
+    return thinkDefend(p, dt, skill, blk, home);
   }
 
+  /* ---------------------------------------------------------- WITH IT */
+  function thinkAttack(p, dt, skill, blk, home) {
+    var b = G.ball, car = b.owner, d = blk.d;
+    var tx = home.x, ty = home.y, urgency = 0.88;
+
+    if (p.job === "run") {
+      /* THE RUN IN BEHIND. Ahead of the ball, into the channel the
+         carrier is NOT in, so the pass has somewhere to go that is not
+         straight at the man marking him. */
+      var side = car.x < PITCH.cx ? 1 : -1;
+      tx = clamp(PITCH.cx + side * PITCH.w * 0.26 + blk.drift * 30,
+                 PITCH.x0 + 14, PITCH.x1 - 14);
+      ty = clamp(car.y + d * (54 + skill * 26), PITCH.y0 + 16, PITCH.y1 - 16);
+      /* DO NOT RUN PAST THE LAST DEFENDER AND STAND THERE.
+
+         There is no offside in this chapter — with four a side there
+         could not be — but a striker who parks himself on the keeper's
+         toes is both unpassable-to and, visually, a player who has
+         given up. Held a few units behind the last man, he is always
+         arriving rather than waiting. */
+      var last = lastDefender(1 - p.team);
+      if (last) {
+        var limit = last.y + d * 10;
+        if ((ty - limit) * d > 0) ty = limit;
+      }
+      urgency = 1.0;
+    } else if (p.job === "support") {
+      /* THE SHORT OPTION: level with the ball and a good way to the
+         side of it, which is the pass that is always on and the reason
+         a side under pressure can keep the ball at all. */
+      var sx = car.x + (car.x < PITCH.cx ? 46 : -46);
+      tx = clamp(sx, PITCH.x0 + 14, PITCH.x1 - 14);
+      ty = clamp(car.y - d * 6, PITCH.y0 + 16, PITCH.y1 - 16);
+      urgency = 0.94;
+    } else {
+      /* THE ONE WHO DOES NOT GO. Somebody has to be behind the ball
+         when it is lost, and the whole of the counter-attack the other
+         way depends on it. */
+      /* Behind the ball, but not behind the keeper: a spare man on his
+         own goal line is not covering anything, he is in the way. The
+         depth is taken from the BALL when the ball is up the pitch and
+         from the block when it is not, so the holding player drops as
+         an attack goes forward and steps up when it comes back. */
+      var back = clamp(car.y - d * 50, PITCH.y0 + 20, PITCH.y1 - 20);
+      ty = (back + home.y) / 2;
+      tx = (tx + PITCH.cx) / 2;
+      urgency = 0.82;
+    }
+
+    /* DO NOT STAND ON A TEAMMATE. Two players converging on the same
+       patch is the single most common way a four-a-side shape turns
+       into a huddle, and it costs one loop to push them apart. */
+    var sep = separation(p, 30);
+    tx += sep.x; ty += sep.y;
+    moveTo(p, clamp(tx, PITCH.x0 + 8, PITCH.x1 - 8),
+           clamp(ty, PITCH.y0 + 10, PITCH.y1 - 10), dt, urgency);
+  }
+
+  /* ------------------------------------------------------- WITHOUT IT */
+  function thinkDefend(p, dt, skill, blk, home) {
+    var b = G.ball, car = b.owner;
+    var pm = p.mul || FLAT_MUL;
+    var tx = home.x, ty = home.y, urgency = 0.9;
+
+    if (p.job === "press") {
+      /* CLOSING DOWN IS NOT SPRINTING AT SOMEBODY.
+
+         A defender who runs flat out at a carrier arrives with no
+         balance and gets turned; what a real one does is cover the
+         ground fast and then SLOW as he arrives, staying on his feet
+         and forcing play one way. The two-stage approach is also what
+         makes a dribble feel like it is beating somebody rather than
+         passing through them. */
+      var tgt = car || b;
+      var gap = dist(p, tgt);
+      var lead = car ? 0.12 : TUNE.gkAnticipate * (0.8 + skill);
+      var ax = tgt.x + (tgt.vx || 0) * lead;
+      var ay = tgt.y + (tgt.vy || 0) * lead;
+      if (car) {
+        /* stand goal-side, a little off him, rather than on top of him */
+        var d = attackDir(p.team);
+        ay -= d * 7;
+      }
+      urgency = gap > 30 ? 1.06 + skill * 0.10 : 0.78;
+      moveTo(p, ax, ay, dt, urgency);
+      tryChallenge(p, skill, pm);
+      return;
+    }
+
+    if (p.job === "cover") {
+      /* BEHIND AND INSIDE THE PRESSER: the second defender's whole job
+         is to be where the ball goes if the first one is beaten. */
+      var ref = car || b;
+      var dd = attackDir(p.team);
+      tx = (ref.x + PITCH.cx) / 2;
+      ty = ref.y - dd * 34;
+      /* never deeper than the block, or the cover becomes a spare
+         defender standing on his own keeper */
+      if ((ty - home.y) * dd < -46) ty = home.y - dd * 46;
+      urgency = 0.96;
+    } else {
+      /* MARKING: goal-side and a shoulder off him, not on top of him.
+         Standing ON a striker means the first touch takes him past;
+         standing between him and the goal means it does not. */
+      /* THE REGISTER IS CLEARED EVERY FRAME, SO A KEPT MARK MUST
+         RE-CLAIM ITSELF. Without this line a defender who is happily
+         tracking somebody does not appear in the register, the next
+         defender to choose sees that striker as unmarked, and both of
+         them end up following him while the other one runs free. */
+      var reg = G.marked || (G.marked = {});
+      var key = p.mark ? p.mark.idx + "|" + p.mark.team : null;
+      var keep = p.mark && p.mark.team !== p.team && p.markT > 0 && !reg[key];
+      if (keep) {
+        reg[key] = 1;
+      } else {
+        /* A MARK SOMEBODY ELSE HAS ALREADY CLAIMED IS NOT YOURS.
+
+           The first version only re-picked when the timer ran out, so a
+           defender whose man had been taken by a team-mate earlier in
+           the same frame simply kept following him anyway — and both of
+           them tracked the same striker while the other one stood
+           unmarked in the box. Measured at 61% of defending frames. */
+        p.mark = pickMark(p, reg);
+        p.markT = 0.5;                 // re-pick twice a second, not per frame
+      }
+      p.markT -= dt;
+      var m = p.mark;
+      if (m) {
+        var d2 = attackDir(p.team);
+        tx = m.x + (PITCH.cx - m.x) * 0.16;
+        /* GOAL-SIDE HAS TO SURVIVE THE BLEND.
+
+           Thirteen units of offset, then seventy per cent of the way
+           back toward the block, left the marker on the wrong side of
+           his man half the time — which is a defender about to be run
+           past, every time. The offset is bigger and the blend is much
+           lighter across the axis that decides it; the block still
+           pulls him sideways, because that is the axis where following
+           somebody into a corner actually costs something. */
+        /* IF YOU ARE ON THE WRONG SIDE OF HIM, GET ROUND HIM.
+
+           Aiming at a fixed offset from a man you are already behind
+           means converging on his shoulder and staying there, because
+           he is moving too. Recovering takes a deeper target than
+           holding does — so the defender cuts across and arrives in
+           front rather than trailing him all the way to the box. */
+        var behind = !goalSide(p, m);
+        ty = m.y - d2 * (behind ? 34 : 16);
+        tx = tx * 0.70 + home.x * 0.30;
+        ty = ty * 0.96 + home.y * 0.04;
+        /* RECOVERING IS A SPRINT, HOLDING IS A JOG.
+
+           A defender who has been got in front of and jogs back is a
+           defender who stays got in front of, for the rest of the move.
+           The one moment a marker is allowed to run flat out is the one
+           where he is on the wrong side of his man. */
+        urgency = behind ? 1.12 : 0.95;
+      }
+      /* A LOOSE BALL NEARBY IS EVERYBODY'S. Marking a man while the
+         ball rolls past your feet is the other classic way an AI looks
+         like it is not playing the same sport. */
+      if (!car && dist(p, b) < 34) { tx = b.x + b.vx * 0.2; ty = b.y + b.vy * 0.2; urgency = 1.05; }
+    }
+
+    /* KEEPING OFF EACH OTHER MUST NOT COST THE GOAL SIDE.
+
+       The spacing push is symmetric, so two defenders converging in a
+       crowded box shoved each other up and down the pitch as readily as
+       apart — and being shoved a stride upfield of your man is exactly
+       the mistake this whole branch exists to avoid. When a player is
+       holding a mark, the push is applied across the pitch only. */
+    var sep = separation(p, 34);
+    var sepY = p.job === "mark" ? sep.y * 0.2 : sep.y;
+    moveTo(p, clamp(tx + sep.x, PITCH.x0 + 8, PITCH.x1 - 8),
+           clamp(ty + sepY, PITCH.y0 + 10, PITCH.y1 - 10), dt, urgency);
+    /* anybody within reach can have a go, not only the presser */
+    if (car && dist(p, car) < TUNE.tackleReach * pm.tackle + 4) {
+      tryChallenge(p, skill * 0.7, pm);
+    }
+  }
+
+  /* the last outfielder of a side, from their own goal's point of view */
+  function lastDefender(team) {
+    /* THE LAST MAN IS THE ONE NEAREST HIS OWN GOAL, which the first
+       version had exactly backwards: it returned whoever was furthest
+       from it — the most ADVANCED player — so the runner in behind was
+       being held level with the opposition's striker instead of their
+       centre half, and ran straight through the back line. */
+    var own = ownGoalY(team), best = null, bs = 1e9;
+    G.players.forEach(function (o) {
+      if (o.team !== team || o.gk) return;
+      var v = Math.abs(o.y - own);
+      if (v < bs) { bs = v; best = o; }
+    });
+    return best;
+  }
+
+  /* a small push away from the nearest teammate who is too close */
+  function separation(p, want) {
+    var sx = 0, sy = 0;
+    for (var i = 0; i < G.players.length; i++) {
+      var q = G.players[i];
+      if (q === p || q.team !== p.team || q.gk) continue;
+      var dx = p.x - q.x, dy = p.y - q.y;
+      var dd = len(dx, dy);
+      if (dd > want || dd < 0.01) continue;
+      var f = (want - dd) / want * 20;
+      sx += dx / dd * f; sy += dy / dd * f;
+    }
+    return { x: sx, y: sy };
+  }
+
+  /* WHETHER TO GO IN, AND WHETHER IT COMES OFF.
+
+     A tackle is a gamble with a cooldown on it, which is what makes it
+     a decision rather than a button. Going in from the side or from
+     behind is harder than going in from in front, so the angle is part
+     of the odds — and a defender who misses is out of the game for half
+     a second, which is the punishment that makes dribbling mean
+     something. */
+  function tryChallenge(p, skill, pm) {
+    var b = G.ball, car = b.owner;
+    if (!car || car.team === p.team || p.coolT > 0 || p.tackleT > 0) return;
+    var reach = TUNE.tackleReach * pm.tackle;
+    var gap = dist(p, car);
+    if (gap > reach + 5) return;
+    /* face-on is a tackle; from behind it is a foul in a game that had
+       fouls, and here it is simply much less likely to work */
+    var toGoal = attackDir(car.team);
+    var infront = (p.y - car.y) * toGoal > 0;
+    var odds = (infront ? 0.85 : 0.45) * skill * pm.tackle;
+    /* and the closer he is to being past you, the more you have to */
+    if (gap < reach * 0.6) odds *= 1.4;
+    if (Math.random() < odds * 1.4 * 0.06) startTackle(p);
+  }
+
+  /* ------------------------------------------------------- ON THE BALL */
   function thinkCarrier(p, dt, skill) {
     var mul = p.mul || FLAT_MUL;
+    /* WHY A SIDE THAT HAS THE BALL DOES NOTHING WITH IT.
+
+       Counted rather than guessed: a half in which her team held the
+       ball for twenty-six seconds and had a third of a shot is a
+       decision going wrong somewhere in this function, and there are
+       only four places it can be. The counters cost a few increments a
+       frame and they are the difference between fixing it and
+       redecorating it. */
+    var dbg = G.dbg || (G.dbg = [{}, {}]);
+    var D = dbg[p.team];
+    D.frames = (D.frames || 0) + 1;
     var gy = goalY(p.team), d = attackDir(p.team);
     var toGoal = Math.abs(p.y - gy);
     var press = nearestOpponent(p);
-    var pressed = press && dist(press, p) < 22;
+    var gap = press ? dist(press, p) : 999;
+    var pressed = gap < 24;
+
+    p.think = (p.think || 0) - dt;
 
     /* the super, if this side has one charged and this is the player to
        take it. Checked before the ordinary shot, because a captain in
        range with a full meter should never settle for a tap-in */
     if (aiWantsSuper(p, toGoal)) return unleash(p);
 
-    /* shoot — and how far out they will try one from is power. Atlas
-       has a go from thirty yards; Lumi carries it another ten first. */
-    if (toGoal < (95 + skill * 45) * mul.power && Math.abs(p.x - PITCH.cx) < 70) {
-      if (Math.random() < (0.02 + skill * 0.06) || (pressed && Math.random() < 0.05)) {
-        return shoot(p, 0.55 + Math.random() * 0.45);
+    /* ---- SHOOT.
+
+       Three questions, in the order a footballer asks them: am I close
+       enough, is the angle any good, and is there anybody in the way.
+       The old version asked the first, approximated the second with a
+       fixed corridor, and never asked the third — so the AI belted the
+       ball into the back of a defender standing two feet in front of it
+       several times a match. */
+    /* HOW FAR OUT THEY WILL TRY ONE.
+
+       Ninety-odd units was a range you could only reach by getting
+       INSIDE the penalty area, and once the defending started working
+       properly nobody reached it: a measured half had one side manage a
+       single shot and the other none at all, with the man on the ball
+       spending five hundred frames never closer than a hundred and
+       thirty. A game of football with one shot in it is not a hard
+       game, it is a dull one.
+
+       Arcade football shoots from distance, and it should: a struck
+       ball from thirty yards is a save, a rebound, a corner and a noise
+       from the crowd, which is four things happening instead of none.
+       Power is still what buys the extra range, so Atlas has a go from
+       distance and Lumi carries it another ten yards first. */
+    var range = (118 + skill * 62) * mul.power;
+    var offCentre = Math.abs(p.x - PITCH.cx);
+    /* the angle closes as you go wider AND as you get closer to the
+       line, which is the real shape of a shooting chance */
+    var angleOk = offCentre < 34 + toGoal * 0.42;
+    if (toGoal < range) D.inRange = (D.inRange || 0) + 1;
+    if (angleOk) D.angleOk = (D.angleOk || 0) + 1;
+    if (toGoal < range && angleOk) {
+      var lane = laneClear(p.team, p.x, p.y, PITCH.cx, gy, null);
+      if (lane < 11) D.blocked = (D.blocked || 0) + 1;
+      var want = 0.04 + skill * 0.10;
+      if (toGoal < 74) want += 0.16;               // in the box, have a go
+      else if (toGoal > 130) want *= 0.8;          // from range, a little less often
+      if (lane < 11) want *= 0.12;                 // blocked: almost never
+      if (pressed) want += 0.05;
+      if (Math.random() < want) {
+        var power = clamp(0.42 + toGoal / 190, 0.4, 1);
+        D.shot = (D.shot || 0) + 1;
+        return shoot(p, power);
       }
     }
-    /* pass, if there is somebody better off */
-    if (pressed && Math.random() < 0.05 + skill * 0.08) {
-      var mate = bestPass(p);
-      if (mate) return passTo(p, mate);
+
+    /* ---- PASS.
+
+       Considered every frame rather than only when pressed, because a
+       side that only passes when it is in trouble is a side that never
+       builds anything. What stops it becoming a hot potato is that the
+       pass has to actually BEAT the alternative of carrying. */
+    if (p.think <= 0) {
+      p.think = 0.1;
+      var opt = bestPass(p, skill);
+      D.look = (D.look || 0) + 1;
+      if (opt) D.found = (D.found || 0) + 1;
+      if (opt && opt.score > (pressed ? 8 : 30)) {
+        D.pass = (D.pass || 0) + 1;
+        return opt.through ? passInto(p, opt.mate, opt.tx, opt.ty)
+                           : passTo(p, opt.mate);
+      }
+      if (opt) D.bestScore = Math.max(D.bestScore || -999, Math.round(opt.score));
     }
-    /* otherwise carry it, angling away from the nearest opponent */
-    var ux = (PITCH.cx - p.x) * 0.01, uy = d;
-    if (press) {
+
+    /* ---- CARRY.
+
+       Toward goal, away from the man in front, and toward the middle
+       when wide — a winger cuts in, he does not run down the touchline
+       into the corner flag and stop. */
+    D.carry = (D.carry || 0) + 1;
+    D.toGoal = Math.min(D.toGoal === undefined ? 1e9 : D.toGoal, Math.round(toGoal));
+
+    /* =====================================================================
+       A DRIBBLE IS AIMED AT A PLACE, NOT POINTED IN A DIRECTION
+
+       "Forward, plus a nudge toward the middle" is a heading, and a
+       heading has nowhere to arrive. Run it for long enough and the
+       carrier reaches the goal line still going forward, at which point
+       forward is into the hoardings — so he grinds sideways along the
+       byline for the rest of the move. That is exactly what the
+       counters caught him doing.
+
+       Aimed instead at a POINT, the same run ends somewhere. Far out
+       the point is straight up his own channel, because a winger in his
+       own half should stay wide and keep the pitch big. As he gets
+       closer it slides toward the near post, which is what cutting
+       inside IS — and it happens by itself, out of one blend, rather
+       than out of a special case for being in the box.
+       ===================================================================== */
+    var closeness = clamp(1 - toGoal / 165, 0, 1);
+    var mouthX = PITCH.cx + clamp(p.x - PITCH.cx, -PITCH.goalW * 0.3, PITCH.goalW * 0.3);
+    var aheadX = p.x, aheadY = p.y + d * 70;
+    /* and never aim through the goal line: the deepest a dribble is
+       ever trying to get to is the six-yard line */
+    var mouthY = gy - d * PITCH.sixH * 0.7;
+    var tgX = aheadX + (mouthX - aheadX) * closeness;
+    var tgY = aheadY + (mouthY - aheadY) * closeness;
+    tgY = clamp(tgY, PITCH.y0 + 6, PITCH.y1 - 6);
+
+    var ux = tgX - p.x, uy = tgY - p.y;
+    var ul = len(ux, uy) || 1;
+    ux /= ul; uy /= ul;
+
+    if (press && gap < 46) {
       var ax = p.x - press.x, ay = p.y - press.y;
       var ad = len(ax, ay) || 1;
-      ux += (ax / ad) * 0.8; uy += (ay / ad) * 0.25;
+      /* go PAST him rather than away from him: mostly sideways, only a
+         little backwards, or every dribble ends up retreating */
+      var side = ax >= 0 ? 1 : -1;
+      ux += side * (1 - gap / 46) * 1.15;
+      uy += (ay / ad) * 0.18 * (1 - gap / 46);
     }
+    /* do not dribble into the touchline */
+    if (p.x < PITCH.x0 + 26) ux += 0.6;
+    if (p.x > PITCH.x1 - 26) ux -= 0.6;
     var m = len(ux, uy) || 1;
     driveP(p, ux / m, uy / m, dt, 1);
   }
 
+  /* ---------------------------------------------------------- THE KEEPER */
   function thinkKeeper(p, dt, skill) {
     var b = G.ball, gl = ownGoalY(p.team), d = attackDir(p.team);
+    var mul = p.mul || FLAT_MUL;
     if (G.ball.owner === p) {
+      var kd = (G.dbg || (G.dbg = [{}, {}]))[p.team];
+      kd.gkHold = (kd.gkHold || 0) + 1;
       if (p.hold <= 0) {
-        var mate = bestPass(p) || nearestTo(p, p.team, true);
+        var opt = bestPass(p, skill);
+        var mate = (opt && opt.mate) || nearestTo(p, p.team, true);
         if (mate) passTo(p, mate, true); else shoot(p, 0.6);
       }
       return;
     }
-    /* he tracks the ball across his line, never further out than the
-       six-yard box unless the ball is loose inside the area */
-    var tx = PITCH.cx + clamp(b.x - PITCH.cx, -PITCH.goalW * 0.45, PITCH.goalW * 0.45);
-    var ty = gl + d * 6;
-    var threat = Math.abs(b.y - gl) < PITCH.boxH * 0.9 &&
-                 Math.abs(b.x - PITCH.cx) < PITCH.boxW / 2;
-    if (threat && (!b.owner || b.owner.team !== p.team)) {
-      ty = gl + d * (8 + (1 - skill) * 4);
-      if (!b.owner && Math.abs(b.y - gl) < 30) { tx = b.x; ty = b.y; }
+
+    /* NARROWING THE ANGLE.
+
+       A keeper does not track the ball's x across his line; he stands
+       on the line that bisects the angle the shooter can see, a few
+       yards off his goal. Done as a straight x-follow — which is what
+       was here — he is caught flat-footed by anything hit across him
+       and stranded by anything from wide, because from wide the middle
+       of the goal is not where the shot is going.
+
+       So: take the line from the ball to the centre of the goal, and
+       stand on it, `off` units out. That single change is most of what
+       makes a keeper look like one. */
+    var far = len(b.x - PITCH.cx, b.y - gl) || 1;
+    var threat = Math.abs(b.y - gl) < PITCH.boxH * 1.5;
+    var loose = !b.owner || b.owner.team !== p.team;
+    /* how far off his line: further out as the ball gets closer, and a
+       better keeper comes further (and gets back) */
+    var off = clamp(5 + (1 - clamp(far / 150, 0, 1)) * 16, 5, 21) * mul.gk;
+    var tx = PITCH.cx + (b.x - PITCH.cx) / far * off;
+    var ty = gl + (b.y - gl) / far * off;
+    /* never further across than his own post, and never off his line by
+       more than the six-yard box unless he is coming to claim it */
+    tx = PITCH.cx + clamp(tx - PITCH.cx, -PITCH.goalW * 0.62, PITCH.goalW * 0.62);
+    /* HOW FAR OFF HIS LINE HE IS ALLOWED TO BE, measured as a distance
+       OUT rather than as a range of y.
+
+       Written as clamp(ty - gl, min(0, d*2), max(0, d*sixH)) this is
+       correct for the side attacking up the pitch and nonsense for the
+       other one: with d = -1 the two bounds come out as -2 and 0, so
+       her keeper was clamped to within two units of his own goal line
+       for the whole match. He could never come for a through ball,
+       never claim a loose one in his six-yard box, and — measured over
+       a half — never once ended up with the ball at his feet, while the
+       keeper at the other end had it for a hundred and thirty frames.
+       Signed axes are exactly where this kind of bug hides, so the
+       distance out is worked out first and the sign is put back last. */
+    var out = clamp((ty - gl) * d, -2, PITCH.sixH);
+    ty = gl + d * out;
+
+    /* COMING FOR IT. A loose ball inside the six-yard area is his, and
+       a through ball rolling into the box with nobody on it is his too
+       — that is the difference between a keeper and a cardboard cutout
+       nailed to the line. */
+    if (threat && loose && !b.owner) {
+      var reach = Math.abs(b.y - gl) < PITCH.sixH * 1.5 &&
+                  Math.abs(b.x - PITCH.cx) < PITCH.boxW * 0.5;
+      var chaser = nearestTo(b, 1 - p.team, true);
+      var theirs = chaser ? len(chaser.x - b.x, chaser.y - b.y) : 999;
+      var mineDist = dist(p, b);
+      if (reach && mineDist < theirs + 16 * mul.gk) {
+        tx = b.x + b.vx * TUNE.gkAnticipate;
+        ty = b.y + b.vy * TUNE.gkAnticipate;
+      }
     }
+
     /* his legs are his defence stat and the difficulty setting, which is
        the honest way to make a keeper harder: a sharper one gets across
        his goal faster, not one who saves things he never reached */
-    moveTo(p, tx, ty, dt,
-           (TUNE.gkSpeed / TUNE.freeSpeed) * (p.mul || FLAT_MUL).gk * diff().gk);
+    moveTo(p, tx, ty, dt, (TUNE.gkSpeed / TUNE.freeSpeed) * mul.gk * diff().gk);
+
+    /* THE DIVE. A shot hit past him, inside his reach, gets a full
+       stretch — which is the animation the sprite sheet has had all
+       along and which nothing ever played. */
+    if (loose && b.owner === null && p.coolT <= 0 && p.tackleT <= 0) {
+      var closing = (b.y - gl) * d < 0 ? 0 : (-(b.vy) * d);
+      if (closing > 60 && Math.abs(b.y - gl) < 46 && dist(p, b) < TUNE.gkReach * 2.4 * mul.gk) {
+        startTackle(p);
+      }
+    }
   }
 
   function nearestTo(thing, team, outfieldOnly, except) {
@@ -1948,21 +2658,108 @@ window.OuissyCup = (function () {
     return best;
   }
 
-  /* the teammate who is most worth the ball: ahead of you, not marked,
-     and not so far away that the pass takes a week */
-  function bestPass(p) {
-    var d = attackDir(p.team), best = null, bs = -1e9;
+  /* =======================================================================
+     WHO TO GIVE IT TO
+
+     The old version scored a teammate on three numbers: how far ahead
+     of you he is, how much space he is in, and how far away. It never
+     asked the only question that decides a real pass, which is whether
+     anybody is standing on the line between the two of you — so the AI
+     played balls straight through defenders all match, and the worst of
+     them looked like cheating.
+
+     It also only ever considered passing to a man's FEET. Half the
+     passes in football are not to a man, they are into the space he is
+     running into, and without that a side can never break a line.
+
+     So each teammate is scored twice: once to his feet, once into the
+     channel ahead of him. Both are checked against the lane. The best
+     of the lot has to beat a threshold that depends on whether the
+     carrier is actually in trouble, which is what stops a side with
+     time on the ball hitting it sideways for ninety minutes.
+     ======================================================================= */
+  function bestPass(p, skill) {
+    var d = attackDir(p.team), best = null;
+    var gy = goalY(p.team);
+    skill = skill === undefined ? 0.6 : skill;
+    var pressed = nearestOpponent(p);
+    var underIt = pressed && dist(pressed, p) < 24;
+
     G.players.forEach(function (m) {
       if (m === p || m.team !== p.team || m.gk) return;
-      var ahead = (m.y - p.y) * d;
       var far = dist(m, p);
-      if (far > 165) return;
+      if (far > 175 || far < 14) return;
+
+      /* --- 1. to his feet */
+      var lane = laneClear(p.team, p.x, p.y, m.x, m.y, m);
+      var ahead = (m.y - p.y) * d;
       var mark = nearestOpponent(m);
-      var space = mark ? Math.min(40, dist(mark, m)) : 40;
-      var s = ahead * 1.15 + space * 1.4 - far * 0.30;
-      if (s > bs) { bs = s; best = m; }
+      var space = mark ? Math.min(46, dist(mark, m)) : 46;
+      /* WHAT THE PASS IS WORTH: how much better a chance the ball is in
+         after it than before it. Measured on the threat map, so a
+         cut-back from the byline to the penalty spot scores as the best
+         ball on the pitch instead of as a backward pass. */
+      var gain = (threatAt(p.team, m.x, m.y) - threatAt(p.team, p.x, p.y)) * 150;
+      var feet = gain + space * 1.25 - far * 0.26
+               + Math.min(lane, 40) * 1.5 - 30;
+      /* a pass that has to beat somebody it cannot beat is not a pass */
+      if (lane < 15) feet -= 140;
+      if (ahead < -40 && gain < 4) feet -= 26;   // backwards, and no better
+      if (feet > (best ? best.score : -1e9)) {
+        best = { mate: m, score: feet, through: false };
+      }
+
+      /* --- 2. into the space in front of him.
+
+         Aimed where he will be in about a second if he keeps running,
+         clamped to stay on the pitch. Scored higher than his feet when
+         it genuinely breaks a line, and refused when the ball would get
+         there long before he does. */
+      var tx = clamp(m.x + m.vx * 0.55, PITCH.x0 + 12, PITCH.x1 - 12);
+      var ty = clamp(m.y + d * (30 + skill * 22), PITCH.y0 + 14, PITCH.y1 - 14);
+      var tlane = laneClear(p.team, p.x, p.y, tx, ty, m);
+      var trun = len(tx - m.x, ty - m.y);
+      if (tlane >= 15 && trun < 64) {
+        var tgain = (threatAt(p.team, tx, ty) - threatAt(p.team, p.x, p.y)) * 165;
+        var thru = tgain + Math.min(tlane, 44) * 1.35
+                 - len(tx - p.x, ty - p.y) * 0.22 - 24;
+        /* a through ball is a skill: the worse the passer, the less
+           often it is even considered */
+        thru *= 0.55 + skill * 0.7;
+        if (thru > (best ? best.score : -1e9)) {
+          best = { mate: m, score: thru, through: true, tx: tx, ty: ty };
+        }
+      }
     });
+
+    /* THE BALL BACK TO THE KEEPER. Only when there is genuinely nothing
+       else, because a side that does it often is a side that looks
+       frightened — but a side that never does it is a side that gives
+       the ball away on its own six-yard line. */
+    if ((!best || best.score < 0) && underIt) {
+      var gk = null;
+      G.players.forEach(function (m) { if (m.team === p.team && m.gk) gk = m; });
+      if (gk && dist(gk, p) < 130 &&
+          laneClear(p.team, p.x, p.y, gk.x, gk.y, gk) > 13) {
+        best = { mate: gk, score: 6, through: false };
+      }
+    }
     return best;
+  }
+
+  /* a ball played into space rather than at a man */
+  function passInto(p, mate, tx, ty) {
+    var mul = p.mul || FLAT_MUL;
+    var ang = Math.atan2(ty - p.y, tx - p.x);
+    ang += (Math.random() - 0.5) * (TUNE.passErr / mul.aim) * 0.8;
+    var far = len(tx - p.x, ty - p.y);
+    /* weighted so it ARRIVES rather than running through to the keeper:
+       a through ball hit at passing pace is a goal kick */
+    var sp = clamp(far * 1.55, 90, TUNE.passSpeed * 1.15);
+    kickBall(p, ang, sp, 0);
+    setAnim(p, "kick", 0.34);
+    G.stat.passes[p.team]++;
+    SFX.pass();
   }
 
   function passTo(p, mate, soft) {
@@ -1989,7 +2786,15 @@ window.OuissyCup = (function () {
        WIDE that scatter is, is skill. At the top of the roster it is
        comfortably inside the posts; at the bottom of it a shot can drag
        past one, which is the only honest way to make accuracy a stat. */
-    var spread = TUNE.shotSpread / mul.aim;
+    /* AND DISTANCE IS PART OF ACCURACY.
+
+       Long shots were made more common so that a half has some football
+       in it — saves, rebounds, corners, a noise from the crowd — but a
+       thirty-yarder that is as accurate as a tap-in makes every other
+       kind of attack pointless. The scatter grows with the range, so
+       the long ones are worth trying and mostly worth saving. */
+    var toGoal = Math.abs(p.y - gy);
+    var spread = (TUNE.shotSpread / mul.aim) * (1 + clamp(toGoal / 240, 0, 1) * 0.85);
     var aimX = PITCH.cx + (Math.random() - 0.5) * PITCH.goalW * spread;
     var ang = Math.atan2(gy - p.y, aimX - p.x);
     var sp = (TUNE.shotMin + (TUNE.shotMax - TUNE.shotMin) * power) * mul.power;
@@ -1999,6 +2804,32 @@ window.OuissyCup = (function () {
     addHeart(p.team, TUNE.heartShot);
     SFX.shot();
     crowdSwell(0.03, 0.8);
+    /* a struck ball stops the world for a couple of frames and kicks up
+       the turf under the standing foot. Less than a tackle: a shot is a
+       connection, a tackle is a collision. */
+    G.hitStop = Math.max(G.hitStop, TUNE.hitStopShot);
+    G.shake = Math.max(G.shake, 0.22 + power * 0.3);
+    turfBurst(p.x, p.y, 5, ang + Math.PI);
+  }
+
+  /* =======================================================================
+     WHAT COMES OFF THE PITCH
+
+     Grass. A slide tackle, a hard turn and a goalkeeper going down all
+     tear the surface, and a few dozen two-pixel flecks thrown up and
+     forward is the whole of it. They are the only thing in the match
+     that tells you the players are standing ON something rather than
+     in front of it.
+
+     They live on the renderer's own bead list, so they sort by depth
+     along with everybody else and a divot thrown up at the far post
+     goes behind the players in front of it instead of over them.
+     ======================================================================= */
+  function turfBurst(x, y, n, ang) {
+    if (!R2 || !R2.turf) return;
+    /* the angle arrives in the simulation's frame, where y grows DOWN
+       the pitch, and leaves in the renderer's, where it grows up */
+    R2.turf(wX(x), wY(y), n, ang === undefined ? undefined : -ang);
   }
 
   function startTackle(p) {
@@ -2013,6 +2844,11 @@ window.OuissyCup = (function () {
       b.vy = Math.sin(ang) * TUNE.tacklePush;
       addHeart(p.team, TUNE.heartTackle);
       SFX.tackle();
+      /* the three things that make a challenge land: the world stops,
+         the frame kicks, and the pitch comes up where the studs went in */
+      G.hitStop = Math.max(G.hitStop, TUNE.hitStopTackle);
+      G.shake = Math.max(G.shake, 0.45);
+      turfBurst(p.x, p.y, 10, ang);
     }
   }
 
@@ -2098,6 +2934,7 @@ window.OuissyCup = (function () {
   }
 
   function controlStep(dt) {
+    if (AUTOPLAY) return;
     var p = G.controlled;
     if (!p) return;
     if (IN.held) IN.heldT += dt;
@@ -2165,8 +3002,29 @@ window.OuissyCup = (function () {
     if (G.state === "play" || G.state === "goal") {
       if (G.state === "play") {
         controlStep(dt);
+        /* THE JOBS ARE A TEAM DECISION, SO THEY ARE TAKEN ONCE.
+
+           Who presses, who covers and who picks up whom are questions
+           about the whole side; four players each answering them
+           privately is how a defence ends up with two men on the ball
+           and nobody in front of the goal. Taken here, before anybody
+           thinks, both sides get exactly one presser and exactly one
+           cover — and the marking register is cleared first so two
+           defenders cannot claim the same striker. */
+        G.marked = {};
+        assignJobs(0); assignJobs(1);
         G.players.forEach(function (p) { if (p !== G.controlled) think(p, dt); });
-        G.stat.poss[G.ball.owner ? G.ball.owner.team : 0] += dt;
+        /* A LOOSE BALL IS NOT POSSESSION, AND CERTAINLY NOT HERS.
+
+           This read "credit the owner's team, or team 0 if there is no
+           owner" — so every second the ball spent rolling loose, in the
+           air, or going out for a rebound was added to HER side's
+           possession. A half in which her team touched the ball for
+           four seconds came out as twenty-seven seconds of possession
+           on the scoreboard, which made the one statistic that could
+           have shown the problem report the opposite of it. */
+        if (G.ball.owner) G.stat.poss[G.ball.owner.team] += dt;
+        else G.stat.loose = (G.stat.loose || 0) + dt;
       } else {
         celebrate(dt);
       }
@@ -2387,7 +3245,31 @@ window.OuissyCup = (function () {
      orbit was never worth a renderer.
      ======================================================================= */
   var CAM = {
-    lead: 0.42,         // how far ahead of the ball it looks, in seconds
+    /* HOW FAR AHEAD OF THE BALL IT LOOKS, in seconds of the ball's own
+       travel. Nearly half a second was enough that a ball struck hard
+       threw the camera most of a screen ahead of the play and then
+       dragged it back when the ball was cut out — the frame lurched
+       twice for every clearance. */
+    lead: 0.22,
+    /* and however long that is, it is never worth more than this many
+       SCREEN pixels. The lead is there to stop the play running into
+       the edge of the frame, and once it is doing that, more of it buys
+       nothing and costs composure. Clamped in screen space rather than
+       world space because that is where the problem is: at zoom 2 a
+       world unit is twice as many pixels and an unclamped lead throws
+       the camera twice as far. */
+    leadMax: 40,
+    /* THE DEADZONE. The camera does not move at all while the thing it
+       is watching is inside this box, in screen pixels, around where it
+       is already looking. Without one, every touch of the ball moves
+       the frame: a player jinking on the spot makes the whole stadium
+       wobble, and a pixel game has nowhere to hide that because the
+       stand and the markings are full of straight lines. */
+    dead: [40, 28],
+    /* how much of the remaining distance it closes each sixtieth of a
+       second. Expressed per FRAME rather than per second because that
+       is how it is read and tuned, and converted once, below. */
+    smooth: 0.10,
     ease: 3.2,
     /* HOW FAR BEHIND THE ACTION THE CAMERA'S NEAR EDGE SITS, in the
        simulation's own units. The whole frame hangs off this one
@@ -2415,13 +3297,57 @@ window.OuissyCup = (function () {
     var b = G.ball;
     var pts = [{ x: b.x, y: b.y }];
     if (G.controlled) pts.push({ x: G.controlled.x, y: G.controlled.y });
-    pts.push({ x: b.x + b.vx * CAM.lead, y: b.y + b.vy * CAM.lead });
-    var minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
+    /* THE LEAD, CLAMPED WHERE IT IS MEASURED.
+
+       How many world units a screen pixel is worth depends on the depth
+       and on the zoom, so the clamp has to be applied through the lens
+       rather than as a fixed number of world units — otherwise the same
+       lead is gentle at zoom 1 and violent at zoom 2. */
+    var lx = b.vx * CAM.lead, ly = b.vy * CAM.lead;
+    var pr = R2 && R2.project ? R2.project(wX(b.x), wY(b.y)) : null;
+    if (pr && pr.k > 0.001) {
+      var maxX = CAM.leadMax / pr.k;
+      var maxY = CAM.leadMax / Math.max(0.001, pr.ky);
+      lx = clamp(lx, -maxX, maxX);
+      ly = clamp(ly, -maxY, maxY);
+    }
+    pts.push({ x: b.x + lx, y: b.y + ly });
+    var minX = 1e9, maxX2 = -1e9, minY = 1e9, maxY2 = -1e9;
     pts.forEach(function (p) {
-      minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
-      minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+      minX = Math.min(minX, p.x); maxX2 = Math.max(maxX2, p.x);
+      minY = Math.min(minY, p.y); maxY2 = Math.max(maxY2, p.y);
     });
-    return { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
+    return { x: (minX + maxX2) / 2, y: (minY + maxY2) / 2 };
+  }
+
+  /* HOW MUCH OF THE GAP THE CAMERA CLOSES THIS FRAME.
+
+     `smooth` is written per sixtieth of a second because that is the
+     unit it is legible in, but frames are not a sixtieth of a second —
+     in this container they are nearer a third of one. Applied raw, the
+     camera would crawl on a slow machine and snap on a fast one, which
+     is the whole class of bug that makes a game feel different
+     depending on what it is running on. */
+  function camK(dt) { return 1 - Math.pow(1 - CAM.smooth, Math.max(0, dt) * 60); }
+
+  /* THE DEADZONE, APPLIED IN SCREEN PIXELS.
+
+     Returns where the camera should actually aim: unchanged while the
+     subject is inside the box, and otherwise pulled along by exactly
+     the amount that puts the subject back on the edge of it. That
+     "exactly the amount" is the part that matters — a deadzone that
+     snaps to centre the moment it is broken is worse than none at all,
+     because the frame jumps instead of drifting. */
+  function deadzone(wantX, wantY) {
+    if (!R2 || !R2.project) return { x: wantX, y: wantY };
+    var here = R2.project(wX(camNow.x), wY(camNow.y));
+    var there = R2.project(wX(wantX), wY(wantY));
+    var dx = there.x - here.x, dy = there.y - here.y;
+    var outX = Math.abs(dx) - CAM.dead[0], outY = Math.abs(dy) - CAM.dead[1];
+    var x = camNow.x, y = camNow.y;
+    if (outX > 0 && here.k > 0.001) x += Math.sign(dx) * outX / here.k;
+    if (outY > 0 && here.ky > 0.001) y += Math.sign(dy) * outY / here.ky * -1;
+    return { x: x, y: y };
   }
 
   /* what the camera is doing this second */
@@ -2515,10 +3441,11 @@ window.OuissyCup = (function () {
        about sixty units of half-view, that meant the touchline was
        ALWAYS off the side of the screen. The ball has always come back
        off the boards; she had simply never been able to see one. */
-    var want = wantFraming();
+    var raw = wantFraming();
+    var want = snap ? raw : deadzone(raw.x, raw.y);
     var y = clamp(want.y, PITCH.y0 + 30, PITCH.y1 + 6);
     var x = clamp(want.x, PITCH.cx - PITCH.w * 0.40, PITCH.cx + PITCH.w * 0.40);
-    camTo(x, y, k, 1);
+    camTo(x, y, snap ? 1 : camK(dt), 1);
   }
 
   /* =======================================================================
@@ -2570,6 +3497,8 @@ window.OuissyCup = (function () {
             { struck: b.struck || 0, spin: b.spin || 0,
               vx: b.vx, vy: -b.vy, speed: len(b.vx, b.vy) });
     R2.confettiStep(dt);
+    R2.turfStep(dt);
+    superCardStep(dt);
     R2.flush();
     R2.finish();
     R2.present();
@@ -3326,6 +4255,73 @@ window.OuissyCup = (function () {
              { align: "center", colour: ink || "#f4f4e8" });
   }
 
+  /* ONE HEART, AT WHATEVER SIZE AND HOWEVER FULL.
+
+     Drawn as a run-length shape rather than a circle-and-triangle,
+     because at twenty pixels across a heart made out of maths is a
+     blob. The rows are the proportions written down once; `part` is how
+     much of it has filled, which fills from the BOTTOM, the way
+     anything that is filling up does. */
+  /* ONE HEART, AT WHATEVER SIZE AND HOWEVER FULL.
+
+     Drawn from a table of row spans rather than from a circle and a
+     triangle, because at twenty pixels across a heart made out of maths
+     is a blob. The first attempt at this table described only the LEFT
+     lobe — one narrow span per row — and what came out was exactly that:
+     five dark lumps under the scoreboard.
+
+     A heart is a single span per row that is WIDE at the top with a
+     notch cut out of the middle of it, narrowing to a point at the
+     bottom. `part` is how full it is, and it fills from the bottom,
+     the way anything filling up does. */
+  var HEART_ROWS = [
+    [0.16, 0.84, 0.42, 0.58],
+    [0.06, 0.94, 0.44, 0.56],
+    [0.02, 0.98, 0.46, 0.54],
+    [0.00, 1.00, 0, 0],
+    [0.00, 1.00, 0, 0],
+    [0.02, 0.98, 0, 0],
+    [0.06, 0.94, 0, 0],
+    [0.13, 0.87, 0, 0],
+    [0.22, 0.78, 0, 0],
+    [0.32, 0.68, 0, 0],
+    [0.44, 0.56, 0, 0],
+  ];
+  function pixHeart(x2, y2, size, part, col) {
+    var rows = HEART_ROWS.length;
+    var hgt = Math.max(6, Math.round(size * 0.90));
+    var fillTop = y2 + hgt - Math.round(hgt * clamp(part, 0, 1));
+    /* an EMPTY heart is a socket in the super's own colour, heavily
+       darkened — not a black hole. Against a stand full of people a
+       near-black shape reads as a smudge, and five of them read as
+       five smudges, which is what the first pass looked like. */
+    var socket = lift(col, -110), rim = "#0d1412";
+    for (var r = 0; r < hgt; r++) {
+      var i = Math.min(rows - 1, Math.round(r / (hgt - 1) * (rows - 1)));
+      var row = HEART_ROWS[i];
+      var x0 = Math.round(row[0] * size), x1 = Math.round(row[1] * size);
+      if (x1 <= x0) continue;
+      var yy = y2 + r;
+      var on = yy >= fillTop;
+      box(x2 + x0, yy, x1 - x0, 1, on ? col : socket);
+      /* the notch between the two lobes, top rows only */
+      if (row[3] > row[2]) {
+        var n0 = Math.round(row[2] * size), n1 = Math.round(row[3] * size);
+        if (n1 > n0) box(x2 + n0, yy, n1 - n0, 1, rim);
+      }
+      /* a one-pixel keyline down each flank so a full heart has an edge
+         against the board behind it */
+      box(x2 + x0, yy, 1, 1, on ? lift(col, -45) : rim);
+      box(x2 + x1 - 1, yy, 1, 1, on ? lift(col, -45) : rim);
+    }
+    /* the highlight on the upper left lobe, which is what stops it
+       reading as a flat symbol */
+    if (part > 0.6) {
+      box(x2 + Math.round(size * 0.18), y2 + 1,
+          Math.max(1, Math.round(size * 0.16)), 1, lift(col, 80));
+    }
+  }
+
   /* a filled disc on whole pixels — the canvas's own arc is a blur */
   function uiDisc(cx2, cy2, r2, col) {
     for (var y2 = -r2; y2 <= r2; y2++) {
@@ -3395,20 +4391,40 @@ window.OuissyCup = (function () {
     var hw = 120, hx = Math.round((UIW - hw) / 2), hy = by + 38;
     /* the heart itself, which beats when the meter is full */
     var armed = superArmed(0);
+    /* THE METER WAS DIVIDING BY A FIELD THAT DOES NOT EXIST.
+
+       TUNE has `superCost`; this asked for `superFill`, got undefined,
+       and every frame computed heart/undefined = NaN. clamp(NaN) is
+       NaN, a bar drawn to NaN pixels draws nothing, and the meter has
+       therefore shown EMPTY for the whole of its life however much of
+       it she had actually filled — including at the moment it was full
+       and the super was armed. It is the sort of bug a bar hides
+       perfectly: an empty bar looks like a bar. */
+    var frac = clamp((G.heart[0] || 0) / TUNE.superCost, 0, 1);
+    /* THE METER IS HEARTS, NOT A BAR.
+
+       A bar is a number. Five hearts filling one after another is a
+       count she can read at a glance and without looking directly at
+       it — she knows she is two away without measuring anything — and
+       it is the shape the rest of the chapter is already in. The last
+       one to fill beats, and when they are all full they all do. */
     var beat = armed ? 1 + (Math.floor(UI.t * 5) % 2) : 0;
-    var hpx = hx - 12, hpy = hy - 1 - beat;
-    box(hpx, hpy, 2, 2, hc); box(hpx + 3, hpy, 2, 2, hc);
-    box(hpx, hpy + 1, 5, 2, hc); box(hpx + 1, hpy + 3, 3, 1, hc);
-    box(hpx + 2, hpy + 4, 1, 1, hc);
-    hudBar(hx, hy, hw, 6, (G.heart[0] || 0) / TUNE.superFill, hc);
+    var N = 5, gap = 4, hs = Math.floor((hw - gap * (N - 1)) / N);
+    for (var q2 = 0; q2 < N; q2++) {
+      var lo = q2 / N, part = clamp((frac - lo) * N, 0, 1);
+      var qx2 = hx + q2 * (hs + gap);
+      var lift2 = armed ? beat : (part >= 1 && frac < 1 && q2 === Math.floor(frac * N) - 1 ? 1 : 0);
+      pixHeart(qx2, hy - lift2, hs, part, hc);
+    }
+    if (false) hudBar(hx, hy, hw, 6, frac, hc);
     if (armed) {
       /* a marching keyline while it is ready, so a full meter is not
          just a wider meter */
       var ph = Math.floor(UI.t * 12) % 4;
       for (var i2 = 0; i2 < hw; i2++) {
         if ((i2 + ph) % 4 < 2) {
-          box(hx + i2, hy - 2, 1, 1, "#ffffff");
-          box(hx + i2, hy + 7, 1, 1, "#ffffff");
+          box(hx + i2, hy - 4, 1, 1, "#ffffff");
+          box(hx + i2, hy + 11, 1, 1, "#ffffff");
         }
       }
     }
@@ -3422,7 +4438,7 @@ window.OuissyCup = (function () {
     /* theirs, thinner and underneath, and only when they have one */
     if (EL["cup-heart-a"] && !EL["cup-heart-a"].hidden) {
       var tc = (superOf(1) && superOf(1).colour) || "#8fa8a0";
-      hudBar(hx, hy + 9, hw, 3, (G.heart[1] || 0) / TUNE.superFill, tc);
+      hudBar(hx, hy + 13, hw, 3, (G.heart[1] || 0) / TUNE.superCost, tc);
     }
 
     /* ---- POSSESSION AND SHOTS, bottom centre -------------------- */
@@ -3482,15 +4498,33 @@ window.OuissyCup = (function () {
        sitting on the grass. They are set small and dim because they are
        for the first thirty seconds of the first match and nothing
        after it. */
-    if (hudTouch()) {
+    /* THE LEGEND IS FOR THE FIRST MINUTE, AND THEN IT IS LITTER.
+
+       Printed every frame of every match it is three permanent boxes
+       of text sitting on a pitch, competing with the football for the
+       same corner of the frame. She reads it once. So it fades out
+       after the opening of her first match, and the place it lives
+       from then on is the pause screen and the how-to — which is where
+       somebody who has forgotten a control would actually go looking
+       for it. */
+    var legend = run.round === 0 && G.half === 1
+      ? clamp((16 - G.clock) / 3, 0, 1) : 0;
+    if (legend <= 0) { /* nothing on the grass */ }
+    else if (hudTouch()) {
+      UIX.save(); UIX.globalAlpha = legend;
       drawText(6, "SLIDE TO RUN", UIH - 30, { colour: "#4f7a6a" });
+      UIX.restore();
     } else {
+      UIX.save(); UIX.globalAlpha = legend;
       /* UP IN THE CORNER, NOT DOWN BY THE BUTTON. Set against the
          bottom-right it landed straight on top of the thumb button —
          a legend explaining a control, printed across it. */
       /* below the meter, not beside it: at the top of the frame the
          legend and the super's nameplate were printed over each other */
-      var kz = 64;
+      /* LOW ENOUGH TO BE ON GRASS. At sixty-four it printed across the
+         advertising hoardings and the front rows of the stand, which is
+         the busiest band in the whole frame. */
+      var kz = UIH - 58;
       [["W A S D", "run"],
        ["SPACE", "tap to pass \u00b7 hold to shoot"],
        ["SHIFT", "super, when the heart is full"]].forEach(function (k2) {
@@ -3505,7 +4539,13 @@ window.OuissyCup = (function () {
         drawText(x0 + kw + 6, k2[1], kz + 3, { colour: "#8fa8a0" });
         kz += 13;
       });
+      UIX.restore();
     }
+
+    /* THE SUPER'S NAMEPLATE GOES ON LAST, over everything, because it
+       is the one thing on screen that is more important than the rest
+       of the screen while it is up. */
+    drawSuperCard();
 
     /* and where her thumb actually is on the stick */
     var sk = uiRectOf(EL["cup-stick-k"]);
@@ -3641,29 +4681,109 @@ window.OuissyCup = (function () {
      is rendered, painted text is a smudge. It is also the only piece of
      the cinematic that tells her WHAT just happened, so it goes up
      before the strike rather than after it. */
-  var superT = null;
+  /* =======================================================================
+     THE LAST PIECE OF CSS IN THE CHAPTER
+
+     Every other card, menu, meter and number in this chapter is drawn
+     — one canvas, one bitmap font, whole pixels. This one was still a
+     DOM element with a stylesheet transition on it, and the reason
+     given was that "at the size the pitch is rendered, painted text is
+     a smudge". That was true when it was written and stopped being
+     true when the font went in: the scoreboard, the fixture cards and
+     the menus all carry lettering at this size and none of them
+     smudges.
+
+     Leaving it as DOM cost two real things. It animated on the
+     BROWSER'S clock rather than the match's, so it kept sliding during
+     hit-stop and slow motion while everything behind it held still —
+     the one moment in the game where that is most obvious. And it was
+     laid out in CSS pixels over a canvas scaled to whole ones, so on
+     most window sizes its edges landed on half pixels and it was the
+     only soft-edged thing on the screen.
+
+     Drawn, it is on the match's clock and on the pixel grid, and the
+     element it used to live in is kept for one job only: telling a
+     screen reader what just happened.
+     ======================================================================= */
+  var superCard = null;          // { s, p, t } while it is up
+
   function superBanner(s, p) {
-    var el = EL["cup-super-card"];
-    if (!el) return;
-    el.style.setProperty("--sc", s.colour);
-    el.innerHTML =
-      '<span class="cup-sup-who">' + (p ? p.name : "") + "</span>" +
-      '<b class="cup-sup-name">' + s.name + "</b>" +
-      '<i class="cup-sup-note">' + (superKind(s.kind).say || s.note || "") + "</i>";
-    el.hidden = false;
-    el.dataset.side = s.by && s.by.team === 1 ? "them" : "us";
-    /* restarted rather than merely re-shown, so a second super inside
-       one card's lifetime plays its entrance again */
-    el.classList.remove("in");
-    void el.offsetWidth;
-    el.classList.add("in");
-    if (superT) clearTimeout(superT);
-    superT = setTimeout(clearSuperBanner, 2600);
+    superCard = { s: s, p: p, t: 0 };
+    /* the words still go to the accessibility mirror, because a drawn
+       banner is invisible to everything that is not an eye */
+    uiSay((p ? p.name + " \u2014 " : "") + s.name + ". " +
+          (superKind(s.kind).say || s.note || ""));
   }
-  function clearSuperBanner() {
-    if (superT) { clearTimeout(superT); superT = null; }
-    var el = EL["cup-super-card"];
-    if (el) { el.hidden = true; el.classList.remove("in"); }
+  function clearSuperBanner() { superCard = null; }
+
+  /* it runs on the match clock, so it holds when the match holds */
+  function superCardStep(dt) {
+    if (!superCard) return;
+    superCard.t += dt;
+    if (superCard.t > 2.6) superCard = null;
+  }
+
+  function drawSuperCard() {
+    if (!superCard || !UIX) return;
+    var c = superCard, sp = c.s;
+    /* IN, HOLD, OUT — and the in and the out are the same curve run
+       backwards, which is the cheapest way to make a thing arrive and
+       leave as though it weighs something. */
+    var t = c.t;
+    var k = t < 0.26 ? t / 0.26 : (t > 2.3 ? 1 - (t - 2.3) / 0.3 : 1);
+    k = clamp(k, 0, 1);
+    var ease = 1 - Math.pow(1 - k, 3);
+    var them = sp.by && sp.by.team === 1;
+    var col = sp.colour || "#ff5f8f";
+    var who = (c.p && c.p.name) || "";
+    var note = superKind(sp.kind).say || sp.note || "";
+
+    var w = 200, h = 40;
+    /* it comes in from the side the player is on, so a super of theirs
+       and a super of hers do not arrive identically */
+    var x0 = Math.round((UIW - w) / 2);
+    var x = Math.round(x0 + (them ? 1 : -1) * (1 - ease) * 70);
+    /* LOW ENOUGH TO BE ON GRASS. At three tenths of the frame it landed
+       across the advertising hoardings and the front of the stand, and
+       a nameplate over a nameplate is two things you cannot read. */
+    var y = Math.round(UIH * 0.44);
+    UIX.save();
+    UIX.globalAlpha = ease;
+    /* the plate: a hard shadow, a dark body, and the super's own colour
+       down the leading edge */
+    box(x + 2, y + 3, w, h, "rgba(4,8,10,.45)");
+    box(x, y, w, h, "#0d1412");
+    box(x + 1, y + 1, w - 2, h - 2, "#141e24");
+    box(x + 1, y + 1, 4, h - 2, col);
+    line(x + 1, y + 1, w - 2, 1, lift(col, 30));
+    line(x + 1, y + h - 2, w - 2, 1, "#000000");
+    /* a sweep of light crossing it as it lands */
+    if (t < 0.7) {
+      var sw = Math.round(((t / 0.7) * (w + 30)) - 15);
+      for (var i = 0; i < 10; i++) {
+        var sx = x + sw + i;
+        if (sx > x + 1 && sx < x + w - 1) {
+          UIX.globalAlpha = ease * 0.16 * (1 - i / 10);
+          box(sx, y + 1, 1, h - 2, "#ffffff");
+        }
+      }
+      UIX.globalAlpha = ease;
+    }
+    drawText(x + 10, fitText(who, w - 20, 1), y + 5, { colour: lift(col, 50) });
+    /* THE NAME AT TWO, OR AT ONE IF TWO WILL NOT FIT.
+
+       Ellipsised at double size, "HEARTBEAT STRIKE" came out as
+       "HEARTBEAT..." — which loses the word that says what it is. A
+       super's name is short enough to read at single size and there is
+       no version of this where three dots are better than the name, so
+       it drops a size rather than dropping the words. */
+    var nm = sp.name || "SUPER";
+    var big = textWidth(nm, 2) <= w - 20;
+    drawText(x + 10, big ? nm : fitText(nm, w - 20, 1), y + (big ? 13 : 15),
+             { scale: big ? 2 : 1, colour: "#ffffff",
+               outline: "#0d1412", outlineW: 1 });
+    drawText(x + 10, fitText(note, w - 20, 1), y + 30, { colour: "#9fb0a8" });
+    UIX.restore();
   }
 
   var overlayGo = null;
@@ -5675,6 +6795,38 @@ window.OuissyCup = (function () {
      `first` is the version that comes up on its own the first time she
      opens the chapter; it says so, and it has a different button. */
   var HELP_KEY = "cup_helped_v1";
+  /* THE CONTROLS, AS A BLOCK OF KEY-CAPS.
+
+     Written once and drawn in two places: the how-to, and the pause
+     screen — which is where the on-pitch legend went when it was taken
+     off the grass. Returns the y it finished at, the way every other
+     card body in here does. */
+  function controlList(bx, by, bw) {
+    var sup = superOf(0);
+    var touch = hudTouch();
+    var keys = touch
+      ? [["MOVE", "slide anywhere on the left"],
+         ["TAP", "pass — or tackle, when they have it"],
+         ["HOLD", "wind up a shot — or sprint, without the ball"],
+         ["♥", "when the hearts are full" + (sup ? " — " + sup.name : "")]]
+      : [["W A S D", "run"],
+         ["SPACE", "tap to pass — hold to shoot"],
+         ["SHIFT", "your super, when the hearts are full"]];
+    keys.forEach(function (k) {
+      var kw = Math.max(34, textWidth(k[0]) + 12);
+      box(bx, by, kw, 13, "#0d1412");
+      box(bx + 1, by + 1, kw - 2, 11, "#31424c");
+      line(bx + 1, by + 1, kw - 2, 1, "#5c7480");
+      drawText(bx + Math.round(kw / 2), k[0], by + 3,
+               { align: "center", colour: "#ffe9a8" });
+      drawText(bx + kw + 8, fitText(k[1], bw - kw - 10, 1), by + 3,
+               { colour: "#cfe0d8" });
+      uiSay(k[0] + " — " + k[1]);
+      by += 16;
+    });
+    return by;
+  }
+
   function helpCard(back, first) {
     var sup = superOf(0);
     var keys = [
@@ -6216,6 +7368,26 @@ window.OuissyCup = (function () {
          back to full on the strike so the shot itself is not in slow
          motion — the wind-up is the slow part and the ball is the fast
          one, which is the whole shape of the moment. */
+      /* =================================================================
+         HIT-STOP
+
+         The oldest trick in an action game and the cheapest: when
+         something connects, hold the ENTIRE WORLD still for three or
+         four frames. It reads as weight. A tackle that takes the ball
+         cleanly off somebody, at sixty frames a second with no pause in
+         it, is over before the eye has registered that it happened —
+         the ball is simply somewhere else. Eighty milliseconds of
+         nothing and the same tackle lands.
+
+         It is deliberately not slow motion. Slow motion is for a
+         moment you are being shown; hit-stop is for a moment you are
+         being MADE to feel, and the difference is that hit-stop stops
+         dead and then resumes at full speed with no ramp at all.
+         ================================================================= */
+      if (G.hitStop > 0) {
+        G.hitStop = Math.max(0, G.hitStop - dt);
+        dt = 0;
+      }
       var want2 = 1;
       if (G.state === "goal" && G.stateT < 1.1) want2 = 0.35;
       else if (G.state === "super" && G.sup) {
@@ -6401,7 +7573,12 @@ window.OuissyCup = (function () {
         if (EL["cup-pad"]) EL["cup-pad"].hidden = false;
       },
       alt: "LEAVE THE CUP", onAlt: function () { quit(); },
-      body: function (bx, by, bw) { return cardScore(bx, by, bw); },
+      body: function (bx, by, bw) {
+        var ny = cardScore(bx, by, bw);
+        /* and the controls, because this is where the legend went when
+           it came off the pitch */
+        return controlList(bx, ny + 6, bw);
+      },
     });
   }
 
@@ -6497,6 +7674,44 @@ window.OuissyCup = (function () {
     },
     press: pressButton,
     release: releaseButton,
+    /* EVERYTHING A HARNESS NEEDS TO JUDGE THE FOOTBALL.
+
+       `state` says what the scoreboard says, which tells you nothing
+       about whether the game is playing football — a side can lose 4-0
+       while standing in a huddle and lose 4-0 while defending
+       beautifully. This is the shape: where all eight of them are, what
+       job each has been given, who they are marking and how fast they
+       are going, so the questions that matter (is anybody covering, is
+       the block compact, are two defenders on the same man) can be
+       ASKED rather than eyeballed. */
+    scout: function () {
+      if (!G) return null;
+      return {
+        ball: { x: +G.ball.x.toFixed(1), y: +G.ball.y.toFixed(1) },
+        owner: G.ball.owner
+          ? { team: G.ball.owner.team, name: G.ball.owner.name } : null,
+        /* A NAME IS NOT AN IDENTITY HERE.
+
+           The roster is shared, so the same character can turn out for
+           both sides — GUSTAV and ATLAS both played for team 0 AND
+           team 1 in the very first fixture. A harness matching a mark
+           by name therefore found whichever of the two came first in
+           the list, and read a defender correctly marking the opposing
+           ATLAS as a defender marking his own team-mate. Every player
+           carries its index in this array instead, which is unique by
+           construction. */
+        players: G.players.map(function (p, i) {
+          return { i: i, t: p.team, gk: !!p.gk, name: p.name, role: p.role,
+                   x: +p.x.toFixed(1), y: +p.y.toFixed(1),
+                   job: p.job || null,
+                   mark: p.mark ? G.players.indexOf(p.mark) : -1,
+                   sp: +len(p.vx, p.vy).toFixed(1) };
+        }),
+        stat: { shots: G.stat.shots.slice(), poss: G.stat.poss.slice(),
+                passes: G.stat.passes.slice() },
+        score: G.score.slice(), state: G.state, dbg: G.dbg || null,
+      };
+    },
     put: function (x, y, z) {
       G.ball.x = x; G.ball.y = y; G.ball.z = z || 0;
       G.ball.vx = G.ball.vy = G.ball.vz = 0;
@@ -6546,6 +7761,33 @@ window.OuissyCup = (function () {
       SFX.pick();
       w.go();
       return true;
+    },
+    /* STRAIGHT INTO A MATCH, WITH NO MENUS IN THE WAY.
+
+       Measuring the football means playing a whole half of it a few
+       times over, and walking the help card, the title menu and the
+       fixture card each time costs more wall time than the football
+       does. This is the same code the fixture card's kick-off button
+       runs, with the cards left out. */
+    /* all eight of them driven by the AI, so a harness measures the
+       football rather than the statue it is not steering */
+    auto: function (on) { AUTOPLAY = !!on; if (G && on) G.controlled = null; },
+    quick: function (roundIdx, swapSides) {
+      /* SWAPPING THE SIDES IS A DIAGNOSTIC, not a game mode: if an
+         asymmetry follows the team INDEX it is a bug in the code, and
+         if it follows the SQUAD it is the fixture being uneven. There
+         is no other cheap way to tell those two apart. */
+      var mine = run.myTeam || "fmpm";
+      var round = CUP[roundIdx || 0] || {};
+      G = swapSides
+        ? newMatch(roundIdx || 0, { mine: round.id, theirs: mine })
+        : newMatch(roundIdx || 0, null);
+      applyVenue(G.venue);
+      buildRigs();
+      resetPositions(0);
+      uiClose();
+      if (EL["cup-hud"]) EL["cup-hud"].hidden = false;
+      return hooks.state();
     },
     teamStats: function (id) {
       var t = teamById(id);
@@ -6637,6 +7879,27 @@ window.OuissyCup = (function () {
       return hooks.arm(team);
     },
     fire: pressSuper,
+    /* FIRE IT WITHOUT THE BUTTON.
+
+       `fire` is the real button press and is gated on everything the
+       real button is gated on — the meter, the state, and the captain
+       having the ball at that instant. That is correct of it and
+       useless to a harness that only wants to photograph the
+       cinematic, so this is the back door: it puts the ball at the
+       captain's feet, fills the meter, and unleashes. */
+    superNow: function (team) {
+      team = team || 0;
+      if (!G || G.state !== "play") return false;
+      var cap = captainOf(team);
+      if (!cap) return false;
+      G.heart[team] = TUNE.superCost;
+      G.superReady[team] = true;
+      G.ball.x = cap.x; G.ball.y = cap.y; G.ball.z = 0;
+      G.ball.vx = G.ball.vy = G.ball.vz = 0;
+      G.ball.owner = cap; G.ball.lastTouch = cap; G.ball.lock = 0;
+      unleash(cap);
+      return true;
+    },
     /* Take the keeper out of it, or put him back (undefined). Whether a
        super is ON TARGET and whether it is SAVED are two different
        questions, and measuring them together means every reading is a

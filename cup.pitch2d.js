@@ -85,6 +85,81 @@ window.CupPitch2D = (function () {
   var NEAR = 54;             // depth of the bottom edge of the screen
 
   /* the pitch, in internal units, if nobody says otherwise */
+
+  /* =======================================================================
+     FOUR PIXELS WIDE, AND IT HAS TO BE
+
+     The advertising boards used to be blocks of flat colour, on the
+     stated grounds that "a word at this size is four grey pixels and
+     reads as dirt". That was true of the board they were drawn at —
+     twenty-three pixels wide and eight tall, which is room for five
+     letters of a five-by-seven font, and five letters is dirt.
+
+     The fix is not a smaller font, it is a WIDER BOARD. A hoarding that
+     is seventy-odd pixels long holds thirteen characters of a four-by-
+     five face at full contrast, and thirteen characters is MEMORY LANE
+     with room to spare. It also happens to be what a real hoarding
+     looks like: they are long, there are few of them, and you read them
+     from the other side of a stadium.
+
+     The face is four wide because five will not fit thirteen of them
+     across a board that also has to fit across the screen, and three is
+     the width at which M and N stop being different letters. Each glyph
+     is five rows of four bits, most significant bit on the left.
+     ======================================================================= */
+  var GLYPH = {
+    A: [0x6, 0x9, 0xF, 0x9, 0x9], B: [0xE, 0x9, 0xE, 0x9, 0xE],
+    C: [0x7, 0x8, 0x8, 0x8, 0x7], D: [0xE, 0x9, 0x9, 0x9, 0xE],
+    E: [0xF, 0x8, 0xE, 0x8, 0xF], F: [0xF, 0x8, 0xE, 0x8, 0x8],
+    G: [0x7, 0x8, 0xB, 0x9, 0x7], H: [0x9, 0x9, 0xF, 0x9, 0x9],
+    I: [0xE, 0x4, 0x4, 0x4, 0xE], J: [0x3, 0x1, 0x1, 0x9, 0x6],
+    K: [0x9, 0xA, 0xC, 0xA, 0x9], L: [0x8, 0x8, 0x8, 0x8, 0xF],
+    M: [0x9, 0xF, 0xF, 0x9, 0x9], N: [0x9, 0xD, 0xF, 0xB, 0x9],
+    O: [0x6, 0x9, 0x9, 0x9, 0x6], P: [0xE, 0x9, 0xE, 0x8, 0x8],
+    Q: [0x6, 0x9, 0x9, 0xB, 0x7], R: [0xE, 0x9, 0xE, 0xA, 0x9],
+    S: [0x7, 0x8, 0x6, 0x1, 0xE], T: [0xF, 0x4, 0x4, 0x4, 0x4],
+    U: [0x9, 0x9, 0x9, 0x9, 0x6], V: [0x9, 0x9, 0x9, 0x6, 0x6],
+    W: [0x9, 0x9, 0xF, 0xF, 0x9], X: [0x9, 0x9, 0x6, 0x9, 0x9],
+    Y: [0x9, 0x9, 0x6, 0x4, 0x4], Z: [0xF, 0x1, 0x6, 0x8, 0xF],
+    "0": [0x6, 0xB, 0xD, 0x9, 0x6], "1": [0x4, 0xC, 0x4, 0x4, 0xE],
+    "2": [0xE, 0x1, 0x6, 0x8, 0xF], "3": [0xE, 0x1, 0x6, 0x1, 0xE],
+    "4": [0x9, 0x9, 0xF, 0x1, 0x1], "5": [0xF, 0x8, 0xE, 0x1, 0xE],
+    "6": [0x6, 0x8, 0xE, 0x9, 0x6], "7": [0xF, 0x1, 0x2, 0x4, 0x4],
+    "8": [0x6, 0x9, 0x6, 0x9, 0x6], "9": [0x6, 0x9, 0x7, 0x1, 0x6],
+    "'": [0x4, 0x4, 0x0, 0x0, 0x0], "-": [0x0, 0x0, 0xF, 0x0, 0x0],
+    " ": [0, 0, 0, 0, 0],
+  };
+  var GLYPH_W = 4, GLYPH_H = 5, GLYPH_PITCH = 5;
+
+  function textWidth(str) { return str.length * GLYPH_PITCH - 1; }
+
+  function drawText(ctx, str, x, y, col) {
+    ctx.fillStyle = col;
+    for (var i = 0; i < str.length; i++) {
+      var g = GLYPH[str.charAt(i)];
+      if (!g) continue;
+      var gx = x + i * GLYPH_PITCH;
+      for (var r = 0; r < GLYPH_H; r++) {
+        var bits = g[r];
+        if (!bits) continue;
+        for (var c = 0; c < GLYPH_W; c++) {
+          if (bits & (1 << (GLYPH_W - 1 - c))) ctx.fillRect(gx + c, y + r, 1, 1);
+        }
+      }
+    }
+  }
+
+  /* WHAT THE HOARDINGS SAY.
+
+     Every one of them is something out of her own three years, because
+     a stadium that advertises nothing at all is a stadium nobody has
+     ever been to, and a stadium that advertises a real company is a
+     stadium that belongs to somebody else. */
+  var HOARDING = [
+    "MEMORY LANE", "OUISSY'S CUP", "LONG WAY", "SUPER OUISSY",
+    "2247", "GUISSY'S CLUB", "THE LONG WAY", "22 04 2023",
+  ];
+
   var DEFAULT = {
     halfW: 53, len: 164, goalHalf: 5.7, goalDepth: 4,
     boxHalf: 31.5, boxDepth: 26, sixHalf: 14.3, sixDepth: 8.6,
@@ -139,12 +214,30 @@ window.CupPitch2D = (function () {
 
   function venue(v) {
     if (!v) { Object.keys(BASE).forEach(function (k) { C[k] = BASE[k]; }); return; }
-    var g = v.grass || "#4a8a44", st = v.stripe || mix(g, "#000000", 0.16);
+    /* =====================================================================
+       THE GRADE: BRIGHT, AND WITH THE MOWING VISIBLE
+
+       The first pass took the venue's grass colour as given and mowed
+       it by sixteen per cent, which on a dark night pitch is a
+       difference of about four values out of 255 — invisible. And
+       because the stripe was made by DARKENING only, adding stripes
+       could only ever make the pitch darker than the colour chosen for
+       it, so every venue came out duller than its own palette.
+
+       Now the two bands straddle the venue colour: one lifted, one
+       dropped. The pitch's average stays the colour that was picked,
+       the mowing is a real twenty-odd values apart, and the whole
+       ground reads brighter because half of it genuinely is. */
     var night = !!v.floodlit;
-    C.grassB = g;
+    var g0 = v.grass || "#4a8a44";
+    /* lift the base a little: a floodlit pitch on television is a much
+       more saturated green than a photograph of grass */
+    var g = mix(g0, "#8fd86a", night ? 0.16 : 0.10);
+    var st = v.stripe || mix(g, "#000000", 0.20);
+    C.grassB = mix(g, "#ffffff", 0.11);
     C.grassA = st;
-    C.grassLit = mix(g, "#ffffff", 0.18);
-    C.grassDk = mix(st, "#000000", night ? 0.34 : 0.22);
+    C.grassLit = mix(g, "#ffffff", 0.26);
+    C.grassDk = mix(st, "#000000", night ? 0.26 : 0.16);
     C.line = night ? "#f4f8f4" : "#eaf4e4";
     C.lineDk = mix(C.line, st, 0.4);
     var sd = v.stand || "#5b6570";
@@ -164,7 +257,42 @@ window.CupPitch2D = (function () {
      "#2f5a4c", "#7a4630", "#3a3644", "#3a3644", "#2f2b38"].forEach(function (c) {
       CROWD.push(mix(c, tone, night ? 0.28 : 0.16));
     });
+    bakeGrass();
   }
+
+  /* THE GROUND'S LIGHT, BAKED ONCE.
+
+     Grass is drawn a row at a time, and a row needs to know two things:
+     which mowing band it is in, and how much light reaches it. Working
+     the second one out per row meant parsing two hex strings and
+     blending them sixteen thousand times a second for a value that only
+     ever takes a handful of distinct settings — so the handful is
+     computed once, here, and the row draw is an array lookup.
+
+     The ramp runs from the near touchline, which is closest to the
+     lights and to the camera, up into the far half where the stand
+     throws its shadow. It is the cheapest depth cue on the pitch and
+     the most convincing: a flat green field has no distance in it. */
+  var GRADE_N = 14;
+  function bakeGrass() {
+    C.gradA = []; C.gradB = [];
+    for (var i = 0; i < GRADE_N; i++) {
+      var t = i / (GRADE_N - 1);              // 0 near, 1 far
+      /* lifted just in front of the camera, dropped into the far half */
+      /* smooth on both sides: a hard threshold put a visible STEP
+         across the pitch where the stand's shadow was declared to
+         start, which is a thing grass does not do */
+      var sh = Math.max(0, (t - 0.42) / 0.58);
+      var lift = 0.13 * (1 - t) * (1 - t) - 0.21 * sh * sh;
+      var f = function (base) {
+        return lift >= 0 ? mix(base, "#ffffff", lift * 0.7)
+                         : mix(base, C.grassDk, -lift * 1.5);
+      };
+      C.gradA.push(f(C.grassA));
+      C.gradB.push(f(C.grassB));
+    }
+  }
+  bakeGrass();
 
   function Pitch(display, world) {
     this.display = display;
@@ -180,10 +308,19 @@ window.CupPitch2D = (function () {
     this.obS = 4.0;                 // screen pixels per world unit, across
     this.obF = 0.50;                // and the depth ramp: 0.50 is a 30-degree camera
     this.groundY = 250;             // where the camera's own row sits on screen
+    /* WHOSE CROWD IT IS. Two kit colours and a seed; the stand is cut
+       into blocks and each block leans one way, which is what an end
+       full of one team's supporters looks like from the other side of a
+       pitch — not a uniform speckle. */
+    this.crowdHome = null; this.crowdAway = null;
+    /* the wave. -1 is "not running"; otherwise it is how far round the
+       front has travelled, in screen widths. */
+    this.wave = -1;
     this.flash = 0; this.flashCol = "#ffffff";
     this.shake = 0;
     this.items = [];
     this.conf = [];
+    this.divots = [];
     this.setWorld(world);
     this.zoomTo(1);
     /* one fixed noise field, so the crowd is the same crowd every frame
@@ -485,13 +622,17 @@ window.CupPitch2D = (function () {
           var id = band * 977 + r * 131 + cxx * 7;
           if (this.rnd(id) < 0.12) continue;              // an empty seat
           var sxp = Math.round(cxx * pitchX + this.rnd(id + 3) * 2);
-          /* the sway: whole columns lean together, a beat apart, which
-             is what a crowd actually looks like from this far away */
-          var sway = Math.round(Math.sin(this.t * 2.1 + cxx * 0.45 + r) * 0.9);
-          ctx.fillStyle = CROWD[(this.rnd(id + 11) * CROWD.length) | 0];
-          ctx.fillRect(sxp + sway, ry, 3, 2);
+          /* the sway is VERTICAL, and always was meant to be: a crowd
+             seen from the far end of a pitch bobs, it does not shuffle
+             sideways, and drawing the idle motion in x made the whole
+             stand shimmer left and right like a bad tracking shot. The
+             wave rides on the same number. */
+          var cf = Math.max(0, Math.min(0.999, sxp / this.vw));
+          var lift = Math.round(this.standLift(cf, r));
+          ctx.fillStyle = this.seatCol(id, cf);
+          ctx.fillRect(sxp, ry + lift, 3, 2);
           ctx.fillStyle = "#1a1620";
-          ctx.fillRect(sxp + sway, ry + 2, 3, 1);
+          ctx.fillRect(sxp, ry + lift + 2, 3, 1);
         }
       }
       ctx.fillStyle = C.rail;  ctx.fillRect(0, Math.max(0, y - 2), this.vw, 1);
@@ -499,25 +640,122 @@ window.CupPitch2D = (function () {
       y = top; band++;
     }
 
-    ctx.fillStyle = C.roof;
-    ctx.fillRect(0, 0, this.vw, Math.max(0, y));
-    ctx.fillStyle = C.wallLit;
-    ctx.fillRect(0, Math.max(0, y - 1), this.vw, 1);
+    /* ================================================== THE ROOF AND ABOVE
 
-    /* THE ADVERTISING BOARDS. Blocks of flat colour with a lit lip: no
-       words, because a word at this size is four grey pixels and reads
-       as dirt. */
+       The stand used to stop at a flat black band with nothing above
+       it, which is the silhouette of a wall rather than of a stadium.
+       What makes a ground read as a ground from the outside is the
+       ROOFLINE: a lit fascia, the trusses under it, and the floodlights
+       standing over the back of it against the sky. */
+    var roofY = Math.max(0, y);
+    ctx.fillStyle = C.roof;
+    ctx.fillRect(0, 0, this.vw, roofY + 5);
+    /* the underside of the roof, caught by the lights below it */
+    ctx.fillStyle = mix(C.wallLit, "#ffffff", 0.10);
+    ctx.fillRect(0, roofY, this.vw, 1);
+    ctx.fillStyle = C.wall;
+    ctx.fillRect(0, roofY + 1, this.vw, 3);
+    /* the trusses: a stadium roof is held up by something */
+    ctx.fillStyle = mix(C.roof, "#ffffff", 0.16);
+    for (var tx = 8; tx < this.vw; tx += 34) ctx.fillRect(tx, roofY + 1, 2, 3);
+    /* the fascia, one bright line, which is the whole silhouette */
+    ctx.fillStyle = mix(C.rail, "#ffffff", 0.22);
+    ctx.fillRect(0, Math.max(0, roofY - 1), this.vw, 1);
+
+    this.drawPylons(roofY);
+
+    /* ======================================================= THE HOARDINGS
+
+       Long boards with words on, rather than short boards without. The
+       lettering only goes on when there is genuinely room for it: at a
+       cut-in zoom the virtual screen is half the size and a board is
+       too short to hold a line, and half a word is worse than none. */
     ctx.fillStyle = C.board;
     ctx.fillRect(0, lip, this.vw, bh);
-    for (var bx = 0; bx < this.vw; bx += 26) {
-      var bn = this.rnd(bx * 13 + 5);
-      ctx.fillStyle = bn > 0.55 ? "#a8283a" : (bn > 0.3 ? "#c8912f" : "#2f4f7a");
-      ctx.fillRect(bx + 1, lip + 1, 23, Math.max(1, bh - 2));
+    var BW = 76;                                  // one hoarding
+    var off = Math.round(this.rnd(3) * BW);
+    for (var bx = -off; bx < this.vw; bx += BW) {
+      var idx = Math.abs(Math.round((bx + off) / BW)) % HOARDING.length;
+      var bn = this.rnd(idx * 13 + 5);
+      var face = bn > 0.62 ? "#a8283a" : (bn > 0.34 ? "#c8912f" : "#2f4f7a");
+      ctx.fillStyle = face;
+      ctx.fillRect(bx + 1, lip + 1, BW - 3, Math.max(1, bh - 2));
       ctx.fillStyle = C.boardLip;
-      ctx.fillRect(bx + 1, lip, 23, 1);
+      ctx.fillRect(bx + 1, lip, BW - 3, 1);
+      var word = HOARDING[idx];
+      if (bh >= 8 && textWidth(word) <= BW - 7) {
+        var tw = textWidth(word);
+        var tx2 = Math.round(bx + 1 + (BW - 3 - tw) / 2);
+        var ty2 = Math.round(lip + (bh - GLYPH_H) / 2) + 1;
+        /* a dark backing row so white letters do not vibrate on red */
+        drawText(ctx, word, tx2, ty2 + 1, mix(face, "#000000", 0.55));
+        drawText(ctx, word, tx2, ty2, "#f2f6f4");
+      }
     }
     ctx.fillStyle = C.grassDk;
     ctx.fillRect(0, base, this.vw, 2);
+  };
+
+  /* =======================================================================
+     THE FLOODLIGHTS
+
+     Four pylons, of which two are in shot on a pitch that runs up and
+     down. They are the one piece of the ground that stands against the
+     sky, so they are what says "stadium" in a frame where the stand
+     itself is only forty pixels tall.
+
+     A lamp is not a white blob: it is a bank of bulbs on a head, with a
+     soft halo under it that falls on the roof. The halo is the reason
+     the pylon reads as LIT rather than as a shape. */
+  Pitch.prototype.drawPylons = function (roofY) {
+    var ctx = this.ctx;
+    if (roofY < 12) return;                 // no sky to stand them in
+    var self = this;
+    var mast = function (cx) {
+      cx = Math.round(cx);
+      var headW = 22, headH = 9;
+      var topY = Math.max(2, roofY - 32);
+      /* THE HALO IS A CONE, NOT A STACK OF BOXES.
+
+         Four rectangles of equal alpha piled up under the head read as
+         exactly what they are: a grey box in the sky with steps down
+         its sides. A light spilling out of a lamp gets WIDER and WEAKER
+         together, so each band is both broader and fainter than the one
+         above it, and the faintest is under a twentieth — at which
+         point there is no edge left to see. */
+      ctx.fillStyle = "#fff6d8";
+      for (var g = 0; g < 5; g++) {
+        var gw = headW + 4 + g * g * 5, gh = 4 + g * 3;
+        ctx.globalAlpha = 0.085 / (1 + g * 0.9);
+        ctx.fillRect(Math.round(cx - gw / 2), topY + headH + g * 2, Math.round(gw), gh);
+      }
+      ctx.globalAlpha = 1;
+      /* the mast: a lattice, two legs and the cross-bracing */
+      ctx.fillStyle = mix(C.roof, "#ffffff", 0.30);
+      var legTop = topY + headH, legBot = roofY + 4;
+      ctx.fillRect(cx - 4, legTop, 2, legBot - legTop);
+      ctx.fillRect(cx + 2, legTop, 2, legBot - legTop);
+      for (var ly = legTop + 3; ly < legBot; ly += 6) {
+        ctx.fillRect(cx - 3, ly, 6, 1);
+      }
+      /* the head, and the bulbs in it */
+      ctx.fillStyle = mix(C.roof, "#ffffff", 0.18);
+      ctx.fillRect(cx - headW / 2, topY, headW, headH);
+      ctx.fillStyle = "#6a6250";
+      ctx.fillRect(cx - headW / 2 + 1, topY + 1, headW - 2, headH - 2);
+      for (var r = 0; r < 2; r++) {
+        for (var c = 0; c < 6; c++) {
+          /* the odd bulb flickers, because they do */
+          var fl = self.rnd(c * 37 + r * 11) * 6 + self.t * 2.2;
+          var lit = Math.sin(fl) > -0.92;
+          ctx.fillStyle = lit ? "#fff8e0" : "#b8ac88";
+          ctx.fillRect(cx - headW / 2 + 2 + c * 3, topY + 2 + r * 3, 2, 2);
+        }
+      }
+    };
+    /* stood behind the corners of the far end */
+    mast(this.vw * 0.11);
+    mast(this.vw * 0.89);
   };
 
   /* the far stand, oblique: a band above the far goal line, and the
@@ -564,17 +802,21 @@ window.CupPitch2D = (function () {
     var y0 = Math.max(0, Math.round(
       (this.swap ? this.project(this.raw.halfW + 7 / this.k, 0)
                  : this.project(0, this.raw.len + 7 / this.k)).y) + 2);
-    var band = 9 / this.k;               // mowing band, in world units
+    /* THE MOWING RUNS ACROSS THE PITCH, so a band is a band of DEPTH
+       and therefore a band of screen rows — which is exactly why the
+       stripes come out as trapezoids narrowing toward the far goal
+       without anything here having to draw a trapezoid. Perspective
+       does it, because the bands are real ground. */
+    var band = 11 / this.k;              // mowing band, in world units
+    var L = this.raw.len;
     for (var y = y0; y < this.vh; y++) {
       var d = this.depthAtY(y + 0.5);
       if (d <= 0) continue;
       var wy = (this.swap ? this.cam.x : this.cam.y) + (d - NEAR) / this.k;
       var bi = Math.floor(wy / band);
-      var col = (bi & 1) ? C.grassA : C.grassB;
-      /* the far half sits in the stand's shadow, which is the cheapest
-         depth cue there is and the most convincing */
-      if (!this.swap && wy > this.raw.len * 0.62) col = (bi & 1) ? C.grassDk : C.grassA;
-      ctx.fillStyle = col;
+      var t = Math.max(0, Math.min(1, wy / L));
+      var gi = Math.min(GRADE_N - 1, Math.max(0, Math.round(t * (GRADE_N - 1))));
+      ctx.fillStyle = (bi & 1) ? C.gradA[gi] : C.gradB[gi];
       ctx.fillRect(0, y, this.vw, 1);
     }
   };
@@ -712,41 +954,154 @@ window.CupPitch2D = (function () {
     var a = this.project(x0, y0), b = this.project(x1, y1);
     line(this.ctx, a.x, a.y, b.x, b.y, col || C.line);
   };
-  Pitch.prototype.warc = function (cx, cy, r, a0, a1, col) {
-    var n = 40, prev = null;
+
+  /* =======================================================================
+     A PITCH LINE IS NOT A LINE, IT IS A STRIP OF PAINT
+
+     Every marking here used to be a one-pixel Bresenham run between two
+     ROUNDED endpoints. Two things are wrong with that, and both of them
+     are things you can see.
+
+     It SHIMMERS. Round the two ends, and the staircase between them is
+     recomputed from the rounded values every frame; pan the camera by a
+     third of a pixel and pixels three-quarters of the way along the run
+     jump sideways, because the whole staircase has re-solved. A pitch
+     whose lines crawl while the camera moves is the single loudest
+     "this is a computer drawing" tell there is.
+
+     It has NO WIDTH. Real pitch markings are about twelve centimetres
+     of paint, which near the camera is several pixels and at the far
+     goal is one. Drawn at a constant pixel everywhere, the near lines
+     are too thin to read as paint and the far ones are too thick.
+
+     So a marking is drawn as the strip of ground it actually is, and
+     the strip is rasterised from the SCREEN side rather than from its
+     endpoints:
+
+       - a line across the pitch (constant pitch-y) lies at one single
+         depth, so it is exactly one horizontal rectangle, and a
+         rectangle cannot shimmer;
+
+       - a line up the pitch (constant pitch-x) is solved once PER
+         SCREEN ROW: the row says what depth it is looking at, the
+         projection says where that line is at that depth and how wide
+         the paint is there. Each row is independent, so panning moves
+         each row's rounding smoothly and on its own instead of
+         restaircasing the whole run.
+
+     Both come out solid, continuous, and thicker near the camera, which
+     is what paint on grass does.
+     ======================================================================= */
+  var LINEW = 2.4;                    // world units of paint, both ways
+
+  /* a marking ACROSS the pitch: one depth, therefore one rectangle */
+  Pitch.prototype.wbandY = function (x0, x1, y, wid, col) {
+    var a = this.project(x0, y), b = this.project(x1, y);
+    if (!a.flat && a.d <= NEAR + 0.5) return;
+    var th = Math.max(1, Math.round(a.ky * (wid || LINEW)));
+    var sx = Math.max(-2, Math.round(Math.min(a.x, b.x)));
+    var ex = Math.min(this.vw + 2, Math.round(Math.max(a.x, b.x)));
+    if (ex < sx) return;
+    var sy = Math.round(a.y - th / 2);
+    if (sy + th < 0 || sy > this.vh) return;
+    this.ctx.fillStyle = col || C.line;
+    this.ctx.fillRect(sx, sy, ex - sx + 1, th);
+  };
+
+  /* a marking UP the pitch: solved per screen row */
+  Pitch.prototype.wbandX = function (x, y0, y1, wid, col) {
+    /* turned sideways this is the other axis's job, and the greybox is
+       the only thing that ever turns it sideways */
+    if (this.swap) return this.wline(x, y0, x, y1, col);
+    var a = this.project(x, y0), b = this.project(x, y1);
+    var r0 = Math.max(0, Math.round(Math.min(a.y, b.y)));
+    var r1 = Math.min(this.vh - 1, Math.round(Math.max(a.y, b.y)));
+    var lo = Math.min(y0, y1), hi = Math.max(y0, y1);
+    var ctx = this.ctx;
+    ctx.fillStyle = col || C.line;
+    for (var r = r0; r <= r1; r++) {
+      var wy = this.rowAt(r + 0.5);
+      if (wy < lo - 0.6 || wy > hi + 0.6) continue;
+      var pr = this.project(x, wy);
+      if (!pr.flat && pr.d <= NEAR + 0.5) continue;
+      var t = Math.max(1, Math.round(pr.k * (wid || LINEW)));
+      var px0 = Math.round(pr.x - t / 2);
+      if (px0 + t < 0 || px0 > this.vw) continue;
+      ctx.fillRect(px0, r, t, 1);
+    }
+  };
+
+  /* AN ARC IS SAMPLED UNTIL IT IS SOLID.
+
+     Forty samples joined by one-pixel lines was a centre circle that
+     came apart into dashes near the camera, where forty samples are
+     twenty pixels apart. The sample count now comes off the arc's
+     measured length ON SCREEN, and each sample is a paint-sized
+     rectangle rather than a pixel, so consecutive samples overlap and
+     the result is a continuous stroke at every depth. */
+  Pitch.prototype.warc = function (cx, cy, r, a0, a1, col, wid) {
+    var ctx = this.ctx;
+    var mid = this.project(cx, cy);
+    var span = Math.abs(a1 - a0) * r * Math.max(mid.k, mid.ky);
+    var n = Math.max(32, Math.min(420, Math.ceil(span * 1.6)));
+    ctx.fillStyle = col || C.line;
     for (var i = 0; i <= n; i++) {
       var a = a0 + (a1 - a0) * (i / n);
-      var p = this.project(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
-      if (prev) line(this.ctx, prev.x, prev.y, p.x, p.y, col || C.line);
-      prev = p;
+      var q = this.project(cx + Math.cos(a) * r, cy + Math.sin(a) * r);
+      if (!q.flat && q.d <= NEAR + 0.5) continue;
+      var tw = Math.max(1, Math.round(q.k * (wid || LINEW)));
+      var th = Math.max(1, Math.round(q.ky * (wid || LINEW)));
+      var x = Math.round(q.x - tw / 2), y = Math.round(q.y - th / 2);
+      if (x + tw < 0 || x > this.vw || y + th < 0 || y > this.vh) continue;
+      ctx.fillRect(x, y, tw, th);
     }
+  };
+
+  /* a spot is a disc of paint, not a pixel */
+  Pitch.prototype.wspot = function (x, y, r) {
+    var q = this.project(x, y);
+    if (!q.flat && q.d <= NEAR + 0.5) return;
+    fillEllipse(this.ctx, q.x, q.y, Math.max(1, Math.round(q.k * r)),
+                Math.max(1, Math.round(q.ky * r)), C.line);
   };
 
   Pitch.prototype.drawMarkings = function () {
     var w = this.raw, hw = w.halfW, L = w.len;
-    this.wline(-hw, 0, -hw, L);
-    this.wline(hw, 0, hw, L);
-    this.wline(-hw, 0, hw, 0);
-    this.wline(-hw, L, hw, L);
-    this.wline(-hw, L / 2, hw, L / 2);
+    /* touchlines and goal lines */
+    this.wbandX(-hw, 0, L);
+    this.wbandX(hw, 0, L);
+    this.wbandY(-hw, hw, 0);
+    this.wbandY(-hw, hw, L);
+    /* THE HALFWAY LINE IS THE WIDEST PAINT ON THE PITCH, which is not a
+       liberty: it is the one line the eye uses to judge which half the
+       ball is in, and at this size a hair's difference is what makes
+       that readable at a glance. */
+    this.wbandY(-hw, hw, L / 2, LINEW * 1.15);
     this.warc(0, L / 2, w.circleR, 0, Math.PI * 2);
-    var c = this.project(0, L / 2);
-    this.ctx.fillStyle = C.line;
-    this.ctx.fillRect(Math.round(c.x) - 1, Math.round(c.y), 2, 1);
+    this.wspot(0, L / 2, 1.6);
     for (var e = 0; e < 2; e++) {
-      var gl = e ? L : 0, s = e ? -1 : 1;
-      this.wline(-w.boxHalf, gl, -w.boxHalf, gl + s * w.boxDepth);
-      this.wline(w.boxHalf, gl, w.boxHalf, gl + s * w.boxDepth);
-      this.wline(-w.boxHalf, gl + s * w.boxDepth, w.boxHalf, gl + s * w.boxDepth);
-      this.wline(-w.sixHalf, gl, -w.sixHalf, gl + s * w.sixDepth);
-      this.wline(w.sixHalf, gl, w.sixHalf, gl + s * w.sixDepth);
-      this.wline(-w.sixHalf, gl + s * w.sixDepth, w.sixHalf, gl + s * w.sixDepth);
-      var sp = this.project(0, gl + s * w.spot);
-      this.ctx.fillStyle = C.line;
-      this.ctx.fillRect(Math.round(sp.x), Math.round(sp.y), 1, 1);
-      this.warc(0, gl + s * w.spot, w.circleR, s > 0 ? 0.35 : Math.PI + 0.35,
-                s > 0 ? Math.PI - 0.35 : Math.PI * 2 - 0.35);
+      var gl = e ? L : 0, sg = e ? -1 : 1;
+      this.wbandX(-w.boxHalf, gl, gl + sg * w.boxDepth);
+      this.wbandX(w.boxHalf, gl, gl + sg * w.boxDepth);
+      this.wbandY(-w.boxHalf, w.boxHalf, gl + sg * w.boxDepth);
+      this.wbandX(-w.sixHalf, gl, gl + sg * w.sixDepth);
+      this.wbandX(w.sixHalf, gl, gl + sg * w.sixDepth);
+      this.wbandY(-w.sixHalf, w.sixHalf, gl + sg * w.sixDepth);
+      this.wspot(0, gl + sg * w.spot, 1.6);
+      /* THE D IS THE PART OF THE ARC OUTSIDE THE BOX, and only that
+         part: swept from the penalty spot across its whole half it drew
+         a full half-circle straight through the eighteen-yard line, so
+         every box had a bite taken out of it. The cut-off is worked out
+         rather than guessed — it is where the arc crosses the line. */
+      var reach = w.boxDepth - w.spot;        // spot to the edge of the box
+      if (Math.abs(reach) < w.circleR) {
+        var cut = Math.acos(Math.max(-1, Math.min(1, reach / w.circleR)));
+        this.warc(0, gl + sg * w.spot, w.circleR,
+                  sg > 0 ? cut : Math.PI + cut,
+                  sg > 0 ? Math.PI - cut : Math.PI * 2 - cut);
+      }
     }
+    /* the four corner quadrants */
     this.warc(-hw, 0, w.circleR * 0.2, 0, Math.PI / 2);
     this.warc(hw, 0, w.circleR * 0.2, Math.PI / 2, Math.PI);
     this.warc(-hw, L, w.circleR * 0.2, -Math.PI / 2, 0);
@@ -758,44 +1113,144 @@ window.CupPitch2D = (function () {
      wash: the lattice is what says "net" at this size. `bulge` is how
      hard the ball has just hit it, and it is the only thing on the pitch
      that tells you a goal went in before the crowd does. */
+  /* =======================================================================
+     A GOAL IS AN ENCLOSURE, NOT A PATTERN
+
+     The old one drew a four-pixel grid of single pixels across the
+     mouth. At this size a grid of isolated pixels does not read as
+     netting — it reads as polka dots painted on the grass, and because
+     nothing behind the mouth was ever drawn, the goal had no inside.
+
+     A net reads from three things, in this order of importance:
+
+       1. THE BACK PLANE. Almost everything you actually see of a net is
+          the panel at the back, several feet behind the line and
+          therefore smaller and higher up. Drawing it is what gives the
+          goal a volume for the ball to go INTO.
+       2. CONTINUOUS THREADS. Vertical threads full height, horizontal
+          threads full width — lines, not dots. Verticals carry more of
+          the reading, so they are drawn stronger.
+       3. THE ROOF AND SIDES, as a few threads running from the front
+          frame back to the back panel. Three or four each is enough;
+          what they supply is the perspective, not the detail.
+
+     The wobble is per COLUMN and driven by the clock, so the net
+     breathes when nothing is happening and snaps when the ball arrives.
+     ======================================================================= */
   Pitch.prototype.drawGoal = function (far, bulge) {
     var ctx = this.ctx, w = this.raw;
-    var gl = far ? w.len : 0, s = far ? 1 : -1;
-    var p = this.project(0, gl);
+    var gl = far ? w.len : 0;
+    var out = far ? 1 : -1;                    // which way is "behind the goal"
+    var fp = this.project(0, gl);
     /* A GOAL BEHIND THE CAMERA IS NOT A GOAL, IT IS A LATTICE.
 
        The projection clamps depth to a minimum rather than failing, so
-       a goal line behind the lens comes back with an enormous scale:
-       the posts land thousands of pixels off either side and the loop
-       that draws the netting walks the entire width of the screen at
-       four-pixel intervals. On the match camera you never saw it; the
-       moment a super cut the camera in close, the whole pitch came out
-       covered in a dotted white mesh. */
-    if (p.d <= NEAR + 1) return;
-    /* THE CROSSBAR IS A FIXED HEIGHT IN PIXELS, and that is not a
-       shortcut — it is the same decision the characters are drawn with.
-       They never scale with depth, so a goal that did would tower over
-       a keeper at one end and come up to his knee at the other. Its
-       WIDTH stays in perspective because the width lies on the ground
-       plane and the ground plane is the one thing here that is real. */
-    var hgt = 52;
-    var lp = this.project(-w.goalHalf, gl), rp = this.project(w.goalHalf, gl);
-    var push = Math.round(Math.sin(Math.max(0, bulge || 0) * Math.PI) * 4);
+       a goal line behind the lens comes back with an enormous scale and
+       the netting loop walks the whole width of the screen. On the
+       match camera you never saw it; the moment a super cut in close,
+       the entire pitch came out under a dotted mesh. */
+    if (fp.d <= NEAR + 1) return;
 
-    /* a lattice, not a fill: at three pixels the mesh closed up and the
-       mouth of the goal read as a solid white box */
-    var x0 = Math.max(-4, Math.round(lp.x)), x1 = Math.min(this.vw + 4, Math.round(rp.x));
-    for (var x = x0; x <= x1; x += 4) {
-      for (var y = Math.round(lp.y) - hgt; y < Math.round(lp.y); y += 4) {
-        px(ctx, x, y + (far ? -push : push), C.net);
-        px(ctx, x + 2, y + 2 + (far ? -push : push), C.postDk);
-      }
+    /* THE FRAME IS A FIXED HEIGHT IN PIXELS, and that is the same
+       decision the characters are drawn with. They never scale with
+       depth, so a goal that did would tower over a keeper at one end
+       and come up to his knee at the other. Its WIDTH stays in
+       perspective because width lies on the ground plane, and the
+       ground plane is the one thing here that is real. */
+    var hgt = 52;
+    var lf = this.project(-w.goalHalf, gl), rf = this.project(w.goalHalf, gl);
+    var bk = gl + out * w.goalDepth;
+    var lb = this.project(-w.goalHalf, bk), rb = this.project(w.goalHalf, bk);
+    /* the near goal's back panel can fall behind the lens; when it does
+       there is no volume to draw and the mouth is all there is */
+    var solid = lb.d > NEAR + 1 && rb.d > NEAR + 1;
+    var push = Math.sin(Math.max(0, Math.min(1, bulge || 0)) * Math.PI) * 5;
+
+    var fx0 = Math.round(lf.x), fx1 = Math.round(rf.x);
+    var fyB = Math.round(lf.y), fyT = fyB - hgt;
+    /* the back panel stands lower than the frame, the way a net that is
+       pegged to the ground does */
+    var bhgt = Math.round(hgt * 0.70);
+    var bx0 = Math.round(lb.x), bx1 = Math.round(rb.x);
+    var byB = Math.round(lb.y) - Math.round(out * push);
+    var byT = byB - bhgt;
+    if (!solid) { bx0 = fx0; bx1 = fx1; byB = fyB; byT = fyT; }
+    if (fx1 - fx0 < 3) return;
+
+    /* ---- the shadow the frame throws on the grass, in front of it */
+    var sh = this.project(0, gl - out * 4.5);
+    ctx.globalAlpha = 0.26;
+    fillEllipse(ctx, (lf.x + rf.x) / 2, (fp.y + sh.y) / 2,
+                Math.round((rf.x - lf.x) / 2) + 2,
+                Math.max(1, Math.round(Math.abs(sh.y - fp.y) / 2) + 1), "#000000");
+    ctx.globalAlpha = 1;
+
+    /* ---- the volume behind the line, so the ball goes somewhere */
+    if (solid) {
+      ctx.globalAlpha = 0.34;
+      ctx.fillStyle = mix(C.grassDk, "#000000", 0.55);
+      var vTop = Math.min(byT, fyT), vBot = Math.max(byB, fyB);
+      ctx.fillRect(Math.min(bx0, fx0), vTop,
+                   Math.max(bx1, fx1) - Math.min(bx0, fx0) + 1, vBot - vTop + 1);
+      ctx.globalAlpha = 1;
     }
+
+    var self = this;
+    var wob = function (i) {
+      /* a net breathes; when the ball hits it, it snaps */
+      return Math.round(Math.sin(self.t * 1.9 + i * 0.7) * 0.8 + push * 0.3);
+    };
+
+    /* ---- the back panel: verticals, then horizontals */
+    var step = 3;
+    ctx.fillStyle = C.net;
+    ctx.globalAlpha = 0.55;
+    var cols = Math.max(3, Math.floor((bx1 - bx0) / step));
+    for (var i = 0; i <= cols; i++) {
+      var cx = bx0 + Math.round((bx1 - bx0) * (i / cols));
+      var wv = wob(i);
+      ctx.fillRect(cx, byT + wv, 1, byB - byT + 1);
+    }
+    ctx.globalAlpha = 0.34;
+    for (var yy = byT; yy <= byB; yy += step) {
+      ctx.fillRect(bx0, yy + wob(yy * 0.4), bx1 - bx0 + 1, 1);
+    }
+    ctx.globalAlpha = 1;
+
+    /* ---- roof and side panels: a few threads each, which is all the
+       perspective needs and all that survives at fifty-two pixels */
+    if (solid) {
+      ctx.globalAlpha = 0.40;
+      for (var u = 0; u <= 1.0001; u += 0.25) {
+        line(ctx, fx0 + (fx1 - fx0) * u, fyT,
+                  bx0 + (bx1 - bx0) * u, byT + wob(u * 9), C.net);
+      }
+      for (var v = 0; v <= 1.0001; v += 0.34) {
+        var fy = fyT + (fyB - fyT) * v, by = byT + (byB - byT) * v;
+        line(ctx, fx0, fy, bx0, by, C.net);
+        line(ctx, fx1, fy, bx1, by, C.net);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    /* ---- the frame. Bright, two pixels, with a shaded edge so a post
+       is a round thing and not a white stick. */
     ctx.fillStyle = C.post;
-    ctx.fillRect(Math.round(lp.x) - 1, Math.round(lp.y) - hgt, 2, hgt);
-    ctx.fillRect(Math.round(rp.x), Math.round(rp.y) - hgt, 2, hgt);
-    ctx.fillRect(Math.round(lp.x) - 1, Math.round(lp.y) - hgt,
-                 Math.round(rp.x - lp.x) + 3, 2);
+    ctx.fillRect(fx0 - 1, fyT, 2, hgt);
+    ctx.fillRect(fx1, fyT, 2, hgt);
+    ctx.fillRect(fx0 - 1, fyT, fx1 - fx0 + 3, 2);
+    ctx.fillStyle = C.postDk;
+    ctx.fillRect(fx0 + 1, fyT + 2, 1, hgt - 2);
+    ctx.fillRect(fx1 + 2, fyT + 2, 1, hgt - 2);
+    ctx.fillRect(fx0 - 1, fyT + 2, fx1 - fx0 + 3, 1);
+    /* and the stanchions at the back, dimmer because they are further */
+    if (solid) {
+      ctx.globalAlpha = 0.7;
+      ctx.fillStyle = C.postDk;
+      ctx.fillRect(bx0, byT, 1, byB - byT);
+      ctx.fillRect(bx1, byT, 1, byB - byT);
+      ctx.globalAlpha = 1;
+    }
   };
 
   /* ====================================================== WHAT STANDS ON IT
@@ -833,29 +1288,70 @@ window.CupPitch2D = (function () {
 
   /* the character. Drawn at 1:1 with no smoothing and on whole pixels —
      the two things that keep the bible's outline one pixel wide. */
-  Pitch.prototype.sprite = function (at, anim, faceId, frame, wx, wy, flip, air) {
+  /* =======================================================================
+     HOW BIG A PLAYER IS AT A GIVEN DEPTH — IN FOUR SIZES, NOT A HUNDRED
+
+     Drawn at 1:1 everywhere, a keeper standing on his own goal line came
+     out the same height as the striker running at him from the centre
+     circle, and the pitch lost its depth the moment two players at
+     different ends were on screen together.
+
+     Scaling them is the fix, but scaling a PIXEL sprite is not free:
+     nearest-neighbour at 0.83 drops every sixth row, and the first
+     thing to go is the one-pixel outline that separates a player from
+     the grass. Worse, a scale that varies CONTINUOUSLY with depth makes
+     the dropped rows move as the player runs — the sprite boils.
+
+     So the ramp is QUANTISED to eighths. A player is drawn at 64, 56,
+     48 or 40 pixels and nothing in between: every one of those is a
+     whole-pixel divisor of the cell, the dropped rows land in the same
+     places every frame, and a player crossing from one step to the next
+     does it once rather than continuously. Four sizes is what a sprite
+     game of this kind actually shipped, and for the same reason.
+
+     The ramp itself is real perspective — a ratio of depths, not a
+     fraction of the pitch — measured against the depth of the row the
+     player being driven stands on, so she is always the full 64 and
+     everything else is sized relative to her. */
+  var MIN_SCALE = 0.625;             // five eighths, and no further
+  Pitch.prototype.refDepth = function () {
+    if (this.mode === "oblique") return NEAR;
+    return this.depthAtY(this.vh * 0.78);
+  };
+  Pitch.prototype.depthScale = function (p) {
+    if (p.flat) return 1;
+    var s = this.refDepth() / Math.max(1, p.d);
+    s = Math.max(MIN_SCALE, Math.min(1, s));
+    return Math.round(s * 8) / 8;
+  };
+
+  Pitch.prototype.sprite = function (at, anim, faceId, frame, wx, wy, flip, air, scale) {
     var ctx = this.ctx;
     var p = this.project(wx, wy);
     var uv = at.uv(anim, faceId, frame);
     if (!uv) return;
     var S = at.size;
+    var sc = scale === undefined || scale === null ? this.depthScale(p) : scale;
+    var D = Math.max(8, Math.round(S * sc));
     /* the cell's ground line is where the boots are, so that is what
        lands on the projected point rather than the bottom of the cell */
-    var dx = Math.round(p.x - S / 2);
+    var dx = Math.round(p.x - D / 2);
     /* `air` is in SPRITE PIXELS — it comes off the frame itself, which
        knows how far off the ground it drew her. Multiplying it by the
        lens, as the first version did, lifted a sliding tackle eighteen
-       pixels into the sky and left its shadow on the grass underneath. */
-    var dy = Math.round(p.y - at.ground - (air || 0));
+       pixels into the sky and left its shadow on the grass underneath.
+       It does scale with the sprite, because it is measured in that
+       sprite's own pixels. */
+    var dy = Math.round(p.y - at.ground * sc - (air || 0) * sc);
     ctx.imageSmoothingEnabled = false;
     if (flip) {
       ctx.save();
-      ctx.translate(dx + S, dy);
+      ctx.translate(dx + D, dy);
       ctx.scale(-1, 1);
-      ctx.drawImage(at.canvas, uv.col * S, uv.row * S, S, S, 0, 0, S, S);
+      ctx.drawImage(at.canvas, uv.col * S, uv.row * S, S, S, 0, 0, D, D);
       ctx.restore();
     } else {
-      ctx.drawImage(at.canvas, uv.col * S, uv.row * S, S, S, dx, dy, S, S);
+      ctx.drawImage(at.canvas, uv.col * S, uv.row * S, S, S, dx, dy, D, D);
     }
   };
 
@@ -865,9 +1361,12 @@ window.CupPitch2D = (function () {
   Pitch.prototype.player = function (o) {
     var self = this;
     this.add(o.wy, function () {
-      self.shadow(o.wx, o.wy, o.shadow || 4, o.air);
+      var sc = o.scale === undefined || o.scale === null
+        ? self.depthScale(self.project(o.wx, o.wy)) : o.scale;
+      /* the shadow shrinks with the player standing on it */
+      self.shadow(o.wx, o.wy, (o.shadow || 4) * sc, (o.air || 0) * sc);
       if (o.ring !== undefined && o.ring !== null) self.ring(o.wx, o.wy, o.ring);
-      self.sprite(o.at, o.anim, o.face, o.frame, o.wx, o.wy, o.flip, o.air);
+      self.sprite(o.at, o.anim, o.face, o.frame, o.wx, o.wy, o.flip, o.air, sc);
     });
   };
 
@@ -973,6 +1472,61 @@ window.CupPitch2D = (function () {
     });
   };
 
+  /* =======================================================================
+     THE PITCH COMES UP
+
+     Grass, thrown by a sliding tackle, a hard turn, a struck ball or a
+     keeper going down. A couple of dozen two-pixel flecks that arc up,
+     fall back and lie there for a moment before fading.
+
+     It is the only thing in the match that says the players are
+     standing ON the ground rather than in front of it, and it costs
+     almost nothing: they are the confetti with a shorter life, a
+     heavier fall and no flutter — grass does not flutter, it goes up
+     and it comes down.
+
+     They sort by depth with everything else, so a divot kicked up at
+     the far post goes behind the players in front of it. */
+  Pitch.prototype.turf = function (wx, wy, n, ang) {
+    for (var i = 0; i < n; i++) {
+      var a = (ang === undefined) ? Math.random() * Math.PI * 2
+                                  : ang + (Math.random() - 0.5) * 2.0;
+      var sp = (10 + Math.random() * 26) / this.k;
+      this.divots.push({
+        x: wx + (Math.random() - 0.5) * 5 / this.k,
+        y: wy + (Math.random() - 0.5) * 4 / this.k,
+        h: 1 + Math.random() * 3,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.55,
+        vh: 16 + Math.random() * 30,
+        life: 0.34 + Math.random() * 0.4,
+        big: Math.random() < 0.34,
+        lit: Math.random() < 0.34,
+      });
+      if (this.divots.length > 200) this.divots.shift();
+    }
+  };
+
+  Pitch.prototype.turfStep = function (dt) {
+    var self = this;
+    for (var i = this.divots.length - 1; i >= 0; i--) {
+      var g = this.divots[i];
+      g.life -= dt;
+      if (g.life <= 0) { this.divots.splice(i, 1); continue; }
+      g.x += g.vx * dt; g.y += g.vy * dt;
+      g.h += g.vh * dt; g.vh -= 190 * dt;
+      if (g.h < 0) { g.h = 0; g.vh = 0; g.vx *= 0.4; g.vy *= 0.4; }
+    }
+    this.divots.forEach(function (g) {
+      self.add(g.y, function () {
+        var p = self.project(g.x, g.y);
+        if (!p.flat && p.d <= NEAR + 1) return;
+        self.ctx.fillStyle = g.lit ? C.grassLit : C.grassDk;
+        self.ctx.fillRect(Math.round(p.x), Math.round(p.y - g.h),
+                          g.big ? 2 : 1, g.big ? 2 : 1);
+      });
+    });
+  };
+
   /* ------------------------------------------------------------- a frame */
   Pitch.prototype.begin = function (dt, bulge) {
     this.t += dt || 0;
@@ -1000,12 +1554,20 @@ window.CupPitch2D = (function () {
      mismatch the whole rebuild is about. */
   Pitch.prototype.finish = function () {
     var ctx = this.ctx;
-    ctx.globalAlpha = 0.18; ctx.fillStyle = "#0a0812";
-    for (var i = 0; i < 3; i++) {
-      var w = 6 + i * 5;
+    /* THE VIGNETTE IS A FRAME, NOT A MOOD.
+
+       Three passes at eighteen per cent stacked to just under half
+       opacity at the very edge, which pulled the corners of a bright
+       pitch down into mud and made the whole chapter read darker than
+       every other screen on the site. Two passes at nine keep the
+       job it is actually doing — holding the eye off the edges of the
+       frame — without grading the game down to do it. */
+    ctx.globalAlpha = 0.09; ctx.fillStyle = "#0a0812";
+    for (var i = 0; i < 2; i++) {
+      var w = 5 + i * 6;
       ctx.fillRect(0, 0, w, this.vh); ctx.fillRect(this.vw - w, 0, w, this.vh);
-      ctx.fillRect(0, 0, this.vw, w * 0.6);
-      ctx.fillRect(0, this.vh - w * 0.6, this.vw, w);
+      ctx.fillRect(0, 0, this.vw, w * 0.55);
+      ctx.fillRect(0, this.vh - w * 0.55, this.vw, w);
     }
     ctx.globalAlpha = 1;
     if (this.flash > 0) {
@@ -1037,9 +1599,59 @@ window.CupPitch2D = (function () {
   };
 
   /* decay the two things that are time-based and not part of the sim */
+  Pitch.prototype.setCrowd = function (home, away) {
+    this.crowdHome = home || null;
+    this.crowdAway = away || null;
+  };
+  /* somebody scored: send it round the ground */
+  Pitch.prototype.startWave = function () { this.wave = 0; };
+
   Pitch.prototype.tick = function (dt) {
     if (this.flash > 0) this.flash = Math.max(0, this.flash - dt * 2.6);
     if (this.shake > 0) this.shake = Math.max(0, this.shake - dt * 14);
+    if (this.wave >= 0) {
+      this.wave += dt * 0.55;
+      if (this.wave > 2.6) this.wave = -1;      // two and a half laps
+    }
+  };
+
+  /* HOW FAR OUT OF HIS SEAT A GIVEN COLUMN IS.
+
+     A wave is not everybody jumping at once, it is a NARROW FRONT
+     travelling sideways: a column is up only while the front is passing
+     it, and it goes up faster than it comes down. Everything else in
+     the stand is the idle sway, which never stops. */
+  Pitch.prototype.standLift = function (colFrac, row) {
+    var idle = Math.sin(this.t * 2.1 + colFrac * 9 + row) * 0.9;
+    if (this.wave < 0) return idle;
+    var front = (this.wave % 1);
+    var d = colFrac - front;
+    if (d < -0.5) d += 1; else if (d > 0.5) d -= 1;
+    var up = Math.max(0, 1 - Math.abs(d) / 0.16);
+    return idle - up * up * 7;
+  };
+
+  /* the seat colour, once allegiance is taken into account */
+  Pitch.prototype.seatCol = function (id, colFrac) {
+    var base = CROWD[(this.rnd(id + 11) * CROWD.length) | 0];
+    if (!this.crowdHome && !this.crowdAway) return base;
+    /* eight blocks across the end, each leaning one way or the other */
+    var blk = Math.floor(colFrac * 8);
+    var lean = this.rnd(blk * 313 + 7);
+    var side = lean < 0.42 ? this.crowdHome : (lean < 0.84 ? this.crowdAway : null);
+    if (!side) return base;
+    /* NOT EVERYBODY IN A BLOCK WEARS THE SHIRT, and a shirt seen from
+       the far end of a pitch under floodlights is a long way off its
+       box-fresh colour.
+
+       The first pass tinted three in five seats by nearly two-thirds
+       toward a full-strength kit colour, and the far end came out as
+       confetti — which is precisely the failure the crowd palette was
+       written to avoid in the first place, reintroduced by the thing
+       that was supposed to give the ground an allegiance. Barely half
+       the block wears it, and what they wear is dark. */
+    if (this.rnd(id + 53) < 0.55) return base;
+    return mix(base, mix(side, "#2a2430", 0.42), 0.55);
   };
 
   return {
