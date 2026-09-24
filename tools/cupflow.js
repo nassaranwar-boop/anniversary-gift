@@ -4,6 +4,34 @@ const { chromium } = require('playwright-core');
 let pass = 0, fail = 0;
 const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
                           else { fail++; console.log('  FAIL ' + n + (x ? '  ' + JSON.stringify(x) : '')); } };
+/* THE MENUS ARE DRAWN, NOT LAID OUT.
+
+   The title screen used to be DOM buttons with data-go on them. It is
+   pixel UI now — one canvas, hit-tested by rectangle — so a harness
+   presses one the way a thumb does: find the widget's rectangle, work
+   out where that lands on the page, and click there. */
+async function clickUi(p, id) {
+  /* WAIT FOR IT TO STOP MOVING FIRST. Every row slides in on its own
+     delay, so a rectangle read mid-entrance is a rectangle the button
+     has already left by the time the mouse gets there — which is a
+     click on the grass, and a test that fails once in three runs. */
+  await p.waitForFunction(() => OuissyCup.__cup.ui().age > 1.1,
+                          null, { timeout: 60000, polling: 200 });
+  const rect = await p.evaluate((wid) => {
+    const w = OuissyCup.__cup.ui().widgets.find(v => v.id === wid);
+    const ui = document.getElementById('cup-ui');
+    const r = ui.getBoundingClientRect();
+    return w ? { x: r.left + (w.x + w.w / 2) / ui.width * r.width,
+                 y: r.top + (w.y + w.h / 2) / ui.height * r.height } : null;
+  }, id);
+  if (!rect) throw new Error('no such pixel button: ' + id);
+  await p.mouse.move(rect.x, rect.y);
+  await p.mouse.down();
+  await p.waitForTimeout(60);
+  await p.mouse.up();
+  await p.waitForTimeout(400);
+}
+
 (async () => {
   const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
     args: ['--use-gl=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist',
@@ -42,11 +70,13 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
   ok('it opens on the how-to the first time',
      await p.evaluate(() => /BEFORE YOU START/.test(document.querySelector('#cup-overlay').textContent)));
   await p.click('[data-go="back"]');
-  await p.waitForSelector('[data-go="coupe"]', { timeout: 20000 });
+  await p.waitForFunction(() => OuissyCup.__cup.ui().name === 'title',
+                          { timeout: 20000 });
   ok('and then on its own menu', true);
-  ok('with a trophy drawn on it',
-     await p.evaluate(() => !!document.querySelector('.cup-cupart canvas')));
-  await p.click('[data-go="coupe"]');
+  ok('with all six of its rows drawn on the pitch',
+     await p.evaluate(() => OuissyCup.__cup.ui().widgets
+       .filter(w => w.id.indexOf('m_') === 0).length) >= 6);
+  await clickUi(p, 'm_coupe');
   await p.waitForSelector('.cup-card-b', { timeout: 20000 });
   ok('and THE CUP puts up the fixture',
      /QUARTER-FINAL|UM6P/.test(await p.evaluate(() =>

@@ -3869,12 +3869,23 @@ window.OuissyCup = (function () {
       }
     }
 
-    var ty = y2 + oy + Math.round((h - FONT_H * (b.scale || 1)) / 2);
-    drawText(x2 + Math.round(w / 2), b.label, ty,
+    /* THE LABEL AND ITS NOTE ARE ONE BLOCK, AND IT FITS.
+
+       The label used to be centred as if it were alone, with the note
+       hung underneath it — so on a button with a note the pair sat low
+       and the note ran out through the bottom edge. And neither was
+       ever measured against the button's own width, so "six faculties ·
+       three rounds · one trophy" simply carried on out through both
+       sides of the frame it was printed in. */
+    var sc = b.scale || 1;
+    var blockH = FONT_H * sc + (b.sub ? FONT_H + 2 : 0);
+    var ty = y2 + oy + Math.round((h - blockH) / 2);
+    var midX = x2 + Math.round(w / 2);
+    drawText(midX, fitText(b.label, w - 8, sc), ty,
              { align: "center", colour: b.ink || "#ffffff",
-               scale: b.scale || 1, shadow: "rgba(0,0,0,.55)" });
+               scale: sc, shadow: "rgba(0,0,0,.55)" });
     if (b.sub) {
-      drawText(x2 + Math.round(w / 2), b.sub, ty + FONT_H * (b.scale || 1) + 2,
+      drawText(midX, fitText(b.sub, w - 10, 1), ty + FONT_H * sc + 2,
                { align: "center", colour: b.subInk || lift(tone, 90) });
     }
   }
@@ -4419,96 +4430,172 @@ window.OuissyCup = (function () {
   }
 
   /* ---------------------------------------------------------------- title */
+  /* =======================================================================
+     THE TITLE MENU
+
+     The last of the big CSS cards, and the one the whole pixel-UI brief
+     was aimed at. It was a rounded panel with a serif heading, blurred
+     drop shadows and six gradient pills, floating over a pixel world —
+     which is the mismatch the rest of this rebuild exists to fix. Every
+     mark on it is now made at the pitch's own resolution: the frame, the
+     bevels, the trophy, the icons and the type.
+
+     What it gains from being drawn rather than laid out: the line-up
+     behind it is the real line-up, the buttons arrive one after another
+     rather than all at once, the trophy turns, and the whole thing runs
+     on the same clock as the game underneath it.
+     ======================================================================= */
+
+  /* Nine-pixel icons, drawn as runs rather than as paths. A menu of six
+     identical rectangles is a list; the icon is what makes each row a
+     thing rather than a line of text. */
+  var MENU_ICON = {
+    coupe: ["..###..", ".#####.", "#######", ".#####.", "..###..",
+            "...#...", "..###.."],
+    amical: [".##.##.", "#######", "#######", ".#####.", "..###..",
+             "...#...", "......."],
+    derby: ["...#...", "..###..", ".#####.", "#######", "..###..",
+            ".#.#.#.", "#.....#"],
+    teams: [".#...#.", "###.###", "..#.#..", ".#####.", "#######",
+            "#.###.#", "#.#.#.#"],
+    help: [".#####.", "#.....#", "....##.", "...#...", "...#...",
+           ".......", "...#..."],
+    quit: ["...#...", "..##...", ".######", "##.....", ".######",
+           "..##...", "...#..."],
+  };
+  function menuIcon(kind, x2, y2, col) {
+    var art = MENU_ICON[kind];
+    if (!art) return;
+    for (var r = 0; r < art.length; r++) {
+      for (var c = 0; c < art[r].length; c++) {
+        if (art[r][c] === "#") box(x2 + c, y2 + r, 1, 1, col);
+      }
+    }
+  }
+
+  /* the trophy, in pixels, with a gleam that travels across it */
+  function pixTrophy(x2, y2, t) {
+    var GOLD = "#e8b84b", LIT = "#f6d878", DK = "#8a5f18", INK = "#0d1412";
+    box(x2 - 1, y2 - 1, 16, 12, INK);
+    box(x2, y2, 14, 10, GOLD);
+    box(x2 + 1, y2 + 1, 5, 2, LIT);
+    box(x2 + 1, y2 + 8, 12, 2, DK);
+    /* the handles, and the ink round them */
+    box(x2 - 3, y2 + 1, 3, 6, INK); box(x2 - 2, y2 + 2, 2, 4, GOLD);
+    box(x2 + 14, y2 + 1, 3, 6, INK); box(x2 + 14, y2 + 2, 2, 4, GOLD);
+    /* stem and base */
+    box(x2 + 5, y2 + 10, 4, 4, DK);
+    box(x2 + 2, y2 + 14, 10, 3, INK);
+    box(x2 + 3, y2 + 14, 8, 2, GOLD);
+    /* HER HEART ON IT, because it is her cup */
+    var hx = x2 + 4, hy = y2 + 3, HRT = "#ff5f8f";
+    box(hx, hy, 2, 2, HRT); box(hx + 3, hy, 2, 2, HRT);
+    box(hx, hy + 1, 5, 2, HRT); box(hx + 1, hy + 3, 3, 1, HRT);
+    box(hx + 2, hy + 4, 1, 1, HRT);
+    /* the gleam: one lit column crossing the cup on a slow cycle */
+    var g = ((t * 0.5) % 2.6) / 2.6;
+    if (g < 0.4) {
+      var gx = x2 + Math.round(g * 34) - 1;
+      if (gx >= x2 && gx < x2 + 14) box(gx, y2 + 1, 1, 8, "#fffaf0");
+    }
+  }
+
   function titleMenu() {
     lineUp(run.myTeam);
     menuMusic(true);
     var modes = cfg("MODES", []);
     var mine = teamById(run.myTeam) || {};
-    /* an icon per mode, drawn in the button rather than lettered: a
-       menu of six identical beige rectangles is a list, and a list is
-       what this looked like */
-    var ICON = {
-      coupe:  '<svg viewBox="0 0 24 24"><path d="M7 4h10v5a5 5 0 01-10 0zM5 5h2v3a2.5 2.5 0 01-2-2.4zM19 5h-2v3a2.5 2.5 0 002-2.4zM10 14h4l.6 4H9.4zM7 20h10v1.6H7z"/></svg>',
-      amical: '<svg viewBox="0 0 24 24"><path d="M6 11l3-3 3 2 3-2 3 3-3.2 4.5a2 2 0 01-3 .3L12 15l-.8.8a2 2 0 01-3-.3z"/><path d="M3 10.4l3-3 1.4 1.4-3 3zM21 10.4l-3-3L16.6 8.8l3 3z"/></svg>',
-      derby:  '<svg viewBox="0 0 24 24"><path d="M12 3.2l2.3 2.3 3.2-.6-.6 3.2L19.2 10l-2.3 2.3.6 3.2-3.2-.6L12 17.2 9.7 14.9l-3.2.6.6-3.2L4.8 10l2.3-2.3-.6-3.2 3.2.6zM8.6 18.2l-1.4 3.4 3-1 2.2 1.2V18zM15.4 18.2l1.4 3.4-3-1-1 .5V18z"/></svg>',
-      teams:  '<svg viewBox="0 0 24 24"><path d="M9 4a3 3 0 110 6 3 3 0 010-6zM3.5 19c0-3 2.5-5.2 5.5-5.2s5.5 2.2 5.5 5.2zM17 6.5a2.5 2.5 0 110 5 2.5 2.5 0 010-5zM16.2 13.4c2.4.3 4.3 2.2 4.3 4.6h-4a7 7 0 00-1.4-4.2z"/></svg>',
-      help:   '<svg viewBox="0 0 24 24"><path d="M12 2.6A9.4 9.4 0 1012 21.4 9.4 9.4 0 0012 2.6zm.1 14.9a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4zm1.3-3.1v.9h-2.5v-2c0-1.4 2.4-1.6 2.4-3.2A1.4 1.4 0 0010.7 10H8.4a3.7 3.7 0 017.3.6c0 2.2-2.3 2.6-2.3 3.8z"/></svg>',
-      quit:   '<svg viewBox="0 0 24 24"><path d="M10.6 5.4L9.2 4 4.4 8.8a1.7 1.7 0 000 2.4L9.2 16l1.4-1.4-2.8-2.8H20V9.8H7.8z"/><path d="M14 3.4h5.6A1.8 1.8 0 0121.4 5v14a1.8 1.8 0 01-1.8 1.8H14V19h5.4V5.2H14z"/></svg>',
-    };
-    var btn = function (id, name, note, primary) {
-      return '<button class="cup-menu-b' + (primary ? " primary" : "") +
-             '" data-go="' + id + '" data-ico="' + id + '">' +
-             '<span class="cup-menu-ico">' + (ICON[id] || "") + "</span>" +
-             '<span class="cup-menu-t">' + name +
-             (note ? "<small>" + note + "</small>" : "") + "</span>" +
-             '<span class="cup-menu-go" aria-hidden="true">\u25b8</span></button>';
-    };
+    var accent = (mine.kit && mine.kit.shirt) || "#c1272d";
+    var trim = (mine.kit && mine.kit.trim) || "#e8b23c";
+    var cols = [accent, trim, (mine.kit && mine.kit.shorts) || "#f6efdd",
+                lift(accent, -40)];
 
-    overlay("", "", "", null, {
-      kicker: "", tone: "title",
-      html: '<div class="cup-menu cup-title">' +
-        /* THE LOCKUP. A trophy, the name under it, and the line under
-           that \u2014 one block with its own weight, instead of a heading
-           that could have come off any card in the chapter. */
-        '<div class="cup-lock">' +
-          '<span class="cup-cupart" data-cup="1"></span>' +
-          '<h2 class="cup-lock-t">' + cfg("TITLE", "Ouissy\u2019s Cup") + "</h2>" +
-          '<p class="cup-lock-k">FOUR A SIDE</p>' +
-          '<p class="cup-menu-sub">' + cfg("TAGLINE", "") + "</p>" +
-        "</div>" +
-
-        '<div class="cup-menu-list">' +
-        modes.map(function (m) { return btn(m.id, m.name, m.note, m.primary); }).join("") +
-        btn("teams", "THE TEAMS", "pick a faculty, or build your own squad") +
-        btn("help", "HOW TO PLAY", "one stick, two buttons") +
-        btn("quit", "BACK TO THE BOOK", "") +
-        "</div>" +
-
-        /* who she is playing as, and how hard it is. Both were things
-           the game decided for her and never mentioned. */
-        '<div class="cup-title-foot">' +
-          '<button class="cup-chip cup-chip-team" data-go="teams">' +
-            '<i data-team="' + (mine.id || "") + '" data-w="36" data-h="24"></i>' +
-            "<span>" + (mine.short || "\u2014") + "</span></button>" +
-          '<span class="cup-diffs">' +
-            diffList().map(function (d) {
-              return '<button class="cup-chip" data-go="diff" data-c="' + d.id + '"' +
-                     ' data-on="' + (d.id === diffId ? 1 : 0) + '" title="' +
-                     (d.note || "") + '">' + d.name + "</button>";
-            }).join("") +
-          "</span>" +
-        "</div></div>",
+    /* the six rows, in the order she meets them */
+    var rows = modes.map(function (m) {
+      return { id: m.id, name: m.name, note: m.note, primary: m.primary };
     });
-    paintTrophies();
-    paintCardFlags();
-    wireMenu({
-      diff: function (b) {
-        setDiff(b.dataset.c);
-        titleMenu();
-      },
+    rows.push({ id: "teams", name: "THE TEAMS",
+                note: "pick a faculty, or build your own squad" });
+    rows.push({ id: "help", name: "HOW TO PLAY", note: "one stick, two buttons" });
+    rows.push({ id: "quit", name: "BACK TO THE BOOK", note: "" });
+
+    var act = {
       coupe: function () {
         run.fixture = null; run.quick = false; run.round = 0;
-        hideOverlay(); roundCard();
+        uiClose(); roundCard();
       },
       /* the derby is its own fixture: his faculty against hers, under
          the lights, and it does not need a bracket to matter */
       derby: function () {
-        var mine = derbyTeam("hers"), theirs = derbyTeam("his");
-        run.myTeam = mine;
+        var hers = derbyTeam("hers"), theirs = derbyTeam("his");
+        run.myTeam = hers;
         run.quick = true;
-        run.fixture = { mine: mine, theirs: theirs, venue: "night",
+        run.fixture = { mine: hers, theirs: theirs, venue: "night",
           round: { round: "THE DERBY", skill: 0.72, venue: "night",
                    before: "Dentistry against medicine. He has been talking " +
                            "about this one for a fortnight.",
                    won: "You beat his faculty. He will hear about it all year.",
                    lost: "His faculty took it. He is being very gracious, which is worse." } };
         run.round = 0;
-        hideOverlay(); roundCard();
+        uiClose(); roundCard();
       },
       amical: function () { carAt = 0; teamSelect("quick"); },
       teams: function () { carAt = 0; teamSelect("pick"); },
-      help: function () { helpCard(titleMenu); },
-      quit: function () { quit(); },
+      help: function () { uiClose(); helpCard(titleMenu); },
+      quit: function () { uiClose(); quit(); },
+    };
+
+    uiOpen("title", function (age) {
+      heartsStep(1 / 60);
+      /* lighter than the team screen's: this one has a whole pitch
+         behind it rather than a single spotlit character, and at full
+         strength the dither read as a smudge down the left-hand edge */
+      vignette(0.62);
+      bunting(0, cols, UI.t);
+
+      /* ---- THE LOCKUP. A trophy, the name, and the line under it, as
+         one block with its own weight rather than a heading that could
+         have come off any card in the chapter. ---- */
+      var tp = slideIn(age, 0, -30);
+      var cxm = 126;                       // centred over the left column
+      pixTrophy(cxm - 7, 16 + tp.off, UI.t);
+      drawText(cxm, cfg("TITLE", "Ouissy\u2019s Cup").toUpperCase(), 38 + tp.off,
+               { align: "center", scale: 2, colour: "#ffffff",
+                 outline: "#0d1412", outlineW: 2,
+                 shadow: accent, shadowX: 0, shadowY: 3 });
+      drawText(cxm, "FOUR A SIDE", 54 + tp.off,
+               { align: "center", colour: trim, outline: "#0d1412", track: 2 });
+
+      /* ---- the rows ---- */
+      var y2 = 68, H = 24, GAP = 4;
+      rows.forEach(function (r, i) {
+        var sl = slideIn(age, 0.05 + i * 0.045, -180);
+        var b = uiButton("m_" + r.id, 12 + sl.off, y2 + i * (H + GAP), 228, H,
+                         r.name,
+                         { tone: r.primary ? "#c8912f" : "#2f5d72",
+                           ink: r.primary ? "#2a1c08" : "#f4f4e8",
+                           sub: r.note, go: act[r.id] });
+        menuIcon(r.id, b.x + 6, b.y + Math.round((H - 7) / 2),
+                 r.primary ? "#2a1c08" : trim);
+      });
+
+      /* ---- the foot: who she is playing as, and how hard it is. Both
+         were things the game decided for her and never mentioned. ---- */
+      var fp = slideIn(age, 0.34, 40);
+      var fy = UIH - 26 + fp.off;
+      var cw = 62;
+      uiButton("m_team", 12, fy, cw, 18, mine.short || "\u2014",
+               { tone: accent, ink: "#f4f4e8", go: act.teams });
+      pixCrest(mine, 12 + cw - 18, fy + 3, 14, 12, UI.t);
+      var dx = 12 + cw + 6;
+      diffList().forEach(function (d) {
+        var on = d.id === diffId;
+        var w2 = Math.max(40, textWidth(d.name) + 12);
+        uiButton("m_d_" + d.id, dx, fy, w2, 18, d.name,
+                 { tone: on ? trim : "#24343c", ink: on ? "#2a1c08" : "#9fb0a8",
+                   go: function () { setDiff(d.id); } });
+        dx += w2 + 4;
+      });
     });
   }
 
@@ -5588,6 +5675,26 @@ window.OuissyCup = (function () {
                widgets: UI.widgets.map(function (w) {
                  return { id: w.id, x: w.x, y: w.y, w: w.w, h: w.h };
                }) };
+    },
+    /* PRESS A DRAWN BUTTON BY NAME.
+
+       A harness used to reach into the DOM and click an element. The
+       menus are canvas now, so there is nothing to click — it can
+       either work out where the rectangle lands on the page and move a
+       real mouse there, which is what the button tests do because
+       that is the thing they are testing, or it can say which button it
+       means, which is what everything else wants.
+
+       It is `press` and not `fire`, because `fire` was already taken
+       further down this same object by the super button — and a later
+       duplicate key silently wins, so the new one existed, was a
+       function, and did nothing at all. */
+    press: function (id) {
+      var w = UI.widgets.filter(function (v) { return v.id === id; })[0];
+      if (!w || !w.go) return false;
+      SFX.pick();
+      w.go();
+      return true;
     },
     teamStats: function (id) {
       var t = teamById(id);

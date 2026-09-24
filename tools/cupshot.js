@@ -2,6 +2,34 @@
    round card, the kickoff, the goalmouth and the moment after one goes
    in. Renders, not assertions — tools/cup.js does the asserting. */
 const { chromium } = require('playwright-core');
+/* THE MENUS ARE DRAWN, NOT LAID OUT.
+
+   The title screen used to be DOM buttons with data-go on them. It is
+   pixel UI now — one canvas, hit-tested by rectangle — so a harness
+   presses one the way a thumb does: find the widget's rectangle, work
+   out where that lands on the page, and click there. */
+async function clickUi(p, id) {
+  /* WAIT FOR IT TO STOP MOVING FIRST. Every row slides in on its own
+     delay, so a rectangle read mid-entrance is a rectangle the button
+     has already left by the time the mouse gets there — which is a
+     click on the grass, and a test that fails once in three runs. */
+  await p.waitForFunction(() => OuissyCup.__cup.ui().age > 1.1,
+                          null, { timeout: 60000, polling: 200 });
+  const rect = await p.evaluate((wid) => {
+    const w = OuissyCup.__cup.ui().widgets.find(v => v.id === wid);
+    const ui = document.getElementById('cup-ui');
+    const r = ui.getBoundingClientRect();
+    return w ? { x: r.left + (w.x + w.w / 2) / ui.width * r.width,
+                 y: r.top + (w.y + w.h / 2) / ui.height * r.height } : null;
+  }, id);
+  if (!rect) throw new Error('no such pixel button: ' + id);
+  await p.mouse.move(rect.x, rect.y);
+  await p.mouse.down();
+  await p.waitForTimeout(60);
+  await p.mouse.up();
+  await p.waitForTimeout(400);
+}
+
 (async () => {
   const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
     args: ['--no-sandbox','--no-proxy-server','--disable-gpu','--autoplay-policy=no-user-gesture-required'] });
@@ -23,9 +51,12 @@ const { chromium } = require('playwright-core');
      controls come up the first time anyone opens the chapter, and then
      the title menu, and only then the fixture. */
   await p.click('[data-go="back"]').catch(() => {});
-  await p.waitForSelector('[data-go="coupe"]', { timeout: 20000 });
+  await p.waitForFunction(() => OuissyCup.__cup.ui().name === 'title',
+                          { timeout: 20000 });
+  await p.waitForFunction(() => OuissyCup.__cup.ui().age > 1.2,
+                          null, { timeout: 60000, polling: 250 });
   await p.screenshot({ path: '/tmp/cup-menu.png' });
-  await p.click('[data-go="coupe"]');
+  await clickUi(p, 'm_coupe');
   await p.waitForSelector('.cup-card-b', { timeout: 20000 });
   await p.screenshot({ path: '/tmp/cup-card.png' });
   await p.click('.cup-card-b');

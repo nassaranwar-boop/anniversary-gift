@@ -21,9 +21,14 @@ const { chromium } = require('playwright-core');
   await p.waitForTimeout(500);
   await p.screenshot({ path: '/tmp/cup-help.png' });
   if (await p.$('[data-go="back"]')) await p.click('[data-go="back"]');
-  await p.waitForSelector('[data-go="coupe"]', { timeout: 20000 });
-  /* long enough for the line-up to walk out and the camera to settle */
-  await p.waitForTimeout(1400);
+  /* THE TITLE SCREEN IS NOT DOM ANY MORE EITHER. It waits on the
+     screen's own clock rather than the wall's, because under
+     swiftshader a second and a half of real time is a tenth of a second
+     to the UI and the entrance would still be in flight. */
+  await p.waitForFunction(() => OuissyCup.__cup.ui().name === 'title',
+                          { timeout: 20000 });
+  await p.waitForFunction(() => OuissyCup.__cup.ui().age > 1.2, null,
+                          { timeout: 90000, polling: 250 });
   await p.screenshot({ path: '/tmp/cup-title.png' });
 
   /* TEAM SELECT IS NOT DOM ANY MORE.
@@ -47,8 +52,9 @@ const { chromium } = require('playwright-core');
     await p.mouse.click(el.x, el.y);
   };
 
-  await p.click('[data-go="teams"]');
-  await p.waitForFunction(() => OuissyCup.__cup.ui().on, null, { timeout: 30000 });
+  await p.evaluate(() => OuissyCup.__cup.press('m_teams'));
+  await p.waitForFunction(() => OuissyCup.__cup.ui().name === 'teams', null,
+                          { timeout: 30000 });
   await p.waitForFunction(() => OuissyCup.__cup.ui().age > 1.2, null,
                           { timeout: 120000, polling: 250 });
   await p.screenshot({ path: '/tmp/cup-select.png' });

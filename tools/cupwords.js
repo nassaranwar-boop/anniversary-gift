@@ -34,7 +34,8 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
                            OuissyCup.__cup.shadows(false); OuissyCup.start(); });
   await p.waitForSelector('#cup-overlay .cup-card', { timeout: 40000 });
   await p.evaluate(() => { const b2 = document.querySelector('[data-go="back"]'); if (b2) b2.click(); });
-  await p.waitForSelector('[data-go="coupe"]', { timeout: 20000 });
+  await p.waitForFunction(() => OuissyCup.__cup.ui().name === 'title',
+                          { timeout: 20000 });
 
   const cardText = () => p.evaluate(() =>
     (document.querySelector('#cup-overlay .cup-card') || {}).textContent || '');
@@ -82,7 +83,12 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
   ok('no placeholder text is left in the config', placeholders.length === 0, placeholders);
 
   /* ---- walk the cup, winning every tie ---- */
-  await press('[data-go="coupe"]');
+  /* the title menu is drawn, so its buttons are named rather than
+     queried: press the one that starts the cup */
+  await p.waitForFunction(() => OuissyCup.__cup.ui().age > 1.2, null,
+                          { timeout: 90000, polling: 250 });
+  await p.evaluate(() => OuissyCup.__cup.press('m_coupe'));
+  await p.waitForTimeout(500);
   ok('the cup opens on a fixture card', /KICK OFF/.test(await cardText()));
 
   const seen = [];

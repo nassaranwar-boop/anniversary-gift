@@ -33,9 +33,18 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
                            OuissyCup.__cup.shadows(true); OuissyCup.start(); });
   await p.waitForSelector('#cup-overlay .cup-card', { timeout: 40000 });
   await p.evaluate(() => { const x = document.querySelector('[data-go="back"]'); if (x) x.click(); });
-  await p.waitForSelector('[data-go="teams"]', { timeout: 20000 });
-  await p.evaluate(() => { document.querySelector('[data-go="teams"]').click(); });
-  await p.waitForFunction(() => OuissyCup.__cup.ui().on, { timeout: 20000 });
+  /* the title screen is pixel UI too now, so the way in is the same as
+     the way around: find the widget and fire its action */
+  await p.waitForFunction(() => OuissyCup.__cup.ui().name === 'title',
+                          { timeout: 20000 });
+  await p.waitForFunction(() => OuissyCup.__cup.ui().widgets
+                            .some(w => w.id === 'm_teams'), { timeout: 20000 });
+  await p.evaluate(() => {
+    const w = OuissyCup.__cup.ui().widgets.find(v => v.id === 'm_teams');
+    OuissyCup.__cup.press(w.id);
+  });
+  await p.waitForFunction(() => OuissyCup.__cup.ui().name === 'teams',
+                          { timeout: 20000 });
   /* WAIT FOR THE SCREEN'S OWN CLOCK, NOT THE WALL'S.
      Under swiftshader the frame loop runs at about six frames a second
      and clamps dt at 50ms, so a second and a half of real time is about
