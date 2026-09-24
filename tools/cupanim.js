@@ -10,8 +10,7 @@ const POSES = ['idle', 'run', 'kick', 'slide', 'ready', 'dive',
                'armsUp', 'knee', 'planeRun', 'heart', 'cheer', 'dejected'];
 (async () => {
   const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-    args: ['--use-gl=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist',
-           '--no-sandbox','--no-proxy-server','--autoplay-policy=no-user-gesture-required'] });
+    args: ['--no-sandbox','--no-proxy-server','--autoplay-policy=no-user-gesture-required'] });
   const p = await b.newPage({ viewport: { width: 1100, height: 380 }, deviceScaleFactor: 1 });
   const errs = [];
   p.on('pageerror', e => errs.push(e.message));

@@ -92,18 +92,18 @@ async function clickUi(p, id) {
   await p.screenshot({ path: '/tmp/cup-goal.png' });
   console.log('after a shot:', JSON.stringify(await p.evaluate(() => OuissyCup.__cup.state())));
 
-  /* and one with the shadow map on, which is how it actually ships.
-     swiftshader hates shadows, so this is the only frame that pays for
-     them — but a cartoon with nothing under its feet floats, and that is
+  /* THE SHADOWS COST NOTHING NOW. There is no shadow map: every shadow
+     in the game is an ellipse drawn on the grass, so this frame used to
+     be the expensive one and is now the same as any other. It is kept
+     because a cartoon with nothing under its feet floats, and that is
      worth checking on something other than faith. */
   await p.evaluate(() => {
-    OuissyCup.__cup.shadows(true);
     OuissyCup.__cup.setState('play');
     const g = OuissyCup.__cup.geometry();
     OuissyCup.__cup.put(g.pitch.cx - 6, g.pitch.y0 + 110, 0);
     for (let i = 0; i < 50; i++) OuissyCup.__cup.step(1, 0.25, -1, false);
   });
-  await p.waitForTimeout(3000);
+  await p.waitForTimeout(400);
   await p.screenshot({ path: '/tmp/cup-shadows.png' });
   /* a goal, and what happens for the three seconds afterwards */
   await p.evaluate(() => {

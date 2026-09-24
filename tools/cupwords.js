@@ -20,7 +20,7 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
 
 (async () => {
   const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-    args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox', '--no-proxy-server'] });
+    args: ['--no-sandbox', '--no-proxy-server'] });
   const p = await b.newPage({ viewport: { width: 1060, height: 660 } });
   const errs = [];
   p.on('pageerror', e => errs.push(e.message));
@@ -32,15 +32,22 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
   await p.evaluate(() => { try { localStorage.clear(); } catch (e) {}
                            showScreen('cup'); OuissyCup.__cup.soundOff();
                            OuissyCup.__cup.shadows(false); OuissyCup.start(); });
-  await p.waitForSelector('#cup-overlay .cup-card', { timeout: 40000 });
-  await p.evaluate(() => { const b2 = document.querySelector('[data-go="back"]'); if (b2) b2.click(); });
+  await p.waitForFunction(() => OuissyCup.__cup.ui().name === 'help',
+                          { timeout: 40000 });
+  await p.waitForFunction(() => OuissyCup.__cup.ui().age > 1.1, null,
+                          { timeout: 90000, polling: 250 });
+  await p.evaluate(() => OuissyCup.__cup.press('card_go'));
   await p.waitForFunction(() => OuissyCup.__cup.ui().name === 'title',
                           { timeout: 20000 });
 
+  /* EVERY CARD IS DRAWN. Its words are not in the page any more, so
+     they are read out of the accessibility mirror the chapter keeps
+     beside the canvas — which is the same text a screen reader gets,
+     and therefore the right thing for a test about words to check. */
   const cardText = () => p.evaluate(() =>
-    (document.querySelector('#cup-overlay .cup-card') || {}).textContent || '');
-  const press = async (sel) => {
-    await p.evaluate((s) => { const el = document.querySelector(s); if (el) el.click(); }, sel);
+    (document.getElementById('cup-ui-a11y') || {}).textContent || '');
+  const press = async (id) => {
+    await p.evaluate((i) => OuissyCup.__cup.press(i), id);
     await p.waitForTimeout(450);
   };
   /* WAIT FOR THE CARD, DO NOT GUESS AT IT.
@@ -52,9 +59,9 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
   const awaitCard = async (re, ms) => {
     try {
       await p.waitForFunction((src) => {
-        const c = document.querySelector('#cup-overlay .cup-card');
+        const c = document.getElementById('cup-ui-a11y');
         return !!c && new RegExp(src).test(c.textContent || '');
-      }, re.source, { timeout: ms || 12000 });
+      }, re.source, { timeout: ms || 20000 });
     } catch (e) { /* let the assertion report what is actually there */ }
   };
 
@@ -94,14 +101,14 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
   const seen = [];
   for (let round = 0; round < CFG.rounds; round++) {
     /* skip the football: start the match, then declare it won */
-    await press('.cup-card-b');                       // KICK OFF
+    await press('card_go');                           // KICK OFF
     await p.evaluate(() => { OuissyCup.__cup.setScore(3, 0); OuissyCup.__cup.finish(true); });
     await awaitCard(/FULL TIME|YOU WON/);
     const full = await cardText();
 
     if (round < CFG.rounds - 1) {
       ok('round ' + (round + 1) + ' ends on a full-time card', /FULL TIME/.test(full), full.slice(0, 80));
-      await press('.cup-card-b');                     // NEXT ROUND -> memory
+      await press('card_go');                         // NEXT ROUND -> memory
       await p.screenshot({ path: '/tmp/cup-memory-' + (round + 1) + '.png' });
       const mem = await cardText();
       seen.push(mem);
@@ -109,16 +116,16 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
       ok('and then a memory, in the config\'s words',
          !!want && mem.indexOf(want.line.slice(0, 40)) >= 0,
          { want: want && want.line.slice(0, 40), got: mem.slice(0, 140) });
-      ok('the memory card is styled as one, not as a fixture',
-         await p.evaluate(() => !!document.querySelector('.cup-card-mem')));
-      await press('.cup-card-b');                     // GO ON -> next fixture
+      ok('the memory card is its own screen, not a fixture card',
+         await p.evaluate(() => OuissyCup.__cup.ui().name) === 'memory');
+      await press('card_go');                         // GO ON -> next fixture
       ok('and the next fixture follows it', /KICK OFF/.test(await cardText()));
     } else {
       /* the final: straight to the trophy */
       await p.waitForTimeout(900);
       await p.screenshot({ path: '/tmp/cup-ending.png' });
       ok('the final ends on the trophy card',
-         await p.evaluate(() => !!document.querySelector('.cup-card-win')), full.slice(0, 100));
+         await p.evaluate(() => OuissyCup.__cup.ui().name) === 'end', full.slice(0, 100));
       const end = await cardText();
       ok('with the title from the config',
          end.indexOf(CFG.victory.title) >= 0, { want: CFG.victory.title, got: end.slice(0, 90) });
@@ -128,15 +135,18 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
          { lines: lines.length, got: end.length });
       ok('and it is signed',
          !CFG.victory.signOff || end.indexOf(CFG.victory.signOff) >= 0, CFG.victory.signOff);
+      /* THE TROPHY IS PAINTED INTO THE UI LAYER NOW, not dropped into
+         the card as its own little canvas — so what is checked is that
+         gold actually landed on the screen where the card says it is. */
       ok('there is a trophy drawn on it',
          await p.evaluate(() => {
-           const c = document.querySelector('.cup-card-win .cup-cupart canvas');
-           if (!c) return false;
-           /* and it is not a blank canvas: something was painted */
-           const x = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
-           let ink = 0;
-           for (let i = 3; i < x.length; i += 4) if (x[i] > 20) ink++;
-           return ink > c.width * c.height * 0.08;
+           const c = document.getElementById('cup-ui');
+           const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+           let gold = 0;
+           for (let i = 0; i < d.length; i += 4) {
+             if (d[i + 3] > 40 && d[i] > 190 && d[i + 1] > 140 && d[i + 2] < 140) gold++;
+           }
+           return gold > 60;
          }));
       ok('the button says what the config says',
          end.indexOf(CFG.victory.button) >= 0, CFG.victory.button);

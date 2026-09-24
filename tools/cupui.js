@@ -18,8 +18,7 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
 
 (async () => {
   const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-    args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist',
-           '--no-sandbox', '--no-proxy-server'] });
+    args: ['--no-sandbox', '--no-proxy-server'] });
   const p = await b.newPage({ viewport: { width: 1060, height: 660 }, deviceScaleFactor: 1 });
   const errs = [];
   p.on('pageerror', e => errs.push(e.message));
@@ -31,8 +30,12 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
   await p.evaluate(() => { try { localStorage.clear(); } catch (e) {}
                            showScreen('cup'); OuissyCup.__cup.soundOff();
                            OuissyCup.__cup.shadows(true); OuissyCup.start(); });
-  await p.waitForSelector('#cup-overlay .cup-card', { timeout: 40000 });
-  await p.evaluate(() => { const x = document.querySelector('[data-go="back"]'); if (x) x.click(); });
+  /* the how-to is drawn now too, so it is dismissed by name */
+  await p.waitForFunction(() => OuissyCup.__cup.ui().name === 'help',
+                          { timeout: 40000 });
+  await p.waitForFunction(() => OuissyCup.__cup.ui().age > 1.1, null,
+                          { timeout: 90000, polling: 250 });
+  await p.evaluate(() => OuissyCup.__cup.press('card_go'));
   /* the title screen is pixel UI too now, so the way in is the same as
      the way around: find the widget and fire its action */
   await p.waitForFunction(() => OuissyCup.__cup.ui().name === 'title',
@@ -46,7 +49,7 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
   await p.waitForFunction(() => OuissyCup.__cup.ui().name === 'teams',
                           { timeout: 20000 });
   /* WAIT FOR THE SCREEN'S OWN CLOCK, NOT THE WALL'S.
-     Under swiftshader the frame loop runs at about six frames a second
+     In a container the frame loop runs at a handful of frames a second
      and clamps dt at 50ms, so a second and a half of real time is about
      a tenth of a second to the UI — and a harness that sleeps instead
      of waiting photographs the entrance animation half way through and

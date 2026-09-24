@@ -34,8 +34,7 @@ async function clickUi(p, id) {
 
 (async () => {
   const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-    args: ['--use-gl=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist',
-           '--no-sandbox','--no-proxy-server','--autoplay-policy=no-user-gesture-required'] });
+    args: ['--no-sandbox','--no-proxy-server','--autoplay-policy=no-user-gesture-required'] });
   const p = await b.newPage({ viewport: { width: 900, height: 560 }, deviceScaleFactor: 1 });
   const errs = [];
   p.on('pageerror', e => errs.push(e.message));
@@ -66,10 +65,16 @@ async function clickUi(p, id) {
   /* THE FIRST THING SHE EVER SEES is the controls, not the menu —
      RULES.showHelpFirstTime, once per browser. The harness clears
      localStorage, so it is always the first time in here. */
-  await p.waitForSelector('#cup-overlay .cup-card', { timeout: 40000 });
+  /* EVERY CARD IS DRAWN NOW, so there is no DOM to read a heading out
+     of. The screen says what it is, and the accessibility mirror the
+     chapter keeps beside the canvas says what is on it — which is what
+     a screen reader gets and therefore what a test should read. */
+  await p.waitForFunction(() => OuissyCup.__cup.ui().name === 'help',
+                          { timeout: 40000 });
   ok('it opens on the how-to the first time',
-     await p.evaluate(() => /BEFORE YOU START/.test(document.querySelector('#cup-overlay').textContent)));
-  await p.click('[data-go="back"]');
+     /BEFORE YOU START/.test(await p.evaluate(() =>
+       document.getElementById('cup-ui-a11y').textContent)));
+  await clickUi(p, 'card_go');
   await p.waitForFunction(() => OuissyCup.__cup.ui().name === 'title',
                           { timeout: 20000 });
   ok('and then on its own menu', true);
@@ -77,11 +82,12 @@ async function clickUi(p, id) {
      await p.evaluate(() => OuissyCup.__cup.ui().widgets
        .filter(w => w.id.indexOf('m_') === 0).length) >= 6);
   await clickUi(p, 'm_coupe');
-  await p.waitForSelector('.cup-card-b', { timeout: 20000 });
+  await p.waitForFunction(() => OuissyCup.__cup.ui().name === 'round',
+                          { timeout: 20000 });
   ok('and THE CUP puts up the fixture',
      /QUARTER-FINAL|UM6P/.test(await p.evaluate(() =>
-       document.querySelector('#cup-overlay .cup-card').textContent)));
-  await p.click('.cup-card-b');
+       document.getElementById('cup-ui-a11y').textContent)));
+  await clickUi(p, 'card_go');
   /* Drive the clock rather than waiting on one. requestAnimationFrame in
      this container runs at about three frames a second and the loop only
      ever takes six fixed steps a frame, so two seconds of wall time is
@@ -130,9 +136,10 @@ async function clickUi(p, id) {
   });
   await p.waitForTimeout(300);
   ok('the half ends by itself', await p.evaluate(() => OuissyCup.__cup.state().state) === 'half');
-  ok('and says so on a card', await p.evaluate(() =>
-    !!document.querySelector('#cup-overlay .cup-card') &&
-    /HALF TIME/.test(document.querySelector('#cup-overlay h3').textContent)));
+  await p.waitForFunction(() => OuissyCup.__cup.ui().name === 'half',
+                          { timeout: 20000 });
+  ok('and says so on a card', /HALF TIME/.test(await p.evaluate(() =>
+    document.getElementById('cup-ui-a11y').textContent)));
 
   ok('no page errors anywhere in that', errs.length === 0, errs.slice(0, 4));
   console.log(pass + ' passed, ' + fail + ' failed');

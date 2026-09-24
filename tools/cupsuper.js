@@ -24,7 +24,7 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
 
 (async () => {
   const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-    args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--no-sandbox', '--no-proxy-server'] });
+    args: ['--no-sandbox', '--no-proxy-server'] });
   const p = await b.newPage({ viewport: { width: 900, height: 520 } });
   const errs = [];
   p.on('pageerror', e => errs.push(e.message));

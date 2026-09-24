@@ -2192,13 +2192,28 @@ window.OuissyCup = (function () {
       G.heart = [0, 0]; G.superReady = [false, false];
     }
     SFX.longWhistle();
-    overlay("HALF TIME", scoreLine(), "PLAY THE SECOND HALF", function () {
-      G.half = 2; G.kickoffTeam = 1;
-      resetPositions(G.kickoffTeam);
-      G.state = "kickoff"; G.stateT = 0;
-      setCamMode("play");
-      hideOverlay();
-    }, { kicker: "45'", body: statsBlock() });
+    /* the broadcast furniture goes while the card is up: a card about
+       the half is not improved by the clock and the meter sitting on
+       top of it */
+    if (EL["cup-hud"]) EL["cup-hud"].hidden = true;
+    if (EL["cup-pad"]) EL["cup-pad"].hidden = true;
+    cardScreen({
+      name: "half", kicker: "45'", title: "HALF TIME",
+      action: "PLAY THE SECOND HALF",
+      onGo: function () {
+        G.half = 2; G.kickoffTeam = 1;
+        resetPositions(G.kickoffTeam);
+        G.state = "kickoff"; G.stateT = 0;
+        setCamMode("play");
+        uiClose();
+        if (EL["cup-hud"]) EL["cup-hud"].hidden = false;
+        if (EL["cup-pad"]) EL["cup-pad"].hidden = false;
+      },
+      body: function (bx, by, bw) {
+        by = cardScore(bx, by, bw);
+        return cardStats(bx, by + 4, bw);
+      },
+    });
   }
 
   function endMatch() {
@@ -3372,40 +3387,15 @@ window.OuissyCup = (function () {
      ======================================================================= */
   var ROLE_NAME = { gk: "GK", def: "DEF", mid: "MID", st: "ST" };
 
-  function teamSheet(id, sideLabel) {
-    var t = teamById(id);
-    var rows = squadOf(t).map(function (m) {
-      return "<li><em>" + (ROLE_NAME[m.role] || "") + "</em> " +
-             (m.captain || m.star ? "<b>" + m.name + "</b>" : m.name) + "</li>";
-    }).join("");
-    return '<div class="cup-team">' +
-           '<span class="cup-team-flag" data-team="' + t.id + '"></span>' +
-           "<h4>" + t.name + "</h4><ol>" + rows + "</ol>" +
-           (sideLabel ? "" : "") + "</div>";
-  }
-  function teamsBlock(a, b) {
-    return '<div class="cup-teams">' + teamSheet(a) +
-           '<span class="cup-vs">v</span>' + teamSheet(b) + "</div>";
-  }
-  function bracketBlock(at) {
-    return '<div class="cup-bracket">' + CUP.map(function (r, i) {
-      var st = i < at ? "won" : i === at ? "now" : "next";
-      return '<span class="cup-leg" data-s="' + st + '">' + r.round +
-             "<b>" + (teamById(r.id) || {}).short + "</b></span>";
-    }).join("") + "</div>";
-  }
-  function statsBlock() {
-    var tot = G.stat.poss[0] + G.stat.poss[1];
-    var hp = tot > 2 ? Math.round((G.stat.poss[0] / tot) * 100) : 50;
-    var rows = [
-      ["POSSESSION", hp + "%", (100 - hp) + "%"],
-      ["SHOTS", G.stat.shots[0], G.stat.shots[1]],
-      ["GOALS", G.score[0], G.score[1]],
-    ];
-    return '<div class="cup-table">' + rows.map(function (r) {
-      return "<div><b>" + r[1] + "</b><span>" + r[0] + "</span><b>" + r[2] + "</b></div>";
-    }).join("") + "</div>";
-  }
+  /* THE FOUR HTML BLOCKS THAT USED TO BE HERE ARE GONE.
+
+     teamSheet, teamsBlock, bracketBlock and statsBlock built the middle
+     of a DOM card out of strings. Every card is drawn now, and the
+     things that replaced them — cardTeams, cardBracket, cardStats and
+     cardScore — are up with cardScreen, where the rest of the card is.
+     ROLE_NAME stayed because it is the one thing in here that was about
+     football rather than about HTML. */
+
   /* the flags are canvases, so they go in after the card is in the DOM */
   function paintCardFlags() {
     var el = EL["cup-overlay"];
@@ -3925,7 +3915,7 @@ window.OuissyCup = (function () {
      matters here because almost everything on these screens is moving,
      so a retained tree would be rebuilt every frame anyway.
      ======================================================================= */
-  var UI = { screen: null, name: "", t: 0, widgets: [], hot: null,
+  var UI = { screen: null, name: "", t: 0, widgets: [], say: [], hot: null,
              down: null, focus: 0, born: 0, hearts: [], on: false };
 
   /* How far past its drawn edge a widget still counts as pressed. A
@@ -3968,13 +3958,13 @@ window.OuissyCup = (function () {
     uiSize();
     UI.screen = drawFn; UI.name = name;
     UI.born = UI.t; UI.focus = 0; UI.hot = null; UI.down = null;
-    UI.widgets = [];
+    UI.widgets = []; UI.say = [];
     if (uiCvs) { uiCvs.hidden = false; uiCvs.classList.add("on"); }
     UI.on = true;
     hideOverlay();                 // the DOM cards and this are never both up
   }
   function uiClose() {
-    UI.screen = null; UI.name = ""; UI.widgets = []; UI.on = false;
+    UI.screen = null; UI.name = ""; UI.widgets = []; UI.say = []; UI.on = false;
     a11yKey = "";
     if (EL["cup-ui-a11y"]) EL["cup-ui-a11y"].innerHTML = "";
     if (uiCvs) { uiCvs.hidden = true; uiCvs.classList.remove("on"); }
@@ -4057,7 +4047,61 @@ window.OuissyCup = (function () {
   }
   /* the keyboard, because a menu you cannot tab through is a menu half
      the people who open it cannot use */
+  /* =======================================================================
+     TYPING ON A CANVAS
+
+     One field in the whole chapter takes typing: the name of a squad she
+     has built herself. While the builder was DOM that was an <input> and
+     the browser did all of it. It is drawn now, so this is the smallest
+     thing that can honestly be called a text field — a value, a caret
+     that blinks, and a key handler that understands letters, backspace
+     and the two ways of saying "done".
+
+     It deliberately does not do selection, arrow keys or a clipboard.
+     A twenty-two character team name does not need them, and half an
+     implementation of each would be worse than none.
+     ======================================================================= */
+  var edit = null;                 // { value, max, onDone } or null
+  function editOpen(value, max, onDone) {
+    edit = { value: String(value || ""), max: max || 22, onDone: onDone };
+  }
+  function editClose(commit) {
+    if (!edit) return;
+    var e = edit; edit = null;
+    if (commit && e.onDone) e.onDone(e.value);
+  }
+  function editKey(k) {
+    if (!edit) return false;
+    if (k === "Enter") { editClose(true); return true; }
+    if (k === "Escape") { editClose(false); return true; }
+    if (k === "Backspace") {
+      edit.value = edit.value.slice(0, -1);
+      return true;
+    }
+    /* one printable character, and only ones the font can draw — there
+       is no point accepting a letter that comes out as a blank */
+    if (k.length === 1 && edit.value.length < edit.max && glyph(k.toUpperCase())) {
+      edit.value += k;
+      return true;
+    }
+    return k.length === 1;         // swallow the rest rather than navigating
+  }
+  /* the field itself: a sunken box, the value, and a caret on the beat */
+  function textField(x2, y2, w, h, value, focused) {
+    box(x2, y2, w, h, "#0d1412");
+    box(x2 + 1, y2 + 1, w - 2, h - 2, focused ? "#22343c" : "#18262c");
+    line(x2 + 1, y2 + 1, w - 2, 1, "#0a1014");
+    line(x2 + 1, y2 + h - 2, w - 2, 1, focused ? "#3d5560" : "#2a3a42");
+    var tx = x2 + 5, ty = y2 + Math.round((h - FONT_H) / 2);
+    var shown = fitText(value, w - 14, 1);
+    drawText(tx, shown, ty, { colour: focused ? "#ffffff" : "#cfe0d8" });
+    if (focused && Math.floor(UI.t * 2.4) % 2 === 0) {
+      box(tx + textWidth(shown) + 1, ty - 1, 1, FONT_H + 2, "#ffe9a8");
+    }
+  }
+
   function uiKey(k) {
+    if (editKey(k)) return true;
     if (!UI.screen || !UI.widgets.length) return false;
     if (k === "ArrowDown" || k === "ArrowRight" || k === "Tab") {
       UI.focus = (UI.focus + 1) % UI.widgets.length; UI.kb = true; SFX.move(); return true;
@@ -4077,7 +4121,7 @@ window.OuissyCup = (function () {
   function uiPaint() {
     if (!UI.screen || !UIX) return;
     UIX.clearRect(0, 0, UIW, UIH);
-    UI.widgets = [];
+    UI.widgets = []; UI.say = [];
     UI.screen(UI.t - UI.born);
     syncA11y();
   }
@@ -4086,15 +4130,35 @@ window.OuissyCup = (function () {
      every frame — sixty DOM rebuilds a second would be worse than not
      having it. */
   var a11yKey = "";
+  /* WHAT THE SCREEN SAYS, FOR SOMEBODY WHO CANNOT SEE IT.
+
+     While the cards were DOM, their words were in the page and a screen
+     reader found them for nothing. They are painted pixels now, so they
+     are not in the page at all — and the mirror beside the canvas only
+     ever listed the BUTTONS, which for the how-to screen meant three
+     paragraphs of rules came out as the single word "GOT IT".
+
+     Any screen can push a line of its own text into `UI.say` while it
+     draws, and it lands in the mirror above the buttons. */
+  function uiSay(str) {
+    if (str) UI.say.push(String(str));
+  }
+
   function syncA11y() {
     var host = EL["cup-ui-a11y"];
     if (!host) return;
-    var key = UI.name + "|" + UI.widgets.map(function (w) {
-      return w.id + ":" + (w.label || "");
-    }).join(",");
+    var key = UI.name + "|" + UI.say.join(" ") + "|" +
+      UI.widgets.map(function (w) {
+        return w.id + ":" + (w.label || "");
+      }).join(",");
     if (key === a11yKey) return;
     a11yKey = key;
     host.innerHTML = "";
+    UI.say.forEach(function (t) {
+      var p2 = document.createElement("p");
+      p2.textContent = t;
+      host.appendChild(p2);
+    });
     UI.widgets.forEach(function (w) {
       if (!w.go) return;
       var b = document.createElement("button");
@@ -4307,25 +4371,10 @@ window.OuissyCup = (function () {
     return Math.round((st.speed + st.power + st.skill + st.defence) / 4);
   }
 
-  function barsHtml(st) {
-    var rows = [["spd", "SPEED", st.speed], ["pow", "POWER", st.power],
-                ["skl", "SKILL", st.skill], ["def", "DEFENCE", st.defence]];
-    return '<div class="cup-bars">' + rows.map(function (r) {
-      return '<span class="cup-bar" data-k="' + r[0] + '"><u>' + r[1] +
-             '</u><i><b data-w="' + r[2] + '"></b></i><s>' + r[2] + '</s></span>';
-    }).join("") + "</div>";
-  }
-  /* the bars grow after the card is in the DOM, which is the whole
-     reason they are worth having rather than printing four numbers */
-  function animateBars() {
-    var el = EL["cup-overlay"];
-    if (!el) return;
-    requestAnimationFrame(function () {
-      Array.prototype.forEach.call(el.querySelectorAll(".cup-bar b"), function (b) {
-        b.style.width = Math.max(2, Math.min(100, +b.dataset.w)) + "%";
-      });
-    });
-  }
+  /* barsHtml and animateBars have gone with the DOM card they filled.
+     The bars on Team Select and in the squad builder are statBar, drawn
+     into the pixel layer, and they overshoot and settle in the paint
+     loop rather than by handing a percentage to CSS. */
 
   /* =======================================================================
      THE MENU IS PLAYED ON THE PITCH
@@ -4606,18 +4655,10 @@ window.OuissyCup = (function () {
     return side === "hers" ? "fmpm" : "fmdc";
   }
 
-  function wireMenu(map) {
-    var el = EL["cup-overlay"];
-    if (!el) return;
-    Array.prototype.forEach.call(el.querySelectorAll("[data-go]"), function (b) {
-      b.addEventListener("click", function (e) {
-        e.stopPropagation();
-        SFX.pick();
-        var fn = map[b.dataset.go];
-        if (fn) fn(b);
-      });
-    });
-  }
+  /* wireMenu has gone too: it walked a card's [data-go] attributes and
+     hung a click handler on each. Nothing in the chapter is made of
+     elements with attributes any more — a button is a rectangle in a
+     list, and pressing one is uiHit finding it. */
 
   /* =======================================================================
      THE HERO
@@ -4964,138 +5005,270 @@ window.OuissyCup = (function () {
     drawBuilder(backTo);
   }
 
+  /* =======================================================================
+     THE SQUAD BUILDER, DRAWN
+
+     The last screen in the chapter that was a web page. It is also the
+     densest — a pool of thirteen players, four slots, an armband, a
+     rating, four stat bars, two ten-colour palettes, four crests, three
+     shapes and a name — which is exactly why it could not be left: a
+     dense CSS form in front of a pixel pitch is the loudest possible
+     version of the mismatch.
+
+     It is laid out as two columns rather than as a card, because it is
+     a screen she works on rather than one she reads. The left is who
+     there is; the right is who she has picked and what they look like.
+     ======================================================================= */
   function drawBuilder(backTo) {
     var roster = cfg("ROSTER", []);
     var keepers = roster.filter(function (r) { return r.role === "gk"; });
     var outfield = roster.filter(function (r) { return r.role !== "gk"; });
-    var chosen = build.squad.filter(Boolean);
-    var full = chosen.length === 4;
-    var rating = full ? teamRating(build) : 0;
 
-    var pick = function (r) {
-      var on = build.squad.indexOf(r.id) >= 0;
-      var isGk = r.role === "gk";
-      var slotFull = isGk ? !!build.squad[0] && !on
-                          : chosen.filter(function (id) { return id !== build.squad[0]; }).length >= 3 && !on;
-      return '<button class="cup-pick" data-go="pick" data-id="' + r.id + '"' +
-             ' data-on="' + (on ? 1 : 0) + '"' + (slotFull ? " disabled" : "") + '>' +
-             '<i style="background:' + (r.colour ? r.colour.a : "#888") + '"></i>' +
-             "<span>" + r.name + " <em>" + (ROLE_NAME[r.role] || "") + " \u00b7 " +
-             Math.round((r.stats.speed + r.stats.power + r.stats.skill + r.stats.defence) / 4) +
-             "</em></span></button>";
+    var redraw = function () { drawBuilder(backTo); };
+    var rate = function (r) {
+      return Math.round((r.stats.speed + r.stats.power +
+                         r.stats.skill + r.stats.defence) / 4);
     };
 
-    var slots = ["gk", "1", "2", "3"].map(function (lab, i) {
-      var id = build.squad[i];
-      var r = id ? ROSTER[id] : null;
-      var isCap = id && build.captain === id;
-      return '<div class="cup-slot' + (isCap ? " cap" : "") + (r ? "" : " empty") + '">' +
-             "<em>" + (i === 0 ? "GK" : ROLE_NAME[r ? r.role : "mid"] || "") + "</em>" +
-             "<span>" + (r ? r.name : "\u2014 empty \u2014") + "</span>" +
-             /* the armband. The one wearing it says so; the others offer
-                it, which is a different thing and used to look identical */
-             (r && i > 0 ? '<button class="cup-form cup-cap" data-go="cap" data-id="' + id + '"' +
-                ' data-on="' + (isCap ? 1 : 0) + '" title="' +
-                (isCap ? "wears the armband" : "make " + r.name + " captain") + '">' +
-                (isCap ? "★ CAPTAIN" : "CAPTAIN?") + "</button>" : "") +
-             "</div>";
-    }).join("");
+    uiOpen("builder", function (age) {
+      var chosen = build.squad.filter(Boolean);
+      var full = chosen.length === 4;
+      var accent = build.kit.shirt || "#c1272d";
+      heartsStep(1 / 60);
+      vignette(0.7);
 
-    var capR = build.captain ? ROSTER[build.captain] : null;
-    /* and they walk out as she picks them, in the kit she has chosen */
-    if (chosen.length) lineUp(build);
+      /* TWO SURFACES TO WORK ON.
 
-    overlay("BUILD YOUR SQUAD", "", "", null, {
-      kicker: "TEAM BUILDER", big: true,
-      html: '<div class="cup-menu"><div class="cup-build">' +
-        '<div class="cup-build-col"><h5>KEEPERS</h5><div class="cup-pool">' +
-          keepers.map(pick).join("") + "</div>" +
-          '<h5 style="margin-top:1.2cqh">OUTFIELD \u2014 PICK THREE</h5>' +
-          '<div class="cup-pool">' + outfield.map(pick).join("") + "</div></div>" +
+         The first version drew the whole screen straight onto the
+         pitch, and a pale label on mown grass with a player running
+         behind it is not a label — "OUTFIELD, PICK THREE" and half the
+         row headings simply vanished. A working screen needs something
+         to be printed on. */
+      var deck = function (dx, dy, dw, dh) {
+        box(dx, dy, dw, dh, "#0d1412");
+        box(dx + 1, dy + 1, dw - 2, dh - 2, "#16222a");
+        line(dx + 1, dy + 1, dw - 2, 1, "#2b3d46");
+        line(dx + 1, dy + dh - 2, dw - 2, 1, "#0a1014");
+      };
+      /* the pool's deck hugs the pool: thirteen chips in two columns
+         and nothing under them, so a deck the height of the screen is
+         eighty pixels of empty board */
+      deck(4, 24, 206, 148);
+      deck(212, 24, UIW - 216, 216);
 
-        '<div class="cup-build-col"><h5>YOUR SIDE</h5>' +
-          '<div class="cup-slots">' + slots + "</div>" +
-          '<div class="cup-rating"><b>' + (full ? rating : "--") + "</b> TEAM RATING</div>" +
-          (full ? barsHtml(teamStats(build)) : "") +
-          (capR && capR.super ?
-            '<p class="cup-super"><b style="background:' + capR.super.colour + '">\u2665 ' +
-            capR.super.name + "</b> \u2014 your team\u2019s super</p>" : "") +
+      var sl = slideIn(age, 0, -30);
+      drawText(8 + sl.off, "BUILD YOUR SQUAD", 6,
+               { scale: 2, colour: "#ffffff", outline: "#0d1412", outlineW: 2,
+                 shadow: accent, shadowX: 0, shadowY: 2 });
+      uiSay("Build your squad");
 
-          '<div class="cup-row"><label>NAME</label>' +
-            '<input type="text" id="cup-bname" maxlength="22" value="' +
-            String(build.name).replace(/"/g, "&quot;") + '"></div>' +
-          /* The swatches go inside a group of their own. Loose in the
-             row they are ten flex children beside the label, so the
-             tenth wraps onto a line by itself underneath it and the
-             palette reads as nine colours and an orphan. */
-          '<div class="cup-row"><label>KIT</label><span class="cup-swatches">' +
-            SWATCHES.map(function (c) {
-              return '<button class="cup-swatch" data-go="kit" data-c="' + c + '"' +
-                     ' data-on="' + (build.kit.shirt === c ? 1 : 0) +
-                     '" style="background:' + c + '" aria-label="kit colour"></button>';
-            }).join("") + "</span></div>" +
-          '<div class="cup-row"><label>TRIM</label><span class="cup-swatches">' +
-            SWATCHES.map(function (c) {
-              return '<button class="cup-swatch" data-go="trim" data-c="' + c + '"' +
-                     ' data-on="' + (build.kit.trim === c ? 1 : 0) +
-                     '" style="background:' + c + '" aria-label="trim colour"></button>';
-            }).join("") + "</span></div>" +
-          '<div class="cup-row"><label>CREST</label><span class="cup-forms">' +
-            CRESTS.map(function (k) {
-              return '<button class="cup-form" data-go="crest" data-c="' + k + '"' +
-                     ' data-on="' + (build.crest === k ? 1 : 0) + '">' + k + "</button>";
-            }).join("") + "</span></div>" +
-          '<div class="cup-row"><label>SHAPE</label><span class="cup-forms">' +
-            cfg("FORMATIONS", []).map(function (f) {
-              return '<button class="cup-form" data-go="form" data-c="' + f.id + '"' +
-                     ' data-on="' + (build.formation === f.id ? 1 : 0) + '">' + f.name + "</button>";
-            }).join("") + "</span></div>" +
-          '<p class="cup-note">' + (formationNote(build.formation) || "") + "</p>" +
-        "</div></div>" +
+      /* ---- LEFT: who there is ------------------------------------- */
+      var lx = 8, ly = 30, lw = 196;
+      var chip = function (r, cx2, cy2, cw) {
+        var on = build.squad.indexOf(r.id) >= 0;
+        var isGk = r.role === "gk";
+        var blocked = isGk ? (!!build.squad[0] && !on)
+                           : (chosen.filter(function (id) {
+                               return id !== build.squad[0];
+                             }).length >= 3 && !on);
+        var tone = on ? "#2c6a52" : blocked ? "#1b262c" : "#24343c";
+        uiButton("p_" + r.id, cx2, cy2, cw, 16, "",
+                 { tone: tone, go: blocked ? null : function () {
+                     togglePick(r.id); redraw();
+                   } });
+        /* the label is drawn over the button rather than through it,
+           because a chip is a swatch, a name and a number and the
+           button painter only knows about one centred line */
+        box(cx2 + 4, cy2 + 4, 6, 8, (r.colour && r.colour.a) || "#888888");
+        box(cx2 + 4, cy2 + 4, 6, 1, lift((r.colour && r.colour.a) || "#888888", 60));
+        drawText(cx2 + 13, fitText(r.name, cw - 46, 1), cy2 + 5,
+                 { colour: blocked ? "#5f7a72" : "#f4f4e8" });
+        drawText(cx2 + cw - 5, (ROLE_NAME[r.role] || "") + " " + rate(r), cy2 + 5,
+                 { align: "right", colour: on ? "#9fe8c4" : "#7f9a92" });
+        if (on) box(cx2 + cw - 3, cy2 + 2, 2, 12, "#9fe8c4");
+      };
 
-        '<div class="cup-btnrow">' +
-        '<button class="cup-menu-b primary" data-go="save"' + (full ? "" : " disabled") +
-          ">SAVE THIS SIDE</button>" +
-        '<button class="cup-menu-b" data-go="rand">RANDOMISE</button>' +
-        '<button class="cup-menu-b" data-go="reset">RESET</button>' +
-        '<button class="cup-menu-b" data-go="back">BACK</button>' +
-        "</div></div>",
+      drawText(lx, "KEEPERS", ly, { colour: "#7f9a92", track: 2 });
+      ly += 10;
+      keepers.forEach(function (r, i2) {
+        chip(r, lx + i2 * (lw / 2 + 2), ly, Math.floor(lw / 2) - 2);
+      });
+      ly += 20;
+      drawText(lx, "OUTFIELD \u2014 PICK THREE", ly, { colour: "#7f9a92", track: 2 });
+      ly += 10;
+      outfield.forEach(function (r, i2) {
+        var col = i2 % 2, row = (i2 - col) / 2;
+        chip(r, lx + col * (lw / 2 + 2), ly + row * 18, Math.floor(lw / 2) - 2);
+      });
+
+      /* ---- RIGHT: who she has picked ------------------------------ */
+      var rx = 214, rw = UIW - rx - 8, ry = 30;
+      drawText(rx, "YOUR SIDE", ry, { colour: "#7f9a92", track: 2 });
+      ry += 10;
+      for (var i3 = 0; i3 < 4; i3++) {
+        var id = build.squad[i3];
+        var r2 = id ? ROSTER[id] : null;
+        var isCap = id && build.captain === id;
+        box(rx, ry, rw, 14, "#0d1412");
+        box(rx + 1, ry + 1, rw - 2, 12, r2 ? "#1d2e36" : "#161f24");
+        drawText(rx + 5, i3 === 0 ? "GK" : (ROLE_NAME[r2 ? r2.role : "mid"] || ""),
+                 ry + 4, { colour: "#4f7a6a" });
+        drawText(rx + 26, r2 ? fitText(r2.name, rw - 90, 1) : "\u2014 empty \u2014",
+                 ry + 4, { colour: r2 ? (isCap ? "#e8b23c" : "#f4f4e8") : "#4f6a62" });
+        /* the armband. The one wearing it says so; the others offer it,
+           which is a different thing and used to look identical */
+        if (r2 && i3 > 0) {
+          uiButton("cap_" + id, rx + rw - 58, ry + 1, 56, 12,
+                   isCap ? "\u2605 CAPTAIN" : "CAPTAIN?",
+                   { tone: isCap ? "#c8912f" : "#24343c",
+                     ink: isCap ? "#2a1c08" : "#9fb0a8",
+                     go: (function (pid) {
+                       return function () { build.captain = pid; redraw(); };
+                     })(id) });
+        }
+        ry += 16;
+      }
+
+      /* the rating, and what the side is actually like */
+      ry += 1;
+      drawText(rx, full ? String(teamRating(build)) : "--", ry,
+               { scale: 2, colour: full ? "#ffe9a8" : "#4f6a62",
+                 outline: "#0d1412" });
+      drawText(rx + 34, "TEAM RATING", ry + 5, { colour: "#7f9a92", track: 2 });
+      var capR = build.captain ? ROSTER[build.captain] : null;
+      if (capR && capR.super) {
+        drawText(rx + rw, fitText("\u2665 " + capR.super.name, rw - 120, 1), ry + 5,
+                 { align: "right", colour: capR.super.colour || "#ff5f8f" });
+      }
+      ry += 16;
+      if (full) {
+        var st = teamStats(build);
+        [["PACE", st.speed], ["POWER", st.power],
+         ["SKILL", st.skill], ["GRIT", st.defence]].forEach(function (b2, i4) {
+          var bx2 = rx + (i4 % 2) * Math.round(rw / 2);
+          var by2 = ry + Math.floor(i4 / 2) * 10;
+          drawText(bx2, b2[0], by2, { colour: "#7f9a92" });
+          statBar(bx2 + 34, by2 + 1, Math.round(rw / 2) - 42, 5,
+                  b2[1] / 100, accent);
+        });
+      }
+      ry += 23;
+
+      /* ---- the kit ------------------------------------------------ */
+      var swatchRow = function (label, cur, set) {
+        drawText(rx, label, ry + 2, { colour: "#7f9a92" });
+        SWATCHES.forEach(function (c, i5) {
+          var sx2 = rx + 34 + i5 * 13;
+          var on = cur === c;
+          box(sx2 - 1, ry - 1, 13, 13, on ? "#ffe9a8" : "#0d1412");
+          box(sx2, ry, 11, 11, c);
+          box(sx2, ry, 11, 1, lift(c, 55));
+          UI.widgets.push({ id: label + "_" + i5, x: sx2 - 1, y: ry - 1,
+                            w: 13, h: 13, label: label + " " + (i5 + 1),
+                            go: function () { set(c); redraw(); } });
+        });
+        ry += 14;
+      };
+      swatchRow("KIT", build.kit.shirt, function (c) {
+        build.kit.shirt = c;
+        build.kit.shirtDark = shade(c, 0.72);
+        build.kit.socks = c;
+      });
+      swatchRow("TRIM", build.kit.trim, function (c) { build.kit.trim = c; });
+
+      /* ---- crest, shape, name ------------------------------------- */
+      var pillRow = function (label, items, cur, set) {
+        drawText(rx, label, ry + 4, { colour: "#7f9a92" });
+        var px3 = rx + 34, rowY = ry;
+        items.forEach(function (it) {
+          var w3 = textWidth(it.name) + 10;
+          /* WRAP RATHER THAN RUN OFF. Five crests laid end to end are
+             wider than the column, so the last one was half a word
+             hanging over the edge of the screen. */
+          if (px3 + w3 > rx + rw) { px3 = rx + 34; rowY += 15; }
+          uiButton("o_" + label + "_" + it.id, px3, rowY, w3, 13, it.name,
+                   { tone: cur === it.id ? "#c8912f" : "#24343c",
+                     ink: cur === it.id ? "#2a1c08" : "#9fb0a8",
+                     go: function () { set(it.id); redraw(); } });
+          px3 += w3 + 3;
+        });
+        ry = rowY + 16;
+      };
+      /* YOU PICK A CREST BY LOOKING AT IT.
+
+         Thirteen crest NAMES as pills wrapped onto four rows and pushed
+         the shape, the note and the name field off the bottom of the
+         screen. Thirteen crests drawn as crests fit on one row, and
+         they are also simply the right control: the thing she is
+         choosing is a picture. */
+      drawText(rx, "CREST", ry + 6, { colour: "#7f9a92" });
+      var cw2 = Math.floor((rw - 36) / CRESTS.length);
+      CRESTS.forEach(function (k, i7) {
+        var cx3 = rx + 36 + i7 * cw2;
+        var on = build.crest === k;
+        box(cx3 - 1, ry - 1, cw2, 18, on ? "#ffe9a8" : "#0d1412");
+        box(cx3, ry, cw2 - 2, 16, on ? "#3a2a10" : "#101c22");
+        pixCrest({ id: "pick_" + k, crest: k,
+                   kit: { shirt: build.kit.shirt, trim: build.kit.trim } },
+                 cx3, ry, cw2 - 2, 16);
+        UI.widgets.push({ id: "crest_" + k, x: cx3 - 1, y: ry - 1,
+                          w: cw2, h: 18, label: "crest " + k,
+                          go: function () { build.crest = k; redraw(); } });
+      });
+      ry += 22;
+      pillRow("SHAPE", cfg("FORMATIONS", []), build.formation,
+              function (v) { build.formation = v; });
+      drawText(rx + 34, fitText(formationNote(build.formation) || "", rw - 36, 1),
+               ry - 3, { colour: "#5f8a7a" });
+      ry += 8;
+
+      drawText(rx, "NAME", ry + 4, { colour: "#7f9a92" });
+      textField(rx + 34, ry, rw - 34, 13,
+                edit ? edit.value : build.name, !!edit);
+      UI.widgets.push({ id: "name", x: rx + 34, y: ry, w: rw - 34, h: 13,
+                        label: "Rename the side",
+                        go: function () {
+                          editOpen(build.name, 22, function (v) {
+                            build.name = v.trim() || build.name;
+                            build.short = build.name.replace(/[^A-Za-z]/g, "")
+                                            .slice(0, 3).toUpperCase() || "OUR";
+                            redraw();
+                          });
+                        } });
+
+      /* ---- the actions -------------------------------------------- */
+      var ay = UIH - 26;
+      var bw2 = Math.floor((UIW - 16 - 18) / 4);
+      var acts = [
+        ["SAVE THIS SIDE", full ? "#c8912f" : "#1b262c", function () {
+          if (build.squad.filter(Boolean).length !== 4) return;
+          if (!build.captain) build.captain = build.squad[1];
+          var mine = loadCustom().filter(function (c) { return c.id !== build.id; });
+          mine.push(JSON.parse(JSON.stringify(build)));
+          saveCustom(mine);
+          patchTeamLookup();
+          carAt = cfg("TEAMS", []).length + mine.length - 1;
+          build = null;
+          teamSelect(backTo || "pick");
+        }],
+        ["RANDOMISE", "#2f5d72", function () { randomiseBuild(); redraw(); }],
+        ["RESET", "#2f5d72", function () { build = blankBuild(); redraw(); }],
+        ["BACK", "#2f5d72", function () { teamSelect(backTo || "pick"); }],
+      ];
+      acts.forEach(function (a2, i6) {
+        uiButton("b_" + i6, 8 + i6 * (bw2 + 6), ay, bw2, 20, a2[0],
+                 { tone: a2[1], ink: i6 === 0 && full ? "#2a1c08" : undefined,
+                   go: i6 === 0 && !full ? null : a2[2] });
+      });
+
+      /* and they walk out as she picks them, in the kit she has chosen */
+      if (chosen.length) build.__dirty = true;
     });
-    animateBars();
 
-    var nameEl = document.getElementById("cup-bname");
-    if (nameEl) nameEl.addEventListener("input", function () {
-      build.name = nameEl.value || "OUR SIDE";
-      build.short = build.name.replace(/[^A-Za-z]/g, "").slice(0, 3).toUpperCase() || "OUR";
-    });
-
-    wireMenu({
-      pick: function (b) { togglePick(b.dataset.id); drawBuilder(backTo); },
-      cap: function (b) { build.captain = b.dataset.id; drawBuilder(backTo); },
-      kit: function (b) {
-        build.kit.shirt = b.dataset.c;
-        build.kit.shirtDark = shade(b.dataset.c, 0.72);
-        build.kit.socks = b.dataset.c;
-        drawBuilder(backTo);
-      },
-      trim: function (b) { build.kit.trim = b.dataset.c; drawBuilder(backTo); },
-      crest: function (b) { build.crest = b.dataset.c; drawBuilder(backTo); },
-      form: function (b) { build.formation = b.dataset.c; drawBuilder(backTo); },
-      rand: function () { randomiseBuild(); drawBuilder(backTo); },
-      reset: function () { build = blankBuild(); drawBuilder(backTo); },
-      save: function () {
-        if (build.squad.filter(Boolean).length !== 4) return;
-        if (!build.captain) build.captain = build.squad[1];
-        var mine = loadCustom().filter(function (c) { return c.id !== build.id; });
-        mine.push(JSON.parse(JSON.stringify(build)));
-        saveCustom(mine);
-        patchTeamLookup();
-        carAt = cfg("TEAMS", []).length + mine.length - 1;
-        build = null;
-        teamSelect(backTo || "pick");
-      },
-      back: function () { teamSelect(backTo || "pick"); },
-    });
+    /* the side on the grass behind the screen is rebuilt outside the
+       paint, because building it makes a match and a match is not a
+       thing to make sixty times a second */
+    if (build.squad.filter(Boolean).length) lineUp(build);
   }
 
   function formationNote(id) {
@@ -5147,30 +5320,57 @@ window.OuissyCup = (function () {
      opens the chapter; it says so, and it has a different button. */
   var HELP_KEY = "cup_helped_v1";
   function helpCard(back, first) {
-    var s = superOf(0);
-    overlay(first ? "BEFORE YOU START" : "HOW TO PLAY", "", "", null, {
-      kicker: first ? "ONE STICK, TWO BUTTONS" : "CONTROLS", big: true,
-      html: '<div class="cup-menu"><div class="cup-table cup-help">' +
-        "<div><b>MOVE</b><span>slide anywhere on the left \u00b7 or W A S D</span><b>&nbsp;</b></div>" +
-        "<div><b>TAP \u25cf</b><span>pass \u2014 or tackle, when they have it</span><b>&nbsp;</b></div>" +
-        "<div><b>HOLD \u25cf</b><span>wind up a shot \u2014 or sprint, without the ball</span><b>&nbsp;</b></div>" +
-        '<div><b class="cup-help-h">\u2665</b><span>the heart button, when the meter is full' +
-          (s ? " \u2014 " + s.name : "") + "</span><b>&nbsp;</b></div>" +
-        "</div>" +
-        '<div class="cup-help-notes">' +
-        "<p><b>You are whoever is nearest the ball.</b> The game swaps for " +
-        "you, and it never takes a player away while you are carrying it.</p>" +
-        "<p><b>The meter under the score fills as you play</b> \u2014 a pass that " +
-        "finds someone, a tackle won, a shot had. Fill it and your captain " +
-        "gets one shot that is not a shot.</p>" +
-        "<p><b>The ball never goes out.</b> The pitch is boarded; it comes " +
-        "back off the sides. There are no throw-ins and nothing stops.</p>" +
-        "</div>" +
-        '<div class="cup-btnrow"><button class="cup-menu-b primary" data-go="back">' +
-        (first ? "LET\u2019S GO" : "GOT IT") + "</button></div>" +
-        "</div>",
+    var sup = superOf(0);
+    var keys = [
+      ["MOVE", "slide anywhere on the left, or W A S D"],
+      ["TAP", "pass \u2014 or tackle, when they have it"],
+      ["HOLD", "wind up a shot \u2014 or sprint, without the ball"],
+      ["\u2665", "when the meter is full" + (sup ? " \u2014 " + sup.name : "")],
+    ];
+    var notes = [
+      "You are whoever is nearest the ball. The game swaps for you, and " +
+      "it never takes a player away while you are carrying it.",
+      "The meter under the score fills as you play \u2014 a pass that finds " +
+      "someone, a tackle won, a shot had. Fill it and your captain gets " +
+      "one shot that is not a shot.",
+      "The ball never goes out. The pitch is boarded and it comes back " +
+      "off the sides. There are no throw-ins and nothing stops.",
+    ];
+    cardScreen({
+      name: "help", wide: true, top: 12,
+      kicker: first ? "ONE STICK, TWO BUTTONS" : "CONTROLS",
+      title: first ? "BEFORE YOU START" : "HOW TO PLAY",
+      accent: "#2f5d72",
+      action: first ? "LET\u2019S GO" : "GOT IT",
+      onGo: function () { uiClose(); (back || titleMenu)(); },
+      body: function (bx, by, bw) {
+        /* the four controls, each in its own key-cap, because a list of
+           four bold words is a list and a keycap is a control */
+        keys.forEach(function (k) {
+          var kw = Math.max(34, textWidth(k[0]) + 12);
+          box(bx, by, kw, 13, "#0d1412");
+          box(bx + 1, by + 1, kw - 2, 11, "#31424c");
+          line(bx + 1, by + 1, kw - 2, 1, "#5c7480");
+          line(bx + 1, by + 11, kw - 2, 1, "#1b262c");
+          drawText(bx + Math.round(kw / 2), k[0], by + 3,
+                   { align: "center", colour: "#ffe9a8" });
+          drawText(bx + kw + 8, fitText(k[1], bw - kw - 10, 1), by + 3,
+                   { colour: "#cfe0d8" });
+          by += 17;
+        });
+        by += 4;
+        keys.forEach(function (k) { uiSay(k[0] + " \u2014 " + k[1]); });
+        notes.forEach(function (n) {
+          uiSay(n);
+          wrapText(n, bw, 3).forEach(function (ln) {
+            drawText(bx, ln, by, { colour: "#8fa8a0" });
+            by += 9;
+          });
+          by += 4;
+        });
+        return by;
+      },
     });
-    wireMenu({ back: function () { (back || titleMenu)(); } });
   }
   /* shown once, ever, and only if the config asks for it */
   function helpIfFirstTime(then) {
@@ -5192,6 +5392,219 @@ window.OuissyCup = (function () {
      ======================================================================= */
   var run = { round: 0, won: 0 };
 
+  /* =======================================================================
+     THE CARDS, DRAWN
+
+     Everything between matches used to be a DOM overlay: a rounded
+     panel with a serif heading and pill buttons, laid over a pixel
+     world. The title screen and Team Select were rebuilt first because
+     they are the two she looks at longest, but the round card comes up
+     before every single match and half time comes up in the middle of
+     one, so a card in the old language was the game changing its mind
+     about what it was twice a fixture.
+
+     They all go through ONE screen. A card is a kicker, a title, a
+     line, a body and up to two buttons; what changes between a fixture
+     card and a memory is what the body draws. That is deliberate — six
+     bespoke pixel screens would drift apart by the third one, and the
+     thing that makes a set of menus feel designed rather than decorated
+     is that they are demonstrably the same menu.
+     ======================================================================= */
+  function cardScreen(spec) {
+    var accent = spec.accent || "#c1272d";
+    var trim = spec.trim || "#e8b23c";
+    uiOpen(spec.name || "card", function (age) {
+      heartsStep(1 / 60);
+      vignette(spec.dim === undefined ? 0.8 : spec.dim);
+
+      var w = spec.wide ? 400 : 286;
+      var x = Math.round((UIW - w) / 2);
+      var sl = slideIn(age, 0, -44);
+      var top = spec.top === undefined ? 14 : spec.top;
+      /* THE CARD IS AS TALL AS WHAT IS ON IT.
+
+         Sized to the screen, the fixture card had ninety empty pixels
+         between the team sheets and the button and the half-time card
+         had more. The body is what knows how tall it is, and it only
+         knows once it has drawn — so the height it reported LAST frame
+         is used for this one. It is stable from the second frame, and
+         the first is behind the entrance slide. */
+      var h = spec.h || (UIH - top * 2);
+      var y = Math.round((UIH - h) / 2) + sl.off;
+      panel(x, y, w, h, accent, { fill: "#16222a" });
+
+      var ix = x + 14, iw = w - 28, iy = y + 12;
+      uiSay(spec.kicker);
+      uiSay(spec.title);
+      uiSay(spec.line);
+      uiSay(spec.foot);
+      if (spec.kicker) {
+        drawText(x + w / 2, spec.kicker, iy,
+                 { align: "center", colour: trim, track: 2 });
+        iy += 11;
+      }
+      if (spec.title) {
+        /* A TITLE IS NOT ALWAYS TWO WORDS.
+
+           "HALF TIME" fits at double size and one of the memories is
+           called "BEFORE ANY OF THIS HAD A TIMETABLE", which at double
+           size is half again as wide as the card — and it was being cut
+           to fit with a measurement taken at the WRONG TRACKING, so it
+           did not even get cut: it ran out through both sides. An
+           outlined line tracks wider than a plain one, so the width is
+           measured the way it will be drawn, and if it still will not
+           fit it drops a size and then wraps. */
+        var ts = 2, tk = 3;
+        if (textWidth(spec.title, 2, 3) > iw) { ts = 1; tk = 2; }
+        wrapText(spec.title, iw, 2, ts, tk).forEach(function (tl) {
+          drawText(x + w / 2, tl, iy,
+                   { align: "center", scale: ts, track: tk, colour: "#ffffff",
+                     outline: "#0d1412", outlineW: 2,
+                     shadow: accent, shadowX: 0, shadowY: 2 });
+          iy += ts > 1 ? 20 : 12;
+        });
+        iy += 5;
+      }
+      if (spec.line) {
+        wrapText(spec.line, iw, spec.lineMax || 3).forEach(function (ln) {
+          drawText(x + w / 2, ln, iy, { align: "center", colour: "#b8ccc4" });
+          iy += 9;
+        });
+        iy += 5;
+      }
+      if (spec.body) iy = spec.body(ix, iy, iw, age) || iy;
+      /* remembered for the next frame, clamped so a card can never be
+         taller than the screen or too short to hold its own button */
+      spec.h = clamp(Math.round(iy - y + 46), 92, UIH - 8);
+
+      /* the buttons, along the bottom of the card rather than wherever
+         the body happened to stop */
+      var by = y + h - 30;
+      if (spec.action) {
+        var bw = spec.alt ? Math.round((iw - 8) * 0.58) : iw;
+        var bp = slideIn(age, 0.18, 30);
+        uiButton("card_go", ix, by + bp.off, bw, 22, spec.action,
+                 { tone: "#c8912f", ink: "#2a1c08", go: spec.onGo });
+        if (spec.alt) {
+          uiButton("card_alt", ix + bw + 8, by + bp.off, iw - bw - 8, 22,
+                   spec.alt, { tone: "#2f5d72", go: spec.onAlt });
+        }
+      }
+      if (spec.foot) {
+        drawText(x + w / 2, spec.foot, y + h - 42,
+                 { align: "center", colour: "#5f8a7a" });
+      }
+    });
+  }
+
+  /* ---- what a card's body can be made of ---------------------------- */
+
+  /* WHERE THE FIXTURE IS BEING PLAYED. Half of what makes six matches
+     feel like six occasions rather than one pitch six times is simply
+     being told, before each one, whose campus you are standing on. */
+  function cardVenue(x2, y2, w, id) {
+    var v = venueById(id);
+    if (!v) return y2;
+    box(x2, y2, w, 18, "#111e26");
+    box(x2, y2, 2, 18, "#e8b23c");
+    drawText(x2 + 7, v.hour, y2 + 6, { colour: "#e8b23c" });
+    drawText(x2 + 40, fitText(v.name, w - 48, 1), y2 + 2, { colour: "#ffffff" });
+    drawText(x2 + 40, fitText(v.note || "", w - 48, 1), y2 + 10,
+             { colour: "#7f9a92" });
+    return y2 + 24;
+  }
+
+  /* the run through the tournament: won, playing, still to come */
+  function cardBracket(x2, y2, w, at) {
+    var n = CUP.length;
+    var cw = Math.floor((w - (n - 1) * 5) / n);
+    CUP.forEach(function (r, i) {
+      var bx = x2 + i * (cw + 5);
+      var st = i < at ? 1 : (i === at ? 2 : 0);
+      var tone = st === 2 ? "#c8912f" : st === 1 ? "#2c6a52" : "#22323a";
+      box(bx, y2, cw, 21, "#0d1412");
+      box(bx + 1, y2 + 1, cw - 2, 19, tone);
+      line(bx + 1, y2 + 1, cw - 2, 1, lift(tone, 55));
+      drawText(bx + Math.round(cw / 2), fitText(r.round, cw - 6, 1), y2 + 3,
+               { align: "center", colour: st ? "#f4f4e8" : "#7f9a92" });
+      drawText(bx + Math.round(cw / 2), (teamById(r.id) || {}).short || "",
+               y2 + 12, { align: "center",
+                          colour: st === 2 ? "#2a1c08" : "#cfe0d8" });
+    });
+    return y2 + 27;
+  }
+
+  /* the two team sheets, side by side, with the captain picked out */
+  function cardTeams(x2, y2, w, aId, bId) {
+    var cw = Math.floor((w - 18) / 2);
+    [aId, bId].forEach(function (id, side) {
+      var tm = teamById(id);
+      if (!tm) return;
+      var c0 = x2 + side * (cw + 18);
+      pixCrest(tm, c0, y2, 22, 16, UI.t);
+      drawText(c0 + 26, fitText(tm.short || tm.name, cw - 28, 1), y2 + 1,
+               { colour: "#ffffff" });
+      drawText(c0 + 26, fitText(tm.name, cw - 28, 1), y2 + 9,
+               { colour: "#7f9a92" });
+      squadOf(tm).slice(0, 4).forEach(function (m, i) {
+        var ry = y2 + 22 + i * 9;
+        drawText(c0, ROLE_NAME[m.role] || "", ry, { colour: "#4f7a6a" });
+        drawText(c0 + 22, fitText(m.name, cw - 24, 1), ry,
+                 { colour: (m.captain || m.star) ? "#e8b23c" : "#cfe0d8" });
+      });
+    });
+    drawText(x2 + Math.round(w / 2), "v", y2 + 24,
+             { align: "center", colour: "#7f9a92" });
+    return y2 + 62;
+  }
+
+  /* HOW THE HALF ACTUALLY WENT. Possession gets a bar because a
+     percentage is a number and a bar is a fact; the other two are
+     counts, and a bar of two shots against one is a lie. */
+  function cardStats(x2, y2, w) {
+    var tot = G.stat.poss[0] + G.stat.poss[1];
+    var hp = tot > 2 ? Math.round((G.stat.poss[0] / tot) * 100) : 50;
+    var mineCol = "#c1272d", theirs = "#6d5fa8";
+    var a = teamById(G.ids[0]), b = teamById(G.ids[1]);
+    if (a && a.kit) mineCol = a.kit.shirt;
+    if (b && b.kit) theirs = b.kit.shirt;
+    var rows = [["POSSESSION", hp + "%", (100 - hp) + "%", hp / 100],
+                ["SHOTS", G.stat.shots[0], G.stat.shots[1], null],
+                ["GOALS", G.score[0], G.score[1], null]];
+    rows.forEach(function (r, i) {
+      var ry = y2 + i * 17;
+      drawText(x2, String(r[1]), ry, { colour: "#ffffff" });
+      drawText(x2 + Math.round(w / 2), r[0], ry,
+               { align: "center", colour: "#7f9a92" });
+      drawText(x2 + w, String(r[2]), ry, { align: "right", colour: "#ffffff" });
+      if (r[3] === null) return;
+      var fill = Math.round(w * r[3]);
+      box(x2, ry + 9, w, 5, "#0d1412");
+      box(x2, ry + 9, fill, 5, mineCol);
+      box(x2 + fill, ry + 9, w - fill, 5, theirs);
+    });
+    return y2 + rows.length * 17 + 4;
+  }
+
+  /* the scoreline, big, with both crests */
+  function cardScore(x2, y2, w) {
+    var a = teamById(G.ids[0]), b = teamById(G.ids[1]);
+    var mid = x2 + Math.round(w / 2);
+    /* the two names sit OUTSIDE the score, not under its outline: at
+       44 they were being painted over by the 2-pixel keyline around a
+       double-size scoreline and came out as "FM 0 - 0 6P" */
+    if (a) pixCrest(a, mid - 96, y2 + 2, 26, 18, UI.t);
+    if (b) pixCrest(b, mid + 70, y2 + 2, 26, 18, UI.t);
+    drawText(mid - 66, fitText((a && a.short) || "", 40, 1), y2 + 6,
+             { colour: "#cfe0d8" });
+    drawText(mid + 66, fitText((b && b.short) || "", 40, 1), y2 + 6,
+             { align: "right", colour: "#cfe0d8" });
+    drawText(mid, G.score[0] + " - " + G.score[1], y2,
+             { align: "center", scale: 2, colour: "#ffffff",
+               outline: "#0d1412", outlineW: 2 });
+    return y2 + 24;
+  }
+
   function roundCard() {
     var r = run.fixture && run.fixture.round ? run.fixture.round : CUP[run.round];
     var them = teamById((run.fixture && run.fixture.theirs) || r.id);
@@ -5199,8 +5612,8 @@ window.OuissyCup = (function () {
        the fixture card is a photograph of the actual fixture */
     lineUp(run.myTeam, (run.fixture && run.fixture.venue) || r.venue);
     menuMusic(true);
-    overlay(them.name, r.before, "KICK OFF", function () {
-      hideOverlay();
+    var kick = function () {
+      uiClose();
       menuMusic(false);
       G = newMatch(run.round, run.fixture);
       applyVenue(G.venue);
@@ -5211,25 +5624,25 @@ window.OuissyCup = (function () {
       if (EL["cup-pad"]) EL["cup-pad"].hidden = false;
       if (EL["cup-pause-btn"]) EL["cup-pause-btn"].hidden = false;
       startCrowd();
-    }, { kicker: r.round, big: true,
-         /* The bracket only belongs on a cup tie. A friendly and the
-            derby used to print one anyway — and worse, the whole card
-            used to be built from CUP[run.round] whatever she had
-            picked, so choosing LE DERBY put up a card announcing a
-            quarter-final against UM6P and then played the derby. */
-         body: venueBlock((run.fixture && run.fixture.venue) || r.venue) +
-               (run.quick ? "" : bracketBlock(run.round)) +
-               teamsBlock(run.myTeam || derbyTeam("hers"), them.id) });
-  }
-
-  /* Where the fixture is being played. Half of what makes six matches
-     feel like six occasions rather than one pitch six times is simply
-     being told, before each one, whose campus you are standing on. */
-  function venueBlock(id) {
-    var v = venueById(id);
-    if (!v) return "";
-    return '<div class="cup-venue"><span class="cup-venue-h">' + v.hour + "</span>" +
-           "<span><b>" + v.name + "</b><i>" + (v.note || "") + "</i></span></div>";
+    };
+    var mineId = run.myTeam || derbyTeam("hers");
+    var mineT = teamById(mineId) || {};
+    cardScreen({
+      name: "round", wide: true, kicker: r.round, title: them.name,
+      line: r.before, lineMax: 2,
+      accent: (mineT.kit && mineT.kit.shirt) || "#c1272d",
+      action: "KICK OFF", onGo: kick,
+      body: function (bx, by, bw) {
+        by = cardVenue(bx, by, bw, (run.fixture && run.fixture.venue) || r.venue);
+        /* The bracket only belongs on a cup tie. A friendly and the
+           derby used to print one anyway — and worse, the whole card
+           used to be built from CUP[run.round] whatever she had
+           picked, so choosing THE DERBY put up a card announcing a
+           quarter-final against UM6P and then played the derby. */
+        if (!run.quick) by = cardBracket(bx, by, bw, run.round);
+        return cardTeams(bx, by, bw, mineId, them.id);
+      },
+    });
   }
 
   function finishRound(won) {
@@ -5254,38 +5667,63 @@ window.OuissyCup = (function () {
          Winning one used to advance `run.round` and put up the next cup
          tie, because this only ever knew about the tournament. A one-off
          goes back to the menu it was started from. */
+      var endCard = function (opts) {
+        cardScreen({
+          name: "full", kicker: opts.kicker, title: "FULL TIME",
+          line: opts.note, lineMax: 2,
+          accent: won ? "#2c6a52" : "#8a2f3c",
+          action: opts.action, onGo: opts.onGo,
+          alt: opts.alt, onAlt: opts.onAlt,
+          body: function (bx, by, bw) {
+            by = cardScore(bx, by, bw);
+            by = cardStats(bx, by + 4, bw);
+            return opts.bracket === undefined ? by
+                 : cardBracket(bx, by, bw, opts.bracket);
+          },
+        });
+      };
+
+      /* A FRIENDLY IS NOT A ROUND.
+         Winning one used to advance `run.round` and put up the next cup
+         tie, because this only ever knew about the tournament. A one-off
+         goes back to the menu it was started from. */
       if (run.quick) {
-        overlay("FULL TIME", scoreLine(), won ? "BACK TO THE MENU" : "PLAY IT AGAIN",
-          function () {
-            hideOverlay();
+        endCard({
+          kicker: won ? "WON" : "LOST", note: won ? r.won : r.lost,
+          action: won ? "BACK TO THE MENU" : "PLAY IT AGAIN",
+          onGo: function () {
+            uiClose();
             if (won) { run.fixture = null; run.quick = false; titleMenu(); }
             else roundCard();
           },
-          { kicker: won ? "WON" : "LOST", note: won ? r.won : r.lost,
-            body: statsBlock(),
-            alt: won ? null : "LEAVE IT FOR NOW",
-            onAlt: function () { run.fixture = null; run.quick = false;
-                                 hideOverlay(); titleMenu(); } });
+          alt: won ? null : "LEAVE IT FOR NOW",
+          onAlt: function () { run.fixture = null; run.quick = false;
+                               uiClose(); titleMenu(); },
+        });
         return;
       }
 
       if (won) {
         run.won++;
         if (run.round >= CUP.length - 1) return theEnd();
-        overlay("FULL TIME", scoreLine(), "NEXT ROUND", function () {
-          hideOverlay();
-          /* and between the rounds, something that is not football */
-          memoryCard(run.round, function () {
-            run.round++;
-            roundCard();
-          });
-        }, { kicker: "WON", note: r.won,
-             body: statsBlock() + bracketBlock(run.round + 1) });
+        endCard({
+          kicker: "WON", note: r.won, action: "NEXT ROUND",
+          bracket: run.round + 1,
+          onGo: function () {
+            uiClose();
+            /* and between the rounds, something that is not football */
+            memoryCard(run.round, function () {
+              run.round++;
+              roundCard();
+            });
+          },
+        });
       } else {
-        overlay("FULL TIME", scoreLine(), "PLAY IT AGAIN", function () {
-          hideOverlay(); roundCard();
-        }, { kicker: "LOST", note: r.lost, body: statsBlock(),
-             alt: "LEAVE IT FOR NOW", onAlt: function () { quit(); } });
+        endCard({
+          kicker: "LOST", note: r.lost, action: "PLAY IT AGAIN",
+          onGo: function () { uiClose(); roundCard(); },
+          alt: "LEAVE IT FOR NOW", onAlt: function () { quit(); },
+        });
       }
     }, 1400);
   }
@@ -5309,12 +5747,30 @@ window.OuissyCup = (function () {
        left them */
     lineUp(run.myTeam);
     SFX.memory();
-    overlay(m.title || "", "", "GO ON", function () { hideOverlay(); next(); },
-      { kicker: "♥", big: true, memory: true,
-        html: '<div class="cup-mem">' +
-              (m.photo ? '<span class="cup-mem-ph"><img src="' + m.photo +
-                         '" alt="" loading="lazy"></span>' : "") +
-              '<p class="cup-mem-l">' + (m.line || "") + "</p></div>" });
+    /* IT IS NOT A FIXTURE CARD AND IT MUST NOT LOOK LIKE ONE.
+
+       This is the one screen in the chapter that is not about football,
+       so it gets the rose frame rather than her kit's, a heart for a
+       kicker, its prose set wide and quiet, and no furniture at all —
+       no crests, no table, no bracket. */
+    cardScreen({
+      name: "memory", wide: true, top: 40, dim: 1.05,
+      kicker: "\u2665", title: m.title || "", accent: "#a8283a",
+      trim: "#ff8fae",
+      action: "GO ON", onGo: function () { uiClose(); next(); },
+      body: function (bx, by, bw) {
+        uiSay(m.line || "");
+        /* set quietly and with room round it: this is the one screen in
+           the chapter that is not in a hurry */
+        by += 6;
+        wrapText(m.line || "", bw - 40, 8).forEach(function (ln) {
+          drawText(bx + Math.round(bw / 2), ln, by,
+                   { align: "center", colour: "#f2dfe4" });
+          by += 13;
+        });
+        return by + 8;
+      },
+    });
   }
 
   /* The trophy, and what he says. Every chapter on this site ends with
@@ -5344,19 +5800,37 @@ window.OuissyCup = (function () {
     menuMusic(true);
     confettiBurst({ x: PITCH.cx, y: PITCH.cy }, 200, "#ffd45e");
 
-    overlay(V.title || "YOU WON IT", "", V.button || "TAKE IT HOME",
-      function () { quit(); },
-      { kicker: V.kicker || "FULL TIME", big: true, tone: "win",
-        html: '<div class="cup-end">' +
-              '<span class="cup-cupart" data-cup="1"></span>' +
-              (V.photo ? '<span class="cup-mem-ph"><img src="' + V.photo +
-                         '" alt="" loading="lazy"></span>' : "") +
-              '<div class="cup-end-lines">' +
-              lines.map(function (l) { return "<p>" + l + "</p>"; }).join("") +
-              "</div>" +
-              (V.signOff ? '<p class="cup-end-sign">' + V.signOff + "</p>" : "") +
-              "</div>" });
-    paintTrophies();
+    /* THE QUIETEST SCREEN IN THE CHAPTER.
+
+       A stadium has been shouting for ninety minutes and this is what
+       is left: the trophy, his words, and his name under them. It gets
+       gold rather than a kit colour because it does not belong to
+       either side any more, and the confetti is already falling behind
+       it on the real pitch. */
+    cardScreen({
+      name: "end", wide: true, top: 20, dim: 1.05,
+      kicker: V.kicker || "FULL TIME", title: V.title || "YOU WON IT",
+      accent: "#c8912f", trim: "#f6d878",
+      action: V.button || "TAKE IT HOME", onGo: function () { quit(); },
+      foot: V.signOff || "",
+      body: function (bx, by, bw) {
+        pixTrophy(bx + Math.round(bw / 2) - 7, by, UI.t);
+        by += 22;
+        lines.forEach(function (l) {
+          uiSay(l);
+          /* six, not four: his middle paragraph is five lines wide and
+             was coming out with an ellipsis through the middle of the
+             one sentence on this screen that matters most */
+          wrapText(l, bw - 24, 6).forEach(function (ln) {
+            drawText(bx + Math.round(bw / 2), ln, by,
+                     { align: "center", colour: "#f4ecd8" });
+            by += 10;
+          });
+          by += 4;
+        });
+        return by;
+      },
+    });
   }
 
   /* =======================================================================
@@ -5547,11 +6021,19 @@ window.OuissyCup = (function () {
     var was = G.state;
     G.state = "paused";
     stopCrowd();
-    overlay("PAUSED", scoreLine(), "BACK TO THE MATCH", function () {
-      hideOverlay();
-      G.state = was === "paused" ? "play" : was;
-      startCrowd();
-    }, { alt: "LEAVE THE CUP", onAlt: function () { quit(); } });
+    cardScreen({
+      name: "pause", title: "PAUSED", accent: "#2f5d72", wide: false,
+      action: "BACK TO THE MATCH",
+      onGo: function () {
+        uiClose();
+        G.state = was === "paused" ? "play" : was;
+        startCrowd();
+        if (EL["cup-hud"]) EL["cup-hud"].hidden = false;
+        if (EL["cup-pad"]) EL["cup-pad"].hidden = false;
+      },
+      alt: "LEAVE THE CUP", onAlt: function () { quit(); },
+      body: function (bx, by, bw) { return cardScore(bx, by, bw); },
+    });
   }
 
   /* Starting is asynchronous now, because the world has to exist before
@@ -5991,6 +6473,23 @@ window.OuissyCup = (function () {
        in a container is not a graphics card. */
     shadows: function (on) { shadowsOn = !!on; },
     goto: function (r) { run.round = clamp(r, 0, CUP.length - 1); roundCard(); },
+    /* the two cards that only come up after a whole run, so a harness
+       can photograph them without playing three matches first */
+    memory: function (i) { memoryCard(i || 0, function () {}); },
+    /* the side under construction, so a harness can check what the
+       builder did without reading it back off a canvas */
+    build: function () {
+      if (!build) return null;
+      var full = build.squad.filter(Boolean).length === 4;
+      return { squad: build.squad.map(function (id) {
+                 return id ? (ROSTER[id] || {}).name || id : "\u2014";
+               }),
+               captain: build.captain, name: build.name, short: build.short,
+               kit: build.kit.shirt, trim: build.kit.trim,
+               crest: build.crest, formation: build.formation,
+               rating: full ? teamRating(build) : 0 };
+    },
+    ending: function () { theEnd(); },
     finish: function (won) { finishRound(won); },
   };
 

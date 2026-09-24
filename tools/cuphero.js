@@ -12,8 +12,7 @@ const { chromium } = require('playwright-core');
 
 (async () => {
   const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-    args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist',
-           '--no-sandbox', '--no-proxy-server'] });
+    args: [       '--no-sandbox', '--no-proxy-server'] });
   const p = await b.newPage({ viewport: { width: 1060, height: 660 }, deviceScaleFactor: 1 });
   const errs = [];
   p.on('pageerror', e => errs.push(e.message));

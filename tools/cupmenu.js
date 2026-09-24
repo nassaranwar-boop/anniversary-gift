@@ -2,8 +2,7 @@
 const { chromium } = require('playwright-core');
 (async () => {
   const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
-    args: ['--use-gl=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist',
-           '--no-sandbox','--no-proxy-server','--autoplay-policy=no-user-gesture-required'] });
+    args: ['--no-sandbox','--no-proxy-server','--autoplay-policy=no-user-gesture-required'] });
   const p = await b.newPage({ viewport: { width: 1060, height: 660 }, deviceScaleFactor: 1 });
   const errs = [];
   p.on('pageerror', e => errs.push(e.message));
@@ -15,15 +14,17 @@ const { chromium } = require('playwright-core');
   await p.evaluate(() => { try { localStorage.clear(); } catch (e) {}
                            showScreen('cup'); OuissyCup.__cup.soundOff();
                            OuissyCup.__cup.shadows(false); OuissyCup.start(); });
-  await p.waitForSelector('#cup-overlay .cup-menu', { timeout: 40000 });
   /* the how-to comes up on its own the first time, and localStorage is
      cleared above, so it is always the first time in here */
-  await p.waitForTimeout(500);
+  await p.waitForFunction(() => OuissyCup.__cup.ui().name === 'help',
+                          { timeout: 40000 });
+  await p.waitForFunction(() => OuissyCup.__cup.ui().age > 1.2, null,
+                          { timeout: 90000, polling: 250 });
   await p.screenshot({ path: '/tmp/cup-help.png' });
-  if (await p.$('[data-go="back"]')) await p.click('[data-go="back"]');
+  await p.evaluate(() => OuissyCup.__cup.press('card_go'));
   /* THE TITLE SCREEN IS NOT DOM ANY MORE EITHER. It waits on the
      screen's own clock rather than the wall's, because under
-     swiftshader a second and a half of real time is a tenth of a second
+     a slow container a second and a half of real time is a fraction of a second
      to the UI and the entrance would still be in flight. */
   await p.waitForFunction(() => OuissyCup.__cup.ui().name === 'title',
                           { timeout: 20000 });
@@ -66,20 +67,24 @@ const { chromium } = require('playwright-core');
   await p.screenshot({ path: '/tmp/cup-select2.png' });
   console.log('next team at:', (await ui()).carAt);
 
+  /* THE BUILDER IS DRAWN TOO. It was the last screen in the chapter
+     made of elements, so this is the last place a harness could reach
+     into the page and read a rating out of an <b>. */
   await uiClick('build');
-  await p.waitForSelector('.cup-build', { timeout: 20000 });
-  await p.waitForTimeout(400);
+  await p.waitForFunction(() => OuissyCup.__cup.ui().name === 'builder',
+                          { timeout: 20000 });
+  await p.waitForFunction(() => OuissyCup.__cup.ui().age > 1.2, null,
+                          { timeout: 90000, polling: 250 });
   await p.screenshot({ path: '/tmp/cup-builder-empty.png' });
 
-  await p.click('[data-go="rand"]');
+  await p.evaluate(() => OuissyCup.__cup.press('b_1'));      // RANDOMISE
   await p.waitForTimeout(700);
   await p.screenshot({ path: '/tmp/cup-builder.png' });
-  console.log('rating:', await p.evaluate(() =>
-    document.querySelector('.cup-rating b').textContent));
   console.log('squad:', await p.evaluate(() =>
-    Array.from(document.querySelectorAll('.cup-slot span')).map(s => s.textContent).join(' / ')));
+    OuissyCup.__cup.build().squad.join(' / ')));
+  console.log('rating:', await p.evaluate(() => OuissyCup.__cup.build().rating));
 
-  await p.click('[data-go="save"]');
+  await p.evaluate(() => OuissyCup.__cup.press('b_0'));      // SAVE
   /* saving drops back onto the pixel carousel */
   await p.waitForFunction(() => OuissyCup.__cup.ui().on, null, { timeout: 30000 });
   await p.waitForFunction(() => OuissyCup.__cup.ui().age > 1.2, null,
