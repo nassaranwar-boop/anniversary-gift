@@ -19,8 +19,24 @@ const { chromium } = require('playwright-core');
   console.log('card:', await p.evaluate(() =>
     (document.querySelector('#cup-overlay .cup-card') || {}).childElementCount));
 
+  /* THE ROUTE HAS TWO MORE DOORS IN IT than when this was written: the
+     controls come up the first time anyone opens the chapter, and then
+     the title menu, and only then the fixture. */
+  await p.click('[data-go="back"]').catch(() => {});
+  await p.waitForSelector('[data-go="coupe"]', { timeout: 20000 });
+  await p.screenshot({ path: '/tmp/cup-menu.png' });
+  await p.click('[data-go="coupe"]');
+  await p.waitForSelector('.cup-card-b', { timeout: 20000 });
+  await p.screenshot({ path: '/tmp/cup-card.png' });
   await p.click('.cup-card-b');
-  await p.waitForTimeout(2400);
+  await p.evaluate(() => {
+    for (let i = 0; i < 260 && OuissyCup.__cup.state().state !== 'play'; i++) {
+      OuissyCup.__cup.step(1, 0, 0, false);
+    }
+    for (let i = 0; i < 90; i++) OuissyCup.__cup.step(1, 0.2, -0.9, false);
+    OuissyCup.__cup.render();
+  });
+  await p.waitForTimeout(400);
   await p.screenshot({ path: '/tmp/cup-play.png' });
 
   /* the goalmouth she is shooting at */

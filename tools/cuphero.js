@@ -56,24 +56,25 @@ const { chromium } = require('playwright-core');
   await p.waitForTimeout(300);
   await p.screenshot({ path: '/tmp/cup-hero.png' });
 
-  /* and a close crop of her, so the sprite can be seen at 1:1 */
+  /* and a close crop of her, so the sprite can be seen at 1:1.
+
+     This used to reach into the scene graph, build a THREE.Vector3 at
+     her feet and project it through the camera. There is no scene graph
+     and no camera object any more, so the renderer answers the same
+     question directly: where on the screen is this place on the pitch? */
   const box = await p.evaluate(() => {
     const C = OuissyCup.__cup;
-    const T = C.three(), g = C.geometry();
-    const me = C.me();
-    const V = T.THREE.Vector3;
-    const feet = new V(me.y - g.pitch.cy, 0, me.x - g.pitch.cx).project(T.camera);
-    const head = new V(me.y - g.pitch.cy, g.height * 1.5, me.x - g.pitch.cx).project(T.camera);
+    const V = C.view2d(), me = C.me();
     const el = document.getElementById('cup-canvas').getBoundingClientRect();
-    const sx = (v) => el.left + (v.x * 0.5 + 0.5) * el.width;
-    const sy = (v) => el.top + (-v.y * 0.5 + 0.5) * el.height;
-    return { x: sx(feet), yFeet: sy(feet), yHead: sy(head) };
+    const feet = V.project(me.x, me.y);
+    /* the renderer draws its virtual screen centred in the canvas at a
+       whole-number scale, so undoing that is the same two numbers */
+    const s = Math.max(1, Math.floor(Math.min(el.width / V.vw, el.height / V.vh)));
+    const ox = el.left + (el.width - V.vw * s) / 2;
+    const oy = el.top + (el.height - V.vh * s) / 2;
+    return { x: ox + feet.x * s, yFeet: oy + feet.y * s,
+             yHead: oy + (feet.y - 48) * s, scale: s };
   });
-  const h = Math.max(150, (box.yFeet - box.yHead) * 1.6);
-  await p.screenshot({ path: '/tmp/cup-hero-crop.png',
-    clip: { x: Math.max(0, box.x - h * 0.6), y: Math.max(0, box.yHead - h * 0.25),
-            width: h * 1.2, height: h * 1.35 } });
-
   console.log(errs.length ? 'ERRORS: ' + errs.slice(0, 3).join(' | ') : 'no page errors');
   console.log('  -> /tmp/cup-hero.png and /tmp/cup-hero-crop.png');
   await b.close();

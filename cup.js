@@ -338,36 +338,41 @@ window.OuissyCup = (function () {
   /* =======================================================================
      5. THE CAST, AS THINGS IN A WORLD
 
-     This chapter is 3D. It was pixel first — flat top-down sprites on a
-     painted pitch, the same as every other chapter here — and it worked,
-     but it was not what was asked for: the reference is a cartoon played
-     on a real pitch with a camera behind the play, and a sprite on a
-     texture cannot be that however carefully it is drawn.
+     THIS CHAPTER WENT 3D AND CAME BACK.
 
-     So the renderer is three.js, on vendor/three.bundle.js — the same
-     bundle index.html already loads for the book intro and the same one
-     the apocalypse runs on, so it costs the page nothing new.
+     It was pixel first — flat top-down sprites on a painted pitch, the
+     same as every other chapter here. That was thrown away for three.js
+     because the reference is a cartoon played on a real pitch with a
+     camera behind the play, and a top-down sprite cannot be that.
 
-     WHAT SURVIVED THE CHANGE, AND WHY THAT MATTERS: all of it except
-     the drawing. The ball physics, possession, the tackling, the four
-     AI brains, the keeper, the match clock, the cup — none of that ever
-     knew what it looked like. It works in (x, y) with a height, and
-     3D is that with the axes renamed: world x is x, world y is z, and
-     the ball's height is y. A renderer is a renderer.
+     The three.js version was right about the camera and wrong about
+     everything the camera was pointing at. Pixel characters standing in
+     a lit 3D world are lit by that world: the shading the compositor
+     drew gets multiplied by a light it knows nothing about, the outline
+     it drew one pixel wide gets resampled by the projection, and the two
+     never agree. Either the art decides how it is lit or the renderer
+     does, and on a site made entirely of pixel art the answer cannot be
+     the renderer.
+
+     So: a real perspective projection of the ground plane, done in a 2D
+     canvas, in cup.pitch2d.js. The camera is still behind the play and
+     still looking up the pitch. The grass, the markings, the goals and
+     the stand are all in perspective. The CHARACTERS are drawn at 1:1
+     and never scaled, which is the one compromise and the one arcade
+     football has always made.
+
+     WHAT SURVIVED BOTH CHANGES, AND WHY THAT MATTERS: all of it except
+     the drawing. The ball physics, possession, the tackling, the four AI
+     brains, the keeper, the match clock, the cup — none of that ever
+     knew what it looked like. It works in (x, y) with a height, and it
+     has now been rendered three different ways without one line of it
+     being touched. A renderer is a renderer.
 
      A character is a look, not a model: a skin, a hair colour, a head
-     shape and whatever that particular one brings with it — ears, a
-     muzzle, a shako, a bun. The rig underneath is the same for all of
-     them, which is what lets a cat and a bear and a tin soldier line up
-     in the same kit without one of them needing a body of its own.
+     shape and whatever that particular one brings with it. It is
+     resolved out of ROSTER in cup.config.js and drawn by
+     cup.sprites.js, which is the only place a character is defined.
      ======================================================================= */
-  /* The cast used to be a table here: twelve borrowed characters from
-     the other chapters, each a skin, a hair colour and a head. It was
-     read by nothing by the time the fourteen originals in cup.config.js
-     replaced it — `buildRig` resolves a look out of ROSTER and has done
-     since the roster existed — so it has gone rather than sitting here
-     looking like the place a character is defined. Characters are
-     defined in cup.config.js. */
 
   var INK = "#141a16";        /* the outline. Not black: pure black against
                                  this green reads as a hole, not an edge. */
@@ -390,325 +395,87 @@ window.OuissyCup = (function () {
      that translates — `place()` — and nothing else in the file has to
      hold both ideas in its head at once.
      ======================================================================= */
-  var THREE = null, renderer = null, scene = null, camera = null, goals = [];
-  /* what a venue changes when the fixture moves to another campus */
-  var VEN = { sky: null, ground: null, hemi: null, amb: null,
-              stands: [], seats: [], masts: [], lamps: [], cur: null };
-  var sun = null, pitchGroup = null, rigs = [], ballMesh = null, ballGroup = null;
-  var shadowsOn = true;
+  /* =======================================================================
+     THE WORLD IS TWO-DIMENSIONAL NOW
+
+     This chapter used to build a three.js scene: a sky dome, a lit
+     ground plane with a baked turf texture on it, goal frames, stands
+     wrapped in a crowd texture, corner flags, a key light with a shadow
+     map that followed the ball, and a rig per player. All of it is gone.
+
+     The character bible's Part 8 asks for the game to commit to 2D, and
+     the reason is not nostalgia. A pixel character standing in a lit 3D
+     world is lit by that world: the shading the compositor drew is
+     multiplied by a light it knows nothing about, the outline it drew
+     one pixel wide is resampled by the projection, and the two never
+     agree. Either the art decides how it is lit or the renderer does.
+     Here it is the art.
+
+     What is left of the world in this file is what the simulation
+     actually needs: which venue is on, and the numbers that describe the
+     pitch. Everything visible is cup.pitch2d.js's job.
+     ======================================================================= */
+  var R2 = null;                 // the 2D renderer
+  var rigs = [];                 // one small animation state per player
+  var shadowsOn = true;          // kept: the settings screen still offers it
+  var netBulge = [0, 0];         // how hard each net was hit, 1 down to 0
+  var VEN = { cur: null };
+
+  /* the pitch in the renderer's terms. It takes the simulation's own
+     numbers and works its scale out from them, so nothing in here has to
+     remember a conversion factor. */
+  function worldSpec() {
+    return {
+      halfW: PITCH.w / 2, len: PITCH.h,
+      goalHalf: PITCH.goalW / 2, goalDepth: PITCH.goalDepth,
+      boxHalf: PITCH.boxW / 2, boxDepth: PITCH.boxH,
+      sixHalf: PITCH.sixW / 2, sixDepth: PITCH.sixH,
+      circleR: PITCH.circleR, spot: PITCH.spot,
+    };
+  }
 
   /* THE ONE PLACE THE TWO IDEAS MEET.
-     The simulation thinks in (x across the pitch, y up it). The camera
-     watches from the touchline, so on screen the LENGTH of the pitch
-     runs left to right and the width runs into the distance:
 
-         scene X  =  y   how far up the pitch      (screen left/right)
-         scene Z  =  x   how far across it         (towards the camera)
-         scene Y  =  height
+     The simulation thinks in (x across the pitch, y up it), with y0 at
+     their goal line and y1 at hers. The camera stands behind HER goal
+     and looks up the pitch, so on screen:
 
-     Every builder, every rig and the camera itself goes through here.
-     Nothing else in the file holds both ideas at once. */
-  function place(o, x, y, h) {
-    o.position.set(y - PITCH.cy, h || 0, x - PITCH.cx);
-  }
-  function sceneX(y) { return y - PITCH.cy; }
-  function sceneZ(x) { return x - PITCH.cx; }
+         world X  =  x - centre       across, left to right
+         world Y  =  y1 - y           away from the camera
 
-  function loadThree() {
-    if (THREE) return Promise.resolve(THREE);
-    if (window.THREE) { THREE = window.THREE; return Promise.resolve(THREE); }
-    return new Promise(function (res, rej) {
-      var s = document.createElement("script");
-      s.src = "vendor/three.bundle.js";
-      s.onload = function () { THREE = window.THREE; res(THREE); };
-      s.onerror = rej;
-      document.head.appendChild(s);
-    });
-  }
+     Every draw call goes through these two. Nothing else in the file
+     holds both ideas at once. */
+  function wX(x) { return x - PITCH.cx; }
+  function wY(y) { return PITCH.y1 - y; }
 
-  /* ---- textures, all painted into canvases at load ---- */
+  /* kept so the chapter still loads the same way; there is nothing left
+     to fetch, and the promise is what start() waits on */
+  function loadThree() { return Promise.resolve(true); }
+
   function mkCanvas(w, h) {
     var c = document.createElement("canvas");
     c.width = w; c.height = h;
     return { c: c, x: c.getContext("2d") };
   }
-  function tex(canvas, repX, repY) {
-    var t = new THREE.CanvasTexture(canvas);
-    t.colorSpace = THREE.SRGBColorSpace;
-    t.anisotropy = 8;
-    if (repX || repY) {
-      t.wrapS = t.wrapT = THREE.RepeatWrapping;
-      t.repeat.set(repX || 1, repY || 1);
-    }
-    return t;
-  }
 
-  /* THE PITCH, painted flat and then laid on the ground.
-
-     Four pixels of texture to one unit of world, which is enough that a
-     goal line stays a crisp line when the camera is right on top of it
-     and not so much that the texture costs more than the rest of the
-     scene put together. */
-  var TPX = 4;
-  function pitchTexture() {
-    var P = PITCH;
-    var W = Math.round((P.w + P.margin * 2) * TPX);
-    var H = Math.round((P.h + (P.goalDepth + P.margin) * 2) * TPX);
-    var p = mkCanvas(W, H);
-    var x = p.x;
-    var ox = P.margin * TPX, oy = (P.goalDepth + P.margin) * TPX;
-
-    /* The mown stripes, across the pitch the way they are cut — and
-       then some wear in them. A pitch of two flat greens is a snooker
-       table: what makes grass read as grass at this distance is that
-       every band has a little variation along it and the middle is
-       scuffed where everybody has been standing. */
-    for (var i = 0; i < H; i++) {
-      var band = Math.floor(i / (11 * TPX)) % 2;
-      x.fillStyle = band ? (VEN.cur && VEN.cur.stripe || "#3f9b46")
-                         : (VEN.cur && VEN.cur.grass || "#4bab52");
-      x.fillRect(0, i, W, 1);
-    }
-    for (var n = 0; n < 5200; n++) {
-      var gx = Math.random() * W, gy = Math.random() * H;
-      x.fillStyle = Math.random() < 0.5 ? "rgba(255,255,255,.035)" : "rgba(0,50,10,.045)";
-      x.fillRect(gx, gy, 2 + Math.random() * 7, 1);
-    }
-    /* the worn strip down the middle and the two goalmouths */
-    var wear = x.createLinearGradient(0, 0, 0, H);
-    wear.addColorStop(0, "rgba(150,130,70,.16)");
-    wear.addColorStop(0.16, "rgba(150,130,70,0)");
-    wear.addColorStop(0.84, "rgba(150,130,70,0)");
-    wear.addColorStop(1, "rgba(150,130,70,.16)");
-    x.fillStyle = wear;
-    x.fillRect(W * 0.30, 0, W * 0.40, H);
-    /* outside the touchline it is a shade deeper, so the playing area is
-       the lit part of the picture rather than a rectangle of lines */
-    x.fillStyle = "rgba(8,38,14,.20)";
-    x.fillRect(0, 0, ox, H); x.fillRect(W - ox, 0, ox, H);
-    x.fillRect(0, 0, W, oy); x.fillRect(0, H - oy, W, oy);
-
-    var L = 0.9 * TPX;
-    x.strokeStyle = "rgba(248,252,244,.92)";
-    x.lineWidth = L;
-    var box = function (bx, by, bw, bh) { x.strokeRect(bx, by, bw, bh); };
-    box(ox, oy, P.w * TPX, P.h * TPX);
-    x.beginPath();
-    x.moveTo(ox, oy + (P.h / 2) * TPX); x.lineTo(ox + P.w * TPX, oy + (P.h / 2) * TPX);
-    x.stroke();
-    x.beginPath();
-    x.arc(ox + (P.w / 2) * TPX, oy + (P.h / 2) * TPX, P.circleR * TPX, 0, Math.PI * 2);
-    x.stroke();
-    x.fillStyle = "rgba(248,252,244,.92)";
-    x.beginPath();
-    x.arc(ox + (P.w / 2) * TPX, oy + (P.h / 2) * TPX, 1.4 * TPX, 0, Math.PI * 2);
-    x.fill();
-
-    [0, 1].forEach(function (end) {
-      var gl = oy + (end ? P.h : 0) * TPX;
-      var sgn = end ? -1 : 1;
-      box(ox + (P.w / 2 - P.boxW / 2) * TPX, end ? gl - P.boxH * TPX : gl,
-          P.boxW * TPX, P.boxH * TPX);
-      box(ox + (P.w / 2 - P.sixW / 2) * TPX, end ? gl - P.sixH * TPX : gl,
-          P.sixW * TPX, P.sixH * TPX);
-      var spotY = gl + sgn * P.spot * TPX;
-      x.beginPath();
-      x.arc(ox + (P.w / 2) * TPX, spotY, 1.4 * TPX, 0, Math.PI * 2);
-      x.fill();
-      /* the D, which everybody can draw from memory and nobody includes */
-      x.beginPath();
-      x.arc(ox + (P.w / 2) * TPX, spotY, 30 * TPX,
-            end ? Math.PI : 0, end ? Math.PI * 2 : Math.PI);
-      x.stroke();
-    });
-    return p.c;
-  }
-
-  /* the net: a transparent canvas with a grid on it, tiled */
-  function netTexture() {
-    var n = mkCanvas(64, 64);
-    var x = n.x;
-    x.strokeStyle = "rgba(255,255,255,.78)";
-    x.lineWidth = 3;
-    for (var i = 0; i <= 64; i += 16) {
-      x.beginPath(); x.moveTo(i, 0); x.lineTo(i, 64); x.stroke();
-      x.beginPath(); x.moveTo(0, i); x.lineTo(64, i); x.stroke();
-    }
-    return n.c;
-  }
-
-  /* the stand: rows of little people, seeded off their index so the
-     crowd does not shimmer when the camera moves across it */
   var CROWD_COLS = ["#e0607f", "#f5d020", "#5fb0d6", "#f2f2ef", "#b46fd0",
-                    "#7f9a5e", "#e88a4a", "#c1272d", "#4a5f86", "#e6b7cd"];
-  function crowdTexture() {
-    var c = mkCanvas(512, 128);
-    var x = c.x;
-    x.fillStyle = "#1c2933"; x.fillRect(0, 0, 512, 128);
-    for (var r = 0; r < 128; r += 16) {
-      x.fillStyle = "rgba(0,0,0,.22)";
-      x.fillRect(0, r + 13, 512, 3);
-      for (var i = 0; i < 512; i += 14) {
-        var s = (i * 7 + r * 31) % CROWD_COLS.length;
-        var jitter = ((i * 13 + r * 7) % 5) - 2;
-        x.fillStyle = CROWD_COLS[s];
-        x.fillRect(i + 3 + (r / 16 % 2) * 7, r + 4 + jitter, 8, 9);
-        x.fillStyle = ["#f0cfae", "#c9926a", "#8a5f3d", "#e8c9a8"][(i + r) % 4];
-        x.beginPath();
-        x.arc(i + 7 + (r / 16 % 2) * 7, r + 3 + jitter, 3.4, 0, Math.PI * 2);
-        x.fill();
-      }
-    }
-    return c.c;
-  }
+                    "#7fd6a0", "#f09050", "#c8d0e0"];
 
-  /* the advertising boards, which are what stop the crowd bleeding into
-     the grass and are the one place the other chapters get a mention */
-  function boardTexture() {
-    var c = mkCanvas(1024, 64);
-    var x = c.x;
-    var words = ["THE LONG WAY ROUND", "SUPER OUISSY", "WICK & COGS TOYS",
-                 "MEMORY LANE", "2207", "OUISSY'S CUP"];
-    var bg = ["#12324a", "#c1272d", "#1f6f4a", "#3a3f6b", "#8a2f5e", "#12324a"];
-    for (var i = 0; i < 6; i++) {
-      x.fillStyle = bg[i];
-      x.fillRect(i * 171, 0, 171, 64);
-      x.fillStyle = "rgba(255,255,255,.92)";
-      x.font = "bold 30px 'Silkscreen', monospace";
-      x.textAlign = "center"; x.textBaseline = "middle";
-      x.fillText(words[i], i * 171 + 85, 34);
-    }
-    return c.c;
-  }
-
-  function skyTexture(v) {
-    v = v || {};
-    var c = mkCanvas(8, 256);
-    var g = c.x.createLinearGradient(0, 0, 0, 256);
-    g.addColorStop(0, v.sky || "#2f7fc4");
-    g.addColorStop(0.62, mixHex(v.sky || "#2f7fc4", v.horizon || "#dfeef5", 0.55));
-    g.addColorStop(1, v.horizon || "#dfeef5");
-    c.x.fillStyle = g; c.x.fillRect(0, 0, 8, 256);
-    return c.c;
-  }
   function mixHex(a, b, t) {
-    var A = parseInt(a.slice(1), 16), B = parseInt(b.slice(1), 16);
-    var r = Math.round((((A >> 16) & 255) * (1 - t)) + (((B >> 16) & 255) * t));
-    var g2 = Math.round(((((A >> 8) & 255)) * (1 - t)) + ((((B >> 8) & 255)) * t));
-    var b2 = Math.round(((A & 255) * (1 - t)) + ((B & 255) * t));
-    return "#" + ((1 << 24) + (r << 16) + (g2 << 8) + b2).toString(16).slice(1);
-  }
-
-  /* ---- materials ---- */
-  function toon(col, opts) {
-    opts = opts || {};
-    var m = new THREE.MeshToonMaterial({ color: new THREE.Color(col) });
-    if (opts.map) m.map = opts.map;
-    if (opts.transparent) { m.transparent = true; m.opacity = opts.opacity; }
-    if (opts.side) m.side = opts.side;
-    return m;
-  }
-  /* The outline: a copy of the mesh, grown a little and turned inside
-     out. It is the single thing that makes a cartoon look drawn rather
-     than modelled, and it is why the reference reads the way it does. */
-  function outline(mesh, grow) {
-    var o = new THREE.Mesh(mesh.geometry, new THREE.MeshBasicMaterial({
-      color: new THREE.Color(INK), side: THREE.BackSide,
-    }));
-    o.scale.multiplyScalar(grow || 1.07);
-    o.position.copy(mesh.position);
-    o.rotation.copy(mesh.rotation);
-    o.renderOrder = -1;
-    return o;
-  }
-
-  /* ---- the stadium ---- */
-  function buildWorld() {
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color("#8fc9e8");
-    scene.fog = new THREE.Fog(new THREE.Color("#a8d6ea"), 380, 760);
-
-    var P = PITCH;
-    var fullW = P.w + P.margin * 2, fullH = P.h + (P.goalDepth + P.margin) * 2;
-
-    /* the sky, on the inside of a big dome */
-    var sky = new THREE.Mesh(
-      new THREE.SphereGeometry(900, 24, 16),
-      new THREE.MeshBasicMaterial({ map: tex(skyTexture()), side: THREE.BackSide, fog: false })
-    );
-    scene.add(sky);
-    VEN.sky = sky;
-
-    /* the grass the stadium is standing on, beyond the pitch itself */
-    var around = new THREE.Mesh(
-      new THREE.PlaneGeometry(fullH + 240, fullW + 240),
-      toon("#3c8c42")
-    );
-    around.rotation.x = -Math.PI / 2;
-    around.position.y = -0.4;
-    around.receiveShadow = true;
-    scene.add(around);
-
-    pitchGroup = new THREE.Group();
-    scene.add(pitchGroup);
-
-    /* the pitch texture is painted the way the simulation thinks — long
-       axis vertical — so the plane is laid out long-axis-horizontal and
-       the texture is turned a quarter turn to match rather than being
-       painted twice */
-    var pt = tex(pitchTexture());
-    pt.center.set(0.5, 0.5);
-    pt.rotation = Math.PI / 2;
-    var ground = new THREE.Mesh(new THREE.PlaneGeometry(fullH, fullW), toon("#ffffff", { map: pt }));
-    ground.rotation.x = -Math.PI / 2;
-    ground.receiveShadow = true;
-    pitchGroup.add(ground);
-    VEN.ground = ground;
-
-    buildGoal(0);
-    buildGoal(1);
-    buildStands(fullW, fullH);
-    buildCornerFlags();
-
-    /* ---- light. A cartoon wants one strong key and a lot of bounce:
-       the shadows are what put the players ON the grass, and the fill is
-       what stops the shaded side of a head going muddy. ---- */
-    VEN.hemi = new THREE.HemisphereLight(new THREE.Color("#cfe9ff"),
-                                         new THREE.Color("#2f6b34"), 1.15);
-    scene.add(VEN.hemi);
-    sun = new THREE.DirectionalLight(new THREE.Color("#fff6e0"), 2.1);
-    sun.position.set(-120, 240, 150);
-    sun.castShadow = true;
-    /* The shadow camera follows the ball rather than covering the whole
-       pitch. A map stretched over 288 by 404 units is a map with about
-       three texels per player on it, and what that looks like is a
-       smudge — so it covers a hundred units around the action instead
-       and moves with it. */
-    sun.shadow.mapSize.set(1024, 1024);
-    sun.shadow.camera.left = -110; sun.shadow.camera.right = 110;
-    sun.shadow.camera.top = 110; sun.shadow.camera.bottom = -110;
-    sun.shadow.camera.near = 10; sun.shadow.camera.far = 620;
-    sun.shadow.bias = -0.0022;
-    sun.shadow.normalBias = 0.6;
-    scene.add(sun);
-    scene.add(sun.target);
-    VEN.amb = new THREE.AmbientLight(new THREE.Color("#ffffff"), 0.35);
-    scene.add(VEN.amb);
+    var ca = parseInt(String(a).slice(1), 16), cb = parseInt(String(b).slice(1), 16);
+    var f = function (sft) {
+      return Math.round((((ca >> sft) & 255) * (1 - t)) + (((cb >> sft) & 255) * t));
+    };
+    return "#" + ((1 << 24) + (f(16) << 16) + (f(8) << 8) + f(0)).toString(16).slice(1);
   }
 
   /* =======================================================================
      THE VENUE
 
-     Six faculties, five campuses, and every fixture played at one of
-     them. A venue is an hour of the day more than it is a place: the
-     sky, the key light, how much bounce there is, the turf and the
-     concrete all move together, and that is enough to make the same
-     pitch read as Marrakech at half six and Casablanca at eleven.
-
-     The floodlit one is the important one. It is the final, and the
-     derby, and it needs far more ambient than a daylight match or
-     every face on the pitch goes to silhouette and the game stops
-     being readable — which is the whole trap with night lighting.
+     Five campuses, and each one is now a PALETTE rather than a lighting
+     rig. There is no sun to colour and no fog to pull in; a venue is the
+     grass it is played on, the stand around it and the sky behind it,
+     and cup.pitch2d.js derives every other tone it draws from those.
      ======================================================================= */
   function venueById(id) {
     var list = cfg("VENUES", []);
@@ -718,592 +485,9 @@ window.OuissyCup = (function () {
 
   function applyVenue(id) {
     var v = venueById(id);
-    if (!v || !scene) return;
+    if (!v) return;
     VEN.cur = v;
-
-    scene.background = new THREE.Color(v.horizon || "#8fc9e8");
-    if (scene.fog) {
-      scene.fog.color.set(v.horizon || "#a8d6ea");
-      if (v.fog) { scene.fog.near = v.fog[0]; scene.fog.far = v.fog[1]; }
-    }
-    if (VEN.sky) {
-      if (VEN.sky.material.map) VEN.sky.material.map.dispose();
-      VEN.sky.material.map = tex(skyTexture(v));
-      VEN.sky.material.needsUpdate = true;
-    }
-    if (sun) {
-      sun.color.set(v.sun || "#fff6e0");
-      sun.intensity = v.sunStrength || 2.1;
-    }
-    if (VEN.hemi) {
-      VEN.hemi.color.set(mixHex(v.sky || "#cfe9ff", "#ffffff", 0.35));
-      VEN.hemi.groundColor.set(v.stripe || "#2f6b34");
-      VEN.hemi.intensity = v.floodlit ? 0.75 : 1.15;
-    }
-    if (VEN.amb) VEN.amb.intensity = v.ambient || 0.35;
-
-    /* the turf is baked into a texture, so a new campus means a new one.
-       Once per fixture, which is nothing. */
-    if (VEN.ground) {
-      if (VEN.ground.material.map) VEN.ground.material.map.dispose();
-      var pt = tex(pitchTexture());
-      pt.center.set(0.5, 0.5); pt.rotation = Math.PI / 2;
-      VEN.ground.material.map = pt;
-      VEN.ground.material.needsUpdate = true;
-    }
-    VEN.stands.forEach(function (m) { if (m.material.color) m.material.color.set(v.stand || "#5b6570"); });
-    /* the crowd goes darker at night and brighter in the sun, which is
-       what stops a night stand reading as a black wall */
-    var seatTone = v.seats === "warm" ? "#c8a878" : v.seats === "bright" ? "#ffffff" : "#e8eef2";
-    VEN.seats.forEach(function (m) { if (m.material.color) m.material.color.set(seatTone); });
-    /* floodlights only burn when the fixture needs them */
-    VEN.lamps.forEach(function (l) {
-      l.material.color.set(v.floodlit ? "#fffbe8" : "#7e8894");
-    });
-    /* Under lights the grass goes cooler and a shade down, and the key
-       light comes from above rather than across. Left at daylight
-       values a night match is simply a dark sky over a sunny pitch,
-       which reads as a mistake rather than as an evening. */
-    if (VEN.ground && VEN.ground.material.color) {
-      VEN.ground.material.color.set(v.floodlit ? "#cfe0e8" : "#ffffff");
-    }
-    VEN.masts.forEach(function (m) { m.visible = true; });
-  }
-
-  function buildGoal(end) {
-    var P = PITCH;
-    var gl = end ? P.y1 : P.y0;
-    var sgn = end ? 1 : -1;                    // which way the net goes back
-    var g = new THREE.Group();
-    var postR = 1.1, H = 13, halfW = P.goalW / 2, D = P.goalDepth;
-    var white = toon("#f8fbf4");
-
-    var bar = new THREE.Mesh(new THREE.CylinderGeometry(postR, postR, P.goalW, 10), white);
-    bar.rotation.z = Math.PI / 2;
-    bar.position.set(0, H, 0);
-    bar.castShadow = true;
-    g.add(bar); g.add(outline(bar, 1.16));
-
-    [-1, 1].forEach(function (s) {
-      var post = new THREE.Mesh(new THREE.CylinderGeometry(postR, postR, H, 10), white);
-      post.position.set(s * halfW, H / 2, 0);
-      post.castShadow = true;
-      g.add(post); g.add(outline(post, 1.16));
-    });
-
-    /* the net: a back and two sides, and a roof, in one tiled texture */
-    var nt = tex(netTexture(), 5, 3);
-    var netMat = new THREE.MeshBasicMaterial({
-      map: nt, transparent: true, side: THREE.DoubleSide, depthWrite: false, opacity: 0.85,
-    });
-    var back = new THREE.Mesh(new THREE.PlaneGeometry(P.goalW, H), netMat);
-    back.position.set(0, H / 2, sgn * D);
-    g.add(back);
-    /* kept, so a goal can push the back of the net out and let it
-       settle — a ball that goes in and changes nothing has not gone in */
-    g.userData.netBack = back;
-    g.userData.restZ = sgn * D;
-    g.userData.sgn = sgn;
-    goals[end] = g;
-    [-1, 1].forEach(function (s) {
-      var side = new THREE.Mesh(new THREE.PlaneGeometry(D, H), netMat);
-      side.rotation.y = Math.PI / 2;
-      side.position.set(s * halfW, H / 2, sgn * D / 2);
-      g.add(side);
-    });
-    var roof = new THREE.Mesh(new THREE.PlaneGeometry(P.goalW, D), netMat);
-    roof.rotation.x = Math.PI / 2;
-    roof.position.set(0, H, sgn * D / 2);
-    g.add(roof);
-
-    place(g, P.cx, gl, 0);
-    /* built with its mouth along local X; the mouth spans the WIDTH of
-       the pitch, which is scene Z now, so it turns a quarter */
-    g.rotation.y = Math.PI / 2;
-    pitchGroup.add(g);
-  }
-
-  function buildStands(fullW, fullH) {
-    var ct = tex(crowdTexture(), 8, 1);
-    /* kept, so the crowd can be made to sway. It is one texture shared
-       by all four stands, so nudging its offset moves every person in
-       the ground at once for the price of one number. */
-    crowdTex = ct;
-    var bt = tex(boardTexture(), 3, 1);
-    var crowdMat = toon("#ffffff", { map: ct });
-    var boardMat = toon("#ffffff", { map: bt });
-    var concrete = toon("#5b6570");
-    var steel = toon("#8e98a4");
-
-    /* Four sides. `along` is how long that side of the ground is and
-       `out` is how far from the middle it sits; the two ends are short
-       and the two touchlines are long, and in this view the touchlines
-       are the ones you see. */
-    var sides = [
-      { rot: 0,             along: fullH, out: fullW / 2 + 14, axis: "z", sign: 1 },
-      { rot: Math.PI,       along: fullH, out: fullW / 2 + 14, axis: "z", sign: -1 },
-      { rot: Math.PI / 2,   along: fullW, out: fullH / 2 + 14, axis: "x", sign: 1 },
-      { rot: -Math.PI / 2,  along: fullW, out: fullH / 2 + 14, axis: "x", sign: -1 },
-    ];
-    sides.forEach(function (sd) {
-      var grp = new THREE.Group();
-
-      var board = new THREE.Mesh(new THREE.BoxGeometry(sd.along, 7, 2.4), boardMat);
-      board.position.set(0, 3.5, 0);
-      board.castShadow = true;
-      grp.add(board);
-
-      /* the rake of seats, and a lip of concrete under it so the stand
-         does not appear to be balancing on the advertising */
-      /* OUTWARD. Every part of a stand is placed along its own local
-         +z, which each side's rotation turns into "away from the
-         pitch". Built along -z, as these were, the four stands are
-         erected across the grass: the rake lands on the touchline, the
-         roof hangs over the penalty area, and the pillars stand in the
-         middle of the picture like scaffolding nobody took down. */
-      var kerb = new THREE.Mesh(new THREE.BoxGeometry(sd.along + 26, 6, 10), concrete);
-      kerb.position.set(0, 3, 7);
-      grp.add(kerb);
-
-      var rake = new THREE.Mesh(new THREE.BoxGeometry(sd.along + 26, 52, 58), crowdMat);
-      rake.position.set(0, 26, 34);
-      rake.rotation.x = 0.32;
-      grp.add(rake);
-
-      var roof = new THREE.Mesh(new THREE.BoxGeometry(sd.along + 40, 3.5, 66), concrete);
-      roof.position.set(0, 60, 46);
-      grp.add(roof);
-      for (var i = -2; i <= 2; i++) {
-        var col = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, 60, 8), steel);
-        col.position.set(i * (sd.along / 5), 30, 74);
-        grp.add(col);
-      }
-
-      grp.rotation.y = sd.rot;
-      if (sd.axis === "z") grp.position.set(0, 0, sd.sign * sd.out);
-      else grp.position.set(sd.sign * sd.out, 0, 0);
-      pitchGroup.add(grp);
-      VEN.stands.push(kerb, roof);
-      VEN.seats.push(rake);
-    });
-
-    /* four floodlights, one per corner, because a stadium at this hour
-       has them on and they are the tallest thing in the picture */
-    [[1, 1], [1, -1], [-1, 1], [-1, -1]].forEach(function (c) {
-      var m = new THREE.Group();
-      var mast = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 2.4, 96, 8), toon("#7b8590"));
-      mast.position.y = 48;
-      m.add(mast);
-      var rigM = new THREE.Mesh(new THREE.BoxGeometry(22, 13, 3), toon("#4b535c"));
-      rigM.position.set(0, 98, 0);
-      m.add(rigM);
-      for (var a = 0; a < 3; a++) for (var b2 = 0; b2 < 2; b2++) {
-        var lamp = new THREE.Mesh(new THREE.BoxGeometry(5.6, 4.6, 1.4),
-          new THREE.MeshBasicMaterial({ color: new THREE.Color("#fff7d8") }));
-        lamp.position.set((a - 1) * 7, 98 + (b2 ? 3.2 : -3.2), 1.9);
-        m.add(lamp);
-        VEN.lamps.push(lamp);
-      }
-      m.position.set(c[0] * (fullH / 2 + 46), 0, c[1] * (fullW / 2 + 40));
-      pitchGroup.add(m);
-      VEN.masts.push(m);
-    });
-  }
-
-  function buildCornerFlags() {
-    var P = PITCH;
-    [[P.x0, P.y0], [P.x1, P.y0], [P.x0, P.y1], [P.x1, P.y1]].forEach(function (c) {
-      var g = new THREE.Group();
-      var pole = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.4, 10, 6), toon("#f8fbf4"));
-      pole.position.y = 5;
-      g.add(pole);
-      var flag = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 3.2),
-                                toon("#f5d020", { side: THREE.DoubleSide }));
-      flag.position.set(2.3, 8.6, 0);
-      g.add(flag);
-      place(g, c[0], c[1], 0);
-      pitchGroup.add(g);
-    });
-  }
-
-  /* =======================================================================
-     7. A PLAYER, BUILT
-
-     Big head, small body, thick outline — the cartoon proportion. Every
-     part is a primitive and every part is named, because the run cycle
-     is just four rotations and a bob and it needs to reach them.
-     ======================================================================= */
-  function buildRig(pl) {
-    /* `pl` is either a player on the pitch or a bare {face, teamId, gk}
-       from a menu or a harness. Either way the look comes out of the
-       roster in cup.config.js and the kit comes off the team. */
-    var look = ROSTER[pl.face] || ROSTER[pl.id] || FALLBACK_LOOK;
-    var team = teamById(pl.teamId) || teamById("mar") || {};
-    var kit = pl.kit || (pl.gk ? team.gkKit : team.kit) || {
-      shirt: "#c1272d", shirtDark: "#8f1a20", shorts: "#0e6b3c",
-      shortsDark: "#08492a", socks: "#c1272d", trim: "#ffffff" };
-    var bh = (look.build && look.build.h) || 1;
-    var bw = (look.build && look.build.w) || 1;
-    var b = 1;
-    var g = new THREE.Group();
-    var parts = { group: g, build: { h: bh, w: bw }, look: look };
-
-    var skinM = toon(look.skin);
-    var shirtM = toon(kit.shirt);
-    var shortM = toon(kit.shorts);
-    var sockM = toon(kit.socks);
-    var bootM = toon("#26221f");
-    var hairM = toon(look.hair);
-
-    /* legs */
-    parts.legs = [-1, 1].map(function (s) {
-      var leg = new THREE.Group();
-      var thigh = new THREE.Mesh(new THREE.CapsuleGeometry(1.15 * b, 2.6 * b, 4, 8), shortM);
-      thigh.position.y = -1.6 * b;
-      thigh.castShadow = true;
-      leg.add(thigh);
-      var shin = new THREE.Mesh(new THREE.CapsuleGeometry(1.0 * b, 2.4 * b, 4, 8), sockM);
-      shin.position.y = -4.1 * b;
-      shin.castShadow = true;
-      leg.add(shin);
-      var boot = new THREE.Mesh(new THREE.BoxGeometry(2.1 * b, 1.3 * b, 3.2 * b), bootM);
-      boot.position.set(0, -5.8 * b, 0.5 * b);
-      boot.castShadow = true;
-      leg.add(boot);
-      leg.position.set(s * 1.5 * b, 6.4 * b, 0);
-      g.add(leg);
-      return leg;
-    });
-
-    /* body */
-    var torso = new THREE.Mesh(new THREE.CapsuleGeometry(2.9 * b, 2.6 * b, 5, 12), shirtM);
-    torso.position.y = 8.4 * b;
-    torso.castShadow = true;
-    g.add(torso); g.add(outline(torso, 1.11));
-    parts.torso = torso;
-
-    /* the number on the back, which is the one bit of kit detail that
-       reads from where this camera sits */
-    var numM = toon(kit.trim);
-    var num = new THREE.Mesh(new THREE.CircleGeometry(1.5 * b, 12), numM);
-    num.position.set(0, 9.1 * b, -2.75 * b);
-    num.rotation.y = Math.PI;
-    g.add(num);
-
-    /* arms */
-    parts.arms = [-1, 1].map(function (s) {
-      var arm = new THREE.Group();
-      var up = new THREE.Mesh(new THREE.CapsuleGeometry(0.85 * b, 2.0 * b, 4, 8), shirtM);
-      up.position.y = -1.3 * b;
-      arm.add(up);
-      var lo = new THREE.Mesh(new THREE.CapsuleGeometry(0.78 * b, 2.0 * b, 4, 8),
-                              pl.gk ? toon(kit.trim) : skinM);
-      lo.position.y = -3.6 * b;
-      lo.castShadow = true;
-      arm.add(lo);
-      arm.position.set(s * 3.3 * b, 9.8 * b, 0);
-      arm.rotation.z = s * 0.14;
-      g.add(arm);
-      return arm;
-    });
-
-    /* head */
-    var head = new THREE.Group();
-    head.position.y = 12.6 * b;
-    var skull = new THREE.Mesh(new THREE.SphereGeometry(3.2 * b, 18, 14), skinM);
-    skull.castShadow = true;
-    head.add(skull); head.add(outline(skull, 1.10));
-    parts.head = head;
-
-    /* eyes, always two, always on the front, because a head with no eyes
-       is a ball and you cannot tell which way a ball is facing */
-    var eyeM = toon("#ffffff");
-    var pupilM = toon(look.eye || "#1b1712");
-    /* Set close together and well forward. The first pair sat at 1.15
-       out and 2.62 deep, which is still on the sphere but far enough
-       round it that from the front they read as eyes on the SIDES of the
-       head — the character looked like a fish. A face wants its eyes
-       inside the middle third of it. */
-    [-1, 1].forEach(function (s) {
-      var w = new THREE.Mesh(new THREE.SphereGeometry(0.80 * b, 10, 8), eyeM);
-      w.position.set(s * 0.95 * b, 0.30 * b, 2.85 * b);
-      w.scale.set(1, 1.2, 0.52);
-      head.add(w);
-      var pu = new THREE.Mesh(new THREE.SphereGeometry(0.38 * b, 8, 6), pupilM);
-      pu.position.set(s * 1.0 * b, 0.22 * b, 3.16 * b);
-      head.add(pu);
-    });
-    /* and a mouth, for the ones whose face is not already a muzzle */
-    if (!look.muzzle) {
-      var mouth = new THREE.Mesh(new THREE.SphereGeometry(0.62 * b, 10, 8),
-                                 toon(look.head === "crop" && look.eye ? "#2a3820" : "#8a3b44"));
-      mouth.position.set(0, -1.35 * b, 2.86 * b);
-      mouth.scale.set(1.5, 0.55, 0.4);
-      head.add(mouth);
-    }
-
-    addHead(head, look, b, hairM, skinM);
-    g.add(head);
-
-    /* the ground shadow, which is a fallback for when the real ones are
-       switched off on a slow device rather than a decoration */
-    /* a hand on the end of each arm — one more ball, and the cheapest
-       thing there is that stops an arm reading as a stick */
-    parts.arms.forEach(function (arm) {
-      var hand = new THREE.Mesh(new THREE.SphereGeometry(0.95 * b, 8, 6),
-                                pl.gk ? toon("#f0e6d2") : skinM);
-      hand.position.y = -5.0 * b;
-      arm.add(hand);
-    });
-    /* the captain's armband, in the colour their super burns */
-    if (look.armband) {
-      var bandM = new THREE.Mesh(new THREE.CylinderGeometry(1.0 * b, 1.0 * b, 1.1 * b, 8),
-                                 toon(look.super ? look.super.colour : "#ffd45e"));
-      bandM.position.set(-3.3 * b, 8.3 * b, 0);
-      bandM.rotation.z = 0.14;
-      g.add(bandM);
-    }
-
-    var blob = new THREE.Mesh(new THREE.CircleGeometry(3.4 * b, 16),
-      new THREE.MeshBasicMaterial({ color: new THREE.Color("#12401c"),
-                                    transparent: true, opacity: 0.26, depthWrite: false }));
-    blob.rotation.x = -Math.PI / 2;
-    blob.position.y = 0.18;
-    g.add(blob);
-    parts.blob = blob;
-
-    /* THE SILHOUETTE. Height and width come from the roster, and they
-       are the first thing that tells one of these from another at the
-       distance the game is played at: Boulder is half again as wide as
-       Comet and you can still tell them apart with the colour turned
-       off, which is the test. */
-    g.scale.set(bw, bh, bw);
-    return parts;
-  }
-
-  /* WHAT EACH ONE HAS ON TOP.
-
-     This is where the roster stops being a table and becomes fourteen
-     different people. The rule every one is built to: it must be
-     tellable from the others with the colour turned off. Flame hair,
-     goggles on a forehead, a flat cap, a bun, shoulder pads — each is a
-     different OUTLINE, because at the size this is played at the
-     outline arrives about a tenth of a second before anything inside it
-     does. */
-  function addHead(head, look, b, hairM, skinM) {
-    var kind = look.head;
-    var accent = toon((look.colour && look.colour.c) || "#ffd45e");
-    var cap = function (frac, lift) {
-      var m = new THREE.Mesh(new THREE.SphereGeometry(3.3 * b, 18, 14,
-        0, Math.PI * 2, 0, Math.PI * (frac || 0.52)), hairM);
-      m.position.y = (lift === undefined ? 0.16 : lift) * b;
-      head.add(m);
-      return m;
-    };
-
-    if (kind === "ouissy") {
-      cap(0.62, 0.12);
-      [-1, 1].forEach(function (s) {
-        var fall = new THREE.Mesh(new THREE.CapsuleGeometry(0.98 * b, 4.0 * b, 4, 8), hairM);
-        fall.position.set(s * 2.15 * b, -2.3 * b, -0.7 * b);
-        fall.rotation.z = s * 0.10;
-        head.add(fall);
-      });
-      var back = new THREE.Mesh(new THREE.SphereGeometry(2.7 * b, 14, 12), hairM);
-      back.position.set(0, -1.1 * b, -1.6 * b);
-      head.add(back);
-
-    } else if (kind === "anwar") {
-      /* HIM, AND HE HAS TO BE HIM.
-
-         This was a skullcap and a rectangle for a fringe, which is a
-         generic short-haired man and is not what he looks like anywhere
-         else on this site. The apocalypse builds him curly, bearded and
-         in glasses, so the man in the dental faculty's shirt is built
-         the same way — out of the flags on his ANWAR block in the
-         config, so all three are one edit.
-
-         Curls are eight small spheres round the crown rather than a
-         smooth cap: at this size a curl is a bump in the SILHOUETTE, and
-         a texture would not survive the buffer this is rendered
-         through. */
-      cap(0.48, 0.18);
-      if (look.curly !== false) {
-        [[-2.3, 1.6, 0.9], [-1.4, 2.7, 1.7], [0, 3.1, 1.9], [1.4, 2.7, 1.7],
-         [2.3, 1.6, 0.9], [-2.6, 1.0, -1.2], [0, 2.6, -2.0], [2.6, 1.0, -1.2]]
-          .forEach(function (c, i) {
-            var curl = new THREE.Mesh(
-              new THREE.SphereGeometry((0.95 + (i % 3) * 0.14) * b, 8, 6), hairM);
-            curl.position.set(c[0] * b, c[1] * b, c[2] * b);
-            curl.castShadow = true;
-            head.add(curl);
-          });
-      }
-      if (look.beard !== false) {
-        /* along the jaw and under the chin — three pieces, because a
-           single band round a sphere reads as a chinstrap */
-        var jaw = new THREE.Mesh(new THREE.SphereGeometry(2.95 * b, 14, 10,
-          0, Math.PI * 2, Math.PI * 0.52, Math.PI * 0.30), hairM);
-        jaw.position.set(0, -0.1 * b, 0.35 * b);
-        jaw.scale.set(1.02, 1.12, 1.0);
-        head.add(jaw);
-        var chin = new THREE.Mesh(new THREE.SphereGeometry(1.25 * b, 10, 8), hairM);
-        chin.position.set(0, -2.35 * b, 1.95 * b);
-        chin.scale.set(1.15, 0.85, 0.8);
-        head.add(chin);
-        /* and the moustache, which is the piece that makes it a beard
-           and not a scarf */
-        var tash = new THREE.Mesh(new THREE.BoxGeometry(2.1 * b, 0.55 * b, 0.5 * b), hairM);
-        tash.position.set(0, -0.78 * b, 2.85 * b);
-        head.add(tash);
-      }
-      if (look.glasses !== false) {
-        var frameM = toon("#2a2622");
-        [-1, 1].forEach(function (s) {
-          var lens = new THREE.Mesh(
-            new THREE.TorusGeometry(1.06 * b, 0.17 * b, 6, 14), frameM);
-          lens.position.set(s * 1.0 * b, 0.28 * b, 2.95 * b);
-          head.add(lens);
-        });
-        var bridge = new THREE.Mesh(new THREE.BoxGeometry(0.9 * b, 0.18 * b, 0.18 * b), frameM);
-        bridge.position.set(0, 0.28 * b, 3.05 * b);
-        head.add(bridge);
-      }
-
-    } else if (kind === "flame") {
-      /* Ember: five spikes of different heights leaning back — the only
-         head in the game with a jagged top edge. */
-      cap(0.46, 0.2);
-      [[-2.0, 2.6, -0.4], [-0.9, 3.9, 0.2], [0.2, 4.8, -0.1],
-       [1.3, 3.6, 0.3], [2.2, 2.4, -0.3]].forEach(function (sp) {
-        var f = new THREE.Mesh(new THREE.ConeGeometry(0.85 * b, sp[1] * b, 5), hairM);
-        f.position.set(sp[0] * b, (2.0 + sp[1] * 0.42) * b, sp[2] * b);
-        f.rotation.x = -0.32; f.rotation.z = -sp[0] * 0.09;
-        f.castShadow = true;
-        head.add(f);
-      });
-
-    } else if (kind === "goggles") {
-      /* Comet: goggles pushed up on the forehead — a hard horizontal
-         bar across a round head, which reads instantly. */
-      cap(0.50, 0.18);
-      var strap = new THREE.Mesh(new THREE.CylinderGeometry(3.32 * b, 3.32 * b, 1.3 * b,
-                                                           16, 1, true), toon("#2b3340"));
-      strap.position.y = 1.5 * b;
-      head.add(strap);
-      [-1, 1].forEach(function (s) {
-        var lens = new THREE.Mesh(new THREE.CylinderGeometry(1.15 * b, 1.15 * b, 0.6 * b, 10), accent);
-        lens.rotation.x = Math.PI / 2;
-        lens.position.set(s * 1.35 * b, 1.7 * b, 2.5 * b);
-        head.add(lens);
-      });
-
-    } else if (kind === "bun") {
-      cap(0.58, 0.14);
-      var bun = new THREE.Mesh(new THREE.SphereGeometry(1.5 * b, 12, 10), hairM);
-      bun.position.set(0, 2.5 * b, -2.2 * b);
-      bun.castShadow = true;
-      head.add(bun);
-      if (look.charm) {
-        var ch = new THREE.Mesh(new THREE.BoxGeometry(1.1 * b, 1.4 * b, 1.1 * b), accent);
-        ch.position.set(2.7 * b, -1.6 * b, 0.6 * b);
-        head.add(ch);
-      }
-
-    } else if (kind === "sprig") {
-      cap(0.56, 0.14);
-      var tail = new THREE.Mesh(new THREE.CapsuleGeometry(1.0 * b, 3.4 * b, 4, 8), hairM);
-      tail.position.set(0, -1.4 * b, -2.6 * b);
-      tail.rotation.x = 0.5;
-      head.add(tail);
-      [0, 1, 2].forEach(function (i) {
-        var lf = new THREE.Mesh(new THREE.SphereGeometry(0.62 * b, 8, 6), accent);
-        lf.scale.set(0.5, 1.5, 0.9);
-        lf.position.set(2.6 * b, (1.4 + i * 0.9) * b, -1.0 * b);
-        lf.rotation.z = -0.4 - i * 0.16;
-        head.add(lf);
-      });
-
-    } else if (kind === "phones") {
-      var c7 = cap(0.54, 0.14);
-      c7.scale.set(1.12, 1, 1);
-      var flick = new THREE.Mesh(new THREE.BoxGeometry(2.4 * b, 2.6 * b, 1.4 * b), hairM);
-      flick.position.set(-2.4 * b, 1.1 * b, 0.8 * b);
-      flick.rotation.z = 0.5;
-      head.add(flick);
-      var bandH = new THREE.Mesh(new THREE.TorusGeometry(2.6 * b, 0.42 * b, 6, 14, Math.PI),
-                                 toon("#3a3f4a"));
-      bandH.rotation.z = Math.PI;
-      bandH.position.y = -2.6 * b;
-      head.add(bandH);
-      [-1, 1].forEach(function (s) {
-        var cu = new THREE.Mesh(new THREE.CylinderGeometry(1.0 * b, 1.0 * b, 0.9 * b, 10), accent);
-        cu.rotation.z = Math.PI / 2;
-        cu.position.set(s * 2.7 * b, -2.4 * b, 0);
-        head.add(cu);
-      });
-
-    } else if (kind === "flat") {
-      /* Boulder: no neck, a squat head and a flat top — the widest and
-         lowest outline on the pitch. */
-      var sq = new THREE.Mesh(new THREE.BoxGeometry(5.6 * b, 3.0 * b, 5.0 * b), hairM);
-      sq.position.y = 1.9 * b;
-      sq.castShadow = true;
-      head.add(sq); head.add(outline(sq, 1.07));
-      var brow = new THREE.Mesh(new THREE.BoxGeometry(5.0 * b, 0.7 * b, 0.8 * b), hairM);
-      brow.position.set(0, 0.9 * b, 2.7 * b);
-      head.add(brow);
-
-    } else if (kind === "pads") {
-      cap(0.48, 0.18);
-      [-1, 1].forEach(function (s) {
-        var pad = new THREE.Mesh(new THREE.ConeGeometry(1.9 * b, 2.4 * b, 4), accent);
-        pad.position.set(s * 3.5 * b, -3.2 * b, 0);
-        pad.rotation.z = -s * 0.5;
-        pad.castShadow = true;
-        head.add(pad);
-      });
-
-    } else if (kind === "willow") {
-      cap(0.58, 0.12);
-      [-1, -0.45, 0.45, 1].forEach(function (s, i) {
-        var str = new THREE.Mesh(new THREE.CapsuleGeometry(0.62 * b, 6.2 * b, 4, 6), hairM);
-        str.position.set(s * 2.3 * b, -3.6 * b, -1.2 * b + (i % 2) * 0.6 * b);
-        str.rotation.z = s * 0.12;
-        head.add(str);
-      });
-
-    } else if (kind === "cap") {
-      var crown = new THREE.Mesh(new THREE.SphereGeometry(3.3 * b, 14, 10,
-        0, Math.PI * 2, 0, Math.PI * 0.46), accent);
-      crown.position.y = 0.5 * b;
-      crown.scale.set(1.05, 0.8, 1.05);
-      crown.castShadow = true;
-      head.add(crown);
-      var peak = new THREE.Mesh(new THREE.BoxGeometry(4.6 * b, 0.5 * b, 2.6 * b), accent);
-      peak.position.set(0, 1.5 * b, 2.6 * b);
-      head.add(peak);
-      [-1, 1].forEach(function (s) {
-        var bw2 = new THREE.Mesh(new THREE.BoxGeometry(1.5 * b, 0.6 * b, 0.7 * b), hairM);
-        bw2.position.set(s * 1.1 * b, 1.35 * b, 2.75 * b);
-        bw2.rotation.z = -s * 0.22;
-        head.add(bw2);
-      });
-
-    } else if (kind === "pony") {
-      cap(0.52, 0.16);
-      var tie = new THREE.Mesh(new THREE.SphereGeometry(0.85 * b, 8, 6), accent);
-      tie.position.set(0, 2.6 * b, -2.0 * b);
-      head.add(tie);
-      var pony = new THREE.Mesh(new THREE.CapsuleGeometry(0.95 * b, 4.6 * b, 4, 8), hairM);
-      pony.position.set(0, 1.0 * b, -3.6 * b);
-      pony.rotation.x = 0.85;
-      pony.castShadow = true;
-      head.add(pony);
-
-    } else {
-      cap(0.52, 0.16);                       /* "crop", and anything new */
-    }
+    if (window.CupPitch2D) window.CupPitch2D.venue(v);
   }
 
   /* =======================================================================
@@ -2459,10 +1643,13 @@ window.OuissyCup = (function () {
     G.kickoffTeam = 1 - team;
     G.flash = 1; G.shake = 1;
     G.ball.vx = G.ball.vy = G.ball.vz = 0; G.ball.owner = null;
-    /* which net just bulged: the one she was shooting at */
-    var endHit = ownGoalY(0) === PITCH.y0 ? (team === 0 ? 1 : 0) : (team === 0 ? 0 : 1);
-    var gg = goals[endHit];
-    if (gg) gg.userData.bulge = 1;
+    /* WHICH NET JUST BULGED. The renderer's two goals are the near one
+       (her line, y1) and the far one (theirs, y0), and which of those
+       the ball went into depends on which way round the sides are
+       playing — so it is worked out from the goal she is defending
+       rather than hard-coded, and it survives the half-time swap. */
+    var scoredAtY0 = (ownGoalY(0) === PITCH.y0) ? (team === 0) : (team !== 0);
+    netBulge[scoredAtY0 ? 1 : 0] = 1;
     SFX.net();
     if (team === 0) SFX.goal(); else SFX.concede();
     /* a super that goes in is announced by its own name, not by the
@@ -3111,318 +2298,78 @@ window.OuissyCup = (function () {
      screen: the arms swing up THROUGH the chest and finish inside the
      head, so a player celebrating a goal looks exactly like a player
      standing still. Hence two named helpers and no bare signs. */
-  function armsOut(A, v, lift) {
-    A[0].rotation.z = -v; A[1].rotation.z = v;
-    if (lift !== undefined) { A[0].rotation.x = lift; A[1].rotation.x = lift; }
-  }
-  function armsIn(A, v, lift) {
-    A[0].rotation.z = v; A[1].rotation.z = -v;
-    if (lift !== undefined) { A[0].rotation.x = lift; A[1].rotation.x = lift; }
-  }
+  /* THE POSE MACHINE IS THE SPRITE SHEET NOW.
 
-  function syncRig(pl, r, dt) {
-    var g = r.group;
-    g.position.set(sceneX(pl.y), 0, sceneZ(pl.x));
-    /* A three.js object faces -Z, and yaw turns that to (-sin, -cos).
-       The simulation's heading is measured from +x in its own flat
-       world, which `place` maps to (sin d, cos d) on the ground. Setting
-       those equal gives exactly this. */
-    g.rotation.y = pl.dir + Math.PI;
-    g.rotation.x = 0; g.rotation.z = 0;
-    /* the build, not unity: resetting this every frame is how a roster
-       of fourteen different shapes becomes fourteen of the same one */
-    g.scale.set(r.build.w, r.build.h, r.build.w);
+     Twenty poses used to live here as bone rotations — an arm lifted to
+     2.55 radians, a knee bent, a spine leaned — applied to the meshes of
+     a rig. There are no meshes and no bones. What a player is doing is
+     an animation NAME, `setAnim` sets it, `spriteAnim` reads it, and how
+     that looks is drawn once in cup.sprites.js and shared by every
+     character rather than re-derived per limb per frame.
 
-    var state = (pl.anim && pl.anim.once) ? pl.anim.state : baseAnim(pl);
-    if (!pl.anim || (!pl.anim.once && pl.anim.state !== state)) setAnim(pl, state);
-    var t = pl.anim ? pl.anim.t : 0;
-    var sp = len(pl.vx, pl.vy);
+     `setAnim`, `animStep` and `baseAnim` above are what survived, and
+     they are the useful half: which state, how long for, and what to
+     fall back to. */
 
-    /* defaults, so every pose only has to say what it changes */
-    var L = r.legs, A = r.arms;
-    L[0].rotation.set(0, 0, 0); L[1].rotation.set(0, 0, 0);
-    A[0].rotation.set(0, 0, 0); A[1].rotation.set(0, 0, 0); armsOut(A, 0.14);
-    r.head.rotation.set(0, 0, 0);
-    r.torso.rotation.set(0, 0, 0);
-    g.position.y = 0;
+  function syncBall() {}
 
-    if (state === "run") {
-      var amp = Math.min(1, sp / 66);
-      pl.gait = (pl.gait || 0) + dt * (5.0 + sp * 0.085);
-      var sw = Math.sin(pl.gait);
-      L[0].rotation.x = sw * 1.02 * amp;
-      L[1].rotation.x = -sw * 1.02 * amp;
-      A[0].rotation.x = -sw * 0.80 * amp;
-      A[1].rotation.x = sw * 0.80 * amp;
-      armsOut(A, 0.20);
-      g.rotation.x = -Math.min(0.24, sp * 0.0028);
-      g.position.y = Math.abs(sw) * 0.62 * amp;
-      r.head.rotation.x = Math.min(0.18, sp * 0.0020);
-
-    } else if (state === "idle") {
-      var br = Math.sin(t * 1.9 + pl.anim.seed * 6) * 0.055;
-      r.torso.rotation.x = br;
-      A[0].rotation.x = br * 0.6; A[1].rotation.x = br * 0.6;
-      g.position.y = Math.abs(br) * 1.2;
-      /* a look around, every few seconds, so a standing player is not
-         a statue — the cheapest life there is */
-      var look = Math.sin(t * 0.7 + pl.anim.seed * 9);
-      r.head.rotation.y = look * 0.34;
-
-    } else if (state === "ready") {                 // the keeper, set
-      L[0].rotation.z = -0.30; L[1].rotation.z = 0.30;     // feet apart
-      armsOut(A, 1.15, -0.35);                             // and set
-      g.position.y = -0.7;
-      r.torso.rotation.x = 0.22;
-
-    } else if (state === "kick") {
-      /* plant, swing through, follow through. One curve, read three
-         ways: before the contact it is a wind-up and after it is a
-         finish, and the ball leaves on the frame it crosses zero. */
-      var k = clamp(t / 0.34, 0, 1);
-      var swing = Math.sin(k * Math.PI) * (k < 0.4 ? -1 : 1);
-      L[0].rotation.x = k < 0.4 ? 0.9 * k * 2.5 : -1.5 * Math.sin((k - 0.4) * 2.6);
-      L[1].rotation.x = -0.25;
-      armsOut(A, 0.62);
-      A[0].rotation.x = 0.55; A[1].rotation.x = -0.75;      // one counters
-      g.rotation.x = -0.12 + swing * 0.08;
-
-    } else if (state === "slide") {
-      g.rotation.x = -1.12;
-      g.position.y = 1.5;
-      L[0].rotation.x = -0.95; L[1].rotation.x = -0.15;
-      armsOut(A, 0.85);
-      A[0].rotation.x = 1.25; A[1].rotation.x = 1.05;
-
-    } else if (state === "dive") {
-      var d2 = clamp(t / 0.5, 0, 1);
-      g.rotation.z = (pl.diveDir || 1) * 1.25 * Math.sin(d2 * Math.PI * 0.7);
-      g.position.y = Math.sin(d2 * Math.PI) * 5.5;
-      armsOut(A, 2.15);
-      L[0].rotation.x = -0.3; L[1].rotation.x = 0.3;
-
-    } else if (state === "armsUp" || state === "cheer") {
-      var c = t * 6;
-      armsOut(A, 2.55 + Math.sin(c) * 0.22, -0.3);
-      g.position.y = Math.max(0, Math.sin(c * 0.75)) * 2.6;    // jumping
-      L[0].rotation.x = -0.25; L[1].rotation.x = 0.25;
-      r.head.rotation.x = -0.22;
-
-    } else if (state === "knee") {                   // the knee slide
-      var s2 = clamp(t / 1.4, 0, 1);
-      g.rotation.x = -0.55 * (1 - s2 * 0.4);
-      g.position.y = 0.4;
-      L[0].rotation.x = -1.5; L[1].rotation.x = 0.35;
-      armsOut(A, 2.42);
-      r.head.rotation.x = -0.4;
-
-    } else if (state === "planeRun") {               // arms out, banking
-      armsOut(A, 1.62);
-      g.rotation.z = Math.sin(t * 2.4) * 0.26;
-      pl.gait = (pl.gait || 0) + dt * 8;
-      L[0].rotation.x = Math.sin(pl.gait) * 0.9;
-      L[1].rotation.x = -Math.sin(pl.gait) * 0.9;
-      g.position.y = Math.abs(Math.sin(pl.gait)) * 0.5;
-
-    } else if (state === "heart") {                  /* hands together over
-                                                        her head, which is
-                                                        the only one of
-                                                        these that is for
-                                                        one person */
-      /* hers, and the only one that comes IN: the hands meet */
-      armsIn(A, 2.72, -0.5);
-      r.head.rotation.x = -0.3;
-      g.position.y = Math.max(0, Math.sin(t * 4)) * 1.4;
-
-    } else if (state === "superWind") {
-      /* THE WIND-UP. Everything pulls back and away from where the ball
-         is about to go: the striking leg cocks, the torso twists open,
-         the arms go wide for balance and the head comes up to look at
-         the goal. It is held rather than swung, because the whole point
-         of the beat is that it is longer than a shot. */
-      var w = clamp(t / (G.sup ? G.sup.wind : 0.85), 0, 1);
-      var ease = w * w * (3 - 2 * w);
-      L[0].rotation.x = 1.15 * ease;                   // cocked behind
-      L[1].rotation.x = -0.22 * ease;
-      armsOut(A, 0.55 + 1.05 * ease, -0.15 * ease);
-      r.torso.rotation.y = -0.42 * ease;
-      r.torso.rotation.x = -0.16 * ease;
-      r.head.rotation.x = -0.26 * ease;
-      /* and up onto the toes at the top of it, so the strike has
-         somewhere to come down from */
-      g.position.y = ease * 1.1 + Math.sin(t * 26) * 0.16 * ease;
-
-    } else if (state === "superKick") {
-      /* THE STRIKE. The same curve the ordinary kick uses, taken much
-         further through: the leg comes all the way across, the body
-         follows it round, and it finishes leaning after the ball. */
-      var sk = clamp(t / 0.6, 0, 1);
-      L[0].rotation.x = 1.15 - 2.6 * Math.min(1, sk * 3.2);
-      L[1].rotation.x = -0.35;
-      armsOut(A, 1.35);
-      A[0].rotation.x = 0.95; A[1].rotation.x = -1.15;
-      r.torso.rotation.y = -0.42 + 0.9 * Math.min(1, sk * 2.6);
-      g.rotation.x = -0.34 * Math.min(1, sk * 2.2);
-      g.position.y = Math.max(0, Math.sin(sk * Math.PI * 0.8)) * 1.6;
-
-    } else if (state === "watch") {
-      /* what the other seven do while it happens: stop, and look at it */
-      r.head.rotation.y = Math.sin(t * 1.6) * 0.12;
-      r.torso.rotation.x = -0.10;
-      armsOut(A, 0.30, 0.18);
-      g.position.y = Math.sin(t * 2.2) * 0.12;
-
-    } else if (state === "dejected") {
-      r.head.rotation.x = 0.55;
-      r.torso.rotation.x = 0.26;
-      armsOut(A, 0.42, 0.5);                               // hands on hips
-      g.position.y = Math.sin(t * 1.4) * 0.15;
-    }
-
-    /* the keeper spreads himself whenever the ball is in his half of
-       the picture, whatever else he is doing */
-    if (pl.gk && state === "run" && ballNear(pl)) {
-      armsOut(A, 1.0);
-    }
-    r.blob.visible = !shadowsOn;
-  }
-
-  function syncBall() {
-    var b = G.ball;
-    ballGroup.position.set(sceneX(b.y), BALL_R + b.z, sceneZ(b.x));
-    /* squash and stretch, which is the oldest trick in animation and the
-       cheapest weight a ball can be given: fat on the frame it is hit,
-       drawn out along its travel while it is moving fast */
-    var hit = b.struck || 0;
-    var spd2 = len(b.vx, b.vy);
-    var st = 1 + Math.min(0.16, spd2 * 0.0006) - hit * 0.22;
-    ballGroup.scale.set(1 + hit * 0.34, st, 1 + hit * 0.34);
-    /* Rolled, not slid. It turns about the axis lying across its own
-       direction of travel, through the angle the distance it covered
-       subtends on its own radius — which is what makes a ball look
-       heavy instead of looking like a sticker being dragged. */
-    var sp = len(b.vx, b.vy);
-    if (sp > 1) {
-      var uX = b.vy / sp, uZ = b.vx / sp;
-      ballMesh.rotateOnWorldAxis(new THREE.Vector3(uZ, 0, -uX), sp * 0.0166 / BALL_R);
-    }
-    /* and if there is a super on it, it is bigger than a football and it
-       pulses — the heart one turns to face the camera rather than
-       rolling, because a heart tumbling end over end is a shape you
-       cannot read at this size */
-    if (b.superK) {
-      var pu = 1.35 + Math.sin(G.stateT * 26) * 0.10;
-      ballGroup.scale.multiplyScalar(pu);
-      if (heartMesh && heartMesh.visible && camera) {
-        heartMesh.rotation.set(0, 0, Math.sin(G.stateT * 9) * 0.18);
-        heartMesh.quaternion.setFromEuler(heartMesh.rotation);
-        heartMesh.lookAt(camera.position);
-        heartMesh.rotateZ(Math.sin(G.stateT * 9) * 0.22);
-      }
-    }
-  }
-
-  /* THE CAMERA — the whole reason this is 3D.
-
-     It sits behind the play and above it, looking at the goal she is
-     attacking, and it swaps ends at half time because she does. Its x
-     only partly follows the ball: all the way and the goal slides about
-     the screen and you lose your bearings; not at all and the play walks
-     off the side of the frame. Two thirds of the way is where it stops
-     feeling like either. */
-  /* Close. The first go sat at 132 up and 118 back, which frames the
-     whole pitch beautifully and is the wrong game: at that distance a
-     player is fifteen units tall in a view two hundred and eighty wide
-     and you are watching a tactics board. The reference is down among
-     them. This is about a hundred and twenty out at forty-five degrees,
-     which puts roughly two thirds of the pitch width on screen and a
-     player at about an eighth of its height. */
   /* =======================================================================
      THE CAMERA
 
-     It stands on the near touchline, about level with the play, and it
-     does three things: it follows the ball up and down the pitch, it
-     pulls in and out depending on how spread the football is, and it
-     leaves the game entirely when somebody scores.
+     In three dimensions this had a position, a target, a height and a
+     distance, and every shot was a little flight path through all four.
+     In two it has exactly two numbers — where on the pitch it is looking
+     — and one more that is not really a camera setting at all.
 
-     THE ZOOM IS THE POINT. A camera at a fixed distance is either too
-     far out to see a face or too close to see a pass coming, and it is
-     the single thing that separates a game that feels made from one
-     that feels assembled. So it frames a box: the ball, the player she
-     is driving, and whoever is closest to contesting it. When those
-     three are on top of each other it comes right in and you can see
-     boots; when somebody hits it fifty units downfield it pulls back
-     and lets you watch it travel.
+     THAT THIRD NUMBER IS THE INTERESTING ONE. A celebration wants to
+     come in close. Scaling a pixel scene by 1.6 is precisely the thing
+     this whole rebuild exists to stop, so it does not scale: it halves
+     the virtual screen and blows it up twice as far. Same world, half as
+     much of it, at twice the size, every pixel still square. The move
+     between the two is a cut rather than a glide, which is what a
+     broadcast does anyway and what a game from this era could do.
 
-     She always attacks to the RIGHT. Real football swaps ends at half
-     time and so does this, but the camera crosses to the other
-     touchline when it happens, so the goal she is running at is on the
-     same side of the screen all match. Getting that wrong is a whole
-     half spent running the wrong way.
+     Everything the 3D version could say, this can still say: follow the
+     play, cut in on a scorer, hold still while a shot flies away from
+     you, stand off for a menu. What it cannot say is "orbit", and an
+     orbit was never worth a renderer.
      ======================================================================= */
   var CAM = {
-    /* CLOSER, AND LOWER. The old frame sat ninety-six to a hundred and
-       fifty units out and twenty-two up, which puts a fifteen-unit
-       player at about an eighth of the screen and shows an enormous
-       amount of empty grass. This is down among them: a sideline
-       broadcast height rather than a tactics board. */
-    near: 62,           // closest it comes in
-    /* and furthest out. Capped by the architecture: the near touchline
-       is 160 out and the stand starts just past it, so a camera allowed
-       further than this is a camera standing behind its own crowd,
-       filming the back of a roof. */
-    far: 104,
-    lift: 0.24,         // height as a fraction of distance
-    base: 13,           // plus this much, so it is never level with the grass
+    lead: 0.42,         // how far ahead of the ball it looks, in seconds
     ease: 3.2,
-    lookUp: 9,          // the point it aims at, above the grass
+    /* HOW FAR BEHIND THE ACTION THE CAMERA'S NEAR EDGE SITS, in the
+       simulation's own units. The whole frame hangs off this one
+       number, and the first guess of 26 put the player being driven at
+       230 pixels down a 270-pixel screen — standing on the HUD, with
+       everything behind her off the bottom of the frame. Eighty-two
+       puts her two thirds of the way down, which is where a camera
+       following somebody actually holds them. */
+    trail: 82,
   };
-  /* The portrait lens. `ndc` is where across the frame the subject
-     stands: 0 is dead centre, +1 is the right edge. */
-  var CAMHERO = { dist: 31, high: 11.5, look: 10.5, ndc: 0.30 };
-  /* How much of the world the shadow map is asked to cover. One
-     thousand texels stretched over the whole pitch is a fifth of a unit
-     each; pulled in around one character it is a twentieth. Changing it
-     costs an updateProjectionMatrix and nothing else. */
-  var shadowHalf = 0;
-  function shadowSpan(half, normalBias) {
-    if (!sun || !sun.shadow || shadowHalf === half) return;
-    shadowHalf = half;
-    var c = sun.shadow.camera;
-    c.left = -half; c.right = half; c.top = half; c.bottom = -half;
-    sun.shadow.normalBias = normalBias === undefined ? 0.6 : normalBias;
-    c.updateProjectionMatrix();
-  }
-  var camNow = { x: 0, z: 0, dist: 150, tx: 0, ty: CAM.lookUp, tz: 0, side: 1 };
+  /* The portrait. `ndc` is where across the frame the subject stands:
+     0 is dead centre, +1 is the right edge. */
+  var CAMHERO = { ndc: 0.30 };
+  function shadowSpan() {}          // there is no shadow map any more
+
+  var camNow = { x: 0, y: 0 };
   var camMode = { kind: "play", t: 0, at: null, hold: 0 };
 
-  /* which touchline it is standing on: whichever keeps her attacking right */
+  /* which way round she is playing. Kept because the match still asks. */
   function camSide() { return attackDir(0) > 0 ? 1 : -1; }
 
+  /* where the camera wants to be: between the ball, the player being
+     driven, and where the ball is about to be */
   function wantFraming() {
     var b = G.ball;
-    var pts = [{ x: sceneX(b.y), z: sceneZ(b.x) }];
-    if (G.controlled) pts.push({ x: sceneX(G.controlled.y), z: sceneZ(G.controlled.x) });
-    var near = nearestTo(b, G.ball.owner && G.ball.owner.team === 0 ? 1 : 0, true);
-    if (near) pts.push({ x: sceneX(near.y), z: sceneZ(near.x) });
-    /* the ball is going somewhere: look where it will be, not where it is */
-    pts.push({ x: sceneX(b.y + b.vy * 0.42), z: sceneZ(b.x + b.vx * 0.42) });
-
-    var minX = 1e9, maxX = -1e9, minZ = 1e9, maxZ = -1e9;
+    var pts = [{ x: b.x, y: b.y }];
+    if (G.controlled) pts.push({ x: G.controlled.x, y: G.controlled.y });
+    pts.push({ x: b.x + b.vx * CAM.lead, y: b.y + b.vy * CAM.lead });
+    var minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
     pts.forEach(function (p) {
       minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
-      minZ = Math.min(minZ, p.z); maxZ = Math.max(maxZ, p.z);
+      minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
     });
-    var spread = Math.max(maxX - minX, (maxZ - minZ) * 1.5);
-    var dist = clamp(spread * 1.25 + 60, CAM.near, CAM.far);
-    /* and tighter in the penalty area, because that is where the story is */
-    var toGoal = Math.min(Math.abs(b.y - PITCH.y0), Math.abs(b.y - PITCH.y1));
-    if (toGoal < 70) dist -= (70 - toGoal) * 0.30;
-    return {
-      x: clamp((minX + maxX) / 2, sceneX(PITCH.y0) - 6, sceneX(PITCH.y1) + 6),
-      z: (minZ + maxZ) / 2 * 0.45,
-      dist: clamp(dist, CAM.near, CAM.far),
-    };
+    return { x: (minX + maxX) / 2, y: (minY + maxY) / 2 };
   }
 
   /* what the camera is doing this second */
@@ -3431,576 +2378,217 @@ window.OuissyCup = (function () {
     camMode.hold = hold || 0;
   }
 
+  function camTo(x, y, k, zoom) {
+    camNow.x += (x - camNow.x) * k;
+    camNow.y += (y - camNow.y) * k;
+    if (!R2) return;
+    R2.zoomTo(zoom || 1);
+    /* the renderer's near edge is the camera's y, and the thing being
+       watched should sit above it rather than on it */
+    R2.cam.x = wX(camNow.x);
+    R2.cam.y = wY(camNow.y) - CAM.trail;
+  }
+
   function placeCamera(dt, snap) {
+    if (!R2 || !G) return;
     camMode.t += dt;
-    var side = camSide();
-    var want;
+    var k = snap ? 1 : Math.min(1, CAM.ease * dt);
 
+    /* THE CELEBRATION. Cut in to twice the size, on the scorer, and let
+       them run — the push-in IS the celebration. */
     if (camMode.kind === "goal" && camMode.at) {
-      /* THE CELEBRATION SHOT.
-
-         In front of the scorer, roughly chest height, drifting round
-         them — what a broadcast cuts to and what this did not have.
-
-         Two things were wrong with the first one. It stood about forty
-         units from a player fifteen tall, so they filled the frame and
-         spilled off the side of it; and it eased from `camNow.x/z`,
-         which the playing camera never wrote to, so every celebration
-         began with a swoop in from the middle of the world. The playing
-         branch keeps those two in step now, and this starts from
-         wherever the camera actually was. */
-      var p = camMode.at;
-      var px2 = sceneX(p.y), pz2 = sceneZ(p.x);
-      var orbit = 0.42 + camMode.t * 0.34;
-      var r = 74 - Math.min(16, camMode.t * 6);
-      var wx = px2 + Math.sin(orbit) * r * 0.55;
-      var wz = pz2 + side * Math.cos(orbit * 0.6) * r * 0.85;
-      /* snap reaches this branch too — see the note in the super
-         branch below; a dt of zero used to mean no movement at all */
-      var k2 = snap ? 1 : Math.min(1, 3.0 * dt);
-      camNow.x += (wx - camNow.x) * k2;
-      camNow.z += (wz - camNow.z) * k2;
-      camNow.tx += (px2 - camNow.tx) * k2;
-      camNow.tz += (pz2 - camNow.tz) * k2;
-      camNow.ty += (10 - camNow.ty) * k2;
-      var hh = 30 - Math.min(8, camMode.t * 3);
-      camNow.h = (camNow.h === undefined || snap ? hh : camNow.h + (hh - camNow.h) * k2);
-      camera.position.set(camNow.x, camNow.h, camNow.z);
-      camera.lookAt(camNow.tx, camNow.ty, camNow.tz);
-      if (sun) {
-        sun.target.position.set(px2, 0, pz2);
-        sun.position.set(px2 - 90, 250, pz2 + 160);
-        sun.target.updateMatrixWorld();
-      }
+      camTo(camMode.at.x, camMode.at.y, snap ? 1 : Math.min(1, 4 * dt), 2);
       return;
     }
 
     /* THE SUPER, IN TWO SHOTS.
 
-       A wind-up shot, which comes down off the camera's usual perch to
-       roughly boot height and swings round in front of the striker while
-       they pull back; and then a flight shot, which does not follow the
-       ball at all. It sits where the ball was struck from and lets it go
-       away from it down the pitch, which is the shot that makes a
-       hundred units look like sixty yards. A camera that chases a fast
-       ball keeps it the same size and the speed disappears. */
-    /* THE PORTRAIT.
+       A wind-up, close on the striker while they pull back; and then a
+       flight shot that does NOT follow the ball. It holds where the ball
+       was struck from and lets it go away down the pitch, which is the
+       shot that makes a hundred units look like sixty yards. A camera
+       that chases a fast ball keeps it the same size and the speed
+       disappears. */
+    if (camMode.kind === "super" && camMode.at) {
+      camTo(camMode.at.x, camMode.at.y, snap ? 1 : Math.min(1, 5 * dt), 2);
+      return;
+    }
+    if (camMode.kind === "superFly") {
+      camTo(camNow.x, camNow.y, 1, 1);
+      return;
+    }
 
-       Close enough that one player fills more than half the height of
-       the frame, low enough to be looking slightly up at them, and
-       aimed off to one side so they stand in the right of the picture
-       with the panel in the left. That last part is arithmetic, not
-       taste: at this distance the half-width of the frame is about
-       0.87 of the distance, so putting somebody at a given fraction of
-       the way across means offsetting the camera's aim by that fraction
-       of it — and towards the camera's own left, because this camera
-       looks along +z and has increasing scene x on that side. */
+    /* THE PORTRAIT. One character, twice the size, standing off to one
+       side of the frame so the panel has the other side. `ndc` is a
+       fraction of the half-width, and the half-width in world units is
+       whatever the lens gives at this depth — so this is arithmetic and
+       not taste. */
     if (camMode.kind === "hero" && camMode.at) {
       var hp = camMode.at;
-      var hd = CAMHERO.dist;
-      var halfW = hd * 0.867;
-      var hx = sceneX(hp.y), hz = sceneZ(hp.x);
-      var aimX = hx + CAMHERO.ndc * halfW;
-      var hk = snap ? 1 : Math.min(1, 3.2 * dt);
-      /* a slow drift around them, so a still screen is never still */
-      var sway = Math.sin(camMode.t * 0.42) * 3.4;
-      camNow.tx += (aimX - camNow.tx) * hk;
-      camNow.tz += (hz - camNow.tz) * hk;
-      camNow.ty += (CAMHERO.look - camNow.ty) * hk;
-      var wantZ = hz + side * hd;
-      var wantH = CAMHERO.high + Math.sin(camMode.t * 0.31) * 0.6;
-      camNow.x = camNow.tx + sway;
-      camNow.z = (camNow.z === undefined || snap) ? wantZ
-                 : camNow.z + (wantZ - camNow.z) * hk;
-      camNow.h = (camNow.h === undefined || snap) ? wantH
-                 : camNow.h + (wantH - camNow.h) * hk;
-      camera.position.set(camNow.x, camNow.h, camNow.z);
-      camera.lookAt(camNow.tx, camNow.ty, camNow.tz);
-      if (sun) {
-        /* the spotlight: the key light swings round to the front of
-           whoever is being shown off */
-        sun.target.position.set(hx, 8, hz);
-        sun.position.set(hx - 40, 120, hz + side * 90);
-        sun.target.updateMatrixWorld();
-        /* AND THE SHADOW MAP COMES IN WITH IT.
-
-           The map covers 220 units of pitch on a thousand texels, which
-           is about a fifth of a unit each — fine at match distance and
-           useless at portrait distance, where a player fifteen units
-           tall gets seventy texels and his own arm casts a hard grey
-           blob across his shirt. Pulled in to the character he is
-           rendered five times sharper for nothing, because it is the
-           same thousand texels either way. */
-        shadowSpan(24, 0.12);
-      }
+      camTo(hp.x, hp.y + 4, snap ? 1 : Math.min(1, 3.2 * dt), 3);
+      /* WHERE ACROSS THE FRAME THEY STAND is a screen measurement, not
+         a world one, so it is taken from the lens at their own depth
+         rather than from a fraction of the pitch. Guessed as a fraction
+         of the pitch width it put the captain a whole frame off the
+         left-hand edge, because a third of a pitch is nothing like a
+         third of a frame once the camera has cut in. */
+      var pr = R2.project(wX(hp.x), wY(hp.y));
+      R2.cam.x -= CAMHERO.ndc * (R2.vw / 2) / pr.k;
+      /* a slow drift, so a still screen is never still */
+      R2.cam.x += Math.sin(camMode.t * 0.42) * 0.8;
       return;
     }
 
-    /* THE MENU SHOT. Slow, low and moving: it drifts along the line of
-       players and breathes in and out, so a screen somebody is reading
-       is never a still photograph. Nothing about it is snapped, which
-       is why arriving at a menu does not jolt. */
+    /* THE MENU SHOT. Stood off, drifting, with the line-up in the right
+       of the frame and the card in the left. */
     if (camMode.kind === "menu") {
-      var mt = camMode.t;
-      var mDist = 118 + Math.sin(mt * 0.23) * 8;
-      var mWant = {
-        /* Aimed to one side of the group, which is what puts them in
-           the right of the picture and leaves the left of it for the
-           card. The drift on top is small on purpose: enough that the
-           shot is alive, not so much that the side she is reading about
-           wanders out of frame while she reads.
-
-           WHICH side is not a guess, and it was wrong the first time:
-           this camera looks along +z, and a camera looking down +z has
-           increasing scene x on its LEFT. Offsetting the target the
-           intuitive way moved the whole line-up further behind the card
-           instead of out from under it — measured at NDC -0.02 to
-           -0.42, which is dead centre and leftward, exactly where the
-           card is. It is signed off `side` so it survives the touchline
-           swap too. */
-        x: sceneX(PITCH.cy) - side * 34 + Math.sin(mt * 0.17) * 7,
-        z: side * mDist + Math.sin(mt * 0.11) * 5,
-        h: 27 + Math.sin(mt * 0.31) * 2.5,
-      };
-      var mk = snap ? 1 : Math.min(1, 2.4 * dt);
-      if (!camNow.menu) { camNow.menu = 1; camNow.z = mWant.z; camNow.h = mWant.h; }
-      camNow.tx += (mWant.x - camNow.tx) * mk;
-      camNow.tz += (0 - camNow.tz) * mk;
-      camNow.ty += (10 - camNow.ty) * mk;
-      camNow.x = camNow.tx;
-      camNow.z = (camNow.z || mWant.z) + (mWant.z - (camNow.z || mWant.z)) * mk;
-      camNow.h = (camNow.h === undefined ? mWant.h
-                                         : camNow.h + (mWant.h - camNow.h) * mk);
-      camera.position.set(camNow.x, camNow.h, camNow.z);
-      camera.lookAt(camNow.tx, camNow.ty, camNow.tz);
-      if (sun) {
-        sun.target.position.set(camNow.tx, 0, 0);
-        sun.position.set(camNow.tx - 90, 250, 160);
-        sun.target.updateMatrixWorld();
-      }
+      camTo(PITCH.cx, PITCH.cy + 10 + Math.sin(camMode.t * 0.17) * 4,
+            snap ? 1 : Math.min(1, 1.6 * dt), 1);
+      var mp = R2.project(0, wY(PITCH.cy));
+      R2.cam.x -= 0.34 * (R2.vw / 2) / mp.k + Math.sin(camMode.t * 0.23) * 1.5;
       return;
     }
 
-    if ((camMode.kind === "super" || camMode.kind === "superFly") && camMode.at) {
-      var sp3 = camMode.at;
-      var spx = sceneX(sp3.y), spz = sceneZ(sp3.x);
-      /* `snap` has to reach here too. It did not: this branch eased off
-         `dt` alone, so a caller asking for the camera to be PUT there
-         rather than eased there — which is what a single-frame render
-         does, with dt of zero — moved it by exactly nothing and got a
-         picture of wherever the camera happened to be already. */
-      var kk = snap ? 1 : Math.min(1, (camMode.kind === "super" ? 3.4 : 2.2) * dt);
-      if (camMode.kind === "super") {
-        var sw = 0.9 + camMode.t * 0.55;
-        camNow.x += (spx + Math.sin(sw) * 30 - camNow.x) * kk;
-        camNow.z += (spz + side * (44 - Math.min(14, camMode.t * 12)) - camNow.z) * kk;
-        camNow.tx += (spx - camNow.tx) * kk;
-        camNow.tz += (spz - camNow.tz) * kk;
-        camNow.ty += (11 - camNow.ty) * kk;
-        var sh2 = 15 - Math.min(5, camMode.t * 5);
-        camNow.h = (camNow.h === undefined || snap ? sh2 : camNow.h + (sh2 - camNow.h) * kk);
-      } else {
-        /* held, low and wide, looking at the ball as it leaves */
-        var b3 = G.ball;
-        camNow.x += (spx * 0.35 + sceneX(b3.y) * 0.65 - camNow.x) * kk * 0.5;
-        camNow.z += (spz + side * 62 - camNow.z) * kk;
-        camNow.tx += (sceneX(b3.y) - camNow.tx) * Math.min(1, 6 * dt);
-        camNow.tz += (sceneZ(b3.x) - camNow.tz) * Math.min(1, 6 * dt);
-        camNow.ty += (8 + b3.z * 0.6 - camNow.ty) * Math.min(1, 6 * dt);
-        camNow.h = (camNow.h === undefined || snap ? 18 : camNow.h + (18 - camNow.h) * kk);
-      }
-      var shk = G.shake > 0 ? (Math.random() - 0.5) * G.shake * 4.2 : 0;
-      camera.position.set(camNow.x + shk, camNow.h, camNow.z);
-      camera.lookAt(camNow.tx, camNow.ty, camNow.tz);
-      if (sun) {
-        sun.target.position.set(spx, 0, spz);
-        sun.position.set(spx - 90, 250, spz + 160);
-        sun.target.updateMatrixWorld();
-      }
-      return;
-    }
-
-    /* back out to the pitch for anything that is not a portrait */
-    shadowSpan(110, 0.6);
-
-    want = wantFraming();
-    var k = snap ? 1 : Math.min(1, CAM.ease * dt);
-    camNow.tx += (want.x - camNow.tx) * k;
-    camNow.tz += (want.z - camNow.tz) * k;
-    camNow.ty += (CAM.lookUp - camNow.ty) * k;
-    /* the distance eases more slowly than the pan, because a zoom that
-       snaps is a zoom you notice */
-    camNow.dist += (want.dist - camNow.dist) * (snap ? 1 : Math.min(1, 1.9 * dt));
-    camNow.side += (side - camNow.side) * (snap ? 1 : Math.min(1, 2.2 * dt));
-
-    var shake = G.shake > 0 ? (Math.random() - 0.5) * G.shake * 3.4 : 0;
-    var h = CAM.base + camNow.dist * CAM.lift;
-    camNow.x = camNow.tx + shake;
-    camNow.z = camNow.tz + camNow.side * camNow.dist;
-    camNow.h = h;
-    camera.position.set(camNow.x, camNow.h, camNow.z);
-    camera.lookAt(camNow.tx, camNow.ty, camNow.tz);
-
-    if (sun) {
-      sun.target.position.set(sceneX(G.ball.y), 0, sceneZ(G.ball.x));
-      sun.position.set(sceneX(G.ball.y) - 90, 250, sceneZ(G.ball.x) + 160);
-      sun.target.updateMatrixWorld();
-    }
+    /* PLAY. Follow the ball, ease, and never let the camera past the
+       ends of the pitch — behind the goal line there is nothing to see
+       but the back of a stand. */
+    var want = wantFraming();
+    var y = clamp(want.y, PITCH.y0 + 30, PITCH.y1 + 6);
+    var x = clamp(want.x, PITCH.cx - PITCH.w * 0.22, PITCH.cx + PITCH.w * 0.22);
+    camTo(x, y, k, 1);
   }
 
+  /* =======================================================================
+     THE FRAME
+
+     Background, then everything that stands on the grass in one
+     depth-sorted pass, then the vignette. The sort is the whole of depth
+     in a 2D scene: get it wrong and a defender stands in front of the
+     striker they are behind.
+     ======================================================================= */
   function draw(dt) {
-    if (!renderer || !G) return;
+    if (!R2 || !G) return;
+    dt = dt || 0;
     for (var i = 0; i < G.players.length; i++) {
-      if (rigs[i]) syncBillboard(G.players[i], rigs[i], dt || 0);
+      if (rigs[i]) syncBillboard(G.players[i], rigs[i], dt);
     }
-    syncBall();
-    /* the net settling back */
-    goals.forEach(function (g2) {
-      if (!g2 || !g2.userData.netBack) return;
-      var u = g2.userData;
-      u.bulge = Math.max(0, (u.bulge || 0) - (dt || 0) * 2.4);
-      var push = Math.sin(u.bulge * Math.PI) * 5.5;
-      u.netBack.position.z = u.restZ + u.sgn * push;
-    });
-    confettiStep(dt || 0);
-    trailStep(dt || 0);
-    crowdSway(UI.t);
-    placeCamera(dt || 0, false);
-    renderer.render(scene, camera);
+    /* the net settling back after it has been hit */
+    netBulge[0] = Math.max(0, netBulge[0] - dt * 2.4);
+    netBulge[1] = Math.max(0, netBulge[1] - dt * 2.4);
+
+    placeCamera(dt, false);
+    R2.tick(dt);
+    R2.begin(dt, netBulge);
+
+    for (i = 0; i < G.players.length; i++) {
+      var p = G.players[i], r = rigs[i];
+      if (!r) continue;
+      R2.player({
+        at: r.atlas, anim: r.anim, face: r.face, frame: r.frame,
+        flip: r.flip, air: r.air,
+        wx: wX(p.x), wy: wY(p.y),
+        shadow: 3.2 * ((p.build && p.build.w) || 1),
+        ring: (p === G.controlled && G.state !== "goal") ? UI.t * 0.5 : null,
+      });
+    }
+
+    var b = G.ball;
+    superTrailDraw();
+    /* the super makes it bigger than a football, which is the whole
+       point of it: a ball you can see coming from the halfway line */
+    R2.ball(wX(b.x), wY(b.y), b.z, b.superK ? superBallTint() : null,
+            BALL_R * (b.superK ? 2.1 + Math.sin(G.stateT * 26) * 0.16 : 1));
+    R2.confettiStep(dt);
+    R2.flush();
+    R2.finish();
+    R2.present();
   }
+
+  function crowdSway() {}
 
   /* =======================================================================
      CONFETTI
 
-     One instanced mesh of two hundred little rectangles that fall out of
-     the stand when somebody scores. Instanced because two hundred
-     separate meshes is two hundred draw calls for a thing that is on
-     screen for three seconds, and a goal is the one moment in the game
-     that must not stutter.
+     It falls out of the stand when somebody scores, in world
+     coordinates, so it goes past the players rather than over the top of
+     everything. The renderer owns the particles; this is the two calls
+     the match makes.
      ======================================================================= */
-  var crowdTex = null;
-  /* A GROUND THAT IS NOT A PHOTOGRAPH.
-     The stands were a still image wrapped round a box, which at this
-     distance is a wall with a pattern on it. Rocking the texture up and
-     down by under a pixel makes the whole crowd shift its weight, and
-     it costs one assignment a frame. */
-  function crowdSway(t) {
-    if (!crowdTex) return;
-    crowdTex.offset.y = Math.sin(t * 1.1) * 0.006;
-    crowdTex.offset.x = Math.sin(t * 0.37) * 0.004;
-  }
-
-  var confetti = null, confParts = [], confDummy = null;
-  var CONF_N = 220;
-  function buildConfetti() {
-    var geo = new THREE.BoxGeometry(1.5, 2.4, 0.2);
-    var mat = new THREE.MeshBasicMaterial({ vertexColors: true });
-    confetti = new THREE.InstancedMesh(geo, mat, CONF_N);
-    confetti.instanceMatrix.setUsage(THREE.DynamicDrawUsage || 35048);
-    var cols = new Float32Array(CONF_N * 3);
-    var c = new THREE.Color();
-    for (var i = 0; i < CONF_N; i++) {
-      c.set(CROWD_COLS[i % CROWD_COLS.length]);
-      cols[i * 3] = c.r; cols[i * 3 + 1] = c.g; cols[i * 3 + 2] = c.b;
-      confParts.push({ life: 0 });
-    }
-    confetti.geometry.setAttribute("color",
-      new THREE.InstancedBufferAttribute(cols, 3));
-    confetti.frustumCulled = false;
-    confetti.count = CONF_N;
-    confDummy = new THREE.Object3D();
-    scene.add(confetti);
-    hideConfetti();
-  }
-  function hideConfetti() {
-    if (!confetti) return;
-    for (var i = 0; i < CONF_N; i++) {
-      confDummy.position.set(0, -500, 0);
-      confDummy.updateMatrix();
-      confetti.setMatrixAt(i, confDummy.matrix);
-    }
-    confetti.instanceMatrix.needsUpdate = true;
-  }
+  function buildConfetti() {}
+  function hideConfetti() { if (R2) R2.conf.length = 0; }
   /* `colour` overrides the stand's colours for the particles this burst
      uses, so a super goal throws its own colour into the air rather than
      the same crowd confetti every other goal gets. */
   function confettiBurst(at, n, colour) {
-    if (!confetti) return;
-    var attr = confetti.geometry.getAttribute("color");
-    var tint = colour ? new THREE.Color(colour) : null;
-    var used = 0;
-    for (var i = 0; i < CONF_N && used < n; i++) {
-      var p = confParts[i];
-      if (p.life > 0) continue;
-      if (attr) {
-        var c2 = tint ? tint : new THREE.Color(CROWD_COLS[i % CROWD_COLS.length]);
-        /* two tones of it, so a single-colour burst still reads as
-           confetti rather than as one flat sheet of paper */
-        var lift = tint && (i % 3 === 0) ? 1.35 : 1;
-        attr.setXYZ(i, Math.min(1, c2.r * lift), Math.min(1, c2.g * lift),
-                    Math.min(1, c2.b * lift));
-        attr.needsUpdate = true;
-      }
-      used++;
-      p.life = 2.6 + Math.random() * 1.8;
-      p.x = sceneX(at.y) + (Math.random() - 0.5) * 120;
-      p.z = sceneZ(at.x) + (Math.random() - 0.5) * 90;
-      p.y = 60 + Math.random() * 34;
-      p.vx = (Math.random() - 0.5) * 9;
-      p.vz = (Math.random() - 0.5) * 9;
-      p.vy = -8 - Math.random() * 7;
-      p.rx = Math.random() * 6; p.ry = Math.random() * 6;
-      p.sx = 4 + Math.random() * 5;
-    }
+    if (!R2) return;
+    var cols = colour
+      ? [colour, window.CupPitch2D.mix(colour, "#ffffff", 0.35),
+         window.CupPitch2D.mix(colour, "#000000", 0.25)]
+      : CROWD_COLS;
+    R2.burst(wX(at.x), wY(at.y), n, cols);
   }
-  function confettiStep(dt) {
-    if (!confetti) return;
-    var any = false;
-    for (var i = 0; i < CONF_N; i++) {
-      var p = confParts[i];
-      if (p.life <= 0) continue;
-      any = true;
-      p.life -= dt;
-      p.vy -= 16 * dt;
-      p.x += p.vx * dt; p.y += p.vy * dt; p.z += p.vz * dt;
-      p.rx += p.sx * dt; p.ry += p.sx * 0.7 * dt;
-      if (p.y < 0) { p.life = 0; confDummy.position.set(0, -500, 0); }
-      else confDummy.position.set(p.x, p.y, p.z);
-      confDummy.rotation.set(p.rx, p.ry, 0);
-      confDummy.updateMatrix();
-      confetti.setMatrixAt(i, confDummy.matrix);
-    }
-    if (any) confetti.instanceMatrix.needsUpdate = true;
-  }
+  function confettiStep() {}
 
   /* =======================================================================
-     THE SUPER, AS SOMETHING YOU CAN SEE
+     THE SUPER'S TRAIL
 
-     Three pieces, and none of them is a shader: a trail of shrinking
-     beads dropped along the ball's path, a glow put on the ball itself,
-     and — for the one super that asks for it — a ball that stops being
-     a ball. All of it instanced or reused, because this happens at the
-     loudest moment in the match and it must not cost a frame.
+     Beads of the shot's own colour, laid down where the ball has been
+     and going dark behind it. They are drawn before the ball and after
+     the grass, which is the only ordering that reads as a trail rather
+     than as a string of beads lying on the pitch.
      ======================================================================= */
-  var trail = null, trailParts = [], trailDummy = null;
-  var TRAIL_N = 110;
-  function buildTrail() {
-    var geo = new THREE.SphereGeometry(1, 8, 6);
-    /* Basic, not toon: a trail is light, and light does not take
-       shading. NOT additive, though it was at first — additive over a
-       bright green pitch saturates straight to white, so every super in
-       the game left the same pale wake and the colour each character
-       burns, which is the one thing that tells one super from another
-       at a glance, was thrown away by the blend mode. */
-    var mat = new THREE.MeshBasicMaterial({
-      color: new THREE.Color("#ffffff"), transparent: true, opacity: 0.88,
-      depthWrite: false });
-    trail = new THREE.InstancedMesh(geo, mat, TRAIL_N);
-    trail.instanceMatrix.setUsage(THREE.DynamicDrawUsage || 35048);
-    trail.frustumCulled = false;
-    for (var i = 0; i < TRAIL_N; i++) trailParts.push({ life: 0 });
-    trailDummy = new THREE.Object3D();
-    scene.add(trail);
-    hideTrail();
-  }
-  function hideTrail() {
-    if (!trail) return;
-    for (var i = 0; i < TRAIL_N; i++) {
-      trailParts[i].life = 0;
-      trailDummy.position.set(0, -500, 0);
-      trailDummy.scale.set(0.001, 0.001, 0.001);
-      trailDummy.updateMatrix();
-      trail.setMatrixAt(i, trailDummy.matrix);
-    }
-    trail.instanceMatrix.needsUpdate = true;
-  }
-  /* Dropped at a fixed rate in SIMULATION time rather than per frame, so
-     the same shot leaves the same trail on a phone at 30fps and a laptop
-     at 144. */
+  var trailParts = [];
+  var TRAIL_N = 90;
+  function buildTrail() {}
+  function hideTrail() { trailParts.length = 0; }
   function superTrail(b, s, dt) {
-    if (!trail || !s.fired) return;
-    if (trail.material.color.getHexString() !== s.def.colour.replace("#", "")) {
-      trail.material.color.set(s.def.colour);
-    }
-    s.drop = (s.drop || 0) + dt;
-    var every = 1 / (s.kind.trail * 7);
-    var guard = 0;
-    while (s.drop > every && guard++ < 8) {
-      s.drop -= every;
-      for (var i = 0; i < TRAIL_N; i++) {
-        var p = trailParts[i];
-        if (p.life > 0) continue;
-        p.life = 0.42;
-        p.max = 0.42;
-        p.x = sceneX(b.y); p.y = BALL_R + b.z; p.z = sceneZ(b.x);
-        /* scattered a little across the flight, so it is a wake and not
-           a string of beads on a wire */
-        p.x += (Math.random() - 0.5) * 1.8;
-        p.y += (Math.random() - 0.5) * 1.8;
-        p.z += (Math.random() - 0.5) * 1.8;
-        /* smaller than the ball, not bigger. At 2.2 to 3.8 against a
-           ball of 1.7 the "trail" was a line of boulders twice the size
-           of the thing making it, which reads as a bug rather than as
-           speed. A wake is made of things smaller than what left it. */
-        p.r = 0.9 + Math.random() * 0.7;
-        break;
-      }
-    }
+    if (!s) return;
+    trailParts.push({ x: b.x, y: b.y, z: b.z, life: 0.5, col: s.colour || "#ff5f8f" });
+    if (trailParts.length > TRAIL_N) trailParts.shift();
   }
   function trailStep(dt) {
-    if (!trail) return;
-    var any = false;
-    for (var i = 0; i < TRAIL_N; i++) {
-      var p = trailParts[i];
-      if (p.life <= 0) continue;
-      any = true;
-      p.life -= dt;
-      if (p.life <= 0) {
-        trailDummy.position.set(0, -500, 0);
-        trailDummy.scale.set(0.001, 0.001, 0.001);
-      } else {
-        /* it fades by SHRINKING rather than by going transparent: one
-           instanced mesh has one opacity between all of them, and a
-           bead that shrinks to nothing reads the same way */
-        var f = p.life / p.max;
-        trailDummy.position.set(p.x, p.y, p.z);
-        var sc = p.r * f * f;
-        trailDummy.scale.set(sc, sc, sc);
-      }
-      trailDummy.rotation.set(0, 0, 0);
-      trailDummy.updateMatrix();
-      trail.setMatrixAt(i, trailDummy.matrix);
+    for (var i = trailParts.length - 1; i >= 0; i--) {
+      trailParts[i].life -= dt;
+      if (trailParts[i].life <= 0) trailParts.splice(i, 1);
     }
-    if (any) trail.instanceMatrix.needsUpdate = true;
+  }
+  function superTrailDraw() {
+    if (!R2 || !trailParts.length) return;
+    var dark = window.CupPitch2D.mix;
+    trailParts.forEach(function (t) {
+      var f = Math.max(0, t.life / 0.5);
+      R2.add(wY(t.y), function () {
+        R2.bead(wX(t.x), wY(t.y), t.z,
+                Math.max(1, Math.round(1 + f * 2.2)),
+                dark(t.col, "#1a1020", 1 - f));
+      });
+    });
   }
 
-  /* The ball while a super is on it: lit from inside, bigger, and — for
-     HEARTBEAT STRIKE — not a football any more. The heart is built once
-     and kept, because a goal is not the moment to be extruding a shape. */
-  var heartMesh = null;
-  function buildHeartBall() {
-    var sh = new THREE.Shape();
-    /* half of it drawn with two curves and mirrored, which is the only
-       way a heart ever looks right */
-    sh.moveTo(0, -1.05);
-    sh.bezierCurveTo(1.15, -0.10, 1.05, 0.95, 0.40, 0.95);
-    sh.bezierCurveTo(0.12, 0.95, 0.02, 0.72, 0, 0.58);
-    sh.bezierCurveTo(-0.02, 0.72, -0.12, 0.95, -0.40, 0.95);
-    sh.bezierCurveTo(-1.05, 0.95, -1.15, -0.10, 0, -1.05);
-    var geo = new THREE.ExtrudeGeometry(sh, {
-      depth: 0.9, bevelEnabled: true, bevelSize: 0.22,
-      bevelThickness: 0.22, bevelSegments: 3, curveSegments: 10 });
-    geo.center();
-    /* the same height as the ball it replaces, near enough. At 1.5x the
-       ball's radius the heart's lower lobe went through the grass,
-       because the whole group is parked one ball-radius off the floor. */
-    geo.scale(BALL_R * 1.05, BALL_R * 1.05, BALL_R * 1.05);
-    heartMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
-      color: new THREE.Color("#ff5f8f") }));
-    heartMesh.visible = false;
-    ballGroup.add(heartMesh);
-  }
+  /* the ball's own colour while a super is on it, and the flash that
+     goes with the strike */
+  var superTint = null;
+  function buildHeartBall() {}
   function superGlow(on, colour) {
-    if (!ballMesh) return;
-    var m = ballMesh.material;
-    if (on) {
-      var c = new THREE.Color(colour || "#ff5f8f");
-      if (m.emissive) { m.emissive.copy(c); m.emissiveIntensity = 1; }
-      m.color.set("#ffffff");
-      if (heartMesh && G && G.sup && G.sup.def.kind === "heart") {
-        heartMesh.material.color.set(c);
-        heartMesh.visible = true;
-        ballMesh.visible = false;
-      }
-    } else {
-      if (m.emissive) { m.emissive.set("#000000"); }
-      m.color.set("#f8f8f4");
-      if (heartMesh) heartMesh.visible = false;
-      ballMesh.visible = true;
-    }
+    superTint = on ? (colour || "#ff5f8f") : null;
   }
-
-  /* The ring under whoever she is driving. It is a mesh on the grass
-     rather than something drawn over the top, so it sits in the world
-     and goes round the player instead of following him about the screen. */
-  var ring = null, ringTex = null, ringCv = null;
-  /* THE CONTROLLED-PLAYER MARKER.
-
-     It was a torus with a flat colour on it — a smooth ring lying on a
-     pixel pitch. It is a DRAWN ring now: a chunky pixel annulus with a
-     chevron at the front, painted into a small canvas and refreshed as
-     it pulses, so the one piece of UI that lives in the world is made of
-     the same pixels the world is. */
-  var RING_N = 48;
-  function ringCanvas() {
-    var c = document.createElement("canvas");
-    c.width = c.height = RING_N;
-    return c;
-  }
-  function paintRing(col, phase, carrying) {
-    if (!ringCv) return;
-    var x = ringCv.getContext("2d");
-    x.clearRect(0, 0, RING_N, RING_N);
-    var cx = RING_N / 2, cy = RING_N / 2;
-    var pulse = 0.86 + Math.sin(phase * 5.2) * 0.12;
-    var rOut = Math.round((RING_N / 2 - 2) * pulse);
-    var rIn = rOut - (carrying ? 5 : 4);
-    var c2 = new THREE.Color(col);
-    var base = "rgb(" + Math.round(c2.r * 255) + "," + Math.round(c2.g * 255) +
-               "," + Math.round(c2.b * 255) + ")";
-    /* an annulus drawn a pixel at a time — no arcs, because an arc is a
-       curve and a curve gets feathered */
-    for (var yy = 0; yy < RING_N; yy++) {
-      for (var xx = 0; xx < RING_N; xx++) {
-        var dx = xx - cx + 0.5, dy = (yy - cy + 0.5) * 1.35;   // squashed flat
-        var d = Math.sqrt(dx * dx + dy * dy);
-        if (d > rOut || d < rIn) continue;
-        /* the leading edge is brighter, which gives the ring a front */
-        var lit = dy < -rIn * 0.4;
-        x.fillStyle = lit ? "#ffffff" : base;
-        x.fillRect(xx, yy, 1, 1);
-      }
-    }
-    if (ringTex) ringTex.needsUpdate = true;
-  }
-  function buildMarkers() {
-    ringCv = ringCanvas();
-    ringTex = new THREE.CanvasTexture(ringCv);
-    ringTex.magFilter = THREE.NearestFilter;
-    ringTex.minFilter = THREE.NearestFilter;
-    ringTex.generateMipmaps = false;
-    ringTex.colorSpace = THREE.SRGBColorSpace;
-    ring = new THREE.Mesh(
-      new THREE.PlaneGeometry(13, 13),
-      new THREE.MeshBasicMaterial({ map: ringTex, transparent: true,
-                                    depthWrite: false, alphaTest: 0.4 }));
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.y = 0.3;
-    scene.add(ring);
-    paintRing("#7fd4f5", 0, false);
-  }
-
-  function syncRing() {
-    if (!ring) return;
-    var me = G && G.controlled;
-    ring.visible = !!me && G.state !== "full" && G.state !== "menu";
-    if (!me) return;
-    ring.position.set(sceneX(me.y), 0.3, sceneZ(me.x));
-    /* her side's own colour rather than a fixed blue, and gold the
-       moment the ball is at her feet */
-    var team = teamById(me.teamId) || {};
-    var col = G.ball.owner === me ? "#ffe066"
-            : (team.kit && team.kit.trim) || "#7fd4f5";
-    paintRing(col, UI.t, G.ball.owner === me);
-  }
+  function superBallTint() { return superTint; }
 
   /* =======================================================================
-     18. THE FLAGS
+     THE RING UNDER THE PLAYER SHE IS DRIVING
 
-     Small enough that a flag is four rectangles and a shape. The heart is
-     not a country: it is the paper heart she picks up in the first minute
-     of the walk up the valley, and it is his side's badge in the final.
+     It used to be a painted texture on a ring of geometry that had to be
+     rebuilt whenever its colour changed. It is now a projected annulus
+     with two rotating gaps, drawn straight onto the pitch with the
+     player it belongs to, which is also what fixed it sliding out from
+     under them on a fast break: it is one of that player's draw calls
+     rather than a separate object chasing their position.
      ======================================================================= */
+  function ringCanvas() { return null; }
+  function paintRing() {}
+  function buildMarkers() {}
+  function syncRing() {}
+
   function flagCanvas(kind, w, h) {
     var f = mkCanvas(w, h);
     var x = f.x;
@@ -4391,61 +2979,49 @@ window.OuissyCup = (function () {
 
      Everything with words in it is DOM over the top, so nothing that
      has to be READ goes through the buffer. */
+  /* =======================================================================
+     THE SCREEN
+
+     One canvas with a 2D context on it. cup.pitch2d.js renders into a
+     small virtual screen and blows that up by a whole number of pixels,
+     so all this has to do is make sure the canvas is a sensible size and
+     the UI's backing store matches it exactly.
+     ======================================================================= */
   function sizeRenderer() {
-    if (!renderer || !stage) return;
+    if (!cvs || !stage) return;
     var r = stage.getBoundingClientRect();
     var w = Math.max(2, Math.round(r.width)), h = Math.max(2, Math.round(r.height));
-    var aspect = w / h;
-    if (cfg("PIXEL.on", true)) {
-      /* Never ask for more pixels than the screen is going to show. On
-         a phone held sideways the stage is about two hundred and twenty
-         CSS pixels tall, so a 270-tall buffer is rendering MORE detail
-         than can be displayed and then throwing it away — slower, and
-         it makes the art finer exactly where the screen is smallest.
-         Capping it keeps the chunk size roughly constant everywhere. */
-      var ph = Math.max(140, Math.min(Math.round(cfg("PIXEL.height", 270)),
-                                      Math.round(h / 1.7)));
-      var pw = Math.max(2, Math.round(ph * aspect));
-      renderer.setPixelRatio(1);
-      renderer.setSize(pw, ph, false);
-      if (cvs) cvs.classList.add("px");
-    } else {
-      renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
-      renderer.setSize(w, h, false);
-      if (cvs) cvs.classList.remove("px");
-    }
-    if (camera) { camera.aspect = aspect; camera.updateProjectionMatrix(); }
-    /* the UI shares the pitch's backing store exactly, which is the one
-       thing that makes it the same pixels rather than a layer on top */
+    /* The canvas is the size of the element, in CSS pixels, and never
+       larger. The renderer draws 480x270 into it at a whole-number
+       scale; asking for a device-pixel-ratio backing store would just
+       mean multiplying that scale by two and blowing the same pixels up
+       further, which is the same picture for four times the fill. */
+    if (cvs.width !== w || cvs.height !== h) { cvs.width = w; cvs.height = h; }
+    if (cvs) cvs.classList.add("px");
     uiSize();
   }
 
   function buildRenderer() {
-    renderer = new THREE.WebGLRenderer({ canvas: cvs, antialias: true, alpha: false,
-                                         powerPreference: "high-performance" });
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
-    renderer.shadowMap.enabled = shadowsOn;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    camera = new THREE.PerspectiveCamera(52, 16 / 9, 1, 1400);
+    R2 = window.CupPitch2D.create(cvs, worldSpec());
+    applyVenue(MENU_VENUE);
     sizeRenderer();
     window.addEventListener("resize", sizeRenderer);
   }
 
-  /* one rig per player, built once and kept */
   /* =======================================================================
-     THE PLAYERS ARE SPRITES NOW
+     THE PLAYERS ARE SPRITES, AND NOTHING ELSE
 
-     They were figures built out of capsules and spheres, which at match
-     distance reads as "some 3D people" — the one thing a site made
-     entirely of pixel art should not contain. Each is a camera-facing
-     billboard carrying a pixel sprite drawn by cup.sprites.js, so the
-     chapter keeps its camera, its depth sorting and its venues, and
-     gains characters you can tell apart by silhouette.
+     They were figures built out of capsules and spheres, then pixel
+     sprites on camera-facing billboards inside the 3D scene, and now
+     they are simply drawn. A player costs one atlas lookup and one
+     drawImage of a 64-pixel cell onto whole coordinates.
 
-     A billboard is one quad and one texture. Animating it is moving a UV
-     window, so a running player costs two numbers a frame and no new
-     geometry — considerably cheaper than the twenty-odd meshes each rig
-     used to be.
+     Which of the eight facings to use is the one piece of real thinking
+     in here, and it was the piece the billboard build got wrong twice:
+     it is the player's heading relative to THE CAMERA, not in the world.
+     The camera stands behind her goal, so "towards the camera" is
+     towards increasing pitch y — and using the world heading is what
+     had everybody running backwards after half time.
      ======================================================================= */
   var atlasCache = {};
   function atlasFor(pl) {
@@ -4457,81 +3033,10 @@ window.OuissyCup = (function () {
     return atlasCache[key];
   }
 
-  function buildBillboard(pl) {
-    var at = atlasFor(pl);
-    var tx = new THREE.CanvasTexture(at.canvas);
-    /* NEAREST both ways and no mipmaps. A mipmapped pixel sprite is a
-       blurred pixel sprite the moment the camera moves. */
-    tx.magFilter = THREE.NearestFilter;
-    tx.minFilter = THREE.NearestFilter;
-    tx.generateMipmaps = false;
-    tx.colorSpace = THREE.SRGBColorSpace;
-    tx.repeat.set(1 / at.cols, 1 / at.rows);
-
-    var mat = new THREE.MeshBasicMaterial({
-      map: tx, transparent: true, alphaTest: 0.5,
-      depthWrite: true, side: THREE.DoubleSide,
-    });
-    /* PINNING THE SPRITE TO THE GRASS.
-
-       The quad is square and the sprite fills it, but the FIGURE does
-       not: it stands on row `ground` of `size`, with empty pixels below
-       for the shadow to sit in. So the quad has to be raised by the
-       distance from its own centre to that line, or the character
-       floats — which is exactly what the first attempt did, by putting
-       the centre at the ground fraction instead of at the offset TO it,
-       leaving her hanging a body's height above her own shadow.
-
-         v of the ground line   = 1 - ground/size      (v runs up)
-         world y of that line   = centre + (v - 0.5) * world
-         want it at zero, so    centre = (0.5 - v) * world
-
-       And the quad is bigger than the character, so it is sized from
-       how much of it the figure actually occupies rather than from the
-       frame — otherwise everyone comes out a head too tall. */
-    var figureRows = at.ground - 2;
-    var world = PH * (at.size / figureRows);
-    var vGround = 1 - at.ground / at.size;
-    var geo = new THREE.PlaneGeometry(world, world);
-    var mesh = new THREE.Mesh(geo, mat);
-    mesh.position.y = (0.5 - vGround) * world;
-    var group = new THREE.Group();
-    group.add(mesh);
-
-    /* the contact shadow, so nobody floats */
-    var blob = new THREE.Mesh(
-      new THREE.CircleGeometry(3.1, 14),
-      new THREE.MeshBasicMaterial({ color: new THREE.Color("#0e2a14"),
-                                    transparent: true, opacity: 0.34,
-                                    depthWrite: false }));
-    blob.rotation.x = -Math.PI / 2;
-    blob.position.y = 0.16;
-    group.add(blob);
-
-    return { group: group, mesh: mesh, mat: mat, tex: tx, blob: blob,
-             atlas: at, sprite: true, build: { h: 1, w: 1 },
-             anim: "idle", t: 0, frame: 0 };
-  }
-
-  /* WHICH WAY A SPRITE IS FACING.
-
-     Not the player's heading — the heading RELATIVE TO THE CAMERA. A
-     billboard always faces the lens, so the facing it must draw is the
-     angle between where the player is looking and where the camera is
-     standing. Using the world heading directly is the classic mistake
-     and it shows up as everybody running backwards after half time,
-     when the camera crosses to the other touchline. */
   function spriteFacing(pl) {
-    if (!camera) return 0;
-    /* the player's heading in scene space, and the camera's bearing */
-    var hx = Math.sin(pl.dir), hz = Math.cos(pl.dir);
-    var toCamX = camera.position.x - sceneX(pl.y);
-    var toCamZ = camera.position.z - sceneZ(pl.x);
-    var camAng = Math.atan2(toCamX, toCamZ);
-    var headAng = Math.atan2(hx, hz);
-    /* 0 is facing the camera, and the compass turns clockwise from there */
-    var rel = headAng - camAng + Math.PI;
-    var oct = Math.round(rel / (Math.PI / 4));
+    /* down the screen is towards the camera, which is +y on the pitch;
+       right across the screen is +x. Octant 0 is facing the lens. */
+    var oct = Math.round(Math.atan2(Math.cos(pl.dir), Math.sin(pl.dir)) / (Math.PI / 4));
     return ((oct % 8) + 8) % 8;
   }
 
@@ -4549,25 +3054,15 @@ window.OuissyCup = (function () {
       if (a === "watch" || a === "ready") return "ready";
     }
     if (pl.tackleT > 0) return "tackle";
-    if (G.state === "goal") {
-      if (pl.team === G.scoredBy) return "cheer";
-      return "sad";
-    }
+    if (G.state === "goal") return pl.team === G.scoredBy ? "cheer" : "sad";
     if (pl.gk && ballNear(pl)) return "ready";
     return len(pl.vx, pl.vy) > 5 ? "run" : "idle";
   }
 
+  /* advance one player's animation clock and hand the renderer what it
+     needs. No scene graph, no matrices, no texture offsets. */
   function syncBillboard(pl, r, dt) {
     var at = r.atlas;
-    r.group.position.set(sceneX(pl.y), 0, sceneZ(pl.x));
-    /* face the camera, always, about the upright axis only — tilting a
-       billboard towards the lens makes it lean and lift off the grass */
-    if (camera) {
-      r.mesh.rotation.y = Math.atan2(
-        camera.position.x - r.group.position.x,
-        camera.position.z - r.group.position.z) - r.group.rotation.y;
-    }
-
     var want = spriteAnim(pl);
     if (want !== r.anim) { r.anim = want; r.t = 0; }
     /* the run cycle keeps pace with the legs rather than the clock, so a
@@ -4578,47 +3073,25 @@ window.OuissyCup = (function () {
     r.t += (dt || 0) * rate;
     var n = at.anims[want] || 1;
     var once = want === "kick" || want === "tackle" || want === "dive";
-    var f = once ? Math.min(n - 1, Math.floor(r.t)) : Math.floor(r.t) % n;
-
-    var oct = spriteFacing(pl);
-    var fc = at.facing(oct);
-    var uv = at.uv(want, fc.id, f);
-    r.tex.offset.set(uv.col / at.cols, 1 - (uv.row + 1) / at.rows);
-    /* three of the eight facings are the mirror of three others */
-    r.mesh.scale.x = fc.flip ? -1 : 1;
-    r.blob.visible = true;
+    r.frame = once ? Math.min(n - 1, Math.floor(r.t)) : Math.floor(r.t) % n;
+    var fc = at.facing(spriteFacing(pl));
+    r.face = fc.id; r.flip = fc.flip;
+    /* how far off the ground this particular frame drew her, in sprite
+       pixels — the compositor is the only thing that knows */
+    r.air = at.airOf(want, fc.id, r.frame);
   }
 
   function buildRigs() {
-    rigs.forEach(function (r) { if (r && r.group) scene.remove(r.group); });
     rigs = G.players.map(function (p) {
-      var r = buildBillboard(p);
-      scene.add(r.group);
-      return r;
+      return { atlas: atlasFor(p), anim: "idle", t: 0, frame: 0,
+               face: "s", flip: false, air: 0 };
     });
   }
 
-  function buildBall() {
-    ballGroup = new THREE.Group();
-    ballMesh = new THREE.Mesh(new THREE.SphereGeometry(BALL_R, 22, 16), toon("#f8f8f4"));
-    ballMesh.castShadow = true;
-    ballGroup.add(ballMesh);
-    ballGroup.add(outline(ballMesh, 1.1));
-    /* the panels, so a rolling ball reads as rolling */
-    for (var i = 0; i < 6; i++) {
-      var a = (i / 6) * Math.PI * 2;
-      var pan = new THREE.Mesh(new THREE.CircleGeometry(0.52, 6), toon("#24242a"));
-      pan.position.set(Math.cos(a) * 1.62, Math.sin(a) * 0.9, Math.sin(a + 1) * 1.3);
-      pan.lookAt(0, 0, 0);
-      pan.position.multiplyScalar(1.02);
-      ballMesh.add(pan);
-    }
-    scene.add(ballGroup);
-  }
+  /* nothing to build: the ball is six rectangles and it is drawn where
+     the simulation says it is */
+  function buildBall() {}
 
-  /* A side shows its flag if it is a country and its crest if it is
-     not. The memory-lane teams are places, not nations, so a flag would
-     be a lie and a crest is the honest badge for them. */
   function setFlag(el, team) {
     if (!el || !team) return;
     el.innerHTML = "";
@@ -4750,15 +3223,21 @@ window.OuissyCup = (function () {
                           : "get the ball to " + (captainOf(0) || {}).name;
       }
     }
-    /* the full-screen wash: the goal flash, tinted by whatever caused it */
+    /* THE FLASH IS IN THE PITCH NOW, not over it.
+
+       It used to be a CSS div with an opacity on it, laid across the
+       whole screen — which meant a goal washed the scoreboard, the
+       Heart meter and the buttons in pink along with the grass, and did
+       it with a smoothly interpolated alpha over a scene that has no
+       smooth anything else in it. The renderer draws it into the
+       virtual screen instead: it stops at the edge of the pitch, and it
+       is made of the same pixels as everything it is flashing. */
     var fl = EL["cup-flash"];
-    if (fl) {
-      var v = G.flash || 0;
-      fl.hidden = v <= 0.01;
-      if (v > 0.01) {
-        fl.style.opacity = (v * 0.55).toFixed(3);
-        fl.style.background = G.flashCol || "#ffffff";
-      }
+    if (fl && !fl.hidden) fl.hidden = true;
+    if (R2) {
+      R2.flash = Math.max(R2.flash, (G.flash || 0) * 0.55);
+      if (G.flash > 0.01) R2.flashCol = G.flashCol || "#ffffff";
+      R2.shake = Math.max(R2.shake, (G.shake || 0) * 4);
     }
   }
 
@@ -5446,9 +3925,13 @@ window.OuissyCup = (function () {
   var HIT_PAD = 4;
 
   function uiSize() {
-    if (!uiCvs || !renderer) return;
-    var size = renderer.getSize(new THREE.Vector2());
-    var w = Math.max(2, Math.round(size.x)), h = Math.max(2, Math.round(size.y));
+    if (!uiCvs || !R2) return;
+    /* THE UI IS THE PITCH'S OWN RESOLUTION, which is the one thing that
+       makes it the same pixels rather than a layer floating on top. The
+       renderer halves that when it cuts in close, and the UI must not
+       follow it there: a menu that doubled in size every time the camera
+       pushed in would be a different menu. It tracks the BASE screen. */
+    var w = window.CupPitch2D.BASE_W, h = window.CupPitch2D.BASE_H;
     /* WITH THE PIXEL LAYER OFF, the renderer's buffer is the full CSS
        size of the stage — a thousand pixels across. A five-by-seven
        font in that is three millimetres tall and the menus become
@@ -5456,8 +3939,9 @@ window.OuissyCup = (function () {
        is doing. PIXEL.on is about the GAME's look; the menus are pixel
        art either way. */
     if (!cfg("PIXEL.on", true)) {
-      h = clamp(Math.round(h / 2.2), 140, 300);
-      w = Math.max(2, Math.round(h * (size.x / size.y)));
+      h = clamp(Math.round(h / 1.4), 140, 300);
+      w = Math.max(2, Math.round(h * (window.CupPitch2D.BASE_W /
+                                      window.CupPitch2D.BASE_H)));
     }
     if (w === UIW && h === UIH) return;
     UIW = uiCvs.width = w;
@@ -5852,7 +4336,7 @@ window.OuissyCup = (function () {
      ======================================================================= */
   var MENU_VENUE = "marrakech";       // the best light of the five
   function lineUp(teamId, venueId) {
-    if (!scene) return;               // three.js has not landed yet
+    if (!R2) return;                  // the renderer is not up yet
     var ven = venueId || MENU_VENUE;
     var sideId = teamId || run.myTeam || derbyTeam("hers");
     /* a side under construction is not saved anywhere yet, so it is
@@ -5876,12 +4360,13 @@ window.OuissyCup = (function () {
        camera sees across — it stands on a touchline, so a row spread
        along x would be a queue pointing away from it. */
     var mine = G.players.filter(function (p) { return p.team === 0; });
-    /* looking AT the camera. The rig faces -Z and syncRig turns that by
-       `dir + PI`, so the heading that points a player at the near
-       touchline is the opposite of the one that points there on the
-       pitch's own axes — and getting it the intuitive way round lines
-       four of them up with their backs to her. */
-    var face = camSide() > 0 ? Math.PI : 0;
+    /* LOOKING AT THE CAMERA, which is now a single number rather than a
+       deduction. The camera stands behind her goal line and looks up the
+       pitch, so the heading that points a player straight at the lens is
+       the one with the whole of itself in +y. Nothing about this depends
+       on which end she is attacking, which is what it used to and what
+       used to line four of them up with their backs to her. */
+    var face = Math.PI / 2;
     mine.forEach(function (p, i) {
       /* MEASURED, NOT GUESSED, TWICE.
 
@@ -5897,8 +4382,17 @@ window.OuissyCup = (function () {
          people who each need their own column. The card sits to the
          left of them (see .cup-card-title) and the camera is aimed to
          put them in the right of the frame. */
-      p.x = PITCH.cx - 6 + i * 9;
-      p.y = PITCH.cy + (i - (mine.length - 1) / 2) * 15;
+      /* THE LINE RUNS ACROSS THE SCREEN, WHICH IS THE PITCH'S X.
+
+         It used to run along y, because the old camera stood on a
+         touchline and saw the length of the pitch left to right. This
+         one stands behind her goal, so y runs INTO the screen — and a
+         row spread along it put two of them inside the far goal and
+         one behind the crowd. Across, stepped slightly back, so they
+         overlap and read as a team photograph rather than four people
+         queueing away from the lens. */
+      p.x = PITCH.cx - 34 + i * 26;
+      p.y = PITCH.cy + 26 - (i % 2) * 16;
       p.vx = p.vy = 0;
       p.dir = face;
       p.anim = null;
@@ -5906,12 +4400,15 @@ window.OuissyCup = (function () {
     /* and the other side is not in this shot at all */
     G.players.filter(function (p) { return p.team === 1; })
       .forEach(function (p, i) {
-        p.x = PITCH.cx + (i - 1.5) * 18;
-        p.y = PITCH.y0 - 40;
+        /* right off the side of the world. Parked behind the far goal
+           they stood IN it, four of them in the mouth, which is not a
+           team that is "not in this shot" — it is a team in this shot */
+        p.x = PITCH.cx - 900;
+        p.y = PITCH.cy + i * 20;
         p.vx = p.vy = 0;
       });
-    G.ball.x = PITCH.cx + 22;
-    G.ball.y = PITCH.cy + 46;
+    G.ball.x = PITCH.cx + 44;
+    G.ball.y = PITCH.cy + 34;
     G.ball.z = 0; G.ball.vx = G.ball.vy = G.ball.vz = 0;
     G.ball.owner = null;
     setCamMode("menu");
@@ -6054,14 +4551,14 @@ window.OuissyCup = (function () {
   ];
 
   function heroStage(teamId, ndc) {
-    if (!scene) return null;
+    if (!R2) return null;
     lineUp(teamId, MENU_VENUE);
     CAMHERO.ndc = ndc === undefined ? 0.30 : ndc;
     var mine = G.players.filter(function (p) { return p.team === 0; });
     if (!mine.length) return null;
     var cap = mine.filter(function (p) { return p.captain; })[0] ||
               mine.filter(function (p) { return !p.gk; })[0] || mine[0];
-    var face = camSide() > 0 ? Math.PI : 0;
+    var face = Math.PI / 2;
 
     /* the captain, on the spot, facing the camera */
     cap.x = PITCH.cx; cap.y = PITCH.cy;
@@ -6071,8 +4568,10 @@ window.OuissyCup = (function () {
        rather than as four people queueing */
     var others = mine.filter(function (p) { return p !== cap; });
     others.forEach(function (p, i) {
-      p.x = PITCH.cx + 34 + (i % 2) * 11;
-      p.y = PITCH.cy + (i - (others.length - 1) / 2) * 26 - 6;
+      /* behind and to the sides, across the screen rather than away up
+         the pitch — the same axis mistake as the line-up above */
+      p.x = PITCH.cx - 40 + i * 26;
+      p.y = PITCH.cy + 34 + (i % 2) * 12;
       p.dir = face; p.vx = p.vy = 0; p.anim = null;
     });
     /* the ball at the captain's feet, because a footballer without one
@@ -6988,16 +5487,13 @@ window.OuissyCup = (function () {
 
     return loadThree().then(function () {
       if (!playing) return;
-      if (!scene) {
-        buildWorld(); buildRenderer(); buildMarkers(); buildBall();
-        buildHeartBall(); buildConfetti(); buildTrail();
-      }
+      if (!R2) buildRenderer();
       sizeRenderer();
       G = newMatch(0);
       buildRigs();
       resetPositions(0);
       placeCamera(0, true);
-      renderer.render(scene, camera);
+      draw(0);
       patchTeamLookup();
       /* the first time she ever opens it, the controls come up on their
          own — helpCard has existed since the chapter did and nothing
@@ -7216,8 +5712,8 @@ window.OuissyCup = (function () {
       var live = 0;
       trailParts.forEach(function (p) { if (p.life > 0) live++; });
       return { live: live, of: TRAIL_N,
-               colour: trail ? "#" + trail.material.color.getHexString() : null,
-               heart: !!(heartMesh && heartMesh.visible) };
+               colour: trailParts.length ? trailParts[trailParts.length - 1].col : null,
+               heart: !!superTint };
     },
     tally: function () {
       return { shots: G.stat.shots.slice(), passes: G.stat.passes.slice(),
@@ -7345,9 +5841,8 @@ window.OuissyCup = (function () {
     },
     geometry: function () {
       return { view: VIEW, pitch: PITCH, world: WORLD_H, height: PH,
-               cam: camera ? { x: +camera.position.x.toFixed(1),
-                               y: +camera.position.y.toFixed(1),
-                               z: +camera.position.z.toFixed(1) } : null,
+               cam: R2 ? { x: +camNow.x.toFixed(1), y: +camNow.y.toFixed(1),
+                           zoom: R2.zoom, mode: camMode.kind } : null,
                rigs: rigs.length, shadows: shadowsOn };
     },
     roster: function () { return cfg("ROSTER", []); },
@@ -7358,50 +5853,36 @@ window.OuissyCup = (function () {
        players out to where the simulation says they are, and without it
        every rig sits stacked on the centre spot */
     render: function () {
-      if (!renderer) return;
-      draw(0.016);
+      if (!R2) return;
       placeCamera(0, true);
+      draw(0.016);
       /* the HUD too. frame() is what normally keeps the scoreboard, the
          Heart meter and the button label in step with the simulation,
          and a harness has stopped frame() — so without this every
          photograph shows the numbers the page loaded with. */
-      syncRing();
       syncHud();
-      renderer.render(scene, camera);
     },
-    /* build one, unattached, so a harness can line the whole squad up
-       and photograph it from close range */
-    rig: function (spec) { return buildRig(spec); },
-    /* pose a rig without the simulation owning it, so every animation
-       can be photographed on its own */
-    poseOnly: function (fakePlayer, rig, dt) { syncRig(fakePlayer, rig, dt); },
-    /* clear the pitch, so a team photograph is not standing in the
-       middle of a match that is still going on behind it */
-    matchVisible: function (on) {
-      rigs.forEach(function (r) { if (r && r.group) r.group.visible = !!on; });
-      if (ballGroup) ballGroup.visible = !!on;
-      if (ring) ring.visible = !!on;
+    /* the renderer itself, so a harness can ask where on the screen a
+       thing at a given place on the pitch ended up — which is what
+       replaces reaching into a scene graph and projecting a vector */
+    view2d: function () {
+      if (!R2) return null;
+      return { zoom: R2.zoom, vw: R2.vw, vh: R2.vh,
+               project: function (x, y) { return R2.project(wX(x), wY(y)); } };
     },
-    three: function () { return { THREE: THREE, scene: scene, camera: camera, renderer: renderer }; },
+    atlas: function (id) {
+      var look = ROSTER[id] || FALLBACK_LOOK;
+      return window.CupSprites.bake(look, null);
+    },
     flag: flagCanvas,
     draw: draw,
     soundOff: function () { soundOn = false; },
-    /* swiftshader in a container is not a graphics card: the harnesses
-       turn the shadow map off so a screenshot comes back this year */
-    shadows: function (on) {
-      shadowsOn = !!on;
-      if (renderer) renderer.shadowMap.enabled = shadowsOn;
-      if (sun) sun.castShadow = shadowsOn;
-      /* Turning the shadow map on after the fact is not enough: every
-         material was compiled without it and keeps the program it was
-         given. They have to be told to build a new one. */
-      if (scene) scene.traverse(function (o) {
-        if (o.material) {
-          (Array.isArray(o.material) ? o.material : [o.material])
-            .forEach(function (m) { m.needsUpdate = true; });
-        }
-      });
-    },
+    /* Kept for the harnesses and for the settings screen, and now it
+       costs nothing either way: every shadow in the game is an ellipse
+       drawn on the grass, so there is no map to switch off and no
+       material to recompile. It was only ever here because swiftshader
+       in a container is not a graphics card. */
+    shadows: function (on) { shadowsOn = !!on; },
     goto: function (r) { run.round = clamp(r, 0, CUP.length - 1); roundCard(); },
     finish: function (won) { finishRound(won); },
   };

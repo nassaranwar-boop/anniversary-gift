@@ -88,7 +88,7 @@ const FPS = 12, SEG = 12;          // four segments of a second each
       P.shadow(wx, wy, 1.0, air);
       P.ring(wx, wy, (i / fps) * 0.5);
       P.sprite(at, g.anim, g.face, f, wx, wy, g.flip, air);
-      P.ball(wx + 2.6, wy + 1.4, 0);
+      P.ball(wx + 2.6, wy + 1.4, 0, null, 0.35);
       P.finish();
       P.present();
       return { wx: Math.round(wx), wy: Math.round(wy), face: g.face, f };

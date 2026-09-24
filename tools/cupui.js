@@ -4,7 +4,7 @@
  * floating over a game rendered through a 270-pixel buffer. They are
  * drawn into a canvas at the pitch's own resolution now, so this checks
  * the things that only matter if that is actually true: that the UI
- * canvas has the same backing store as the WebGL one, that it is scaled
+ * canvas is the same resolution the pitch is drawn at, that it is scaled
  * with nearest-neighbour, that it carries no CSS appearance of its own,
  * and that the hero on Team Select is genuinely big in the frame rather
  * than a figure in the background.
@@ -60,6 +60,7 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
     return {
       uiStore: [ui.width, ui.height],
       gameStore: [game.width, game.height],
+      base: [window.CupPitch2D.BASE_W, window.CupPitch2D.BASE_H],
       css: [Math.round(r.width), Math.round(r.height)],
       rendering: cs.imageRendering,
       radius: cs.borderRadius,
@@ -67,8 +68,15 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
       hidden: ui.hidden,
     };
   });
-  ok('the UI canvas has the same backing store as the pitch',
-     layer.uiStore[0] === layer.gameStore[0] && layer.uiStore[1] === layer.gameStore[1], layer);
+  /* THE TWO CANVASES NO LONGER SHARE A BACKING STORE, and they should
+     not: the pitch canvas is the size of the element and the renderer
+     blows a 480x270 virtual screen up into it, halving that virtual
+     screen whenever the camera cuts in close. A UI that followed it
+     there would double in size every time a goal went in. What has to
+     match is the RESOLUTION THE TWO ARE DRAWN AT, so a letter and a
+     blade of grass are the same size of pixel. */
+  ok('the UI is drawn at the pitch\'s own resolution',
+     layer.uiStore[0] === layer.base[0] && layer.uiStore[1] === layer.base[1], layer);
   ok('and it is blown up, not drawn at screen size',
      layer.css[0] > layer.uiStore[0] * 1.3, layer);
   ok('with nearest-neighbour', /pixelated|crisp/.test(layer.rendering), layer);
@@ -115,19 +123,20 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
      projecting his head and his feet and comparing. */
   const heroSize = await p.evaluate(() => {
     const C = OuissyCup.__cup;
-    const g = C.geometry();
-    const T = C.three();
+    const V = C.view2d();
     const h = C.hero();
-    if (!h) return null;
-    const V = T.THREE.Vector3;
-    const feet = new V(h.y - g.pitch.cy, 0, h.x - g.pitch.cx).project(T.camera);
-    const head = new V(h.y - g.pitch.cy, g.height, h.x - g.pitch.cx).project(T.camera);
+    if (!h || !V) return null;
+    /* the renderer answers this directly now: where on the virtual
+       screen is this place on the pitch. A character is a fixed 64
+       pixels tall whatever the depth, which is the whole point of the
+       2D build, so how much of the frame it fills is that over the
+       height of the virtual screen. */
+    const feet = V.project(h.x, h.y);
     return { name: h.name,
-             /* NDC y runs -1..1, so the difference is the fraction of
-                the frame height he stands in */
-             frac: +(Math.abs(head.y - feet.y) / 2).toFixed(3),
-             acrossNdc: +((head.x + feet.x) / 2).toFixed(2),
-             onScreen: Math.abs(feet.x) < 1 && Math.abs(feet.y) < 1.2 };
+             frac: +(48 / V.vh).toFixed(3),
+             acrossNdc: +((feet.x / V.vw) * 2 - 1).toFixed(2),
+             onScreen: feet.x > -32 && feet.x < V.vw + 32 &&
+                       feet.y > 0 && feet.y < V.vh + 40 };
   });
   ok('there is a hero', !!heroSize, heroSize);
   ok('and he fills a good half of the frame',
