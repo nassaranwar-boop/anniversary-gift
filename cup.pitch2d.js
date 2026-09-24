@@ -173,6 +173,13 @@ window.CupPitch2D = (function () {
     this.cam = { x: 0, y: 0 };      // world point at the near edge, centre
     this.t = 0;
     this.zoom = 1;
+    /* the camera's own shape. "persp" is what ships; "oblique" is the
+       fixed-foreshortening alternative the greybox exists to compare. */
+    this.mode = "persp";
+    this.swap = false;              // true = goals left and right
+    this.obS = 4.0;                 // screen pixels per world unit, across
+    this.obF = 0.50;                // and the depth ramp: 0.50 is a 30-degree camera
+    this.groundY = 250;             // where the camera's own row sits on screen
     this.flash = 0; this.flashCol = "#ffffff";
     this.shake = 0;
     this.items = [];
@@ -220,6 +227,28 @@ window.CupPitch2D = (function () {
      them exactly the same size on screen while the players doubled: a
      keeper twice the height of the goal he was standing in. fy belongs
      to the projection and nowhere else. */
+  /* TURNING THE PITCH SIDEWAYS CHANGES THE LENS.
+
+     The perspective scale is derived from how wide the pitch is, so
+     when the long axis becomes the screen's long axis the scale has to
+     come off the length instead — otherwise a horizontal pitch is drawn
+     at the lens of a vertical one and three-quarters of it is off the
+     sides of the screen. */
+  /* HOW HIGH THE CAMERA SITS, which is the one number that trades
+     stand for pitch. A lower camera compresses the ground toward the
+     horizon: the far edge climbs, the stand above it shrinks, and more
+     of the pitch's length fits in frame. */
+  Pitch.prototype.setHeight = function (h) {
+    this.height = h;
+    this.B = FOCAL * h * this.fy;
+  };
+
+  Pitch.prototype.setSwap = function (on) {
+    this.swap = !!on;
+    var half = on ? this.raw.len / 2 : this.raw.halfW;
+    this.k = DEFAULT.halfW / half;
+  };
+
   Pitch.prototype.zoomTo = function (level) {
     /* 1 is the match, 2 is a cut-in, 3 is a portrait. Whole divisors
        only: 480/2 and 480/3 are both whole numbers of pixels and the
@@ -235,17 +264,56 @@ window.CupPitch2D = (function () {
     this.ctx.imageSmoothingEnabled = false;
     this.fy = this.vh / BASE_H;
     this.A = A0 * this.fy;
-    this.B = B0 * this.fy;
+    this.B = FOCAL * (this.height || HEIGHT) * this.fy;
   };
 
   Pitch.prototype.rnd = function (i) { return this.seeds[(i | 0) & 2047]; };
 
   /* --------------------------------------------------------- projection */
+  /* =======================================================================
+     TWO WAYS TO PUT A PITCH ON A SCREEN
+
+     PERSPECTIVE (the default, and what the chapter ships): a real
+     ground-plane projection. The touchlines converge on a vanishing
+     point, the far goal is smaller than the near one, and the pitch is
+     a trapezoid. Depth is genuinely depth.
+
+     OBLIQUE: a fixed foreshortening ramp. A world unit across is always
+     the same number of screen pixels, and a world unit UP the pitch is
+     always that number times F. Nothing converges, so the touchlines
+     are parallel vertical lines and the pitch is a RECTANGLE. The
+     centre circle is an ellipse of one constant squash.
+
+     These are different pictures and you cannot have half of each: a
+     trapezoid IS convergence, and convergence is what makes the
+     foreshortening vary with depth. The chapter carries both so the
+     choice can be made by looking rather than by arguing.
+
+     F is the foreshortening. It is also the camera's tilt, because for
+     an orthographic camera looking down at an angle the depth axis is
+     compressed by the sine of that angle: F = 0.50 is a 30-degree
+     camera, F = 0.64 is 40 degrees. A higher camera sees less pitch.
+     ======================================================================= */
   Pitch.prototype.project = function (wx, wy) {
+    /* HORIZONTAL ORIENTATION is a swap, not a second projection. The
+       pitch's long axis becomes the screen's long axis; everything else
+       in this file goes on working in the pitch's own coordinates. */
+    if (this.swap) { var t = wx; wx = wy; wy = t; }
+    var cx = this.swap ? this.cam.y : this.cam.x;
+    var cy = this.swap ? this.cam.x : this.cam.y;
+
+    if (this.mode === "oblique") {
+      var S = this.obS, F = this.obF;
+      return {
+        x: this.vw / 2 + (wx - cx) * S,
+        y: this.groundY - (wy - cy) * S * F,
+        d: NEAR, k: S, ky: S * F, flat: true,
+      };
+    }
     var k = this.k;
-    var d = Math.max(8, NEAR + (wy - this.cam.y) * k);
+    var d = Math.max(8, NEAR + (wy - cy) * k);
     return {
-      x: this.vw / 2 + (wx - this.cam.x) * k * FOCAL / d,
+      x: this.vw / 2 + (wx - cx) * k * FOCAL / d,
       y: this.A + this.B / d,
       d: d,
       k: FOCAL / d * k,          // screen pixels per WORLD unit, across
@@ -253,6 +321,55 @@ window.CupPitch2D = (function () {
     };
   };
   Pitch.prototype.depthAtY = function (sy) { return this.B / (sy - this.A); };
+
+  /* the world row a screen row is looking at, either way round */
+  Pitch.prototype.rowAt = function (sy) {
+    var cy = this.swap ? this.cam.x : this.cam.y;
+    if (this.mode === "oblique") {
+      return cy + (this.groundY - sy) / (this.obS * this.obF);
+    }
+    return cy + (this.depthAtY(sy) - NEAR) / this.k;
+  };
+
+  /* PLACEHOLDER BLOCKS.
+
+     A greybox is for judging the CAMERA, so the people in it are
+     deliberately not people: a coloured box the size a player would be,
+     with a lighter top face and a darker front, a ground shadow and a
+     number. The whole point is that no sprite work is risked on a
+     camera that has not been agreed. */
+  Pitch.prototype.block = function (o) {
+    var self = this;
+    this.add(o.wy, function () {
+      var p = self.project(o.wx, o.wy);
+      var sc = o.scale === undefined ? 1 : o.scale;
+      var w = Math.max(4, Math.round(18 * sc));
+      var h = Math.max(8, Math.round(44 * sc));
+      var x = Math.round(p.x - w / 2), y = Math.round(p.y - h);
+      fillEllipse(self.ctx, p.x, p.y - 1, Math.round(w * 0.62),
+                  Math.max(1, Math.round(p.ky * 3.2)), C.shadow);
+      if (o.ring) self.ring(o.wx, o.wy, o.ring);
+      var ctx = self.ctx;
+      ctx.fillStyle = "#0d1412"; ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
+      ctx.fillStyle = o.col;     ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = mix(o.col, "#ffffff", 0.32);
+      ctx.fillRect(x, y, w, Math.max(2, Math.round(h * 0.18)));
+      ctx.fillStyle = mix(o.col, "#000000", 0.34);
+      ctx.fillRect(x, y + h - Math.max(2, Math.round(h * 0.22)), w,
+                   Math.max(2, Math.round(h * 0.22)));
+      /* a head block, so the silhouette has a top and the scale reads */
+      ctx.fillStyle = "#0d1412";
+      ctx.fillRect(x + Math.round(w * 0.2) - 1, y - Math.round(h * 0.34) - 1,
+                   Math.round(w * 0.6) + 2, Math.round(h * 0.34) + 1);
+      ctx.fillStyle = mix(o.col, "#ffffff", 0.55);
+      ctx.fillRect(x + Math.round(w * 0.2), y - Math.round(h * 0.34),
+                   Math.round(w * 0.6), Math.round(h * 0.34));
+      if (o.n !== undefined && w >= 10) {
+        ctx.fillStyle = "#0d1412";
+        ctx.fillRect(x + Math.round(w / 2) - 1, y + Math.round(h * 0.4), 2, 4);
+      }
+    });
+  };
 
   /* ------------------------------------------------------ pixel drawing
      Every one of these lands on integer coordinates. The canvas will
@@ -322,14 +439,22 @@ window.CupPitch2D = (function () {
      several thousand people who are each four pixels. */
   Pitch.prototype.drawStand = function () {
     var ctx = this.ctx, W = this.W;
-    var goal = this.project(0, this.raw.len);
+    if (this.mode === "oblique") return this.drawStandFlat();
+    /* WHICH EDGE IS THE FAR ONE depends on which way the pitch is
+       turned: up the pitch it is the far goal line, sideways it is the
+       far touchline. Asking project for the right point is the whole
+       difference — drawn without it, the stand lands in the middle of a
+       horizontal pitch with the players standing on top of it. */
+    var goal = this.swap ? this.project(this.raw.halfW, 0)
+                         : this.project(0, this.raw.len);
     /* where the stand MEETS THE GROUND — a few units of run-off behind
        the goal line. The boards stand UP from this line and the tiers
        rise behind them; the first build drew them hanging down from it,
        and the grass, which starts at the same line, painted over every
        one of them. */
     var base = Math.min(this.vh - 1, Math.max(0, Math.round(
-      this.project(0, this.raw.len + 7 / this.k).y)));
+      (this.swap ? this.project(this.raw.halfW + 7 / this.k, 0)
+                 : this.project(0, this.raw.len + 7 / this.k)).y)));
     var bh = Math.max(3, Math.round(goal.k * 1.6 / this.k));
     var lip = Math.max(0, base - bh);
 
@@ -395,23 +520,60 @@ window.CupPitch2D = (function () {
     ctx.fillRect(0, base, this.vw, 2);
   };
 
+  /* the far stand, oblique: a band above the far goal line, and the
+     side stands are two columns outside the touchlines */
+  Pitch.prototype.drawStandFlat = function () {
+    var ctx = this.ctx, w = this.raw;
+    var far = Math.round(this.project(0, this.swap ? 0 : w.len).y);
+    var l = this.project(-w.halfW, 0), r = this.project(w.halfW, 0);
+    var x0 = Math.round(Math.min(l.x, r.x)) - 6, x1 = Math.round(Math.max(l.x, r.x)) + 6;
+    var self = this;
+    var tier = function (bx, by, bw, bh, band) {
+      ctx.fillStyle = C.tierLit; ctx.fillRect(bx, by, bw, bh);
+      ctx.fillStyle = C.tier;    ctx.fillRect(bx, by, bw, Math.round(bh * 0.42));
+      ctx.fillStyle = C.rail;    ctx.fillRect(bx, by + Math.round(bh * 0.42), bw, 1);
+      for (var r2 = 0; r2 < 7; r2++) {
+        var ry = Math.round(by + 2 + r2 * (bh / 7));
+        for (var cx2 = bx; cx2 < bx + bw; cx2 += 5) {
+          var id = band * 977 + r2 * 131 + cx2 * 7;
+          if (self.rnd(id) < 0.14) continue;
+          var sw = Math.round(Math.sin(self.t * 2.1 + cx2 * 0.2 + r2) * 0.9);
+          ctx.fillStyle = CROWD[(self.rnd(id + 11) * CROWD.length) | 0];
+          ctx.fillRect(cx2, ry + sw, 3, 2);
+          ctx.fillStyle = "#1a1620"; ctx.fillRect(cx2, ry + sw + 2, 3, 1);
+        }
+      }
+      ctx.fillStyle = C.roof; ctx.fillRect(bx, by - 4, bw, 4);
+    };
+    /* behind the far goal */
+    ctx.fillStyle = C.sky; ctx.fillRect(0, 0, this.vw, Math.max(0, far - 6));
+    if (far > 8) tier(0, Math.max(0, far - 54), this.vw, 48, 0);
+    ctx.fillStyle = C.board; ctx.fillRect(0, far - 8, this.vw, 8);
+    /* and down both touchlines */
+    if (x0 > 0) tier(0, Math.max(0, far - 54), x0, this.vh, 1);
+    if (x1 < this.vw) tier(x1, Math.max(0, far - 54), this.vw - x1, this.vh, 2);
+  };
+
   /* ============================================================ THE GRASS
      Drawn row by row from the bottom of the screen up. Each screen row
      is a different depth, so the mowing bands are worked out per row and
      come out correctly foreshortened for nothing. */
   Pitch.prototype.drawGrass = function () {
     var ctx = this.ctx;
-    var y0 = Math.max(0, Math.round(this.project(0, this.raw.len + 7 / this.k).y) + 2);
+    if (this.mode === "oblique") return this.drawGrassFlat();
+    var y0 = Math.max(0, Math.round(
+      (this.swap ? this.project(this.raw.halfW + 7 / this.k, 0)
+                 : this.project(0, this.raw.len + 7 / this.k)).y) + 2);
     var band = 9 / this.k;               // mowing band, in world units
     for (var y = y0; y < this.vh; y++) {
       var d = this.depthAtY(y + 0.5);
       if (d <= 0) continue;
-      var wy = this.cam.y + (d - NEAR) / this.k;
+      var wy = (this.swap ? this.cam.x : this.cam.y) + (d - NEAR) / this.k;
       var bi = Math.floor(wy / band);
       var col = (bi & 1) ? C.grassA : C.grassB;
       /* the far half sits in the stand's shadow, which is the cheapest
          depth cue there is and the most convincing */
-      if (wy > this.raw.len * 0.62) col = (bi & 1) ? C.grassDk : C.grassA;
+      if (!this.swap && wy > this.raw.len * 0.62) col = (bi & 1) ? C.grassDk : C.grassA;
       ctx.fillStyle = col;
       ctx.fillRect(0, y, this.vw, 1);
     }
@@ -438,6 +600,12 @@ window.CupPitch2D = (function () {
      ======================================================================= */
   Pitch.prototype.drawSides = function () {
     var ctx = this.ctx, w = this.raw;
+    if (this.mode === "oblique") return;    // drawStandFlat does both
+    /* the side stands run along the touchlines, which only face the
+       camera when the pitch runs up and down. Turned sideways they are
+       the two GOAL ends, and that is a different piece of geometry —
+       greyboxing does not need it to answer the question it is asking. */
+    if (this.swap) return;
     var edge = w.halfW + 4 / this.k;          // touchline, then the run-off
     var BOARD = 9, TIER = 42, ROOF = 7;
     var farY = this.A + this.B / (NEAR + (w.len + 12 - this.cam.y) * this.k);
@@ -510,6 +678,32 @@ window.CupPitch2D = (function () {
           ctx.fillRect(x2, ry + sway + 2, 3, 1);
         }
       }
+    }
+  };
+
+  /* THE GRASS, WITHOUT A VANISHING POINT.
+
+     In an oblique projection the pitch is a rectangle: the touchlines
+     do not converge, so every screen row is the same width and the
+     mowing bands are bands of constant height. It is a simpler draw
+     than the perspective one and it looks it — which is the thing to
+     judge, not the thing to argue about. */
+  Pitch.prototype.drawGrassFlat = function () {
+    var ctx = this.ctx, w = this.raw;
+    var band = 9 / this.k;
+    var l = this.project(-w.halfW, 0), r = this.project(w.halfW, 0);
+    var x0 = Math.round(Math.min(l.x, r.x)), x1 = Math.round(Math.max(l.x, r.x));
+    var top = this.project(0, w.len).y, bot = this.project(0, 0).y;
+    if (this.swap) { top = this.project(0, 0).y; bot = this.project(0, w.len).y; }
+    var yTop = Math.round(Math.min(top, bot)), yBot = Math.round(Math.max(top, bot));
+    /* beyond the pitch in both directions is run-off, then the stands */
+    ctx.fillStyle = C.grassDk;
+    ctx.fillRect(0, 0, this.vw, this.vh);
+    for (var y = Math.max(0, yTop); y <= Math.min(this.vh - 1, yBot); y++) {
+      var wy = this.rowAt(y + 0.5);
+      var bi = Math.floor(wy / band);
+      ctx.fillStyle = (bi & 1) ? C.grassA : C.grassB;
+      ctx.fillRect(Math.max(0, x0), y, Math.min(this.vw, x1) - Math.max(0, x0) + 1, 1);
     }
   };
 
