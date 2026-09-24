@@ -57,7 +57,21 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
      rounds are deliberately not equal — the quarter-final opponent is
      supposed to be easier than the final's. Judging the AI off one
      early-round walkover says more about the fixture than the code. */
-  const rounds = [0, 1, 2];
+  /* SIX HALVES, NOT THREE.
+
+     Three was not enough to assert on. Run the suite twice over and a
+     different metric failed each time — pass completion at 47% one run,
+     goal-side at 41% the next — not because anything had changed
+     between them but because a four-a-side half is chaotic and three of
+     them is a small sample. A gate that fails half the time for no
+     reason is not a gate; people stop reading it.
+
+     The tempting fix is to widen the bars until nothing fails, which
+     throws away the only thing they are for. The correct one is more
+     samples: each fixture is played twice, which halves the variance
+     and costs a few minutes of wall clock in a harness nobody runs in a
+     loop. The bars stay where the measurements put them. */
+  const rounds = [0, 1, 2, 0, 1, 2];
   const runs = [];
   for (const rIdx of rounds) {
     await p.evaluate((r) => { OuissyCup.__cup.quick(r); OuissyCup.__cup.auto(true); }, rIdx);

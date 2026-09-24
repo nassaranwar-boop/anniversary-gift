@@ -268,7 +268,22 @@ window.OuissyCup = (function () {
        dial on how the match feels. Too high and nobody can keep the
        ball for long enough to do anything with it; too low and a
        dribbler walks through the whole side. */
-    tackleUrge: 0.039,
+    /* It was found by moving it twice and measuring both times.
+
+       At the original 0.078 a defender inside reach committed roughly
+       every four hundred milliseconds: possession ran three seconds
+       against fourteen and the ball spent more than half of every half
+       loose, because nobody was allowed to keep it. Halved to 0.039
+       that came right — nine seconds each — and took the goals with it:
+       three measured halves finished 0-0, 0-0 and 0-1, because a
+       carrier nobody challenges simply dribbles into an organised block
+       and stops there.
+
+       0.056 is the setting with both. Possession stays level and the
+       goals come back: there are enough challenges to break a stalled
+       attack open, and few enough that a side can still put three
+       passes together. */
+    tackleUrge: 0.056,
     tackleTime: 0.34,
     tackleCool: 0.55,
     tacklePush: 70,         // how hard the ball is knocked away
@@ -2173,7 +2188,18 @@ window.OuissyCup = (function () {
   function think(p, dt) {
     /* her seven teammates play at a fixed, decent level; the opposition
        plays at the round's, scaled by the difficulty she chose */
-    var skill = p.team === 0 ? 0.55 : G.skill;
+    /* HOW WELL HER OWN TEAM-MATES PLAY.
+
+       A flat 0.55 was below the quarter-final opponent's own rating and
+       a long way below the final's, and it is read by everything an
+       attacking player does: how far out they will shoot, how willing
+       they are to try a ball in behind, how hard they press. She is
+       driving one of four, so three quarters of her side was playing at
+       a level she could not do anything about — and it showed up as her
+       team taking a third of a shot a half while the other side took
+       five times as many. Decent, and still short of the final's 0.80,
+       which is what a final is for. */
+    var skill = p.team === 0 ? 0.66 : G.skill;
     var b = G.ball;
     if (p.gk) return thinkKeeper(p, dt, skill);
     if (b.owner === p) return thinkCarrier(p, dt, skill);

@@ -168,12 +168,19 @@ heading; waiting for `state().state === 'play'` lets the flash decay.
 - **`cupwords.js`** — a whole run through the cup, round by round, with
   the memory cards between them. Slow: it plays three matches.
 - **`cupmatch.js`** — *is it football?* Shape, pressing, cover, marking,
-  goal-side, territory, passing and shooting, measured over three
-  fixtures with nobody driving (`auto(true)` hands all eight players to
-  the AI, so what is measured is the AI and not the statue the harness
-  is not steering). Read the notes in it before tuning against any
-  single number: a four-a-side half is chaotic, and the goal-side figure
-  swings from 5% to 52% between runs of the IDENTICAL build.
+  goal-side, territory, passing and shooting, measured over six halves
+  with nobody driving (`auto(true)` hands all eight players to the AI,
+  so what is measured is the AI and not the statue the harness is not
+  steering). It takes several minutes and it is meant to.
+
+  Read the notes in it before tuning against any single number. A
+  four-a-side half is chaotic: at three halves the goal-side figure came
+  back anywhere from 5% to 52% on runs of the IDENTICAL build, and the
+  suite failed a *different* assertion each time it was run — which is
+  not a gate, it is a coin. The sample was doubled rather than the bars
+  widened, because widening them throws away the only thing they are
+  for. If it fails on one metric by a couple of points, run it again
+  before believing it; if it fails the same one twice, believe it.
 - **`cupsides.js`** — tells a CODE asymmetry from a SQUAD one by swapping
   which team is which. An effect that stays with the index is the code;
   one that follows the squad is the teams; one that does neither is
