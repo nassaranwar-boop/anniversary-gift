@@ -220,12 +220,55 @@ window.OuissyCup = (function () {
     gravity: 300,           // px/sec^2 for lofted balls
     bounce: 0.46,           // how much of the drop comes back
     dribbleReach: 9,        // how close a loose ball has to be to be won
-    keepReach: 17,          // and how far the carrier can be shoved off it
+    keepReach: 30,          // and how far the carrier can be shoved off it
+                            //   — raised with the touch dribble, because
+                            //   the ball is now GENUINELY out in front.
+                            //   The first setting left only a couple of
+                            //   units between a normal running touch and
+                            //   this, so ordinary dribbling lost the ball
+                            //   on 44% of possessions. A normal touch now
+                            //   peaks near 18 and a heavy one near 28,
+                            //   which is the gap the risk lives in.
                             //   before it counts as lost. Bigger than the
                             //   reach above on purpose: that asymmetry IS
                             //   shielding, and without it being crowded
                             //   loses you the ball for nothing
-    dribblePush: 26,        // how far in front the carrier nudges it
+    dribblePush: 26,        // (kept for the set-piece placement code)
+    /* --- the touch ---
+       A dribble is a series of impulses, and these are its shape. */
+    touchNear: 6.5,         // units ahead at a standstill
+    touchPace: 0.13,        // and how much further per unit of pace
+    touchGap: 0.13,         // the least time between two touches
+    touchErr: 0.30,         // radians of wander at mid skill, before the
+                            //   touch stat divides into it
+    touchLoose: 0.032,      // how often a touch is half again too long —
+                            //   the one that gets away, and where most
+                            //   turnovers in a real match come from
+    /* --- contact --- */
+    bodyWidth: 9.5,         // how close two players can get before they
+                            //   are touching. A shade wider than it was,
+                            //   because a collision that does something
+                            //   should start fractionally sooner than one
+                            //   that only stopped an overlap
+    bumpPush: 2.6,          // how much of the overlap goes into pace
+    bumpHard: 34,           // closing speed at which contact becomes an
+                            //   event rather than a nudge
+    bumpStun: 0.30,         // how long the one who came off worse is off
+                            //   balance, and cannot accelerate
+
+    stretch: 6,             // extra reach for a ball arriving at you
+    trapErr: 0.55,          // radians a first touch can squirt off line at
+                            //   mid skill, before the touch stat divides
+                            //   into it — and scaled by how hard the ball
+                            //   was hit, because a driven pass is harder
+                            //   to kill than a rolled one
+    trapTime: 0.26,         // how long the receiving touch reads on the
+                            //   sprite before they are running with it
+    nickEdge: 5,            // how much nearer the ball a challenger has to
+                            //   be than the carrier to steal it between
+                            //   touches. At the foot nobody can be; with
+                            //   the ball pushed ahead, somebody standing
+                            //   in its path can
     settle: 0.28,           // after winning it, nobody can touch it
     controlLock: 0.20,      // seconds after a touch before anyone else can
                             //   take it — without this two players standing
@@ -632,6 +675,20 @@ window.OuissyCup = (function () {
   var SFX = {
     kick:    function () { burst(0.07, 0.22, 1400, 1.2); tone("sine", 180, 70, 0.10, 0.18); },
     pass:    function () { burst(0.05, 0.13, 1100, 1.4); tone("sine", 150, 80, 0.07, 0.10); },
+    /* A TOUCH IS NOT A KICK. It is the softest sound in the game on
+       purpose: it plays only on the heavy touch and on a ball nicked
+       off somebody, which between them happen a couple of times a
+       passage rather than three times a second. */
+    touch:   function () { burst(0.035, 0.07, 820, 1.8);
+                           tone("sine", 130, 95, 0.05, 0.05); },
+    /* TWO PLAYERS MEETING. Low, short and soft — a shoulder in a shirt,
+       not a collision in a racing game. It scales with how hard they
+       came together, because a jostle and a proper challenge are the
+       same sound at different sizes. */
+    bump:    function (hard) {
+      burst(0.07, 0.05 + hard * 0.10, 240 + hard * 120, 0.7);
+      tone("sine", 90 + hard * 40, 55, 0.09, 0.05 + hard * 0.06);
+    },
     shot:    function () { burst(0.09, 0.30, 1700, 1.0); tone("sine", 220, 60, 0.14, 0.24); },
     tackle:  function () { burst(0.13, 0.18, 380, 0.8); },
     post:    function () { tone("square", 900, 520, 0.16, 0.16); },
@@ -979,7 +1036,13 @@ window.OuissyCup = (function () {
       cam: { y: PITCH.cy },
       controlled: null, kickoffTeam: 0, golden: false, over: false,
       shake: 0, flash: 0, flashCol: null, scorer: "",
-      stat: { shots: [0, 0], poss: [0, 0], passes: [0, 0], supers: [0, 0] },
+      /* `passes` is passes COMPLETED, counted where the ball is
+         received. `passTry` is passes ATTEMPTED, counted where it is
+         struck — without both, a completion rate cannot be worked out
+         at all, and a harness measuring owner CHANGES instead counts a
+         heavy touch running loose as a misplaced pass. */
+      stat: { shots: [0, 0], poss: [0, 0], passes: [0, 0], passTry: [0, 0],
+              supers: [0, 0], touches: [0, 0] },
       /* THE HEART. One meter per side, out of TUNE.superCost, filled by
          playing football rather than by waiting. `sup` is the shot in
          flight and everything the cinematic needs to draw it. */
@@ -1121,28 +1184,108 @@ window.OuissyCup = (function () {
     var b = G.ball;
     b.lock = Math.max(0, b.lock - dt);
 
+    /* =====================================================================
+       A DRIBBLE IS A SERIES OF TOUCHES, NOT A MAGNET
+
+       What was here sprang the ball toward a point a fixed distance in
+       front of the player, at a fixed rate, and then set the ball's
+       velocity equal to the player's:
+
+           b.x += (tx - b.x) * Math.min(1, dt * 11);
+           b.vx = o.vx; b.vy = o.vy;
+
+       The consequence is the single loudest "this is not a real
+       football game" tell there is. The ball can never get away from
+       anybody. It cannot be over-hit, it cannot be under-hit, it cannot
+       run through to the keeper, and a defender standing directly in
+       its path is simply passed through — because the ball is not
+       travelling anywhere, it is being carried at a fixed offset like a
+       tray. Every other thing that makes dribbling interesting is
+       downstream of the ball being a free object: the heavy touch, the
+       nick between touches, catching up to your own pass, shielding a
+       ball that is genuinely rolling away from you.
+
+       So the ball is now ALWAYS a free rigid body, and having
+       possession means only that you are the one allowed to touch it.
+       A carrier takes a touch when the ball comes back under the foot,
+       and the touch is an IMPULSE: the ball runs ahead, decelerates on
+       the grass, and the player runs onto it and does it again. Three
+       or four times a second at pace, once every second or so at a
+       walk, exactly as a person does it.
+
+       Three numbers make it feel like a person rather than a metronome:
+
+         HOW FAR AHEAD — grows with pace, because you push it further
+         when you are running, and shrinks to almost nothing when you
+         stop, which is how a player stands over a ball.
+
+         HOW ACCURATE — a small angular error per touch, scaled by the
+         touch stat, so Lumi's dribble runs straight and Boulder's
+         wanders. This is the stat you can SEE without being told it
+         exists.
+
+         THE HEAVY ONE — occasionally, and more often the worse the
+         player, the touch is half again as long. That is the one that
+         goes beyond keepReach and puts the ball up for grabs, and it is
+         where most turnovers in a real game actually come from.
+       ===================================================================== */
     if (b.owner) {
-      /* carried: the ball is pushed a little in front of the foot, and it
-         is still a physical object — it just has somewhere to be */
       var o = b.owner;
-      /* The touch. She pushes it further in front the faster she is
-         going and keeps it under her when she slows, which is what
-         dribbling is; a ball welded a fixed distance ahead cannot be
-         shielded and cannot be knocked off anybody. */
+      var mulT = (o.mul || FLAT_MUL).touch;
       var osp = len(o.vx, o.vy);
-      /* and how far in front is skill: a good first touch keeps it under
-         the foot at pace, a poor one runs it two yards away and invites
-         the tackle. This is the stat you can see without being told. */
-      var push = TUNE.dribblePush * (0.20 + Math.min(0.42, osp * 0.0062)) *
-                 (o.mul || FLAT_MUL).touch;
-      var tx = o.x + Math.cos(o.dir) * push;
-      var ty = o.y + Math.sin(o.dir) * push;
-      b.x += (tx - b.x) * Math.min(1, dt * 11);
-      b.y += (ty - b.y) * Math.min(1, dt * 11);
+      var gap = len(b.x - o.x, b.y - o.y);
+      /* where this player likes to keep it: under the foot standing,
+         a stride and a half ahead at a sprint */
+      var ideal = (TUNE.touchNear + osp * TUNE.touchPace) * mulT;
+      o.touchT = (o.touchT || 0) - dt;
+      /* A PLAYER STANDING STILL DOES NOT TAP THE BALL BACK AND FORTH.
+         Without this a stationary carrier touches it, it rolls seven
+         units, it stops, they touch it again — a twitch, about twice a
+         second, for as long as they stand there. */
+      var moving = osp > 12 || gap > ideal * 1.25;
+      /* A DRIBBLER ALSO TOUCHES IT TO TURN.
+
+         Firing the touch only when the ball has come back under the
+         foot models a player running in a straight line and nothing
+         else. Turn while the ball is out in front and it keeps going
+         the way it was sent: the gap opens, no touch fires because the
+         ball is still too far away to be "back", and the ball is simply
+         lost — which measured as a quarter of all possessions ending in
+         a dribble running away for no reason the eye could see.
+
+         What a player actually does there is shift it: a short touch
+         across the body that brings the ball back onto the line he is
+         now running. So a touch also fires when the ball is reachable
+         but sitting well off his heading, which is the same rule for
+         both cases — touch it when it is not where you want it. */
+      var toB = Math.atan2(b.y - o.y, b.x - o.x);
+      var offLine = Math.abs(Math.atan2(Math.sin(toB - o.dir), Math.cos(toB - o.dir)));
+      var reachable = gap < TUNE.keepReach * 0.72;
+      if (moving && o.touchT <= 0 &&
+          (gap < ideal * 0.78 || (reachable && offLine > 1.0))) {
+        var heavy = Math.random() < TUNE.touchLoose * mulT ? 1.55 : 1;
+        var target = ideal * heavy;
+        var err = (Math.random() - 0.5) * TUNE.touchErr * mulT;
+        /* the speed that carries it out to `target` and no further. It
+           is a feedback term rather than a solved trajectory, which
+           self-corrects when the grass or a bounce takes the ball
+           somewhere the arithmetic did not expect. */
+        var S = clamp(osp + (target - gap) * 2.4, osp * 0.55 + 6, 240);
+        b.vx = Math.cos(o.dir + err) * S;
+        b.vy = Math.sin(o.dir + err) * S;
+        b.struck = Math.max(b.struck || 0, heavy > 1 ? 0.5 : 0.22);
+        o.touchT = TUNE.touchGap;
+        o.lastTouchHeavy = heavy > 1;
+        /* counted in the simulation rather than inferred from the
+           ball's speed by a harness: a shift across the body barely
+           changes the speed at all and was being missed */
+        G.stat.touches[o.team] = (G.stat.touches[o.team] || 0) + 1;
+        /* only the heavy one is audible: a tick three times a second is
+           a drum roll, and a dribble is nearly silent */
+        if (heavy > 1) SFX.touch();
+      }
+      /* a carried ball stays on the deck */
       b.z = Math.max(0, b.z - dt * 40);
-      b.vx = o.vx; b.vy = o.vy;
-      b.spin += len(o.vx, o.vy) * dt * 0.4;
-      return;
     }
 
     b.x += b.vx * dt; b.y += b.vy * dt;
@@ -1238,8 +1381,20 @@ window.OuissyCup = (function () {
        shot that travels and a shot that is aimed. */
     b.curve = bender ? clamp((-Math.sin(ang) * bender.vx + Math.cos(ang) * bender.vy) * 0.85, -70, 70) : 0;
     b.struck = 1;
-    b.x = from.x + Math.cos(ang) * 6;
-    b.y = from.y + Math.sin(ang) * 6;
+    /* THE BALL IS STRUCK WHERE IT IS.
+
+       This used to teleport it to six units in front of the striker
+       before kicking, which was invisible when the ball was welded to
+       the foot and is a jump of most of a stride now that it genuinely
+       sits out in front. A player kicks the ball from where the ball is;
+       the only thing this still does is refuse to let a kick come from
+       somewhere absurd, which can happen when a tackle and a shot land
+       on the same frame. */
+    var reachOut = len(b.x - from.x, b.y - from.y);
+    if (reachOut > TUNE.keepReach * 1.6 || reachOut < 0.5) {
+      b.x = from.x + Math.cos(ang) * 6;
+      b.y = from.y + Math.sin(ang) * 6;
+    }
   }
 
   /* WHO IS ON THE BALL.
@@ -1276,7 +1431,47 @@ window.OuissyCup = (function () {
       var away = len(o.x - b.x, o.y - b.y);
       /* a strong player holds it off for longer, which is what Atlas and
          Boulder are for */
-      if (away > TUNE.keepReach * (o.mul || FLAT_MUL).shield) b.owner = null;
+      if (away > TUNE.keepReach * (o.mul || FLAT_MUL).shield) { b.owner = null; }
+      else {
+        /* =================================================================
+           NICKING IT BETWEEN TOUCHES
+
+           The rule above this — that a carried ball cannot be taken by
+           proximity at any distance — was written when the ball was
+           welded to the foot, and it was right then: without it the ball
+           changed hands seven times a second. Now that the ball
+           genuinely travels out in front of the player, that rule says
+           something different and wrong: that a defender standing
+           directly in the path of a ball rolling towards him must let it
+           go past.
+
+           The distinction that makes both true at once is not distance
+           from the ball, it is WHO IS NEARER. A challenger has to be
+           clearly closer to the ball than the man dribbling it. With the
+           ball at the carrier's feet that is impossible by construction,
+           so the old thrash cannot come back; with the ball pushed a
+           stride and a half ahead, a defender who has read it can step
+           in front and take it, which is the whole risk of running with
+           the ball.
+           ================================================================= */
+        var thief = null, td = 1e9;
+        G.players.forEach(function (q) {
+          if (q.team === o.team || q.tackleT > 0) return;
+          var d = len(q.x - b.x, q.y - b.y);
+          if (d > TUNE.dribbleReach) return;
+          if (d > away - TUNE.nickEdge) return;
+          if (d < td) { td = d; thief = q; }
+        });
+        if (thief) {
+          b.owner = thief;
+          b.lastTouch = thief;
+          b.lock = TUNE.settle;
+          thief.touchT = TUNE.touchGap;
+          addHeart(thief.team, TUNE.heartTackle * 0.6);
+          SFX.touch();
+          G.hitStop = Math.max(G.hitStop, TUNE.hitStopShot);
+        }
+      }
       return;
     }
 
@@ -1290,6 +1485,23 @@ window.OuissyCup = (function () {
       var reach = p.gk && inBox(p, b)
         ? TUNE.gkReach * (p.mul || FLAT_MUL).gk * diff().gk
         : TUNE.dribbleReach;
+      /* YOU CAN STRETCH FOR ONE THAT IS COMING TO YOU.
+
+         A player reaches further for a ball arriving at him than for one
+         sitting still, because he can put a foot out and the ball does
+         the rest of the travelling. Without this, a free ball played
+         firmly at somebody's feet can pass through the nine-unit window
+         between two frames of him closing on it, and a perfectly good
+         pass rolls on untouched — which reads as the receiver ignoring
+         it. It applies only to a ball moving TOWARD him, so it never
+         widens the window for chasing one that is running away. */
+      if (!p.gk) {
+        var bs = len(b.vx, b.vy);
+        if (bs > 40) {
+          var closing = ((p.x - b.x) * b.vx + (p.y - b.y) * b.vy) / bs;
+          if (closing > 0) reach += Math.min(TUNE.stretch, bs * 0.035);
+        }
+      }
       if (d < reach && d < bd) { bd = d; best = p; }
     });
     if (!best) return;
@@ -1309,9 +1521,58 @@ window.OuissyCup = (function () {
        was silent. It only plays when the ball was moving enough to be
        controlled rather than walked onto, or every jostle in a crowded
        box becomes a drum roll. */
-    if (!b.owner && len(b.vx, b.vy) > 55) SFX.kick();
+    var arriving = len(b.vx, b.vy);
+    if (!b.owner && arriving > 55) SFX.kick();
     b.owner = best;
     b.lastTouch = best;
+
+    /* =====================================================================
+       THE FIRST TOUCH
+
+       Before the ball was freed from the foot, taking possession meant
+       the ball snapped to a fixed offset and its velocity was overwritten
+       with the player's — so a pass was "received" by teleporting it
+       under the receiver, and how hard the pass had been hit made no
+       difference to anything.
+
+       With a free ball, simply assigning an owner is worse than nothing:
+       the ball keeps its pace, sails straight past the man who is
+       supposedly on it, leaves his keepReach a few frames later and
+       comes loose again. Measured, that alone dropped completed passes
+       from 55% to 44% — the passing had not got worse, the RECEIVING
+       had stopped existing.
+
+       So a player who takes the ball takes a touch on it: the pace is
+       killed, and how much of it survives is the touch stat. A good one
+       kills it dead at the feet and can turn immediately. A poor one
+       lets it bounce a stride away, which is sometimes recoverable and
+       sometimes an invitation — and a ball hit hard is harder to control
+       than a ball rolled, for everybody.
+
+       This is the single most legible expression of a stat in the game.
+       Nobody has to be told Lumi has a better touch than Boulder; they
+       watch one of them take a pass in stride and the other stub it.
+       ===================================================================== */
+    var mT = (best.mul || FLAT_MUL).touch;      // below 1 is a good touch
+    /* how much of the pass's pace survives the control */
+    var keep = clamp(0.08 * mT * (1 + arriving / 240), 0.05, 0.58);
+    /* and it does not come off the boot perfectly straight */
+    var skew = (Math.random() - 0.5) * TUNE.trapErr * mT * clamp(arriving / 150, 0.3, 1.6);
+    var va = Math.atan2(b.vy, b.vx) + skew;
+    var vs = arriving * keep;
+    b.vx = Math.cos(va) * vs;
+    b.vy = Math.sin(va) * vs;
+    /* a ball dropping out of the air is harder again, and takes the
+       bounce out of it rather than the roll */
+    if (b.z > 0.5) { b.vz *= 0.25 * mT; }
+    /* the ball is his now, so he does not immediately shovel it forward
+       — the first touch IS his touch */
+    best.touchT = TUNE.touchGap * 2.2;
+    if (arriving > 70) {
+      setAnim(best, "trap", TUNE.trapTime);     // the receiving animation
+      if (keep > 0.34) SFX.touch();             // a heavy one is audible
+    }
+
     /* a settle, so the instant after a tackle is not a scramble in which
        the same two players trade it forty times */
     b.lock = TUNE.settle;
@@ -1813,8 +2074,14 @@ window.OuissyCup = (function () {
         p.vx -= p.vx * bite; p.vy -= p.vy * bite;
       }
     }
-    p.vx += (ux * top - p.vx) * Math.min(1, TUNE.accel / top * dt);
-    p.vy += (uy * top - p.vy) * Math.min(1, TUNE.accel / top * dt);
+    /* OFF BALANCE. A player who has just been shouldered off his line
+       cannot simply carry on running: for a third of a second his legs
+       are doing something other than what he asked them to, which is
+       what makes a collision cost something rather than being a sound
+       effect. */
+    var grip = (p.bumpT || 0) > 0 ? 0.16 : 1;
+    p.vx += (ux * top - p.vx) * Math.min(1, TUNE.accel * grip / top * dt);
+    p.vy += (uy * top - p.vy) * Math.min(1, TUNE.accel * grip / top * dt);
     if (ux || uy) {
       var want = Math.atan2(uy, ux);
       var diff = Math.atan2(Math.sin(want - p.dir), Math.cos(want - p.dir));
@@ -1822,7 +2089,34 @@ window.OuissyCup = (function () {
     }
   }
 
+  /* WHETHER THIS PLAYER IS TURNING OR PULLING UP.
+
+     Both fall straight out of numbers the simulation already has, and
+     neither needs a decision from anywhere: a turn is the heading being
+     a long way off the direction of travel while still moving, and a
+     skid is pace being shed much faster than friction alone would shed
+     it. Held for a fifth of a second each so a single frame of noise
+     does not flicker the sprite, and so the animation has time to read.
+
+     The thresholds are in the simulation's own units: 28 px/s is a jog,
+     1.1 radians is about sixty degrees, and 260 px/s/s is heavier
+     braking than the accel budget can produce by accident. */
+  function gaitStep(p, dt) {
+    var sp = len(p.vx, p.vy);
+    var was = p.prevSp === undefined ? sp : p.prevSp;
+    p.skidT = Math.max(0, (p.skidT || 0) - dt);
+    p.turnT = Math.max(0, (p.turnT || 0) - dt);
+    if (was > 38 && sp < was - 260 * dt) p.skidT = 0.20;
+    else if (sp > 28) {
+      var vd = Math.atan2(p.vy, p.vx);
+      var off = Math.abs(Math.atan2(Math.sin(p.dir - vd), Math.cos(p.dir - vd)));
+      if (off > 1.1) p.turnT = 0.18;
+    }
+    p.prevSp = sp;
+  }
+
   function playerStep(p, dt) {
+    gaitStep(p, dt);
     animStep(p, dt);
     p.coolT = Math.max(0, p.coolT - dt);
     p.hold = Math.max(0, p.hold - dt);
@@ -1844,18 +2138,103 @@ window.OuissyCup = (function () {
   }
 
   /* players do not stand inside each other */
-  function separate() {
+  /* =======================================================================
+     CONTACT
+
+     What was here moved two overlapping players apart by teleporting
+     them, in position, with no sound, no animation, no loss of pace and
+     no consequence of any kind. Eight players could run through each
+     other all match and the only evidence was that they never quite
+     occupied the same pixel. That is the difference between a football
+     match and eight sprites passing through one another on separate
+     layers, and it is felt long before it is noticed.
+
+     Three things happen when two players meet, and all three of them
+     are visible:
+
+       THE SHOVE. The push goes into VELOCITY, not just position, so
+       running into somebody costs you pace and knocks you off your
+       line. A position correction still happens, because two sprites
+       cannot share a pixel, but it is now the small part.
+
+       THE STUMBLE. Meet an opponent hard enough and the lighter of the
+       two is off balance for a moment: he cannot accelerate, he plays
+       the off-balance frames, and he has to recover. Which of the two
+       stumbles is the shield stat, so Atlas and Boulder walk through
+       people and Comet does not.
+
+       THE BALL. A carrier caught side-on or front-on loses it. Caught
+       from BEHIND he does not — that is what shielding is, and it is
+       the reason keepReach has always been bigger than dribbleReach.
+       Without this the shield stat had nothing to do in an actual
+       collision; it only ever applied to a number.
+     ======================================================================= */
+  function separate(dt) {
+    dt = dt || FIXED;
     for (var i = 0; i < G.players.length; i++) {
       for (var j = i + 1; j < G.players.length; j++) {
         var a = G.players[i], b = G.players[j];
         var dx = b.x - a.x, dy = b.y - a.y;
         var d = len(dx, dy);
-        if (d > 8.5 || d === 0) continue;
-        var push = (8.5 - d) / 2;
+        if (d > TUNE.bodyWidth || d === 0) continue;
+        var overlap = TUNE.bodyWidth - d;
         dx /= d; dy /= d;
-        if (!a.gk) { a.x -= dx * push; a.y -= dy * push; }
-        if (!b.gk) { b.x += dx * push; b.y += dy * push; }
+
+        /* how hard they came together: the closing speed along the line
+           between them, which is zero for two players drifting apart */
+        var closing = (a.vx - b.vx) * dx + (a.vy - b.vy) * dy;
+
+        /* the shove — into pace, and only a little into position */
+        var imp = Math.min(overlap * TUNE.bumpPush, closing > 0 ? closing * 0.5 : 6);
+        if (!a.gk) { a.vx -= dx * imp; a.vy -= dy * imp; }
+        if (!b.gk) { b.vx += dx * imp; b.vy += dy * imp; }
+        var corr = overlap * 0.34;
+        if (!a.gk) { a.x -= dx * corr; a.y -= dy * corr; }
+        if (!b.gk) { b.x += dx * corr; b.y += dy * corr; }
+
+        if (a.team === b.team || closing < TUNE.bumpHard) continue;
+        if (a.gk || b.gk) continue;
+        if ((a.bumpT || 0) > 0 || (b.bumpT || 0) > 0) continue;
+
+        /* WHO COMES OFF WORSE. Strength decides it, with the closing
+           speed as the stake — and a little luck, so the same two
+           players do not produce the same result every time. */
+        var sa = (a.mul || FLAT_MUL).shield * (0.82 + Math.random() * 0.36);
+        var sb = (b.mul || FLAT_MUL).shield * (0.82 + Math.random() * 0.36);
+        var loser = sa < sb ? a : b, winner = sa < sb ? b : a;
+        loser.bumpT = TUNE.bumpStun;
+        loser.skidT = Math.max(loser.skidT || 0, TUNE.bumpStun);
+        winner.bumpT = TUNE.bumpStun * 0.4;
+        SFX.bump(clamp(closing / 90, 0.3, 1));
+        turfBurst((a.x + b.x) / 2, (a.y + b.y) / 2, 4);
+        G.hitStop = Math.max(G.hitStop, TUNE.hitStopShot * 0.8);
+        G.shake = Math.max(G.shake, 0.18);
+
+        /* AND THE BALL, IF THE LOSER HAD IT.
+
+           Only when the contact came from the side or the front. A
+           shoulder in the back of a man shielding the ball is the one
+           challenge that does not win it — which is the whole point of
+           shielding, and the reason a strong player can hold the ball
+           up with somebody leaning on him. */
+        if (G.ball.owner === loser) {
+          var toW = Math.atan2(winner.y - loser.y, winner.x - loser.x);
+          var behind = Math.abs(Math.atan2(Math.sin(toW - loser.dir),
+                                           Math.cos(toW - loser.dir)));
+          if (behind < 2.0) {                      // not from directly behind
+            G.ball.owner = null;
+            G.ball.lock = TUNE.controlLock;
+            G.ball.vx += dx * (sa < sb ? 1 : -1) * 34;
+            G.ball.vy += dy * (sa < sb ? 1 : -1) * 34;
+            SFX.touch();
+          }
+        }
       }
+    }
+    /* the stun runs down wherever it was set */
+    for (var k = 0; k < G.players.length; k++) {
+      var q = G.players[k];
+      if (q.bumpT > 0) q.bumpT = Math.max(0, q.bumpT - dt);
     }
   }
 
@@ -1984,11 +2363,42 @@ window.OuissyCup = (function () {
      which is why a side with the ball on its own left touchline has its
      right back tucked inside, and why a team pinned in its own box has
      its striker on the edge of it. */
+  /* WHOSE BALL IT IS, including while nobody is holding it.
+
+     Used by the team shape AND by the job board, and it has to be the
+     same answer in both or the two disagree: a side told it is
+     attacking by one and defending by the other ends up with a striker
+     holding a defensive line. */
+  function ballHolder() { return G.ball.owner || G.ball.lastTouch || null; }
+
   function teamBlock(team) {
     var b = G.ball, d = attackDir(team), own = ownGoalY(team);
     /* how far up the pitch the ball is, from this team's point of view */
     var up = clamp((b.y - own) * d / PITCH.h, 0, 1);
-    var mine = b.owner && b.owner.team === team;
+    /* =====================================================================
+       TRANSITION: A LOOSE BALL IS NOT THE OTHER TEAM'S
+
+       Possession was a two-state question — either this side has the
+       ball or it does not — and the whole of the team shape hangs off
+       it. That was fine when the ball was welded to a foot and spent
+       almost all of its time owned. With a touch dribble the ball is
+       genuinely unowned for a good part of every passage, and in every
+       one of those frames BOTH sides were told they were defending:
+       both dropped, both held a line, nobody was attacking, and the
+       marking assignments churned every time the ball came loose and
+       was picked up again.
+
+       Football's answer is that there are three phases, not two, and
+       the third one is not "nobody's ball" — it is "whose ball is it
+       ABOUT to be". The side that touched it last is still the side in
+       possession as far as shape is concerned: they are the ones
+       nearest it, facing the right way, expecting it. A tackle changes
+       that instantly, because a tackle makes the tackler the last man
+       to touch it — which is exactly right, and costs nothing to work
+       out because the ball has carried `lastTouch` since it was
+       written.
+       ===================================================================== */
+    var mine = !!(ballHolder() && ballHolder().team === team);
     /* IN POSSESSION THE BLOCK PUSHES UP AND STRETCHES; OUT OF IT, IT
        DROPS AND SQUEEZES. The two numbers are deliberately not
        symmetrical: a side defends deeper than it attacks high, because
@@ -2070,7 +2480,8 @@ window.OuissyCup = (function () {
   function assignJobs(team) {
     var b = G.ball;
     var carrier = b.owner;
-    var mine = carrier && carrier.team === team;
+    var holder = ballHolder();
+    var mine = !!(holder && holder.team === team);
     var outs = [];
     G.players.forEach(function (q) {
       if (q.team !== team || q.gk) return;
@@ -2088,11 +2499,19 @@ window.OuissyCup = (function () {
          behind while the striker drops to take a square ball. */
       var d = attackDir(team);
       outs.sort(function (a, c) { return (c.y - a.y) * d; });
+      /* IF IT IS LOOSE, SOMEBODY HAS TO GO AND GET IT — one somebody.
+         The side in possession of a ball that is rolling free still
+         holds its attacking shape; it just sends its nearest man to
+         collect. Without this the shape was held by everybody and the
+         ball was collected by nobody. */
+      var fetch = carrier ? null : nearestTo(b, team, true);
+      if (fetch === G.controlled) fetch = nearestTo(b, team, true, G.controlled);
       var n = 0;
       outs.forEach(function (q) {
         if (q === carrier) return;
         q.mark = null; q.markT = 0;
         if (q === G.controlled) { q.job = null; return; }
+        if (q === fetch) { q.job = "chase"; return; }
         q.job = n === 0 ? "run" : (n === 1 ? "support" : "hold");
         n++;
       });
@@ -2213,8 +2632,31 @@ window.OuissyCup = (function () {
 
   /* ---------------------------------------------------------- WITH IT */
   function thinkAttack(p, dt, skill, blk, home) {
-    var b = G.ball, car = b.owner, d = blk.d;
+    var b = G.ball, d = blk.d;
+    /* WHAT THE SHAPE IS ARRANGED AROUND.
+
+       This used to be the carrier, full stop, and dereferenced him
+       without asking whether he existed — which was safe only while
+       "our side is attacking" and "our side is holding the ball" were
+       the same statement. They stopped being the same the moment a
+       loose ball started counting as still ours, and the first match
+       played after that threw on the first frame the ball came free.
+
+       When somebody is on it, the shape is arranged around HIM. When it
+       is rolling, it is arranged around the BALL — which is what a side
+       breaking onto a loose ball actually does. */
+    var car = b.owner || b;
     var tx = home.x, ty = home.y, urgency = 0.88;
+
+    if (p.job === "chase") {
+      /* the one sent to collect it: onto the ball, at pace, reading
+         where it is going rather than where it is */
+      var lead = 0.16;
+      moveTo(p, clamp(b.x + b.vx * lead, PITCH.x0 + 6, PITCH.x1 - 6),
+             clamp(b.y + b.vy * lead, PITCH.y0 + 6, PITCH.y1 - 6),
+             dt, 1.04 * aiSprint(p, dist(p, b) > 26, dt));
+      return;
+    }
 
     if (p.job === "run") {
       /* THE RUN IN BEHIND. Ahead of the ball, into the channel the
@@ -2382,11 +2824,38 @@ window.OuissyCup = (function () {
            where he is on the wrong side of his man. */
         urgency = behind ? 1.12 : 0.95;
       }
-      /* A LOOSE BALL NEARBY IS EVERYBODY'S. Marking a man while the
-         ball rolls past your feet is the other classic way an AI looks
-         like it is not playing the same sport. */
-      if (!car && dist(p, b) < 34) { tx = b.x + b.vx * 0.2; ty = b.y + b.vy * 0.2; urgency = 1.05; }
+      /* A LOOSE BALL IS NOT EVERYBODY'S.
+
+         It used to be: any marker within thirty-four units of an
+         unowned ball dropped his man and went for it. That was a fair
+         rule when the ball was welded to a foot and "unowned" meant a
+         pass in flight — a second or two a minute. Now that a dribble
+         is a series of touches, the ball is genuinely unowned for a
+         good part of every passage, and this rule fired constantly:
+         three defenders converging on the same rolling ball, the shape
+         gone, and two team-mates standing inside a body's width of each
+         other for six per cent of the match.
+
+         So a marker goes only for one that is nearly at his feet, and
+         only when he is the closest man to it. The presser is already
+         going; two men arriving at the same ball is one man wasted. */
+      if (!car && dist(p, b) < 16 && nearestTo(b, p.team, true) === p) {
+        tx = b.x + b.vx * 0.2; ty = b.y + b.vy * 0.2; urgency = 1.05;
+      }
       /* recovering is the one moment a marker is allowed everything */
+      /* A RECOVERY SPRINT WAS TRIED HERE AND MADE IT WORSE.
+
+         The idea was obvious enough: a defender caught upfield when the
+         ball turns over should sprint back behind the line rather than
+         jog. Measured over six halves it moved markers from goal-side
+         64% of the time to 58% — the opposite of the intent, and not by
+         a little. Sprinting back overshoots the man, arrives with no
+         balance, and spends the stamina that was going to be needed for
+         the second run thirty seconds later, by which time he is slower
+         than the striker he is supposed to be tracking. Jogging back in
+         shape beats sprinting back out of it, which is also what any
+         coach would have said. It is left recorded rather than deleted
+         because it is the kind of change somebody will try again. */
       urgency *= aiSprint(p, !!(m && !goalSide(p, m) && dist(p, m) > 16), dt);
     }
 
@@ -2873,24 +3342,76 @@ window.OuissyCup = (function () {
        a through ball hit at passing pace is a goal kick */
     var sp = clamp(far * 1.55, 90, TUNE.passSpeed * 1.15);
     kickBall(p, ang, sp, 0);
-    setAnim(p, "kick", 0.34);
-    G.stat.passes[p.team]++;
+    setAnim(p, "pass", 0.28);
+    G.stat.passTry[p.team]++;
     SFX.pass();
+  }
+
+  /* =======================================================================
+     WHERE A MOVING MAN WILL BE WHEN THE BALL GETS THERE
+
+     A fixed three tenths of a second of lead is right for exactly one
+     distance and wrong for every other. A five-yard square ball arrives
+     in a fifth of a second and is thrown a third of a second in front
+     of its target; a forty-yard diagonal takes most of a second and is
+     thrown the same third, so it lands well behind a sprinting winger.
+     With the ball welded to the foot none of that mattered, because
+     "arriving" meant the receiver walking into a nine-unit circle and
+     the ball snapping to him. With a free ball it is the whole
+     difference between a pass completed and a pass rolling into space.
+
+     So the lead is SOLVED. Two things make that more than dividing
+     distance by speed:
+
+       the ball SLOWS DOWN. Ground friction is a constant proportion
+       per second, so distance covered is v0 * (1 - drag^t) / -ln(drag)
+       — which inverts to give the time exactly, and which is about a
+       quarter longer than the naive answer at passing range.
+
+       the answer MOVES THE TARGET, which changes the distance, which
+       changes the answer. One refinement pass is enough at these
+       speeds; a second changes the aim by less than a pixel.
+     ======================================================================= */
+  var DRAG_L = -Math.log(TUNE.ballDrag);       // 0.1508 for drag 0.86
+
+  /* how long a ball struck at v0 takes to cover D on the deck, or -1 if
+     it never gets there at all */
+  function ballTime(D, v0) {
+    var arg = 1 - D * DRAG_L / v0;
+    if (arg <= 0.02) return -1;                // it stops short
+    return Math.log(arg) / -DRAG_L;
+  }
+
+  /* where to aim to meet `mate`, and how hard */
+  function leadPass(p, mate, mul) {
+    var tx = mate.x, ty = mate.y, sp = 0, t = 0;
+    for (var i = 0; i < 2; i++) {
+      var D = len(tx - p.x, ty - p.y);
+      sp = clamp(D * 1.9, 95, TUNE.passSpeed * 1.35);
+      t = ballTime(D, sp);
+      /* if it cannot reach, hit it as hard as the pass allows and take
+         the time that gives — a ball that stops short is still a pass,
+         it is just a poor one */
+      if (t < 0) { sp = TUNE.passSpeed * 1.35; t = D / sp * 1.5; }
+      tx = mate.x + mate.vx * t;
+      ty = mate.y + mate.vy * t;
+    }
+    return { x: clamp(tx, PITCH.x0 + 4, PITCH.x1 - 4),
+             y: clamp(ty, PITCH.y0 + 4, PITCH.y1 - 4), sp: sp };
   }
 
   function passTo(p, mate, soft) {
     var mul = p.mul || FLAT_MUL;
-    var lead = TUNE.passLead;
-    var tx = mate.x + mate.vx * lead, ty = mate.y + mate.vy * lead;
+    var aim = leadPass(p, mate, mul);
+    var tx = aim.x, ty = aim.y;
     var ang = Math.atan2(ty - p.y, tx - p.x);
     /* and it does not go exactly where it was aimed. A pass from Lumi
        arrives at a foot; a pass from Boulder arrives in the general
        area. Without this, skill 93 and skill 62 pass identically. */
     ang += (Math.random() - 0.5) * (TUNE.passErr / mul.aim);
-    var far = len(tx - p.x, ty - p.y);
-    var sp = clamp(far * 1.9, 95, TUNE.passSpeed * 1.35);
-    kickBall(p, ang, soft ? sp * 0.8 : sp, 0);
-    setAnim(p, "kick", 0.34);
+    kickBall(p, ang, soft ? aim.sp * 0.8 : aim.sp, 0);
+    setAnim(p, "pass", 0.28);
+    G.stat.passTry[p.team]++;
     SFX.pass();
   }
 
@@ -3145,7 +3666,7 @@ window.OuissyCup = (function () {
         celebrate(dt);
       }
       G.players.forEach(function (p) { playerStep(p, dt); });
-      separate();
+      separate(dt);
       if (G.state === "play") { ballStep(dt); resolvePossession(); pickControlled(false, dt); }
     }
     cameraStep(dt);
@@ -4173,6 +4694,8 @@ window.OuissyCup = (function () {
     if (pl.anim && pl.anim.once) {
       var a = pl.anim.state;
       if (a === "kick" || a === "superKick") return "kick";
+      if (a === "pass") return "pass";
+      if (a === "trap") return "trap";
       if (a === "slide") return "tackle";
       if (a === "dive") return "dive";
       if (a === "cheer" || a === "armsUp" || a === "knee" ||
@@ -4184,6 +4707,17 @@ window.OuissyCup = (function () {
     if (pl.tackleT > 0) return "tackle";
     if (G.state === "goal") return pl.team === G.scoredBy ? "cheer" : "sad";
     if (pl.gk && ballNear(pl)) return "ready";
+    /* THE TWO STATES A FOOTBALLER IS IN HALF THE TIME.
+
+       Neither of these is a decision anybody makes — they are read off
+       what the body is already doing, which is why they were missing:
+       nothing in the simulation ever asked "is this player changing
+       direction" or "is this player stopping", even though it has been
+       computing both since turnCost was written. They are checked
+       before run/idle because both of them ARE running, and both look
+       nothing like a run cycle. */
+    if (pl.skidT > 0) return "stop";
+    if (pl.turnT > 0) return "turn";
     return len(pl.vx, pl.vy) > 5 ? "run" : "idle";
   }
 
@@ -4583,6 +5117,106 @@ window.OuissyCup = (function () {
     drawText(px2 + Math.round(150 / 2),
              G.stat.shots[0] + " SHOTS " + G.stat.shots[1], py2 + 9,
              { align: "center", colour: "#9fb0a8" });
+
+    /* =====================================================================
+       THE RADAR
+
+       The camera sees about forty-five per cent of the pitch's width and
+       three quarters of its length. Everything outside that is a player
+       she cannot see, which means a pass to a team-mate in space is a
+       pass she had no way of knowing was on — and a run in behind
+       happens entirely off screen. Every football game ever made has a
+       radar for exactly this reason, and it is a gameplay instrument
+       rather than decoration: without it the passing in a game with a
+       tight camera is guesswork dressed up as a decision.
+
+       It is drawn as the pitch is drawn, which is the part that makes
+       it read at forty pixels wide: the same two mowing tones, the same
+       line colour, the goals at the ends, and the halfway line. Dots
+       are kit colours so the two sides are told apart by the same
+       information as on the grass — and the one she is driving gets the
+       white ring the player wears, so the two pictures agree.
+
+       ALWAYS THE SAME WAY ROUND. It does not rotate at half time and it
+       does not flip to "your goal is always at the bottom", because
+       both of those make it a second thing to learn. Her goal is the
+       one with her colour behind it; that is enough.
+       ===================================================================== */
+    var rw = 54, rh = Math.round(rw * (PITCH.h / PITCH.w) * 0.62);
+    var rx = UIW - rw - 6, ry = UIH - rh - 6;
+    /* the box, with the pitch's own dark green inside it */
+    box(rx - 2, ry - 2, rw + 4, rh + 4, "#0d1412");
+    box(rx - 1, ry - 1, rw + 2, rh + 2, "#2a3a34");
+    /* two mowing bands, so it reads as a pitch and not as a gauge */
+    for (var mb = 0; mb < rh; mb++) {
+      box(rx, ry + mb, rw, 1, (Math.floor(mb / 4) & 1) ? "#2f6b34" : "#37793c");
+    }
+    /* the markings: halfway, the circle, and a mouth at each end */
+    box(rx, ry + Math.round(rh / 2), rw, 1, "#7fae86");
+    var rcx = rx + Math.round(rw / 2), rcy = ry + Math.round(rh / 2);
+    for (var ca = 0; ca < 12; ca++) {
+      var aa = (ca / 12) * Math.PI * 2;
+      box(rcx + Math.round(Math.cos(aa) * 5), rcy + Math.round(Math.sin(aa) * 4),
+          1, 1, "#7fae86");
+    }
+    /* WHICH END IS WHOSE, in the two sides' own colours — the only way
+       to know which way you are kicking without a label. */
+    var gw = Math.round(rw * 0.34), gx = rx + Math.round((rw - gw) / 2);
+    var topIsHers = attackDir(0) < 0;
+    box(gx, ry, gw, 2, topIsHers ? bCol : aCol);
+    box(gx, ry + rh - 2, gw, 2, topIsHers ? aCol : bCol);
+
+    /* the players. Drawn smallest first so the one being driven and the
+       man on the ball end up on top of the pile rather than under it. */
+    var rpx = function (wx, wy) {
+      return { x: rx + Math.round((wx - PITCH.x0) / PITCH.w * (rw - 1)),
+               y: ry + Math.round((wy - PITCH.y0) / PITCH.h * (rh - 1)) };
+    };
+    var plot = [];
+    G.players.forEach(function (q) {
+      plot.push({ p: q, rank: q === G.controlled ? 2 : (G.ball.owner === q ? 1 : 0) });
+    });
+    plot.sort(function (m, n) { return m.rank - n.rank; });
+    plot.forEach(function (e) {
+      var q = e.p, r2 = rpx(q.x, q.y);
+      if (r2.x < rx || r2.x >= rx + rw || r2.y < ry || r2.y >= ry + rh) return;
+      var col = q.team === 0 ? aCol : bCol;
+      if (q.gk) col = lift(col, -40);
+      box(r2.x - 1, r2.y - 1, 3, 3, "#0d1412");
+      box(r2.x, r2.y, 2, 2, col);
+      /* the one she is driving wears the same ring here as on the grass */
+      if (q === G.controlled) {
+        box(r2.x - 2, r2.y - 2, 5, 1, "#ffffff");
+        box(r2.x - 2, r2.y + 2, 5, 1, "#ffffff");
+        box(r2.x - 2, r2.y - 1, 1, 3, "#ffffff");
+        box(r2.x + 2, r2.y - 1, 1, 3, "#ffffff");
+      }
+    });
+    /* and the ball, last and brightest, because it is the one thing on
+       the radar you are always looking for */
+    var rb = rpx(G.ball.x, G.ball.y);
+    if (rb.x >= rx && rb.x < rx + rw && rb.y >= ry && rb.y < ry + rh) {
+      box(rb.x - 1, rb.y - 1, 3, 3, "#0d1412");
+      box(rb.x, rb.y, 1, 1, "#ffffff");
+    }
+
+    /* WHAT THE CAMERA IS LOOKING AT, as a bracket rather than a box.
+
+       A full rectangle drawn over a forty-pixel radar covers most of
+       it; four corners say the same thing and leave the dots visible. */
+    if (R2 && R2.rowAt) {
+      var top = clamp(PITCH.y1 - R2.rowAt(0), PITCH.y0, PITCH.y1);
+      var bot = clamp(PITCH.y1 - R2.rowAt(R2.vh - 1), PITCH.y0, PITCH.y1);
+      var vy0 = rpx(PITCH.cx, Math.min(top, bot)).y;
+      var vy1 = rpx(PITCH.cx, Math.max(top, bot)).y;
+      if (vy1 - vy0 > 3) {
+        for (var cc = 0; cc < 2; cc++) {
+          var vx = cc ? rx + rw - 1 : rx;
+          box(vx, vy0, 1, 3, "#e8f0e8");
+          box(vx, vy1 - 2, 1, 3, "#e8f0e8");
+        }
+      }
+    }
 
     /* ---- STAMINA, low on the left where her thumb already is ----- */
     var st = G.controlled ? G.controlled.stamina : 1;
@@ -7873,7 +8507,11 @@ window.OuissyCup = (function () {
       return {
         ball: { x: +G.ball.x.toFixed(1), y: +G.ball.y.toFixed(1) },
         owner: G.ball.owner
-          ? { team: G.ball.owner.team, name: G.ball.owner.name } : null,
+          ? { team: G.ball.owner.team, name: G.ball.owner.name,
+              /* the INDEX, because the roster is shared and two players
+                 on opposite sides can carry the same name */
+              i: G.players.indexOf(G.ball.owner) } : null,
+        ballV: +len(G.ball.vx, G.ball.vy).toFixed(1),
         /* A NAME IS NOT AN IDENTITY HERE.
 
            The roster is shared, so the same character can turn out for
@@ -7892,7 +8530,9 @@ window.OuissyCup = (function () {
                    sp: +len(p.vx, p.vy).toFixed(1) };
         }),
         stat: { shots: G.stat.shots.slice(), poss: G.stat.poss.slice(),
-                passes: G.stat.passes.slice() },
+                passes: G.stat.passes.slice(),
+                passTry: (G.stat.passTry || [0, 0]).slice(),
+                touches: (G.stat.touches || [0, 0]).slice() },
         score: G.score.slice(), state: G.state, dbg: G.dbg || null,
       };
     },

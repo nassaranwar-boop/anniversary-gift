@@ -202,6 +202,14 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
       stuckPct: +(stuck / Math.max(1, frames) * 100).toFixed(1),
       thirds: thirds.map(t => +(t / Math.max(1, frames) * 100).toFixed(0)),
       passes, keptPct: +(keptPass / Math.max(1, passes) * 100).toFixed(0),
+      /* THE REAL COMPLETION RATE, from the simulation's own counters.
+         `keptPct` above counts owner CHANGES that stayed with the same
+         side, which stopped meaning "pass completion" the moment the
+         ball was freed from the foot: a heavy touch that runs loose and
+         is picked up by an opponent is an owner change to the other
+         side, and it is not a misplaced pass. */
+      passTry: s.stat.passTry[0] + s.stat.passTry[1],
+      passOk: s.stat.passes[0] + s.stat.passes[1],
       shots: shotsSeen, score: s.score,
       poss: s.stat.poss.map(v => +v.toFixed(0)),
       dbg: s.dbg,
@@ -224,6 +232,10 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
     stuckPct: avg(r => r.stuckPct),
     thirds: [0, 1, 2].map(i => Math.round(avg(r => r.thirds[i]))),
     passes: avg(r => r.passes),
+    passTry: avg(r => r.passTry),
+    passOk: avg(r => r.passOk),
+    passPct: +(runs.reduce((a, r) => a + r.passOk, 0) /
+               Math.max(1, runs.reduce((a, r) => a + r.passTry, 0)) * 100).toFixed(1),
     keptPct: avg(r => r.keptPct),
     shots: [0, 1].map(i => avg(r => r.shots[i])),
     score: [0, 1].map(i => avg(r => r.score[i])),
@@ -252,7 +264,9 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
               '   possession ' + report.poss.join('s / ') + 's');
   console.log('   ball spent ' + report.thirds.join('% / ') + '% of its time in each third');
   console.log('   nearest team-mate averaged ' + report.nearMean + ' units apart');
-  console.log('   ' + report.passes + ' changes of possession, ' + report.keptPct + '% stayed with the same side');
+  console.log('   ' + report.passes + ' changes of possession; ' +
+              Math.round(report.passTry) + ' passes attempted, ' +
+              report.passPct + '% found a team-mate');
   console.log('   goal-side failures per round: ' + JSON.stringify(report.gsEach) + ' over ' + JSON.stringify(report.markNEach) + ' samples');
   console.log('   carrier decisions: ' + JSON.stringify(report.dbg[0]));
   console.log('');
@@ -303,7 +317,7 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
      is really for is catching the broken case: passes fired at marked
      men through defenders, which lands in the thirties. */
   ok('a pass mostly finds a team-mate (about half or better)',
-     report.keptPct > 48, report.keptPct);
+     report.passPct > 48, report.passPct);
   ok('even the beaten side keeps the ball sometimes',
      report.possRatio > 0.12, +report.possRatio.toFixed(2));
   ok('no page errors', errs.length === 0, errs.slice(0, 3));

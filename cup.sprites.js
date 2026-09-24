@@ -315,6 +315,89 @@ window.CupSprites = (function () {
       p.lean = 2;
       p.hairLag = Math.round(Math.cos(ph) * 2);    // secondary motion
 
+    } else if (anim === "turn") {
+      /* PLANTING A FOOT AND COMING ROUND.
+
+         What sells a turn is not the feet, it is the HIPS: the body
+         drops, leans into the new direction, and the outside arm comes
+         across to balance it. The outside foot plants wide and stays
+         planted while everything else rotates over it — which is why
+         the planted leg barely moves across these four frames and the
+         lean does almost all the work. */
+      var k = n > 1 ? f / (n - 1) : 0;
+      p.legA = [Math.round(7 - k * 3), 0];            // planted, wide
+      p.legB = [Math.round(-2 - k * 4), Math.round(-k * 2)];
+      /* the lean crosses over: away from the turn, then into it */
+      p.lean = Math.round(-3 + k * 7);
+      p.bob = k < 0.5 ? 1 : 0;                        // hips drop, then rise
+      p.squash = k < 0.4 ? 1 : 0;
+      p.armA = [Math.round(-4 + k * 7), Math.round(-2 + k * 3)];
+      p.armB = [Math.round(3 - k * 6), Math.round(2 - k * 4)];
+      p.hairLag = Math.round(-3 + k * 6);             // hair arrives late
+      p.headBob = k < 0.5 ? 1 : 0;
+
+    } else if (anim === "stop") {
+      /* A SKID. Both feet come forward of the body, the weight goes
+         back, and then it settles. Three frames is all it needs and all
+         it can have — any longer and stopping feels like wading. */
+      var k2 = n > 1 ? f / (n - 1) : 0;
+      p.legA = [Math.round(6 - k2 * 2), 0];
+      p.legB = [Math.round(3 - k2 * 7), 0];
+      p.lean = Math.round(-4 + k2 * 4);               // weight back, then up
+      p.bob = k2 < 0.6 ? 1 : 0;
+      p.squash = k2 < 0.6 ? 1 : 0;
+      p.armA = [Math.round(-5 + k2 * 4), Math.round(-3 + k2 * 3)];
+      p.armB = [Math.round(5 - k2 * 4), Math.round(-3 + k2 * 3)];
+      p.hairLag = Math.round(3 - k2 * 3);
+      p.headBob = k2 < 0.4 ? 1 : 0;
+
+    } else if (anim === "trap") {
+      /* TAKING IT DOWN. A foot goes out to meet the ball, the body
+         comes over the top of it, and the arms open for balance. The
+         whole thing is a quarter of a second and its job is to say "he
+         has it under control" — or, on a poor one, that he does not. */
+      var k3 = n > 1 ? f / (n - 1) : 0;
+      p.legA = [Math.round(3 + k3 * 5), Math.round(-k3 * 2)];  // reaching out
+      p.legB = [-4, 0];
+      p.lean = Math.round(1 + k3 * 2);                // over the ball
+      p.bob = k3 > 0.4 ? 1 : 0;
+      p.squash = k3 > 0.4 ? 1 : 0;
+      p.armA = [Math.round(-3 - k3 * 2), 1];
+      p.armB = [Math.round(3 + k3 * 2), Math.round(-1 - k3)];
+      p.hairLag = 1;
+      p.headBob = 1;                                  // eyes down on the ball
+
+    } else if (anim === "pass") {
+      /* A SIDE-FOOT.
+
+         The same three beats as the shot and a fraction of the size of
+         each. The leg comes back a third as far, the contact is across
+         the body rather than through the ball, and there is almost no
+         follow-through — which is exactly the difference you are
+         trying to read at a glance when somebody rolls one square
+         instead of hitting it. */
+      var k4 = n > 1 ? f / (n - 1) : 0;
+      p.legB = [-5, 0];                               // planted
+      if (k4 < 0.4) {
+        var a4 = k4 / 0.4;
+        p.legA = [Math.round(2 - a4 * 4), 0];
+        p.armB = [Math.round(1 + a4 * 2), -2];
+        p.armA = [Math.round(-a4 * 2), 1];
+        p.lean = -1;
+      } else if (k4 < 0.7) {
+        var b4 = (k4 - 0.4) / 0.3;
+        p.legA = [Math.round(-2 + b4 * 7), Math.round(-b4 * 2)];
+        p.armB = [Math.round(3 - b4 * 3), -2];
+        p.armA = [Math.round(-2 + b4), 1];
+        p.lean = Math.round(b4);
+      } else {
+        var c4 = (k4 - 0.7) / 0.3;
+        p.legA = [Math.round(5 - c4 * 3), Math.round(-2 + c4 * 2)];
+        p.armB = [0, -1];
+        p.armA = [-1, 1];
+        p.lean = 1;
+      }
+
     } else if (anim === "kick") {
       /* Part 4.3: anticipation, contact, follow-through.
 
@@ -1068,8 +1151,36 @@ window.CupSprites = (function () {
   /* =======================================================================
      BAKING
      ======================================================================= */
+  /* =======================================================================
+     WHAT A PLAYER CAN BE DOING
+
+     Eight of these shipped first: idle, run, kick, tackle, cheer, sad,
+     dive, ready. That set has a hole in it you can see from across the
+     room — there is no way to CHANGE DIRECTION and no way to STOP. A
+     player went from eight-frames-a-second sprinting to a standing
+     breathing idle between one frame and the next, and turned through a
+     hundred and eighty degrees at full pace without anything happening
+     in the sprite at all. The physics already knew better: turnCost has
+     been shedding pace on a hard turn since it was written, and nothing
+     ever drew it.
+
+     And one animation was doing three jobs. `kick` played for a
+     thirty-yard shot, a five-yard square pass and the keeper's
+     distribution, so nothing about the sprite said which of those it
+     was. Power in an animation is almost entirely ANTICIPATION — how
+     far back the leg goes and how long it stays there — and a pass and
+     a shot have completely different amounts of it.
+
+       turn   plant the outside foot, drop the hips, come round
+       stop   skid, weight back, settle
+       trap   a foot out to meet the ball, body over it
+       pass   side-foot: short wind-up, quick contact, no follow-through
+       kick   the shot, which is all three of those made large
+     ======================================================================= */
   var ANIMS = [
     { id: "idle", n: 4 }, { id: "run", n: 8 }, { id: "kick", n: 6 },
+    { id: "pass", n: 5 }, { id: "turn", n: 4 }, { id: "stop", n: 3 },
+    { id: "trap", n: 3 },
     { id: "tackle", n: 5 }, { id: "cheer", n: 6 }, { id: "sad", n: 3 },
     { id: "dive", n: 5 }, { id: "ready", n: 4 },
   ];

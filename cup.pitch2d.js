@@ -1305,11 +1305,62 @@ window.CupPitch2D = (function () {
   /* Part 1.7: the shadow is an ellipse on the ground, and it SHRINKS and
      darkens towards a point as the character rises. A shadow that stays
      the same size while its owner jumps nails them to the turf. */
+  /* =======================================================================
+     A FLOODLIT PLAYER HAS MORE THAN ONE SHADOW
+
+     There are four pylons drawn on the roofline of this stadium and
+     every player on the pitch cast exactly one soft ellipse, directly
+     underneath them, as though lit by a single lamp hanging from the
+     sky. It is the detail that most separates a night match in a
+     professional football game from a sprite standing on grass, and it
+     costs two more ellipses.
+
+     Real floodlighting throws a shadow away from each tower, so a
+     player near the middle of the pitch has three or four faint ones
+     fanning out around his feet and a player under a tower has one long
+     one. What sells it is that the fan CHANGES as he crosses the pitch:
+     the shadows swing round him, which is motion the eye reads as
+     lighting without ever thinking about it.
+
+     Two compromises, both deliberate. The offsets are worked out from
+     where the towers are on the ground rather than from any real light
+     maths — at this size the difference is invisible and the maths is
+     not. And the shadows are drawn faintest-first so the darkest one is
+     on top, because three equal ellipses overlapping read as a stain
+     rather than as light from three directions.
+     ======================================================================= */
+  var LAMPS = [
+    /* across the pitch, along it, and how strong — the two behind the
+       far corners are the ones in shot, so they get most of the weight */
+    { x: -0.82, y: 1.30, w: 1.00 },
+    { x: 0.82, y: 1.30, w: 1.00 },
+    { x: -0.82, y: -0.30, w: 0.62 },
+    { x: 0.82, y: -0.30, w: 0.62 },
+  ];
+
   Pitch.prototype.shadow = function (wx, wy, r, air) {
     var p = this.project(wx, wy);
     var f = 1 - Math.min(0.55, (air || 0) * 0.055);
-    fillEllipse(this.ctx, p.x, p.y - 1, Math.max(2, p.k * r * f),
-                Math.max(1, p.ky * r * f * 1.8), C.shadow);
+    var rx = Math.max(2, p.k * r * f), ry = Math.max(1, p.ky * r * f * 1.8);
+    var w = this.raw, ctx = this.ctx;
+    /* how far along the pitch this player is, and how far across */
+    var ax = wx / Math.max(1, w.halfW), ay = wy / Math.max(1, w.len);
+    for (var i = 0; i < LAMPS.length; i++) {
+      var L = LAMPS[i];
+      /* the direction from the lamp to the player, on the ground */
+      var dx = ax - L.x, dy = ay - L.y;
+      var dl = Math.sqrt(dx * dx + dy * dy) || 1;
+      /* the further from the tower, the longer and fainter the throw */
+      var reach = Math.min(1.35, 0.45 + dl * 0.75);
+      var ox = dx / dl * reach * rx * 1.45;
+      var oy = dy / dl * reach * ry * 1.45;
+      ctx.globalAlpha = 0.21 * L.w;
+      fillEllipse(ctx, p.x + ox, p.y - 1 + oy, rx * 0.96, ry * 0.96, C.shadow);
+    }
+    ctx.globalAlpha = 1;
+    /* and the contact shadow, hard and directly underneath, which is
+       what actually plants the boots on the grass */
+    fillEllipse(ctx, p.x, p.y - 1, rx * 0.84, ry * 0.84, C.shadow);
   };
 
   /* THE RING UNDER THE PLAYER BEING DRIVEN.
