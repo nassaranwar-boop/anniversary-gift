@@ -7600,11 +7600,41 @@ img{-webkit-user-drag:none; user-select:none;}
    actually been playing. The first version was a score and a clock in
    two different corners, which tells you the result and nothing about
    the match. */
+/* THE SCOREBOARD IS DRAWN NOW, NOT LAID OUT.
+
+   Everything inside .cup-hud is painted into the pixel layer by
+   drawHud(). The markup stays exactly where it was and its text goes on
+   being updated, because that text is what a screen reader reads and
+   what the chapter's own harnesses read — it is simply no longer what
+   anybody SEES. Clipped to a pixel rather than display:none, because a
+   hidden element is not in the accessibility tree at all. */
 .cup-hud{
-  position:absolute; inset:0; pointer-events:none;
+  position:absolute; width:1px; height:1px; overflow:hidden;
+  clip-path:inset(50%); white-space:nowrap; pointer-events:none;
   font-family:'Silkscreen',monospace; color:#f6faf0;
 }
 .cup-hud[hidden]{display:none;}
+
+/* THE PAD KEEPS ITS BUTTONS AND LOSES ITS LOOK.
+
+   A real <button> with a real touch target, a real aria-label and a
+   real focus ring is worth keeping; reimplementing all of that on a
+   canvas to win a rectangle would be a bad trade. So the control stays
+   and its skin goes, and drawHud measures the rectangle back and paints
+   the art exactly on top of it. */
+.cup-btn, .cup-sup-btn, .cup-pause-btn{
+  background:none !important; box-shadow:none !important;
+  border:0 !important; filter:none !important;
+}
+.cup-btn > *, .cup-sup-btn > *, .cup-pause-btn > *{ visibility:hidden; }
+.cup-btn:focus-visible, .cup-sup-btn:focus-visible, .cup-pause-btn:focus-visible{
+  outline:2px solid #ffe9a8; outline-offset:2px;
+}
+/* the stick's own ring is drawn too; the pad keeps the touch surface */
+.cup-stick-k, .cup-stick-k > i{ visibility:hidden; }
+/* the hint and the keyboard legend were the last two runs of CSS text
+   sitting on the grass; drawHud sets both in the game's own font */
+.cup-stick-hint, .cup-keys{ visibility:hidden; }
 
 .cup-board{
   position:absolute; top:0; left:50%; transform:translateX(-50%);

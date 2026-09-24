@@ -42,24 +42,24 @@ async function clickUi(p, id) {
   await p.evaluate(() => window.loadChapter && window.loadChapter('cup'));
   await p.waitForFunction(() => !!window.OuissyCup, { timeout: 30000 });
   await p.evaluate(() => { try { localStorage.clear(); } catch (e) {} showScreen('cup'); OuissyCup.__cup.soundOff(); OuissyCup.__cup.shadows(false); OuissyCup.start(); });
-  await p.waitForTimeout(500);
-  await p.screenshot({ path: '/tmp/cup-card.png' });
-  console.log('card:', await p.evaluate(() =>
-    (document.querySelector('#cup-overlay .cup-card') || {}).childElementCount));
-
   /* THE ROUTE HAS TWO MORE DOORS IN IT than when this was written: the
      controls come up the first time anyone opens the chapter, and then
-     the title menu, and only then the fixture. */
-  await p.click('[data-go="back"]').catch(() => {});
+     the title menu, and only then the fixture. All three are drawn. */
+  await p.waitForFunction(() => OuissyCup.__cup.ui().name === 'help',
+                          { timeout: 40000 });
+  await p.waitForFunction(() => OuissyCup.__cup.ui().age > 1.2,
+                          null, { timeout: 90000, polling: 250 });
+  await p.screenshot({ path: '/tmp/cup-card.png' });
+  await p.evaluate(() => OuissyCup.__cup.press('card_go'));
   await p.waitForFunction(() => OuissyCup.__cup.ui().name === 'title',
                           { timeout: 20000 });
   await p.waitForFunction(() => OuissyCup.__cup.ui().age > 1.2,
                           null, { timeout: 60000, polling: 250 });
   await p.screenshot({ path: '/tmp/cup-menu.png' });
   await clickUi(p, 'm_coupe');
-  await p.waitForSelector('.cup-card-b', { timeout: 20000 });
-  await p.screenshot({ path: '/tmp/cup-card.png' });
-  await p.click('.cup-card-b');
+  await p.waitForFunction(() => OuissyCup.__cup.ui().name === 'round',
+                          { timeout: 20000 });
+  await clickUi(p, 'card_go');
   await p.evaluate(() => {
     for (let i = 0; i < 260 && OuissyCup.__cup.state().state !== 'play'; i++) {
       OuissyCup.__cup.step(1, 0, 0, false);
@@ -105,6 +105,19 @@ async function clickUi(p, id) {
   });
   await p.waitForTimeout(400);
   await p.screenshot({ path: '/tmp/cup-shadows.png' });
+  /* HARD UP AGAINST THE BOARDS. The ball has always come back off the
+     touchline and the camera was clamped where she could never see one,
+     so this is the frame that proves there is something there. */
+  await p.evaluate(() => {
+    OuissyCup.__cup.setState('play');
+    const g = OuissyCup.__cup.geometry();
+    OuissyCup.__cup.put(g.pitch.x1 - 10, g.pitch.cy + 40, 0);
+    for (let i = 0; i < 70; i++) OuissyCup.__cup.step(1, 1, -0.2, false);
+    OuissyCup.__cup.render();
+  });
+  await p.waitForTimeout(300);
+  await p.screenshot({ path: '/tmp/cup-touchline.png' });
+
   /* a goal, and what happens for the three seconds afterwards */
   await p.evaluate(() => {
     OuissyCup.__cup.setState('play');

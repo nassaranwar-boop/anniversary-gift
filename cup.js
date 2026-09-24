@@ -602,6 +602,24 @@ window.OuissyCup = (function () {
       });
     },
     concede: function () { tone("sawtooth", 200, 120, 0.5, 0.10); crowdSwell(0.05, 1.6); },
+    /* THE BOARDS ARE NOT A TACKLE. Every rebound off a touchline and
+       every one off the side of a goal frame was playing the tackle
+       sound — a dull scuff — so the one thing the pitch does that has
+       no equivalent in real football sounded like somebody sliding in.
+       A board is hollow, wooden and short. */
+    board:   function () { tone("square", 210, 120, 0.09, 0.13);
+                           burst(0.05, 0.10, 900, 1.6); },
+    /* the ball landing on the turf: almost nothing, which is the point */
+    bounce:  function (hard) { burst(0.05, 0.05 + hard * 0.07, 300, 0.9);
+                               tone("sine", 120, 70, 0.07, 0.05 + hard * 0.05); },
+    /* THE CAMERA CUTTING IN. It halves the virtual screen, which on
+       screen is an instant doubling — a cut, not a glide — and a cut
+       with no sound on it reads as a dropped frame. */
+    cut:     function () { tone("sine", 90, 46, 0.16, 0.14);
+                           burst(0.08, 0.07, 500, 0.7); },
+    /* a card arriving: a short sweep up, well under the crowd */
+    card:    function () { tone("triangle", 360, 660, 0.10, 0.05);
+                           tone("sine", 180, 300, 0.12, 0.04, 0.02); },
     pick:    function () { tone("square", 620, 900, 0.07, 0.07); },
     move:    function () { tone("square", 480, 620, 0.05, 0.05); },
     back:    function () { tone("square", 620, 400, 0.07, 0.05); },
@@ -1073,7 +1091,10 @@ window.OuissyCup = (function () {
       b.z += b.vz * dt;
       if (b.z <= 0) {
         b.z = 0;
-        if (Math.abs(b.vz) > 22) { b.vz = -b.vz * TUNE.bounce; }
+        if (Math.abs(b.vz) > 22) {
+          SFX.bounce(clamp(Math.abs(b.vz) / 90, 0, 1));
+          b.vz = -b.vz * TUNE.bounce;
+        }
         else b.vz = 0;
       }
     }
@@ -1089,6 +1110,12 @@ window.OuissyCup = (function () {
       } else b.curve = 0;
     }
     b.struck = Math.max(0, (b.struck || 0) - dt * 5);
+    /* HOW FAR IT HAS ROLLED, in radians of its own circumference. The
+       simulation has always known how fast the ball is going and never
+       had to care which way up it was; a drawn ball does, because a
+       football that slides across the grass without turning is a
+       sticker being dragged. */
+    b.spin = ((b.spin || 0) + len(b.vx, b.vy) * dt / BALL_R) % (Math.PI * 2);
     var drag = Math.pow(b.z > 2 ? TUNE.ballAirDrag : TUNE.ballDrag, dt);
     b.vx *= drag; b.vy *= drag;
     if (len(b.vx, b.vy) < 3) { b.vx = 0; b.vy = 0; }
@@ -1102,8 +1129,8 @@ window.OuissyCup = (function () {
     var b = G.ball, P = PITCH;
     var gx0 = P.cx - P.goalW / 2, gx1 = P.cx + P.goalW / 2;
 
-    if (b.x < P.x0 + 2) { b.x = P.x0 + 2; b.vx = Math.abs(b.vx) * 0.62; SFX.tackle(); }
-    if (b.x > P.x1 - 2) { b.x = P.x1 - 2; b.vx = -Math.abs(b.vx) * 0.62; SFX.tackle(); }
+    if (b.x < P.x0 + 2) { b.x = P.x0 + 2; b.vx = Math.abs(b.vx) * 0.62; SFX.board(); }
+    if (b.x > P.x1 - 2) { b.x = P.x1 - 2; b.vx = -Math.abs(b.vx) * 0.62; SFX.board(); }
 
     [0, 1].forEach(function (end) {
       var gl = end ? P.y1 : P.y0;
@@ -1131,7 +1158,7 @@ window.OuissyCup = (function () {
         b.y = gl - (end ? 1 : -1) * 2; b.vy = -b.vy * 0.5; SFX.post();
         return;
       }
-      b.y = gl + (end ? -2 : 2); b.vy = -b.vy * 0.62; SFX.tackle();
+      b.y = gl + (end ? -2 : 2); b.vy = -b.vy * 0.62; SFX.board();
     });
   }
 
@@ -1211,6 +1238,16 @@ window.OuissyCup = (function () {
       G.stat.passes[best.team]++;
       addHeart(best.team, TUNE.heartPass);
     }
+    /* THE FIRST TOUCH.
+
+       `SFX.kick` has been in the sound bank since the chapter was
+       written and nothing has ever called it: a pass had a sound, a
+       shot had a sound, and the moment somebody actually TOOK the ball
+       — the one touch in football that happens more than any other —
+       was silent. It only plays when the ball was moving enough to be
+       controlled rather than walked onto, or every jostle in a crowded
+       box becomes a drum roll. */
+    if (!b.owner && len(b.vx, b.vy) > 55) SFX.kick();
     b.owner = best;
     b.lastTouch = best;
     /* a settle, so the instant after a tackle is not a scramble in which
@@ -2389,6 +2426,10 @@ window.OuissyCup = (function () {
 
   /* what the camera is doing this second */
   function setCamMode(kind, at, hold) {
+    /* a cut in or out gets a sound on it; settling back into play does
+       not, because that one happens every time anything ends */
+    var closeUp = function (k) { return k === "goal" || k === "super" || k === "hero"; };
+    if (closeUp(kind) && !closeUp(camMode.kind)) SFX.cut();
     camMode.kind = kind; camMode.t = 0; camMode.at = at || null;
     camMode.hold = hold || 0;
   }
@@ -2467,9 +2508,16 @@ window.OuissyCup = (function () {
     /* PLAY. Follow the ball, ease, and never let the camera past the
        ends of the pitch — behind the goal line there is nothing to see
        but the back of a stand. */
+    /* THE CAMERA IS ALLOWED TO REACH THE TOUCHLINE.
+
+       Clamped to a fifth of the pitch either side of the middle, it
+       could never get within eighty units of a touchline — and with
+       about sixty units of half-view, that meant the touchline was
+       ALWAYS off the side of the screen. The ball has always come back
+       off the boards; she had simply never been able to see one. */
     var want = wantFraming();
     var y = clamp(want.y, PITCH.y0 + 30, PITCH.y1 + 6);
-    var x = clamp(want.x, PITCH.cx - PITCH.w * 0.22, PITCH.cx + PITCH.w * 0.22);
+    var x = clamp(want.x, PITCH.cx - PITCH.w * 0.40, PITCH.cx + PITCH.w * 0.40);
     camTo(x, y, k, 1);
   }
 
@@ -2510,9 +2558,17 @@ window.OuissyCup = (function () {
     var b = G.ball;
     superTrailDraw();
     /* the super makes it bigger than a football, which is the whole
-       point of it: a ball you can see coming from the halfway line */
+       point of it: a ball you can see coming from the halfway line.
+
+       `struck` and `spin` are what give it weight — the squash on the
+       frame it is hit and the turn as it travels. Both were drawn by
+       the old renderer, both were computed by the simulation all
+       along, and for the whole of the 2D port neither was being read
+       by anything at all. */
     R2.ball(wX(b.x), wY(b.y), b.z, b.superK ? superBallTint() : null,
-            BALL_R * (b.superK ? 2.1 + Math.sin(G.stateT * 26) * 0.16 : 1));
+            BALL_R * (b.superK ? 2.1 + Math.sin(G.stateT * 26) * 0.16 : 1),
+            { struck: b.struck || 0, spin: b.spin || 0,
+              vx: b.vx, vy: -b.vy, speed: len(b.vx, b.vy) });
     R2.confettiStep(dt);
     R2.flush();
     R2.finish();
@@ -3179,6 +3235,289 @@ window.OuissyCup = (function () {
       var f = (carrying && IN.held) ? clamp(IN.heldT / TUNE.chargeTime, 0, 1) : 0;
       EL["cup-btn-ring"].style.setProperty("--f", f.toFixed(3));
       EL["cup-btn"].dataset.f = f > 0.92 ? "1" : "0";
+    }
+  }
+
+  /* =======================================================================
+     THE HUD, DRAWN
+
+     The last CSS in the chapter, and the one that mattered most: every
+     menu got rebuilt in the pixel language and this did not, so the one
+     place the old look survived was the place she spends ninety minutes
+     looking at. A scoreboard with a linear-gradient on it and a thumb
+     button with a blurred drop shadow, over a pitch made of hard pixels.
+
+     IT IS NOT A SCREEN. The menus are `uiOpen` screens with a widget
+     table and a hit test; the HUD is up while the game is being played,
+     so it paints into the same canvas without claiming the pointer —
+     the canvas keeps `pointer-events: none` and the buttons underneath
+     go on being buttons.
+
+     WHICH IS ALSO WHY THE BUTTONS ARE MEASURED RATHER THAN PLACED. The
+     pad is still real DOM: a real <button> with a real touch target, a
+     real aria-label and a real focus ring, because reimplementing all
+     of that on a canvas to win a rectangle would be a bad trade. It is
+     made invisible and its rectangle is read back every frame, so the
+     art lands exactly on top of the control however CSS lays it out.
+     ======================================================================= */
+
+  /* a DOM element's rectangle, in the pixel layer's own coordinates */
+  function uiRectOf(el) {
+    if (!el || el.hidden || !uiCvs) return null;
+    var c = uiCvs.getBoundingClientRect(), r = el.getBoundingClientRect();
+    if (!c.width || !c.height || !r.width) return null;
+    return { x: (r.left - c.left) / c.width * UIW,
+             y: (r.top - c.top) / c.height * UIH,
+             w: r.width / c.width * UIW,
+             h: r.height / c.height * UIH };
+  }
+
+  /* a meter: a sunken trough, a stepped fill, and a lit top edge. Every
+     bar in the HUD is this, because four different bars drawn four
+     different ways is four things to look at rather than one. */
+  function hudBar(x2, y2, w, h, frac, col, back) {
+    box(x2 - 1, y2 - 1, w + 2, h + 2, "#0d1412");
+    box(x2, y2, w, h, back || "#16222a");
+    var f = Math.round(clamp(frac, 0, 1) * w);
+    if (f > 0) {
+      box(x2, y2, f, h, col);
+      line(x2, y2, f, 1, lift(col, 60));
+      line(x2, y2 + h - 1, f, 1, lift(col, -50));
+    }
+    return f;
+  }
+
+  /* the round chip in the corner: a tab with a lit top */
+  function hudChip(x2, y2, str, tone, ink) {
+    var w = textWidth(str) + 10;
+    box(x2, y2, w, 12, "#0d1412");
+    box(x2 + 1, y2 + 1, w - 2, 10, tone);
+    line(x2 + 1, y2 + 1, w - 2, 1, lift(tone, 55));
+    drawText(x2 + 5, str, y2 + 3, { colour: ink || "#f4f4e8" });
+    return w;
+  }
+
+  /* THE THUMB BUTTON. A hard-edged disc with a bevel and an offset
+     shadow, and a ring round it that fills as she winds up a shot. The
+     ring is stepped rather than swept, because a smooth arc on a pixel
+     screen is the one thing that gives the whole illusion away. */
+  function hudRound(r2, label, tone, ink, charge, icon) {
+    if (!r2) return;
+    var cx2 = Math.round(r2.x + r2.w / 2), cy2 = Math.round(r2.y + r2.h / 2);
+    var rad = Math.round(Math.min(r2.w, r2.h) / 2) - 1;
+    if (rad < 6) return;
+    /* the drop, then the face */
+    uiDisc(cx2, cy2 + 2, rad, "rgba(4,8,10,.5)");
+    uiDisc(cx2, cy2, rad, "#0d1412");
+    uiDisc(cx2, cy2, rad - 1, tone);
+    uiDisc(cx2, cy2 - 1, rad - 3, lift(tone, 26));
+    if (charge > 0) {
+      /* twenty-four steps round the outside, lit clockwise from the top */
+      var lit = Math.round(clamp(charge, 0, 1) * 24);
+      for (var i = 0; i < lit; i++) {
+        var a = -Math.PI / 2 + (i / 24) * Math.PI * 2;
+        box(Math.round(cx2 + Math.cos(a) * (rad + 2)) - 1,
+            Math.round(cy2 + Math.sin(a) * (rad + 2)) - 1, 2, 2,
+            charge > 0.92 ? "#ffffff" : "#ffe9a8");
+      }
+    }
+    if (icon) icon(cx2, cy2 - 4);
+    drawText(cx2, fitText(label, rad * 2 - 2, 1), cy2 + 3,
+             { align: "center", colour: ink || "#f4f4e8" });
+  }
+
+  /* a filled disc on whole pixels — the canvas's own arc is a blur */
+  function uiDisc(cx2, cy2, r2, col) {
+    for (var y2 = -r2; y2 <= r2; y2++) {
+      var w = Math.round(Math.sqrt(Math.max(0, r2 * r2 - y2 * y2)));
+      if (w < 1) continue;
+      box(cx2 - w, cy2 + y2, w * 2 + 1, 1, col);
+    }
+  }
+
+  /* whether she is playing with a thumb rather than a keyboard. The pad
+     has carried a `touch` class since it was written and the stylesheet
+     has always used it to drop the keyboard legend; the drawn legend
+     reads the same class rather than inventing a second way to know. */
+  function hudTouch() {
+    return !!(EL["cup-pad"] && EL["cup-pad"].classList.contains("touch"));
+  }
+
+  function drawHud() {
+    if (!G || !UIX) return;
+    UIX.clearRect(0, 0, UIW, UIH);
+    var a = teamById(G.ids[0]) || {}, b = teamById(G.ids[1]) || {};
+    var aCol = (a.kit && a.kit.shirt) || "#c1272d";
+    var bCol = (b.kit && b.kit.shirt) || "#6d5fa8";
+
+    /* ---- THE BOARD, top centre ---------------------------------- */
+    var bw = 168, bx = Math.round((UIW - bw) / 2), by = 3;
+    box(bx, by, bw, 24, "#0d1412");
+    box(bx + 1, by + 1, bw - 2, 22, "#16222a");
+    line(bx + 1, by + 1, bw - 2, 1, "#2f4450");
+    /* each side wears its own colour down its own end of the board,
+       which is how she knows which number is hers without reading */
+    box(bx + 1, by + 1, 52, 22, aCol);
+    box(bx + bw - 53, by + 1, 52, 22, bCol);
+    box(bx + 1, by + 1, 52, 1, lift(aCol, 60));
+    box(bx + bw - 53, by + 1, 52, 1, lift(bCol, 60));
+    if (a.id) pixCrest(a, bx + 4, by + 6, 16, 12);
+    if (b.id) pixCrest(b, bx + bw - 20, by + 6, 16, 12);
+    drawText(bx + 23, fitText(a.short || "", 28, 1), by + 9, { colour: "#ffffff" });
+    drawText(bx + bw - 23, fitText(b.short || "", 28, 1), by + 9,
+             { align: "right", colour: "#ffffff" });
+    drawText(bx + Math.round(bw / 2), G.score[0] + " : " + G.score[1], by + 5,
+             { align: "center", scale: 2, colour: "#ffffff",
+               outline: "#0d1412", outlineW: 2 });
+
+    /* the clock, on a tab under the board */
+    var mins;
+    if (G.golden) mins = "90+";
+    else {
+      var base = G.half === 1 ? 0 : 45;
+      mins = Math.floor(base + (G.clock / TUNE.halfSeconds) * 45) + "\u2019";
+    }
+    var cw = textWidth(mins) + 10;
+    box(bx + Math.round((bw - cw) / 2), by + 24, cw, 10, "#0d1412");
+    box(bx + Math.round((bw - cw) / 2) + 1, by + 24, cw - 2, 9, "#243640");
+    drawText(bx + Math.round(bw / 2), mins, by + 26,
+             { align: "center", colour: "#ffe9a8" });
+
+    /* ---- the round and the half, top left ----------------------- */
+    var rn = EL["cup-round"] ? EL["cup-round"].textContent : "";
+    hudChip(4, 4, rn || "MATCH", "#243640");
+    hudChip(4, 18, G.golden ? "GOLDEN GOAL"
+            : G.half === 1 ? "1ST HALF" : "2ND HALF", "#1b2a32", "#9fb0a8");
+
+    /* ---- THE HEART METER, under the board ----------------------- */
+    var sup = superOf(0);
+    var hc = (sup && sup.colour) || "#ff5f8f";
+    var hw = 120, hx = Math.round((UIW - hw) / 2), hy = by + 38;
+    /* the heart itself, which beats when the meter is full */
+    var armed = superArmed(0);
+    var beat = armed ? 1 + (Math.floor(UI.t * 5) % 2) : 0;
+    var hpx = hx - 12, hpy = hy - 1 - beat;
+    box(hpx, hpy, 2, 2, hc); box(hpx + 3, hpy, 2, 2, hc);
+    box(hpx, hpy + 1, 5, 2, hc); box(hpx + 1, hpy + 3, 3, 1, hc);
+    box(hpx + 2, hpy + 4, 1, 1, hc);
+    hudBar(hx, hy, hw, 6, (G.heart[0] || 0) / TUNE.superFill, hc);
+    if (armed) {
+      /* a marching keyline while it is ready, so a full meter is not
+         just a wider meter */
+      var ph = Math.floor(UI.t * 12) % 4;
+      for (var i2 = 0; i2 < hw; i2++) {
+        if ((i2 + ph) % 4 < 2) {
+          box(hx + i2, hy - 2, 1, 1, "#ffffff");
+          box(hx + i2, hy + 7, 1, 1, "#ffffff");
+        }
+      }
+    }
+    /* the super's name on a plate of its own: white lettering straight
+       onto a stand full of people is lettering you have to hunt for */
+    var sn = fitText((sup && sup.name) || "SUPER", 104, 1);
+    var snw = textWidth(sn) + 6;
+    box(hx + hw + 4, hy - 1, snw, 9, "#0d1412");
+    drawText(hx + hw + 7, sn, hy,
+             { colour: armed ? "#ffffff" : "#7f9a92" });
+    /* theirs, thinner and underneath, and only when they have one */
+    if (EL["cup-heart-a"] && !EL["cup-heart-a"].hidden) {
+      var tc = (superOf(1) && superOf(1).colour) || "#8fa8a0";
+      hudBar(hx, hy + 9, hw, 3, (G.heart[1] || 0) / TUNE.superFill, tc);
+    }
+
+    /* ---- POSSESSION AND SHOTS, bottom centre -------------------- */
+    var tot = G.stat.poss[0] + G.stat.poss[1];
+    var hp = tot > 2 ? G.stat.poss[0] / tot : 0.5;
+    var px2 = Math.round((UIW - 150) / 2), py2 = UIH - 20;
+    var fill = hudBar(px2, py2, 150, 6, hp, aCol, bCol);
+    /* the share, printed on whichever end of the strip has room for it */
+    var lab = Math.round(hp * 100) + "%";
+    if (fill > textWidth(lab) + 6) {
+      drawText(px2 + 3, lab, py2, { colour: "#ffffff" });
+    } else {
+      drawText(px2 + 150 - 3, lab, py2, { align: "right", colour: "#ffffff" });
+    }
+    drawText(px2 + Math.round(150 / 2),
+             G.stat.shots[0] + " SHOTS " + G.stat.shots[1], py2 + 9,
+             { align: "center", colour: "#9fb0a8" });
+
+    /* ---- STAMINA, low on the left where her thumb already is ----- */
+    var st = G.controlled ? G.controlled.stamina : 1;
+    hudBar(6, UIH - 10, 84, 4, st,
+           st < 0.3 ? "#e0556b" : st < 0.6 ? "#e8b23c" : "#5fd6cc");
+    drawText(6, "RUN", UIH - 19, { colour: "#5f8a7a" });
+
+    /* ---- THE CONTROLS, measured off the real ones ---------------- */
+    var pl = G.controlled;
+    var carrying = pl && G.ball.owner === pl;
+    var held = carrying && IN.held;
+    var charge = held ? clamp(IN.heldT / TUNE.chargeTime, 0, 1) : 0;
+    var lbl = carrying ? (held ? "SHOOT" : "PASS") : "TACKLE";
+    hudRound(uiRectOf(EL["cup-btn"]), lbl,
+             charge > 0.92 ? "#e8b23c" : "#2f6d8a",
+             charge > 0.92 ? "#2a1c08" : "#f4f4e8", charge);
+    if (EL["cup-sup-btn"] && !EL["cup-sup-btn"].hidden) {
+      hudRound(uiRectOf(EL["cup-sup-btn"]),
+               fitText((sup && sup.name) || "SUPER", 34, 1), hc, "#2a1010", 0,
+               function (ix2, iy2) {
+                 box(ix2 - 3, iy2 - 2, 2, 2, "#ffffff");
+                 box(ix2 + 2, iy2 - 2, 2, 2, "#ffffff");
+                 box(ix2 - 3, iy2 - 1, 7, 2, "#ffffff");
+                 box(ix2 - 2, iy2 + 1, 5, 1, "#ffffff");
+                 box(ix2, iy2 + 2, 1, 1, "#ffffff");
+               });
+    }
+    /* the pause, top right */
+    var pr = uiRectOf(EL["cup-pause-btn"]);
+    if (pr) {
+      var qx = Math.round(pr.x), qy = Math.round(pr.y);
+      var qw = Math.round(pr.w), qh = Math.round(pr.h);
+      box(qx, qy, qw, qh, "#0d1412");
+      box(qx + 1, qy + 1, qw - 2, qh - 2, "#243640");
+      line(qx + 1, qy + 1, qw - 2, 1, "#3f5866");
+      box(qx + Math.round(qw / 2) - 3, qy + Math.round(qh / 2) - 4, 2, 8, "#cfe0d8");
+      box(qx + Math.round(qw / 2) + 1, qy + Math.round(qh / 2) - 4, 2, 8, "#cfe0d8");
+    }
+    /* THE HINT AND THE KEYS, which were the last two runs of CSS text
+       sitting on the grass. They are set small and dim because they are
+       for the first thirty seconds of the first match and nothing
+       after it. */
+    if (hudTouch()) {
+      drawText(6, "SLIDE TO RUN", UIH - 30, { colour: "#4f7a6a" });
+    } else {
+      /* UP IN THE CORNER, NOT DOWN BY THE BUTTON. Set against the
+         bottom-right it landed straight on top of the thumb button —
+         a legend explaining a control, printed across it. */
+      /* below the meter, not beside it: at the top of the frame the
+         legend and the super's nameplate were printed over each other */
+      var kz = 64;
+      [["W A S D", "run"],
+       ["SPACE", "tap to pass \u00b7 hold to shoot"],
+       ["SHIFT", "super, when the heart is full"]].forEach(function (k2) {
+        var kw = textWidth(k2[0]) + 8;
+        var tw2 = textWidth(k2[1]);
+        var tot = kw + tw2 + 12;
+        var x0 = UIW - 8 - tot;
+        box(x0, kz, tot, 11, "#0d1412");
+        box(x0 + 1, kz + 1, tot - 2, 9, "#1b2a32");
+        box(x0 + 2, kz + 2, kw, 7, "#2f4450");
+        drawText(x0 + 6, k2[0], kz + 3, { colour: "#e8f0e8" });
+        drawText(x0 + kw + 6, k2[1], kz + 3, { colour: "#8fa8a0" });
+        kz += 13;
+      });
+    }
+
+    /* and where her thumb actually is on the stick */
+    var sk = uiRectOf(EL["cup-stick-k"]);
+    if (sk && sk.w > 4) {
+      var sc2 = Math.round(sk.x + sk.w / 2), sy2 = Math.round(sk.y + sk.h / 2);
+      var sr = Math.round(sk.w / 2);
+      for (var q = 0; q < 28; q++) {
+        var qa = (q / 28) * Math.PI * 2;
+        box(Math.round(sc2 + Math.cos(qa) * sr), Math.round(sy2 + Math.sin(qa) * sr),
+            1, 1, "#9fe8c4");
+      }
+      box(sc2 - 1, sy2 - 1, 3, 3, "#ffffff");
     }
   }
 
@@ -3963,11 +4302,28 @@ window.OuissyCup = (function () {
     UI.on = true;
     hideOverlay();                 // the DOM cards and this are never both up
   }
+  /* WHETHER THE MATCH HUD SHOULD BE PAINTING, asked rather than told.
+
+     Nine places in this file hide or show the scoreboard — half time,
+     full time, the memories, the pause, quitting, the builder. Rather
+     than teach all nine about a second flag that could drift out of
+     step with the first, the drawn HUD simply follows the element they
+     already toggle. */
+  function hudWanted() {
+    return !!(G && EL["cup-hud"] && !EL["cup-hud"].hidden);
+  }
+
   function uiClose() {
     UI.screen = null; UI.name = ""; UI.widgets = []; UI.say = []; UI.on = false;
     a11yKey = "";
     if (EL["cup-ui-a11y"]) EL["cup-ui-a11y"].innerHTML = "";
-    if (uiCvs) { uiCvs.hidden = true; uiCvs.classList.remove("on"); }
+    if (uiCvs) {
+      uiCvs.classList.remove("on");
+      /* the canvas stays up if the match is behind the menu that just
+         closed — otherwise closing half time would take the scoreboard
+         with it */
+      uiCvs.hidden = !hudWanted();
+    }
   }
 
   /* the ease everything arrives on: overshoots a little, then settles */
@@ -5411,6 +5767,7 @@ window.OuissyCup = (function () {
      is that they are demonstrably the same menu.
      ======================================================================= */
   function cardScreen(spec) {
+    SFX.card();
     var accent = spec.accent || "#c1272d";
     var trim = spec.trim || "#e8b23c";
     uiOpen(spec.name || "card", function (age) {
@@ -5880,7 +6237,19 @@ window.OuissyCup = (function () {
     syncRing();
     draw(dt);
     syncHud();
+    /* ONE CANVAS, TWO THINGS ON IT. A menu screen and the match HUD are
+       never up together: whichever is showing owns the pixel layer for
+       that frame. */
     if (UI.on) uiPaint(raw);
+    else if (hudWanted()) {
+      if (uiCvs && uiCvs.hidden) {
+        uiCvs.hidden = false;
+        uiCvs.classList.remove("on");   // it shows; it does not take taps
+      }
+      drawHud();
+    } else if (uiCvs && !uiCvs.hidden) {
+      uiCvs.hidden = true;
+    }
   }
 
   var wired = false;

@@ -417,6 +417,102 @@ window.CupPitch2D = (function () {
     }
   };
 
+  /* ============================================================ THE SIDES
+
+     The stadium used to be one stand at the far end and then nothing:
+     the touchlines ran off into bare grass and the vignette, so from
+     the halfway line she was playing in a field with a grandstand in
+     it. This is the other two.
+
+     A side stand is a wall standing on a line that RECEDES, so it is
+     rasterised by COLUMN rather than by row. For a screen column, the
+     depth at which the touchline crosses it comes straight out of the
+     projection — screenX = centre + worldX * focal / d rearranges to
+     d = worldX * focal / offset — and everything else follows from that
+     one number: where the ground is, and therefore where the boards,
+     the tiers and the roof are stacked above it.
+
+     Its height is fixed in pixels, like the crossbar and like the
+     characters. A wall scaled by depth would be four storeys high at
+     the near corner and a kerb at the far one.
+     ======================================================================= */
+  Pitch.prototype.drawSides = function () {
+    var ctx = this.ctx, w = this.raw;
+    var edge = w.halfW + 4 / this.k;          // touchline, then the run-off
+    var BOARD = 9, TIER = 42, ROOF = 7;
+    var farY = this.A + this.B / (NEAR + (w.len + 12 - this.cam.y) * this.k);
+
+    for (var side = -1; side <= 1; side += 2) {
+      var wx = side * edge;
+      /* WHERE THE GROUND IS, PER COLUMN, WORKED OUT ONCE.
+
+         The structure and the crowd are two passes over the same
+         numbers because a person is three pixels wide and the columns
+         are one: painted inside the first pass, everybody was drawn and
+         then immediately buried under the next column's tier, and the
+         whole stand came out empty with a scatter of single pixels in
+         it. */
+      var ground = new Int16Array(this.vw);
+      for (var x = 0; x < this.vw; x++) {
+        ground[x] = -1;
+        var off = (x + 0.5) - this.vw / 2;
+        if (side < 0 ? off >= -1 : off <= 1) continue;
+        var d = (wx - this.cam.x) * this.k * FOCAL / off;
+        if (!isFinite(d) || d <= NEAR) continue;
+        var gy = Math.round(this.A + this.B / d);
+        /* nothing beyond the far corner: that is the end stand's job,
+           and two stands drawn over each other is a wall with a seam */
+        if (gy <= farY || gy > this.vh + BOARD) continue;
+        ground[x] = gy;
+
+        /* the boards along the front */
+        var bn = this.rnd((((x / 26) | 0) + side * 7) * 13 + 5);
+        ctx.fillStyle = C.board;
+        ctx.fillRect(x, gy - BOARD, 1, BOARD);
+        ctx.fillStyle = bn > 0.55 ? "#a8283a" : (bn > 0.3 ? "#c8912f" : "#2f4f7a");
+        ctx.fillRect(x, gy - BOARD + 1, 1, BOARD - 2);
+        if (x % 26 === 0 || x % 26 === 24) {
+          ctx.fillStyle = C.roof; ctx.fillRect(x, gy - BOARD, 1, BOARD);
+        }
+        ctx.fillStyle = C.boardLip;
+        ctx.fillRect(x, gy - BOARD, 1, 1);
+
+        /* the two tiers, the rail between them, and the roof */
+        var top = gy - BOARD - TIER, split = Math.round(TIER * 0.44);
+        ctx.fillStyle = C.tierLit;  ctx.fillRect(x, top, 1, TIER);
+        ctx.fillStyle = C.tier;     ctx.fillRect(x, top, 1, split);
+        ctx.fillStyle = C.rail;     ctx.fillRect(x, top + split, 1, 1);
+        ctx.fillStyle = C.roof;     ctx.fillRect(x, top + split + 1, 1, 1);
+        ctx.fillRect(x, top - ROOF, 1, ROOF);
+        ctx.fillStyle = C.rail;     ctx.fillRect(x, gy - BOARD - 2, 1, 1);
+        ctx.fillStyle = C.roof;     ctx.fillRect(x, gy - BOARD - 1, 1, 1);
+        ctx.fillStyle = C.wallLit;  ctx.fillRect(x, top - ROOF, 1, 1);
+
+        /* and the shadow the stand throws onto the run-off */
+        ctx.fillStyle = C.grassDk;
+        ctx.fillRect(x, gy, 1, 2);
+      }
+
+      /* pass two: the people, three pixels across like the ones opposite */
+      for (var x2 = 0; x2 < this.vw; x2 += 3) {
+        var g2 = ground[x2];
+        if (g2 < 0) continue;
+        var t2 = g2 - BOARD - TIER;
+        for (var r = 0; r < 8; r++) {
+          var ry = Math.round(t2 + 2 + r * (TIER / 8));
+          if (ry < 0 || ry > this.vh) continue;
+          var id = x2 * 31 + r * 131 + (side > 0 ? 977 : 0);
+          if (this.rnd(id) < 0.14) continue;
+          var sway = Math.round(Math.sin(this.t * 2.1 + x2 * 0.14 + r) * 0.9);
+          ctx.fillStyle = CROWD[(this.rnd(id + 11) * CROWD.length) | 0];
+          ctx.fillRect(x2, ry + sway, 3, 2);
+          ctx.fillStyle = "#1a1620";
+          ctx.fillRect(x2, ry + sway + 2, 3, 1);
+        }
+      }
+    }
+  };
+
   /* ------------------------------------------------------- the markings */
   Pitch.prototype.wline = function (x0, y0, x1, y1, col) {
     var a = this.project(x0, y0), b = this.project(x1, y1);
@@ -582,8 +678,22 @@ window.CupPitch2D = (function () {
   };
 
   /* the ball: three tones and a hard edge, never a gradient */
-  Pitch.prototype.ball = function (wx, wy, h, tint, rw) {
+  /* THE BALL, WITH WEIGHT
+
+     Three things make a drawn football heavy, and none of them is
+     detail: it FLATTENS on the frame it is struck, it STRETCHES along
+     the line it is travelling, and it TURNS. A hard disc that slides
+     across the grass at a constant size is a counter on a board — which
+     is exactly what this was for the whole of the 2D port, because the
+     simulation went on computing `struck` and nothing read it.
+
+     The stretch is axis-aligned rather than rotated to the direction of
+     travel. At six pixels across, a rotated ellipse is a smear; which
+     axis is longer is the whole of the information, and it is the part
+     that survives at this size. */
+  Pitch.prototype.ball = function (wx, wy, h, tint, rw, o) {
     var self = this;
+    o = o || {};
     this.add(wy, function () {
       var p = self.project(wx, wy);
       var ctx = self.ctx;
@@ -591,15 +701,30 @@ window.CupPitch2D = (function () {
          alone, as the first version did, gave a forty-pixel football
          sitting on top of the player who was dribbling it. */
       var r = Math.max(2, Math.round(p.k * (rw || 1.9)));
-      var by = p.y - (h || 0) * p.k - r;
-      fillEllipse(ctx, p.x, by, r, r, tint || "#f4f4e8");
-      fillEllipse(ctx, p.x + 1, by + 1, r - 1, r - 1, tint ? tint : "#cfd2c4");
+      var hit = Math.min(1, o.struck || 0);
+      var sp = o.speed || 0;
+      /* which way it is going, on the screen */
+      var ax = Math.abs(o.vx || 0), ay = Math.abs(o.vy || 0) * 0.5;
+      var along = sp > 8 ? Math.min(0.30, sp * 0.0016) : 0;
+      var wide = ax >= ay ? along : -along * 0.6;
+      var rx = Math.max(1, Math.round(r * (1 + hit * 0.40 + wide)));
+      var ry = Math.max(1, Math.round(r * (1 - hit * 0.30 - wide * 0.7)));
+      var by = p.y - (h || 0) * p.k - ry;
+      fillEllipse(ctx, p.x, by, rx, ry, tint || "#f4f4e8");
+      fillEllipse(ctx, p.x + 1, by + 1, rx - 1, ry - 1,
+                  tint ? tint : "#cfd2c4");
       px(ctx, p.x - 1, by - 1, "#ffffff");
-      if (!tint) {
-        px(ctx, p.x, by, "#3a3f38");
-        px(ctx, p.x - 2, by + 1, "#3a3f38");
-        px(ctx, p.x + 2, by - 1, "#3a3f38");
+      if (tint) return;
+      /* AND IT TURNS. Three panels carried round on the ball's own
+         rolled angle: at this size that is the difference between a ball
+         and a white dot. */
+      var a0 = o.spin || 0;
+      for (var i = 0; i < 3; i++) {
+        var a = a0 + i * (Math.PI * 2 / 3);
+        px(ctx, Math.round(p.x + Math.cos(a) * rx * 0.55),
+           Math.round(by + Math.sin(a) * ry * 0.55), "#3a3f38");
       }
+      px(ctx, p.x, by, "#3a3f38");
     });
   };
 
@@ -660,6 +785,9 @@ window.CupPitch2D = (function () {
     this.items.length = 0;
     this.drawStand();
     this.drawGrass();
+    /* the sides go on AFTER the grass, because they stand on it: drawn
+       first, the grass rows painted straight over them */
+    this.drawSides();
     this.drawMarkings();
     this.drawGoal(true, bulge && bulge[1]);
     this.drawGoal(false, bulge && bulge[0]);
