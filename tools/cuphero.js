@@ -52,6 +52,14 @@ const { chromium } = require('playwright-core');
     return { players: C.players().length, me: C.me(), geom: g.cam };
   });
   console.log('driving: ' + JSON.stringify(info.me));
+  /* THE HERO SHOT IS OF THE PITCH. The chapter opens on the how-to the
+     first time anybody loads it and this harness clears localStorage,
+     so the card is always up — and it is drawn into the same canvas the
+     HUD uses, so it sits over the very thing being photographed. */
+  await p.evaluate(() => {
+    const u = document.getElementById('cup-ui');
+    if (u) u.hidden = true;
+  });
   await p.waitForTimeout(300);
   await p.screenshot({ path: '/tmp/cup-hero.png' });
 
