@@ -27,8 +27,8 @@ const fs = require('fs');
   await p.waitForFunction(() => window.OuissyCup && OuissyCup.__cup.state() !== null, { timeout: 60000 });
   await p.waitForTimeout(600);
 
-  const shot = async (name, setup, hold) => {
-    await p.evaluate(setup);
+  const shot = async (name, setup, hold, arg) => {
+    await p.evaluate(setup, arg);
     if (hold) { await p.waitForTimeout(500);
                 await p.screenshot({ path: '/tmp/look-' + name + '.png' });
                 console.log('  -> /tmp/look-' + name + '.png'); return; }
@@ -85,6 +85,59 @@ const fs = require('fs');
     H.superNow(0);
     for (let i = 0; i < 20; i++) H.step(1, 0, 0, false);
   }, true);
+
+  /* A GOAL, CAUGHT DURING THE REPLAY — which is also the only way to
+     photograph the lower third and the crowd's reaction together. */
+  await shot('goal', () => {
+    const H = OuissyCup.__cup;
+    H.quick(0); H.auto(true);
+    for (let i = 0; i < 400 && H.state().state !== 'play'; i++) H.step(1, 0, 0, false);
+    /* put one in rather than waiting for one */
+    for (let i = 0; i < 4000 && H.state().state !== 'replay'; i++) H.step(1, 0, 0, false);
+    for (let i = 0; i < 30; i++) H.step(1, 0, 0, false);
+    H.camSnap();
+  }, true);
+
+  /* THE PASS INDICATOR, which only exists while SHE is driving — so
+     this shot deliberately does not turn the autopilot on, and puts the
+     ball at the feet of whoever the game has given her. */
+  await shot('passhint', () => {
+    const H = OuissyCup.__cup;
+    H.quick(0);
+    for (let i = 0; i < 400 && H.state().state !== 'play'; i++) H.step(1, 0, 0, false);
+    for (let i = 0; i < 200; i++) H.step(1, 0, 0, false);
+    const s = H.scout();
+    const me = s.players.find(q => q.name === H.state().controlled && !q.gk);
+    if (me) H.put(me.x, me.y, 0);
+    /* long enough for her to actually take possession AND for the hint
+       to recompute — it only refreshes eight times a second */
+    for (let i = 0; i < 90; i++) H.step(1, 0, 0, false);
+    H.camSnap();
+  }, true);
+
+  /* a booking, which a match will not produce on demand */
+  await shot('card', () => {
+    const H = OuissyCup.__cup;
+    H.quick(0); H.auto(true);
+    for (let i = 0; i < 400 && H.state().state !== 'play'; i++) H.step(1, 0, 0, false);
+    for (let i = 0; i < 90; i++) H.step(1, 0, 0, false);
+    H.book(false);
+    for (let i = 0; i < 24; i++) H.step(1, 0, 0, false);
+    H.camSnap();
+  }, true);
+
+  /* the two restarts, caught mid-walk so the marks can be judged */
+  for (const kind of ['corner', 'goalkick']) {
+    await shot(kind, (k) => {
+      const H = OuissyCup.__cup;
+      H.quick(0); H.auto(true);
+      for (let i = 0; i < 400 && H.state().state !== 'play'; i++) H.step(1, 0, 0, false);
+      for (let i = 0; i < 120; i++) H.step(1, 0, 0, false);
+      H.restart(k, 1);
+      for (let i = 0; i < 55; i++) H.step(1, 0, 0, false);
+      H.camSnap();
+    }, true, kind);
+  }
 
   if (errs.length) console.log('PAGE ERRORS: ' + JSON.stringify(errs.slice(0, 4)));
   await b.close();

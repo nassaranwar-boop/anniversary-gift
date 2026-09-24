@@ -31,7 +31,7 @@ const fs = require('fs');
     const at = window.CupSprites.bake(look, team.kit);
     const bakeMs = Math.round(performance.now() - t0);
 
-    const SHOW = ['run', 'turn', 'stop', 'trap', 'pass', 'kick'];
+    const SHOW = ['turn', 'stop', 'trap', 'pass', 'catch', 'punch', 'throw'];
     const Z = 4, S = at.size, PAD = 3;
     const maxN = Math.max(...SHOW.map(a => at.anims[a] || 0));
     const cv = document.createElement('canvas');

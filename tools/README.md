@@ -181,6 +181,22 @@ heading; waiting for `state().state === 'play'` lets the flash decay.
   widened, because widening them throws away the only thing they are
   for. If it fails on one metric by a couple of points, run it again
   before believing it; if it fails the same one twice, believe it.
+- **`cuptouch.js`** — *is the ball actually loose?* A ball welded to the
+  foot and a ball being dribbled look identical in a screenshot and
+  behave nothing alike, so this counts what tells them apart: the gap
+  between ball and carrier (welded, it is a constant; dribbled, it
+  cycles, so the SPREAD is the measurement), touches per second, how
+  often a touch runs away or is nicked off, and how long an average
+  spell of possession lasts. That last one is the disaster detector — if
+  freeing the ball has brought back the old seven-changes-a-second
+  thrash, everything else is noise.
+- **`cupgait.js`** — the animations laid out one row per state, one
+  column per frame, at 4x, facing the camera and facing across it. turn,
+  stop, trap, pass, catch, punch and throw are the kind of thing that is
+  obviously right or obviously wrong the moment the frames are next to
+  each other, and completely impossible to tell from the code. It also
+  prints the bake cost, which is the number that says whether another
+  animation is affordable.
 - **`cupsides.js`** — tells a CODE asymmetry from a SQUAD one by swapping
   which team is which. An effect that stays with the index is the code;
   one that follows the squad is the teams; one that does neither is
@@ -190,8 +206,18 @@ heading; waiting for `state().state === 'play'` lets the flash decay.
   the real baked atlas. It exists because a greybox cannot answer the
   question that decides the camera: its blocks scale and a 64-pixel
   sprite never does.
-- **`cuplook.js`** — four frames, fast, straight in through `quick()`:
-  open play, the heart meter, a goalmouth, the super's nameplate.
+- **`cuplook.js`** — the frames worth looking at, fast, straight in
+  through `quick()`: open play, the heart meter, a goalmouth, the
+  super's nameplate, a goal replay with the lower third, the pass
+  indicator, a corner and a goal kick.
+
+  Two traps it has already fallen into and now guards against. The
+  super banner and the autopilot flag are both module state that
+  survives `quick()`, so a shot taken after another shot could be
+  photographing the previous one's banner, or a match with no driver in
+  it — both now cleared when a match starts. And the pass indicator only
+  exists while a human is driving, so that shot deliberately does NOT
+  turn the autopilot on.
 - **`cupgrey.js`**, **`cupshot.js`**, **`cuphero.js`**, **`cupsprite.js`**,
   **`cupsquad.js`**, **`cuppitch.js`**, **`cupcards.js`**, **`cupmenu.js`**,
   **`cupsuper.js`**, **`cupfeel.js`**, **`cupvenue.js`** — renders rather

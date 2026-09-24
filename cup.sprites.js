@@ -315,6 +315,65 @@ window.CupSprites = (function () {
       p.lean = 2;
       p.hairLag = Math.round(Math.cos(ph) * 2);    // secondary motion
 
+    } else if (anim === "catch") {
+      /* GATHERING IT IN. Both hands out to meet it, then pulled into
+         the chest, then the body closing round it. What says "he has
+         hold of it" is the arms coming TOGETHER — a keeper who catches
+         with his arms apart has not caught anything. */
+      var kc = n > 1 ? f / (n - 1) : 0;
+      p.legA = [4, 0]; p.legB = [-4, 0];
+      p.armA = [Math.round(-5 + kc * 3), Math.round(-4 + kc * 4)];
+      p.armB = [Math.round(5 - kc * 3), Math.round(-4 + kc * 4)];
+      p.lean = Math.round(kc * 2);
+      p.bob = kc > 0.4 ? 1 : 0;
+      p.squash = kc > 0.4 ? 1 : 0;
+      p.headBob = 1;
+      p.hairLag = Math.round(kc * 2);
+
+    } else if (anim === "punch") {
+      /* PUTTING IT AWAY. He cannot hold this one, so both fists go
+         through it: a short gather and then a hard extension, with the
+         body rising into it. The arms go OUT, which is the opposite of
+         the catch, and that opposition is the whole read. */
+      var kp = n > 1 ? f / (n - 1) : 0;
+      p.legA = [Math.round(3 + kp * 3), Math.round(-kp * 4)];
+      p.legB = [-4, 0];
+      if (kp < 0.35) {
+        var a5 = kp / 0.35;
+        p.armA = [Math.round(-2 - a5 * 2), Math.round(1 - a5 * 2)];
+        p.armB = [Math.round(2 + a5 * 2), Math.round(1 - a5 * 2)];
+        p.bob = 1; p.squash = 1;
+      } else {
+        var b5 = (kp - 0.35) / 0.65;
+        p.armA = [Math.round(-4 + b5 * 2), Math.round(-1 - b5 * 5)];
+        p.armB = [Math.round(4 - b5 * 2), Math.round(-1 - b5 * 5)];
+        p.bob = -Math.round(b5 * 2); p.stretch = 1;
+        p.air = Math.round(b5 * 4);
+      }
+      p.lean = -1;
+      p.hairLag = -2;
+
+    } else if (anim === "throw") {
+      /* DISTRIBUTION. Overarm: the ball comes back past the ear, the
+         front foot goes out, and the arm comes over. Four frames and
+         the middle two are the whole of it. */
+      var kt = n > 1 ? f / (n - 1) : 0;
+      p.legB = [-4, 0];
+      p.legA = [Math.round(2 + kt * 5), 0];
+      if (kt < 0.45) {
+        var a6 = kt / 0.45;
+        p.armB = [Math.round(3 + a6 * 3), Math.round(-2 - a6 * 4)];
+        p.armA = [Math.round(-2 - a6 * 2), Math.round(1 + a6)];
+        p.lean = Math.round(-2 - a6);
+      } else {
+        var b6 = (kt - 0.45) / 0.55;
+        p.armB = [Math.round(6 - b6 * 9), Math.round(-6 + b6 * 7)];
+        p.armA = [Math.round(-4 + b6 * 3), Math.round(2 - b6)];
+        p.lean = Math.round(-3 + b6 * 6);
+      }
+      p.hairLag = Math.round(-2 + kt * 4);
+      p.headBob = kt > 0.5 ? 1 : 0;
+
     } else if (anim === "turn") {
       /* PLANTING A FOOT AND COMING ROUND.
 
@@ -1183,6 +1242,9 @@ window.CupSprites = (function () {
     { id: "trap", n: 3 },
     { id: "tackle", n: 5 }, { id: "cheer", n: 6 }, { id: "sad", n: 3 },
     { id: "dive", n: 5 }, { id: "ready", n: 4 },
+    /* the keeper's own three. He is the most-watched player on the
+       pitch and he had two animations: a dive and a crouch. */
+    { id: "catch", n: 3 }, { id: "punch", n: 4 }, { id: "throw", n: 4 },
   ];
 
   function famIndex(P) {

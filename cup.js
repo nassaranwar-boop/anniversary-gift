@@ -336,6 +336,14 @@ window.OuissyCup = (function () {
     gkReach: 13,
     gkAnticipate: 0.34,     // how far ahead of the ball he reads
     gkHold: 1.1,            // seconds he holds it before rolling it out
+    gkHoldPower: 175,       // how hard a ball he can CATCH, before his
+                            //   hands and the difficulty are applied.
+                            //   Above it he parries and the ball stays
+                            //   live; half again above it he punches it
+                            //   clear. Shots leave the boot between 130
+                            //   and 260, so a placed one is held and a
+                            //   struck one is not — which is the whole
+                            //   reason to hit it hard
 
     /* --- the match ---
        These three are the config's, not this file's: RULES in
@@ -344,6 +352,19 @@ window.OuissyCup = (function () {
        there did nothing at all. */
     halfSeconds: cfg("RULES.halfSeconds", 52),   // real seconds per half;
                             //   the clock on screen runs 0' to 45' across it
+    /* --- fouls --- */
+    foulReach: 13,          // how close a missed tackle has to pass to a
+                            //   man for it to have caught him
+    foulHard: 52,           // and how fast he has to be going, from behind,
+                            //   for it to be a booking rather than a foul
+    freeKickBack: 26,       // how far the defending side drops off the ball
+
+    replaySpeed: 0.62,      // how fast a replay runs. Slower than life,
+                            //   because that is what a replay is for
+    setPause: 1.25,         // the held moment on a corner or a goal kick,
+                            //   while everybody walks to their mark. Under
+                            //   a second it is a teleport; over two it is
+                            //   a game that keeps stopping
     kickoffWait: 1.5,
     goalCheer: 3.2,
     goldenGoal: cfg("RULES.goldenGoal", 60),     // sudden death if level
@@ -724,6 +745,25 @@ window.OuissyCup = (function () {
        with no sound on it reads as a dropped frame. */
     cut:     function () { tone("sine", 90, 46, 0.16, 0.14);
                            burst(0.08, 0.07, 500, 0.7); },
+    /* THE TANNOY. Two notes and a room behind them: the chime a ground
+       plays before it tells you something. There is no speech here and
+       there is not going to be — a synthesised voice at this fidelity
+       is worse than none — so the chime does the whole job, and the
+       lower third says the words. */
+    pa:      function () {
+      tone("sine", 784, 784, 0.34, 0.075);
+      tone("sine", 523, 523, 0.46, 0.065, 0.16);
+      tone("sine", 1568, 1568, 0.30, 0.022, 0.02);
+    },
+    /* THE REFEREE'S BOOK. Two short blasts and a flat note under them:
+       the whistle says stop, the note says this is not just a free kick.
+       Deliberately not the menu `card` sound, which is a card in the
+       sense of a screen and has nothing to do with this one. */
+    book:    function (red) {
+      tone("square", 2100, 2100, 0.12, 0.10);
+      tone("square", 2100, 2100, 0.16, 0.10, 0.17);
+      tone("sawtooth", red ? 150 : 240, red ? 90 : 190, 0.5, 0.09, 0.05);
+    },
     /* a card arriving: a short sweep up, well under the crowd */
     card:    function () { tone("triangle", 360, 660, 0.10, 0.05);
                            tone("sine", 180, 300, 0.12, 0.04, 0.02); },
@@ -1008,6 +1048,8 @@ window.OuissyCup = (function () {
       stats: def.stats || FALLBACK_LOOK.stats,
       mul: statMuls(def.stats),
       captain: !!def.captain,
+      /* one to four, keeper first, stable for the whole match */
+      shirtNo: def.role === "gk" ? 1 : i + 1,
       x: 0, y: 0, vx: 0, vy: 0,
       dir: attackDirSafe(teamIdx), anim: 0, legs: "stand",
       facing: "down", flip: false,
@@ -1032,7 +1074,8 @@ window.OuissyCup = (function () {
       players: [], ball: { x: PITCH.cx, y: PITCH.cy, z: 0, vx: 0, vy: 0, vz: 0,
                            owner: null, lastTouch: null, lock: 0, spin: 0,
                            curve: 0, struck: 0 },
-      timeScale: 1, hitStop: 0, scoredBy: 0, scorerP: null, celebration: "armsUp",
+      timeScale: 1, hitStop: 0, set: null, card: null, pa: null,
+      scoredBy: 0, scorerP: null, celebration: "armsUp",
       cam: { y: PITCH.cy },
       controlled: null, kickoffTeam: 0, golden: false, over: false,
       shake: 0, flash: 0, flashCol: null, scorer: "",
@@ -1042,7 +1085,7 @@ window.OuissyCup = (function () {
          at all, and a harness measuring owner CHANGES instead counts a
          heavy touch running loose as a misplaced pass. */
       stat: { shots: [0, 0], poss: [0, 0], passes: [0, 0], passTry: [0, 0],
-              supers: [0, 0], touches: [0, 0] },
+              supers: [0, 0], touches: [0, 0], fouls: [0, 0] },
       /* THE HEART. One meter per side, out of TUNE.superCost, filled by
          playing football rather than by waiting. `sup` is the shot in
          flight and everything the cinematic needs to draw it. */
@@ -1085,6 +1128,12 @@ window.OuissyCup = (function () {
   /* everybody back to their own half for a kickoff; the side taking it
      puts one player on the ball */
   function resetPositions(kickTeam) {
+    /* nothing from before the restart belongs in the next replay, and
+       no set piece survives a kick-off — a corner interrupted by a goal
+       at the other end would otherwise still be waiting to be taken */
+    replayBuf.length = 0; replayAcc = 0; replay = null;
+    G.set = null; G.card = null;
+    G.players.forEach(function (q) { q.markTo = null; });
     G.ball.x = PITCH.cx; G.ball.y = PITCH.cy;
     G.ball.z = 0; G.ball.vx = G.ball.vy = G.ball.vz = 0;
     G.ball.owner = null; G.ball.lastTouch = null; G.ball.lock = 0;
@@ -1357,14 +1406,252 @@ window.OuissyCup = (function () {
         }
         return;
       }
-      if (inMouth && b.z >= 4.2) {
-        /* over: it comes back off the stanchion rather than leaving the
-           world, because there is no out of play here */
-        b.y = gl - (end ? 1 : -1) * 2; b.vy = -b.vy * 0.5; SFX.post();
-        return;
+      /* =================================================================
+         OVER THE GOAL LINE — WHICH IS NOW A RESTART
+
+         Both of these used to be boards. A ball over the bar came back
+         off "the stanchion" and a ball wide came back off a hoarding,
+         on the stated grounds that there is no out of play here. That
+         was a real decision and it bought the arcade pace, but it also
+         removed the two moments that most say "football" to anybody
+         watching: a corner, and a keeper restarting play.
+
+         The TOUCHLINES keep their boards. Throw-ins are the restart
+         that buys the least and interrupts the most, and a ball coming
+         back off the side is what keeps this game moving. The goal
+         lines do not, because what happens there is the part worth
+         having.
+
+         Which restart it is, is the oldest rule in the book: whoever
+         touched it last gives it to the other side.
+         ================================================================= */
+      var conceded = ownGoalY(0) === gl ? 0 : 1;   // whose line this is
+      var lastT = b.lastTouch ? b.lastTouch.team : 1 - conceded;
+      if (lastT === conceded) {
+        /* he put it behind for a corner */
+        setPiece("corner", 1 - conceded, b.x < PITCH.cx ? -1 : 1, gl);
+      } else {
+        setPiece("goalkick", conceded, 0, gl);
       }
-      b.y = gl + (end ? -2 : 2); b.vy = -b.vy * 0.62; SFX.board();
     });
+  }
+
+  /* =======================================================================
+     A RESTART
+
+     Three beats, and the middle one is the one that matters. The
+     whistle and the ball being placed; a HELD moment while everybody
+     walks to where they need to be and the camera looks at the spot;
+     and the ball being played. Without the held moment a corner is a
+     teleport, and the whole reason to have restarts at all is that they
+     are the punctuation in a match — the places where you get to see
+     the shape of what is about to happen before it happens.
+
+     `G.set` is the whole of it. The simulation still runs during a
+     restart, but every player is steering to a mark instead of playing
+     football, and the ball is nailed to the spot until the taker plays
+     it.
+     ======================================================================= */
+  /* a line for the screen reader while the match is running. `announce`
+     is defined further down with the rest of the UI; this is the name
+     the simulation calls it by, so the sim does not have to know that
+     the mirror is a DOM node. */
+  function uiSayLive(str) { announce(str); }
+
+  function setPiece(kind, team, side, gl, spot) {
+    if (G.state !== "play") return;             // never during a cinematic
+    var b = G.ball;
+    b.vx = b.vy = b.vz = 0; b.z = 0;
+    b.owner = null; b.lock = 999;               // nobody touches it yet
+    var d = attackDir(team);
+
+    if (kind === "free") {
+      b.x = clamp(spot.x, PITCH.x0 + 8, PITCH.x1 - 8);
+      b.y = clamp(spot.y, PITCH.y0 + 12, PITCH.y1 - 12);
+    } else if (kind === "corner") {
+      b.x = side < 0 ? PITCH.x0 + 3 : PITCH.x1 - 3;
+      b.y = gl + (gl === PITCH.y0 ? 3 : -3);
+    } else {
+      /* A GOAL KICK IS TAKEN FROM INSIDE THE PITCH.
+
+         `d` here is the attack direction of the side TAKING it, and for
+         a goal kick that side is the one defending this line — so their
+         attack direction points UP the pitch, away from the goal, and
+         stepping into the pitch from the line is `+ d`. Writing it as
+         `- d`, which is right for a corner because a corner is taken by
+         the side attacking that end, put the ball, the taker, the whole
+         back line and the camera BEHIND the goal, in the car park. */
+      b.x = PITCH.cx + (Math.random() - 0.5) * 20;
+      b.y = gl + d * PITCH.sixH * 0.85;
+    }
+    G.set = { kind: kind, team: team, side: side || 0, t: 0,
+              gl: gl, taker: null, x: b.x, y: b.y };
+    G.state = "set"; G.stateT = 0;
+    SFX.whistle();
+    uiSayLive(kind === "corner" ? "Corner."
+            : kind === "free" ? "Free kick." : "Goal kick.");
+    setCamMode("set");
+  }
+
+  /* WHERE EVERYBODY STANDS FOR ONE.
+
+     Marks rather than football: each player is given a place and walks
+     to it. What makes it read is that the marks are the ones a
+     commentator would describe — two in the box for a corner, the
+     keeper on his line, the defending side goal-side of them, and for a
+     goal kick a back line pushed right up and the other side dropped
+     off it. */
+  function setMarks() {
+    var S = G.set;
+    if (!S) return;
+    var d = attackDir(S.team);
+    var atk = [], def = [];
+    G.players.forEach(function (q) {
+      /* a man who has been sent off does not stand in a wall, take a
+         corner, or get marked at one */
+      if (q.gk || q.sentOff) return;
+      (q.team === S.team ? atk : def).push(q);
+    });
+    /* whoever is nearest takes it */
+    if (!S.taker) {
+      S.taker = nearestTo({ x: S.x, y: S.y }, S.team, true);
+    }
+
+    if (S.kind === "free") {
+      /* NO WALL, BECAUSE THERE ARE NOT ENOUGH PLAYERS FOR ONE.
+
+         A wall is three or four men, and each side has three
+         outfielders. Putting two of them in a wall leaves one defender
+         for the rest of the pitch, which is not a defensive set-up, it
+         is a hole. What the defending side does instead is what a small
+         side actually does: everybody drops goal-side and the nearest
+         man stands the regulation distance off the ball. */
+      atk.forEach(function (q, i) {
+        if (q === S.taker) { q.markTo = { x: S.x - 8, y: S.y - d * 7 }; return; }
+        q.markTo = { x: PITCH.cx + (i ? 40 : -40), y: S.y + d * 34 };
+      });
+      def.forEach(function (q, i) {
+        var back = Math.max(TUNE.freeKickBack, 0);
+        q.markTo = { x: S.x + (i - 0.5) * 34, y: S.y + d * back };
+      });
+    } else if (S.kind === "corner") {
+      var boxY = S.gl - d * PITCH.boxH * 0.46;
+      var n = 0;
+      atk.forEach(function (q) {
+        if (q === S.taker) { q.markTo = { x: S.x - S.side * 6, y: S.y }; return; }
+        /* one at the near post, one hanging at the penalty spot */
+        q.markTo = n === 0
+          ? { x: PITCH.cx + S.side * PITCH.sixW * 0.4, y: S.gl - d * PITCH.sixH }
+          : { x: PITCH.cx - S.side * 14, y: boxY };
+        n++;
+      });
+      def.forEach(function (q, i) {
+        /* goal-side of the two of them, a stride closer to the line */
+        var t = atk.filter(function (a) { return a !== S.taker; })[i % 2];
+        q.markTo = t ? { x: t.x + (PITCH.cx - t.x) * 0.2, y: t.y + d * 7 }
+                     : { x: PITCH.cx, y: S.gl - d * PITCH.boxH * 0.7 };
+      });
+    } else {
+      var up = S.gl + d * PITCH.h * 0.30;
+      atk.forEach(function (q, i) {
+        q.markTo = { x: PITCH.x0 + PITCH.w * (0.2 + i * 0.3),
+                     y: up + (i === 0 ? -d * 22 : 0) };
+      });
+      def.forEach(function (q, i) {
+        /* dropped off, but not so far that a goal kick is uncontested */
+        q.markTo = { x: PITCH.x0 + PITCH.w * (0.32 + i * 0.22),
+                     y: up - d * (30 + i * 16) };
+      });
+    }
+    /* the keepers: the defending one on his line, the other one home */
+    G.players.forEach(function (q) {
+      if (!q.gk) return;
+      q.markTo = { x: PITCH.cx, y: ownGoalY(q.team) + attackDir(q.team) * 7 };
+    });
+    /* and the taker stands over it */
+    if (S.kind === "goalkick") {
+      var gk = null;
+      G.players.forEach(function (q) { if (q.gk && q.team === S.team) gk = q; });
+      /* behind the ball, not in front of it: `+ d` is up the pitch,
+         which is the way he is about to kick */
+      if (gk) { S.taker = gk; gk.markTo = { x: S.x - 7, y: S.y - d * 5 }; }
+    }
+  }
+
+  /* the held moment, and then the ball is played */
+  function setStep(dt) {
+    var S = G.set;
+    if (!S) { G.state = "play"; return; }
+    S.t += dt;
+    setMarks();
+    G.ball.x = S.x; G.ball.y = S.y; G.ball.z = 0;
+    G.ball.vx = G.ball.vy = G.ball.vz = 0;
+    G.players.forEach(function (q) {
+      if (q.sentOff) { think(q, dt); playerStep(q, dt); return; }
+      var m = q.markTo;
+      if (m) moveTo(q, clamp(m.x, PITCH.x0 + 6, PITCH.x1 - 6),
+                       clamp(m.y, PITCH.y0 + 6, PITCH.y1 - 6), dt, 0.8);
+      else { q.vx *= 0.8; q.vy *= 0.8; }
+      playerStep(q, dt);
+    });
+    if (S.t < TUNE.setPause) return;
+
+    /* PLAYED. A corner is whipped into the area; a goal kick is hit long
+       up the pitch to whoever is furthest forward. */
+    var taker = S.taker;
+    G.players.forEach(function (q) { q.markTo = null; });
+    G.ball.lock = 0;
+    G.state = "play"; G.stateT = 0;
+    if (camMode.kind === "set") setCamMode("play");
+    if (!taker) { G.set = null; return; }
+    var d2 = attackDir(taker.team);
+    if (S.kind === "free") {
+      /* CLOSE ENOUGH AND HE HITS IT. Far out and he puts it into the
+         area, which for a side this size is the more dangerous of the
+         two anyway. */
+      var gy3 = goalY(taker.team);
+      var out = Math.abs(taker.y - gy3);
+      G.set = null;
+      if (out < 150 && Math.abs(taker.x - PITCH.cx) < 80) {
+        shoot(taker, clamp(0.6 + out / 240, 0.55, 1));
+      } else {
+        var into = { x: PITCH.cx + (Math.random() - 0.5) * 50,
+                     y: gy3 - d2 * PITCH.sixH * 1.4 };
+        var fa = Math.atan2(into.y - taker.y, into.x - taker.x);
+        kickBall(taker, fa, TUNE.passSpeed * 1.1, 42, taker);
+        setAnim(taker, "kick", 0.34);
+        G.stat.passTry[taker.team]++;
+        SFX.kick();
+      }
+      return;
+    }
+    if (S.kind === "corner") {
+      var tgt = { x: PITCH.cx - S.side * 10,
+                  y: S.gl - d2 * PITCH.sixH * 1.2 };
+      var ang = Math.atan2(tgt.y - taker.y, tgt.x - taker.x);
+      ang += (Math.random() - 0.5) * 0.18;
+      G.set = null;
+      kickBall(taker, ang, TUNE.passSpeed * 1.05, 40, taker);
+      setAnim(taker, "kick", 0.34);
+      G.stat.passTry[taker.team]++;
+      SFX.shot();
+      crowdSwell(0.05, 1.2);
+    } else {
+      var far = null, bestD = -1;
+      G.players.forEach(function (q) {
+        if (q.team !== taker.team || q.gk) return;
+        var v = (q.y - taker.y) * d2;
+        if (v > bestD) { bestD = v; far = q; }
+      });
+      var ang2 = far ? Math.atan2(far.y - taker.y, far.x - taker.x)
+                     : Math.atan2(d2, 0);
+      ang2 += (Math.random() - 0.5) * 0.24;
+      G.set = null;
+      kickBall(taker, ang2, TUNE.passSpeed * 1.25, 52, taker);
+      setAnim(taker, "kick", 0.34);
+      G.stat.passTry[taker.team]++;
+      SFX.kick();
+    }
   }
 
   function kickBall(from, ang, speed, lift, bender) {
@@ -1477,6 +1764,7 @@ window.OuissyCup = (function () {
 
     var best = null, bd = 1e9;
     G.players.forEach(function (p) {
+      if (p.sentOff) return;
       if (p.tackleT > 0 && !p.gk) return;
       var d = len(p.x - b.x, p.y - b.y);
       /* a loose ball is won on distance alone and nothing else, so that
@@ -1568,7 +1856,10 @@ window.OuissyCup = (function () {
     /* the ball is his now, so he does not immediately shovel it forward
        — the first touch IS his touch */
     best.touchT = TUNE.touchGap * 2.2;
-    if (arriving > 70) {
+    /* A KEEPER IS ABOUT TO PLAY HIS OWN ANIMATION — catch, or punch, or
+       a full-length dive — and a trap played first would be overwritten
+       by it a few lines later anyway. Outfielders only. */
+    if (arriving > 70 && !best.gk) {
       setAnim(best, "trap", TUNE.trapTime);     // the receiving animation
       if (keep > 0.34) SFX.touch();             // a heavy one is audible
     }
@@ -1577,11 +1868,63 @@ window.OuissyCup = (function () {
        the same two players trade it forty times */
     b.lock = TUNE.settle;
     if (best.gk && inBox(best, b)) {
+      /* =================================================================
+         HE DOES NOT CATCH EVERYTHING
+
+         A keeper who gathers every shot cleanly, however hard it was
+         hit, is the reason a goalmouth in this game had exactly one
+         outcome: either the ball went in or the move was over. There
+         was no rebound in the match anywhere, and a rebound is half of
+         what a penalty area is FOR — the scramble, the follow-up, the
+         ball squirming loose off a save and three people arriving at
+         once.
+
+         So how hard a ball he can hold is a number, and it is his
+         hands: the gk stat. Below it he catches and the move is over.
+         Above it he gets something to it and the ball goes back out
+         into the area, at an angle, still live. Well above it he cannot
+         catch it at all and punches it clear with both fists.
+
+         This is also the first thing that makes a save READ as a save.
+         A caught ball just stops; a parried one tells you how hard the
+         shot was by how far it goes.
+         ================================================================= */
+      var mgk = (best.mul || FLAT_MUL).gk;
+      var hold = TUNE.gkHoldPower * mgk * diff().gk;
+      if (arriving > hold) {
+        var punched = arriving > hold * 1.45;
+        b.owner = null;
+        b.lastTouch = best;
+        b.lock = TUNE.controlLock;
+        /* out to a side, and away from his own goal — a keeper parries
+           the ball WIDE, because parrying it back where it came from is
+           how you concede the rebound */
+        var side = (b.x < PITCH.cx ? -1 : 1);
+        var away = attackDir(best.team);
+        var pa = Math.atan2(away * (punched ? 0.75 : 0.45), side * 1.0);
+        var ps = arriving * (punched ? 0.62 : 0.40);
+        b.vx = Math.cos(pa) * ps;
+        b.vy = Math.sin(pa) * ps;
+        b.vz = punched ? 34 : 12;
+        b.struck = 1;
+        best.diveDir = side;
+        setAnim(best, punched ? "punch" : "dive", 0.5);
+        best.hold = 0;
+        SFX.save();
+        G.hitStop = Math.max(G.hitStop, TUNE.hitStopShot);
+        G.shake = Math.max(G.shake, 0.3);
+        crowdSwell(0.08, 1.4);
+        uiSayLive("Saved.");
+        return;
+      }
+      /* held */
       best.hold = TUNE.gkHold;
-      if (len(b.vx, b.vy) > 90) {
+      if (arriving > 90) {
         best.diveDir = (b.x < best.x) ? 1 : -1;
         setAnim(best, "dive", 0.55);
         crowdSwell(0.05, 1.0);
+      } else {
+        setAnim(best, "catch", 0.38);
       }
       SFX.save();
     }
@@ -2009,9 +2352,20 @@ window.OuissyCup = (function () {
        and the wave round the ground. The order matters because they are
        not simultaneous — the stop is the hit, and everything else is
        the reaction to it. */
+    G.replayed = false;
+    announceGoal(team);
     G.hitStop = Math.max(G.hitStop, TUNE.hitStopGoal);
     turfBurst(G.ball.x, G.ball.y, 16);
-    if (R2 && R2.startWave) R2.startWave();
+    /* THE GROUND REACTS TO WHOSE GOAL IT WAS.
+
+       The wave and the bounce are for a goal at the right end. A goal
+       at the wrong one gets the opposite: the stand stops moving. Both
+       are the same two lines of code and the difference between a
+       stadium and a texture. */
+    if (R2 && R2.startWave) {
+      if (team === 0) R2.startWave();
+      if (R2.setMood) R2.setMood(team === 0 ? 1 : -0.85);
+    }
     G.ball.vx = G.ball.vy = G.ball.vz = 0; G.ball.owner = null;
     /* WHICH NET JUST BULGED. The renderer's two goals are the near one
        (her line, y1) and the far one (theirs, y0), and which of those
@@ -2115,8 +2469,41 @@ window.OuissyCup = (function () {
     p.prevSp = sp;
   }
 
+  /* CHECKING FOR THE FOUL FOR THE WHOLE LENGTH OF THE SLIDE.
+
+     The first version asked the question on the single frame the tackle
+     was launched, and the answer was almost always no — because the
+     ball a tackler is lunging at now sits up to twenty units in front
+     of the man who is dribbling it, so at the moment of launch the man
+     himself is still well out of range. A slide takes a third of a
+     second and travels; whether it caught anybody is a question about
+     that whole third of a second. Measured, this is the difference
+     between one foul a half and a handful. */
+  function slideFoul(p, dt) {
+    /* ONLY WHILE THE MATCH IS ACTUALLY RUNNING.
+
+       playerStep runs during a restart and during a celebration too, so
+       a slide still in progress when the whistle went would otherwise
+       be awarded as a foul against a set piece that is already being
+       taken — a free kick given for a challenge nobody made, in the
+       middle of somebody else's corner. */
+    if (G.state !== "play") return;
+    if (!(p.tackleT > 0) || p.wonTackle || p.gk || p.sentOff) return;
+    if (p.fouledSlide) return;
+    var hit = null, hd = 1e9;
+    for (var i = 0; i < G.players.length; i++) {
+      var q = G.players[i];
+      if (q.team === p.team || q.gk || q.sentOff) continue;
+      var dd = dist(p, q);
+      if (dd < TUNE.foulReach && dd < hd) { hd = dd; hit = q; }
+    }
+    if (hit) { p.fouledSlide = true; foulOn(p, hit); }
+  }
+
   function playerStep(p, dt) {
     gaitStep(p, dt);
+    slideFoul(p, dt);
+    if (!(p.tackleT > 0)) p.fouledSlide = false;
     animStep(p, dt);
     p.coolT = Math.max(0, p.coolT - dt);
     p.hold = Math.max(0, p.hold - dt);
@@ -2484,7 +2871,7 @@ window.OuissyCup = (function () {
     var mine = !!(holder && holder.team === team);
     var outs = [];
     G.players.forEach(function (q) {
-      if (q.team !== team || q.gk) return;
+      if (q.team !== team || q.gk || q.sentOff) return;
       q.job = null;
       outs.push(q);
     });
@@ -2604,7 +2991,23 @@ window.OuissyCup = (function () {
   /* =======================================================================
      ONE PLAYER, ONE FRAME
      ======================================================================= */
+  /* A PLAYER WHO HAS BEEN SENT OFF IS NOT IN THE MATCH.
+
+     Setting a flag is not enough on its own: he has to stop being
+     counted as a team-mate to pass to, as a man to mark, as somebody
+     who can take the ball, and as a candidate for the player she is
+     driving. Every one of those is a separate list, which is why this
+     is a function and not four scattered conditions. */
+  function inPlay(q) { return !q.sentOff; }
+
   function think(p, dt) {
+    if (p.sentOff) {
+      /* he walks off the nearest touchline, and then he is scenery */
+      var side = p.x < PITCH.cx ? PITCH.x0 - 14 : PITCH.x1 + 14;
+      if (Math.abs(p.x - side) > 2) moveTo(p, side, p.y, dt, 0.5);
+      else { p.vx *= 0.8; p.vy *= 0.8; }
+      return;
+    }
     /* her seven teammates play at a fixed, decent level; the opposition
        plays at the round's, scaled by the difficulty she chose */
     /* HOW WELL HER OWN TEAM-MATES PLAY.
@@ -3143,6 +3546,10 @@ window.OuissyCup = (function () {
       if (p.hold <= 0) {
         var opt = bestPass(p, skill);
         var mate = (opt && opt.mate) || nearestTo(p, p.team, true);
+        /* the throw, which is the animation he has never had: an
+           overarm roll to a team-mate rather than the same side-foot
+           pass every outfielder plays */
+        setAnim(p, "throw", 0.42);
         if (mate) passTo(p, mate, true); else shoot(p, 0.6);
       }
       return;
@@ -3225,7 +3632,7 @@ window.OuissyCup = (function () {
   function nearestTo(thing, team, outfieldOnly, except) {
     var best = null, bd = 1e9;
     G.players.forEach(function (p) {
-      if (p.team !== team) return;
+      if (p.team !== team || p.sentOff) return;
       if (outfieldOnly && p.gk) return;
       if (except && p === except) return;
       var d = len(p.x - thing.x, p.y - thing.y);
@@ -3236,7 +3643,7 @@ window.OuissyCup = (function () {
   function nearestOpponent(p) {
     var best = null, bd = 1e9;
     G.players.forEach(function (o) {
-      if (o.team === p.team) return;
+      if (o.team === p.team || o.sentOff) return;
       var d = dist(o, p);
       if (d < bd) { bd = d; best = o; }
     });
@@ -3271,7 +3678,7 @@ window.OuissyCup = (function () {
     var underIt = pressed && dist(pressed, p) < 24;
 
     G.players.forEach(function (m) {
-      if (m === p || m.team !== p.team || m.gk) return;
+      if (m === p || m.team !== p.team || m.gk || m.sentOff) return;
       var far = dist(m, p);
       if (far > 175 || far < 14) return;
 
@@ -3410,7 +3817,9 @@ window.OuissyCup = (function () {
        area. Without this, skill 93 and skill 62 pass identically. */
     ang += (Math.random() - 0.5) * (TUNE.passErr / mul.aim);
     kickBall(p, ang, soft ? aim.sp * 0.8 : aim.sp, 0);
-    setAnim(p, "pass", 0.28);
+    /* a keeper rolling it out is already playing his own animation and
+       must not have it replaced by an outfielder's side-foot */
+    if (!(p.gk && p.anim && p.anim.state === "throw")) setAnim(p, "pass", 0.28);
     G.stat.passTry[p.team]++;
     SFX.pass();
   }
@@ -3469,12 +3878,70 @@ window.OuissyCup = (function () {
     R2.turf(wX(x), wY(y), n, ang === undefined ? undefined : -ang);
   }
 
+  /* =======================================================================
+     A FOUL
+
+     A sliding tackle that missed the ball and went through the player
+     was free. Nothing happened: no whistle, no restart, no record of it,
+     and the man who had just been taken out got up and carried on. That
+     is the single largest rule of football simply absent, and its
+     absence is felt as a kind of weightlessness — challenges have no
+     downside, so going to ground is always correct.
+
+     The test is the one a referee uses: did he get the ball. If the
+     tackle wins it, it is a tackle however hard it was. If it misses
+     and catches a man, it is a foul, and how bad a foul depends on the
+     two things that decide it in life — how fast he went in, and
+     whether he could see what he was doing it to.
+
+     Cards are deliberately hard to earn. Four a side means sending
+     somebody off is close to deciding the match, so it takes a genuinely
+     reckless one, or a second booking.
+     ======================================================================= */
+  function foulOn(offender, victim) {
+    if (!victim || G.state !== "play") return;
+    var speed = len(offender.vx, offender.vy);
+    /* from behind is worse, because he never saw it coming */
+    var toO = Math.atan2(offender.y - victim.y, offender.x - victim.x);
+    var behind = Math.abs(Math.atan2(Math.sin(toO - victim.dir),
+                                     Math.cos(toO - victim.dir))) > 2.0;
+    var bad = speed > TUNE.foulHard && behind;
+
+    offender.fouls = (offender.fouls || 0) + 1;
+    G.stat.fouls[offender.team] = (G.stat.fouls[offender.team] || 0) + 1;
+    offender.coolT = Math.max(offender.coolT || 0, TUNE.tackleCool * 1.6);
+    victim.bumpT = Math.max(victim.bumpT || 0, TUNE.bumpStun);
+    victim.skidT = Math.max(victim.skidT || 0, TUNE.bumpStun);
+    turfBurst(victim.x, victim.y, 9);
+    G.hitStop = Math.max(G.hitStop, TUNE.hitStopTackle);
+    G.shake = Math.max(G.shake, 0.5);
+    SFX.bump(1);
+
+    /* the card, if it has been earned */
+    var card = null;
+    if (bad) {
+      offender.yellow = (offender.yellow || 0) + 1;
+      card = offender.yellow >= 2 ? "red" : "yellow";
+      if (card === "red") offender.sentOff = true;
+    }
+    if (card) {
+      G.card = { p: offender, kind: card, t: 0 };
+      uiSayLive(offender.name + ", " + (card === "red" ? "sent off." : "booked."));
+      announceCard(offender, card);
+      crowdSwell(0.10, 1.6);
+      SFX.book(card === "red");
+    }
+    setPiece("free", victim.team, 0, null, { x: victim.x, y: victim.y });
+  }
+
   function startTackle(p) {
     p.tackleT = TUNE.tackleTime;
     setAnim(p, "slide", TUNE.tackleTime + 0.12);
     var b = G.ball;
     var reach = TUNE.tackleReach * (p.mul || FLAT_MUL).tackle;
+    p.wonTackle = false;
     if (dist(p, b) < reach && b.owner && b.owner.team !== p.team) {
+      p.wonTackle = true;
       var ang = Math.atan2(b.y - p.y, b.x - p.x);
       b.owner = null; b.lastTouch = p; b.lock = TUNE.controlLock;
       b.vx = Math.cos(ang) * TUNE.tacklePush;
@@ -3559,8 +4026,21 @@ window.OuissyCup = (function () {
     var carrying = G.ball.owner === p;
     if (carrying) {
       if (IN.heldT < 0.17) {
-        var mate = bestPass(p);
-        if (mate) passTo(p, mate); else shoot(p, 0.4);
+        /* bestPass RETURNS AN OPTION, NOT A PLAYER.
+
+           It used to return the team-mate itself, and when it was
+           rewritten to return { mate, score, through, tx, ty } every
+           call site was updated except this one — the only one a human
+           ever reaches. So her tap-to-pass has been handing passTo an
+           object with no x and no vx, which arrives at Math.atan2(NaN)
+           and sends the ball nowhere at all. The AI's passing was fine
+           and hers was silently broken, which is exactly the shape of
+           bug an AI-only harness cannot see. */
+        var opt = bestPass(p);
+        if (opt && opt.mate) {
+          if (opt.through) passInto(p, opt.mate, opt.tx, opt.ty);
+          else passTo(p, opt.mate);
+        } else shoot(p, 0.4);
       } else {
         shoot(p, clamp(IN.heldT / TUNE.chargeTime, 0.25, 1));
       }
@@ -3599,6 +4079,17 @@ window.OuissyCup = (function () {
   function step(dt) {
     if (!G) return;
     G.stateT += dt;
+    /* the card runs on the MATCH clock, so it holds still through
+       hit-stop and slow motion like everything else that is part of the
+       moment rather than part of the interface */
+    if (G.card) {
+      G.card.t += dt;
+      if (G.card.t > 2.4) G.card = null;
+    }
+    if (G.pa) {
+      G.pa.t += dt;
+      if (G.pa.t > 3.5) G.pa = null;
+    }
     G.shake = Math.max(0, G.shake - dt * 3);
     G.flash = Math.max(0, G.flash - dt * 2.2);
 
@@ -3608,6 +4099,15 @@ window.OuissyCup = (function () {
         SFX.whistle();
       }
     } else if (G.state === "goal") {
+      /* THE CUT TO THE REPLAY, once the first beat of the celebration
+         has been allowed to land. Cutting instantly is a game that will
+         not let you enjoy anything; cutting after the whole celebration
+         is a game that shows you something you have stopped caring
+         about. */
+      if (!G.over && !G.replayed && G.stateT > TUNE.goalCheer * 0.42) {
+        G.replayed = true;
+        if (replayStart()) return;
+      }
       if (G.stateT > TUNE.goalCheer && !G.over) {
         setCamMode("play");
         resetPositions(G.kickoffTeam);
@@ -3615,6 +4115,17 @@ window.OuissyCup = (function () {
         G.superGoal = null;
         clearBanner();
       }
+    } else if (G.state === "set") {
+      /* a restart runs the clock: it is a stoppage in the match, not a
+         stoppage in the world */
+      G.clock += dt;
+      setStep(dt);
+      /* placeCamera, not cameraStep: cameraStep only moves the legacy
+         G.cam.y and does not touch the renderer's camera at all, so a
+         restart left the frame wherever the last passage of play had
+         abandoned it */
+      placeCamera(dt, false);
+      return;
     } else if (G.state === "play") {
       G.clock += dt;
       var limit = G.golden ? TUNE.goldenGoal : TUNE.halfSeconds;
@@ -3636,7 +4147,14 @@ window.OuissyCup = (function () {
       return;
     }
 
+    if (G.state === "replay") {
+      replayStep(dt);
+      placeCamera(dt, false);
+      return;
+    }
+
     if (G.state === "play" || G.state === "goal") {
+      if (G.state === "play") replayRecord(dt);
       if (G.state === "play") {
         controlStep(dt);
         /* THE JOBS ARE A TEAM DECISION, SO THEY ARE TAKEN ONCE.
@@ -3922,6 +4440,121 @@ window.OuissyCup = (function () {
   var CAMHERO = { ndc: 0.30 };
   function shadowSpan() {}          // there is no shadow map any more
 
+  /* =======================================================================
+     THE REPLAY
+
+     A goal went in, the crowd made a noise, and the game cut straight to
+     a kick-off. Every football game ever made shows it to you again,
+     and the reason is not nostalgia — it is that a goal happens in
+     about a fifth of a second, usually while the camera is following
+     the ball rather than the finish, and you frequently do not actually
+     SEE the thing that just happened to you.
+
+     Recording it costs almost nothing. The whole of a match frame, for
+     this purpose, is where nine things are and which picture each of
+     them is showing: nine little records, thirty times a second, for
+     three seconds. Two and a half thousand numbers.
+
+     Playing it back costs nothing at all, because the simulation is
+     already stopped during a celebration — so the buffer is written
+     straight into the live players and the ordinary draw runs over the
+     top of it. No second rendering path, no chance of the replay and
+     the match disagreeing about how anything looks.
+     ======================================================================= */
+  var REPLAY_HZ = 30, REPLAY_SECS = 3.0;
+  var replayBuf = [], replayAcc = 0, replay = null;
+
+  function replayRecord(dt) {
+    replayAcc += dt;
+    if (replayAcc < 1 / REPLAY_HZ) return;
+    replayAcc = 0;
+    var b = G.ball;
+    replayBuf.push({
+      bx: b.x, by: b.y, bz: b.z, bs: b.spin || 0,
+      ps: G.players.map(function (q, i) {
+        var r = rigs[i];
+        return { x: q.x, y: q.y, off: !!q.sentOff,
+                 anim: r ? r.anim : "idle", frame: r ? r.frame : 0,
+                 face: r ? r.face : "s", flip: r ? r.flip : false,
+                 air: r ? r.air : 0 };
+      }),
+    });
+    if (replayBuf.length > REPLAY_HZ * REPLAY_SECS) replayBuf.shift();
+  }
+
+  /* THE CUT IS THE POINT. A replay that starts three seconds before the
+     goal spends two of them on nothing; one that starts at the strike
+     misses the pass that made it. A second and a half is the build-up
+     plus the finish, which is what a television director picks too. */
+  function replayStart() {
+    if (replayBuf.length < 12) return false;
+    var want = Math.min(replayBuf.length, Math.round(REPLAY_HZ * 1.6));
+    replay = { frames: replayBuf.slice(replayBuf.length - want), i: 0, t: 0 };
+    G.state = "replay"; G.stateT = 0;
+    setCamMode("replay", G.scorerP);
+    return true;
+  }
+
+  function replayStep(dt) {
+    if (!replay) { G.state = "goal"; G.stateT = 0; return; }
+    /* slower than life, because that is what a replay is for */
+    replay.t += dt * TUNE.replaySpeed;
+    replay.i = Math.floor(replay.t * REPLAY_HZ);
+    if (replay.i >= replay.frames.length) {
+      replay = null;
+      G.state = "goal"; G.stateT = TUNE.goalCheer * 0.55;
+      setCamMode("goal", G.scorerP, TUNE.goalCheer);
+      return;
+    }
+    var f = replay.frames[replay.i];
+    G.ball.x = f.bx; G.ball.y = f.by; G.ball.z = f.bz; G.ball.spin = f.bs;
+    G.ball.vx = G.ball.vy = G.ball.vz = 0;
+    for (var i = 0; i < G.players.length && i < f.ps.length; i++) {
+      var q = G.players[i], e = f.ps[i], r = rigs[i];
+      q.x = e.x; q.y = e.y; q.vx = q.vy = 0;
+      if (r) { r.anim = e.anim; r.frame = e.frame; r.face = e.face;
+               r.flip = e.flip; r.air = e.air; }
+    }
+  }
+
+  /* WHAT THE GROUND SAYS WHEN SOMEBODY SCORES */
+  function announceGoal(team) {
+    var t = teamById(G.ids[team]) || {};
+    var who = G.scorer || (G.scorerP && G.scorerP.name) || "";
+    var mins = Math.floor((G.half === 1 ? 0 : 45) +
+                          (G.clock / TUNE.halfSeconds) * 45) + "\u2019";
+    G.pa = { t: 0, kicker: "GOAL \u2014 " + (t.short || t.name || ""),
+             line: who, right: mins,
+             col: (t.kit && t.kit.shirt) || "#c1272d" };
+    uiSayLive("Goal. " + who + ", " + mins + ".");
+    SFX.pa();
+  }
+
+  /* and when somebody is booked */
+  function announceCard(pl, kind) {
+    var t = teamById(G.ids[pl.team]) || {};
+    G.pa = { t: 0, kicker: kind === "red" ? "SENT OFF" : "BOOKED",
+             line: pl.name, right: "",
+             col: kind === "red" ? "#d8323c" : "#f0c53a" };
+  }
+
+  /* the badge, so nobody mistakes it for the match */
+  function drawReplayBadge() {
+    if (G.state !== "replay" || !UIX) return;
+    var lab = "REPLAY";
+    var w = textWidth(lab) + 14;
+    var x = 6, y = Math.round(UIH * 0.40);
+    box(x, y, w, 13, "#0d1412");
+    box(x + 1, y + 1, w - 2, 11, "#8c1f2a");
+    line(x + 1, y + 1, w - 2, 1, "#c8404c");
+    /* the blinking dot a broadcast puts next to the word */
+    if (Math.floor(UI.t * 3) % 2 === 0) box(x + 5, y + 5, 3, 3, "#ffffff");
+    drawText(x + 11, lab, y + 3, { colour: "#ffe9a8" });
+  }
+
+  /* the receiver she is aimed at, cached between recomputations */
+  var passHint = { t: 0, mate: null, tx: 0, ty: 0 };
+
   var camNow = { x: 0, y: 0 };
   var camMode = { kind: "play", t: 0, at: null, hold: 0 };
 
@@ -4058,6 +4691,43 @@ window.OuissyCup = (function () {
       return;
     }
 
+    /* =====================================================================
+       A RESTART IS FRAMED ON THE BOX, NOT ON THE BALL
+
+       Following the ball to a corner puts the camera within a few units
+       of the touchline, and at that range the side stand fills half the
+       frame and leans across the pitch — which looks like a rendering
+       fault and is really the camera standing inside the stadium. It is
+       also not what a corner looks like on television: the shot is of
+       the PENALTY AREA, because the area is where the thing you are
+       about to watch happens. The ball is in the corner of it.
+
+       A goal kick is the same idea pointed the other way: frame the
+       pitch the keeper is about to hit it into rather than the keeper.
+       ===================================================================== */
+    if (camMode.kind === "set" && G.set) {
+      var S = G.set;
+      var sd = attackDir(S.team);
+      var fx, fy;
+      if (S.kind === "corner") {
+        fx = PITCH.cx + (S.x - PITCH.cx) * 0.42;
+        fy = S.gl - sd * PITCH.boxH * 0.55;
+      } else {
+        fx = PITCH.cx;
+        fy = S.gl + sd * PITCH.h * 0.17;
+      }
+      camTo(fx, fy, snap ? 1 : Math.min(1, 3.4 * dt), 1);
+      return;
+    }
+
+    /* THE REPLAY SHOT. Tighter than the match camera and held on the
+       ball rather than led by it — a replay is not trying to keep the
+       play in frame, it already knows where the play went. */
+    if (camMode.kind === "replay") {
+      camTo(G.ball.x, G.ball.y, snap ? 1 : Math.min(1, 5 * dt), 2);
+      return;
+    }
+
     /* THE MENU SHOT. Stood off, drifting, with the line-up in the right
        of the frame and the card in the left. */
     if (camMode.kind === "menu") {
@@ -4081,7 +4751,20 @@ window.OuissyCup = (function () {
     var raw = wantFraming();
     var want = snap ? raw : deadzone(raw.x, raw.y);
     var y = clamp(want.y, PITCH.y0 + 30, PITCH.y1 + 6);
-    var x = clamp(want.x, PITCH.cx - PITCH.w * 0.40, PITCH.cx + PITCH.w * 0.40);
+    /* HOW CLOSE THE CAMERA MAY GET TO A TOUCHLINE.
+
+       It was widened to 0.40 so that she could actually see a touchline
+       — before that the boards were permanently off the side of the
+       screen and she could not tell where a rebound had come from. That
+       was right, but 0.40 leaves the camera under thirty units from the
+       line, and at that range the SIDE STAND fills a third of the frame
+       and leans across the pitch at an angle that reads as a rendering
+       fault. It is not one: it is the left touchline receding correctly,
+       seen from almost on top of it.
+
+       0.32 keeps the touchline and its boards comfortably in shot and
+       keeps the stand where it belongs, at the edge of the picture. */
+    var x = clamp(want.x, PITCH.cx - PITCH.w * 0.32, PITCH.cx + PITCH.w * 0.32);
     camTo(x, y, snap ? 1 : camK(dt), 1);
   }
 
@@ -4107,6 +4790,39 @@ window.OuissyCup = (function () {
     R2.tick(dt);
     R2.begin(dt, netBulge);
 
+    /* =====================================================================
+       THE PASS SHE IS ABOUT TO PLAY
+
+       Worked out on the same call the pass itself will use, so what is
+       drawn is genuinely what will happen rather than a guess that
+       agrees with it most of the time. Recomputed eight times a second
+       rather than sixty, because bestPass walks every team-mate against
+       every opponent and the answer does not change meaningfully inside
+       an eighth of a second — and because a marker that re-picks every
+       frame flickers between two equally good options.
+
+       It is only ever shown while SHE has the ball. An indicator over
+       an AI player's head is telling her something she cannot act on.
+       ===================================================================== */
+    var driver = G.controlled;
+    passHint.t -= dt;
+    if (driver && G.ball.owner === driver && G.state === "play") {
+      if (passHint.t <= 0) {
+        passHint.t = 0.125;
+        var o = bestPass(driver);
+        passHint.mate = o && o.mate ? o.mate : null;
+        passHint.tx = o && o.through ? o.tx : (passHint.mate ? passHint.mate.x : 0);
+        passHint.ty = o && o.through ? o.ty : (passHint.mate ? passHint.mate.y : 0);
+      }
+      if (passHint.mate && passHint.mate.sentOff) passHint.mate = null;
+      if (passHint.mate) {
+        var hintCol = ringColour(driver) || "#ffe9a8";
+        R2.lane(wX(driver.x), wY(driver.y), wX(passHint.tx), wY(passHint.ty),
+                hintCol, UI.t);
+        R2.marker(wX(passHint.mate.x), wY(passHint.mate.y), hintCol, UI.t);
+      }
+    } else { passHint.mate = null; }
+
     for (i = 0; i < G.players.length; i++) {
       var p = G.players[i], r = rigs[i];
       if (!r) continue;
@@ -4119,6 +4835,9 @@ window.OuissyCup = (function () {
         /* in her side's own colour, so the marker agrees with the shirt
            it is drawn under rather than adding a third one */
         ringCol: ringColour(p),
+        /* squad numbers, one to four a side, keeper first */
+        num: p.shirtNo,
+        numCol: shirtInk(p),
       });
     }
 
@@ -4675,6 +5394,19 @@ window.OuissyCup = (function () {
 
   /* the accent a player's marker ring is drawn in: their kit's trim if
      it has one that reads against grass, and the shirt otherwise */
+  /* THE INK A NUMBER IS PRINTED IN. White on a dark shirt and near-
+     black on a light one, decided from the shirt's own brightness
+     rather than from a list — which is what a kit manufacturer does
+     and the only way it works for every team in the config. */
+  function shirtInk(pl) {
+    var t = teamById(pl.teamId) || {};
+    var kit = pl.kit || (pl.gk ? t.gkKit : t.kit) || null;
+    var hex = (kit && kit.shirt) || "#c1272d";
+    var c = parseInt(hex.slice(1), 16);
+    var lum = ((c >> 16 & 255) * 0.299 + (c >> 8 & 255) * 0.587 + (c & 255) * 0.114);
+    return lum > 150 ? "#141a16" : "#f4f6f2";
+  }
+
   function ringColour(pl) {
     var t = teamById(pl.teamId) || {};
     var kit = pl.kit || t.kit || null;
@@ -4696,6 +5428,9 @@ window.OuissyCup = (function () {
       if (a === "kick" || a === "superKick") return "kick";
       if (a === "pass") return "pass";
       if (a === "trap") return "trap";
+      if (a === "catch") return "catch";
+      if (a === "punch") return "punch";
+      if (a === "throw") return "throw";
       if (a === "slide") return "tackle";
       if (a === "dive") return "dive";
       if (a === "cheer" || a === "armsUp" || a === "knee" ||
@@ -5291,7 +6026,10 @@ window.OuissyCup = (function () {
         var kw = textWidth(k2[0]) + 8;
         var tw2 = textWidth(k2[1]);
         var tot = kw + tw2 + 12;
-        var x0 = UIW - 8 - tot;
+        /* DOWN THE LEFT, because the radar lives bottom-right now and a
+           legend printed across a radar is two instruments you cannot
+           read instead of one you can */
+        var x0 = 6;
         box(x0, kz, tot, 11, "#0d1412");
         box(x0 + 1, kz + 1, tot - 2, 9, "#1b2a32");
         box(x0 + 2, kz + 2, kw, 7, "#2f4450");
@@ -5301,6 +6039,84 @@ window.OuissyCup = (function () {
       });
       UIX.restore();
     }
+
+    /* =====================================================================
+       THE CARD
+
+       Held up, not printed in a corner. A referee showing a card is one
+       of the few images in football that everybody reads instantly
+       without a word on it, and the whole of it is: a coloured
+       rectangle, held high, still, for a beat. It rises as it appears
+       and holds, because a card that slides around is a notification
+       and a card that is held is a decision.
+       ===================================================================== */
+    if (G.card) {
+      {
+        var ct = G.card.t;
+        var rise = ct < 0.24 ? 1 - Math.pow(1 - ct / 0.24, 3) : 1;
+        var fade = ct > 2.1 ? 1 - (ct - 2.1) / 0.3 : 1;
+        var cw2 = 15, ch2 = 21;
+        var cX = Math.round(UIW / 2 - cw2 / 2);
+        var cY = Math.round(UIH * 0.30 + (1 - rise) * 22);
+        UIX.save();
+        UIX.globalAlpha = clamp(fade, 0, 1);
+        box(cX - 2, cY - 2, cw2 + 4, ch2 + 4, "#0d1412");
+        var face = G.card.kind === "red" ? "#d8323c" : "#f0c53a";
+        box(cX, cY, cw2, ch2, face);
+        box(cX, cY, cw2, 1, lift(face, 60));
+        box(cX, cY + ch2 - 1, cw2, 1, lift(face, -60));
+        /* the name under it, so it is clear who it was */
+        var who = fitText(G.card.p ? G.card.p.name : "", 96, 1);
+        var ww = textWidth(who) + 8;
+        box(Math.round(UIW / 2 - ww / 2), cY + ch2 + 4, ww, 9, "#0d1412");
+        drawText(Math.round(UIW / 2), who, cY + ch2 + 5,
+                 { align: "center", colour: "#f4f4e8" });
+        UIX.restore();
+      }
+    }
+
+    /* =====================================================================
+       THE ANNOUNCEMENT
+
+       A stadium tells you what just happened, in a form nobody has to
+       read to understand: a lower third, the scorer's name large, the
+       minute after it. It is the last piece of broadcast furniture this
+       chapter was missing, and the reason it matters is that a goal in
+       a four-a-side game is over in a fifth of a second and often
+       nobody is sure WHO got it.
+
+       It is deliberately not the super's nameplate. That one is an
+       event announcing itself; this one is the ground reporting a fact,
+       so it is flatter, wider, lower and in the scoring side's colour
+       rather than in a super's.
+       ===================================================================== */
+    if (G.pa) {
+      var pt = G.pa.t;
+      var pk = pt < 0.22 ? pt / 0.22 : (pt > 3.1 ? 1 - (pt - 3.1) / 0.4 : 1);
+      pk = clamp(pk, 0, 1);
+      var pe = 1 - Math.pow(1 - pk, 3);
+      var pw = 178, ph = 26;
+      var px3 = Math.round((UIW - pw) / 2);
+      var py3 = Math.round(UIH - 54 + (1 - pe) * 14);
+      UIX.save();
+      UIX.globalAlpha = pe;
+      box(px3 + 2, py3 + 2, pw, ph, "rgba(4,8,10,.45)");
+      box(px3, py3, pw, ph, "#0d1412");
+      box(px3 + 1, py3 + 1, pw - 2, ph - 2, "#121b20");
+      box(px3 + 1, py3 + 1, 4, ph - 2, G.pa.col);
+      line(px3 + 1, py3 + 1, pw - 2, 1, lift(G.pa.col, 40));
+      drawText(px3 + 10, fitText(G.pa.kicker, pw - 22, 1), py3 + 4,
+               { colour: lift(G.pa.col, 55) });
+      drawText(px3 + 10, fitText(G.pa.line, pw - 22, 1), py3 + 14,
+               { colour: "#ffffff" });
+      if (G.pa.right) {
+        drawText(px3 + pw - 8, G.pa.right, py3 + 14,
+                 { align: "right", colour: "#9fb0a8" });
+      }
+      UIX.restore();
+    }
+
+    drawReplayBadge();
 
     /* THE SUPER'S NAMEPLATE GOES ON LAST, over everything, because it
        is the one thing on screen that is more important than the rest
@@ -6425,6 +7241,19 @@ window.OuissyCup = (function () {
     if (UI.screen) return uiSay(str);
     var host = EL["cup-ui-a11y"];
     if (!host) return;
+    /* ONE LIVE LINE AT A TIME.
+
+       The first version kept a single timer handle and cleared it
+       whenever a new line arrived — which cancels the removal of the
+       PREVIOUS node without removing it, so a busy passage (a goal, a
+       card and a restart inside four seconds) left a growing stack of
+       paragraphs in the mirror, each one still being read out. A
+       screen reader wants the latest thing that happened, not a
+       transcript, so the old line goes when the new one arrives. */
+    var old = host.querySelectorAll(".cup-a11y-live");
+    for (var i = 0; i < old.length; i++) {
+      if (old[i].parentNode) old[i].parentNode.removeChild(old[i]);
+    }
     var el = document.createElement("p");
     el.className = "cup-a11y-live";
     el.textContent = String(str);
@@ -8527,12 +9356,14 @@ window.OuissyCup = (function () {
                    x: +p.x.toFixed(1), y: +p.y.toFixed(1),
                    job: p.job || null,
                    mark: p.mark ? G.players.indexOf(p.mark) : -1,
+                   sentOff: !!p.sentOff, yellow: p.yellow || 0,
                    sp: +len(p.vx, p.vy).toFixed(1) };
         }),
         stat: { shots: G.stat.shots.slice(), poss: G.stat.poss.slice(),
                 passes: G.stat.passes.slice(),
                 passTry: (G.stat.passTry || [0, 0]).slice(),
-                touches: (G.stat.touches || [0, 0]).slice() },
+                touches: (G.stat.touches || [0, 0]).slice(),
+                fouls: (G.stat.fouls || [0, 0]).slice() },
         score: G.score.slice(), state: G.state, dbg: G.dbg || null,
       };
     },
@@ -8609,6 +9440,22 @@ window.OuissyCup = (function () {
       buildRigs();
       resetPositions(0);
       uiClose();
+      /* A NEW MATCH CLEARS THE LAST ONE'S NAMEPLATE.
+
+         The super banner runs on its own clock and nothing took it down
+         when a match was replaced underneath it, so a banner raised in
+         one fixture was still on screen in the next. Only a harness
+         starts a match that abruptly, but leaving a clean screen behind
+         is the simulation's job either way. */
+      clearSuperBanner();
+      /* AND A NEW MATCH IS DRIVEN BY A PERSON AGAIN.
+
+         AUTOPLAY is a module flag, so a harness that turned it on for
+         one measurement left it on for every match started afterwards
+         in the same page — which silently removed the player from every
+         later test, including the ones photographing things that only
+         exist while somebody is driving. */
+      AUTOPLAY = false;
       if (EL["cup-hud"]) EL["cup-hud"].hidden = false;
       return hooks.state();
     },
@@ -8721,6 +9568,33 @@ window.OuissyCup = (function () {
        it. This snaps it to where it is heading, which is what every
        screenshot of the match actually wants. */
     camSnap: function () { placeCamera(0, true); return hooks.state(); },
+    /* force a restart, for photographing one and for testing that the
+       marks are where a commentator would say they are */
+    /* force a booking, to photograph the card and prove the draw path
+       runs — it is the one piece of the HUD a match will not reliably
+       produce on demand */
+    book: function (red) {
+      if (!G || G.state !== "play") return false;
+      var off = null, vic = null;
+      G.players.forEach(function (q) {
+        if (!off && q.team === 1 && !q.gk) off = q;
+        if (!vic && q.team === 0 && !q.gk) vic = q;
+      });
+      if (!off || !vic) return false;
+      off.yellow = red ? 1 : 0;
+      off.vx = 80; off.vy = 0;
+      vic.dir = 0;
+      foulOn(off, vic);
+      return hooks.state();
+    },
+    restart: function (kind, side) {
+      if (!G || G.state !== "play") return false;
+      var team = 0, gl = ownGoalY(kind === "corner" ? 1 : 0);
+      if (kind === "corner") team = 0; else team = 0;
+      setPiece(kind === "corner" ? "corner" : "goalkick", team,
+               side || 1, gl);
+      return hooks.state();
+    },
     superNow: function (team) {
       team = team || 0;
       if (!G || G.state !== "play") return false;

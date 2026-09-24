@@ -316,6 +316,10 @@ window.CupPitch2D = (function () {
     /* the wave. -1 is "not running"; otherwise it is how far round the
        front has travelled, in screen widths. */
     this.wave = -1;
+    /* HOW THE GROUND FEELS. +1 is a goal at the right end, -1 is a goal
+       at the wrong one. A crowd that celebrates identically whichever
+       way the ball went in is a crowd that is not watching. */
+    this.mood = 0;
     this.flash = 0; this.flashCol = "#ffffff";
     this.shake = 0;
     this.items = [];
@@ -1478,7 +1482,54 @@ window.CupPitch2D = (function () {
       self.shadow(o.wx, o.wy, (o.shadow || 4) * sc, (o.air || 0) * sc);
       if (o.ring !== undefined && o.ring !== null) self.ring(o.wx, o.wy, o.ring, null, o.ringCol);
       self.sprite(o.at, o.anim, o.face, o.frame, o.wx, o.wy, o.flip, o.air, sc);
+      if (o.num) self.shirtNumber(o, sc);
     });
+  };
+
+  /* =======================================================================
+     THE NUMBER ON THE BACK
+
+     Only on the back, and only at full size, because those are the two
+     conditions under which it is a number rather than a smudge. A
+     player running away from the camera shows you his shirt; a player
+     running at you shows you his face, which is a better identifier
+     than a digit anyway.
+
+     It is painted over the sprite rather than baked into the atlas on
+     purpose. Baking it would mean a separate atlas per player instead
+     of per look-and-kit — fourteen bakes where there are now eight —
+     to add five pixels that are visible from two of the five facings.
+     ======================================================================= */
+  Pitch.prototype.shirtNumber = function (o, sc) {
+    /* TOO FAR AWAY TO READ.
+
+       The first cut of this asked for a full-size sprite, which sounds
+       right and never fired once: the depth scale is quantised to
+       eighths, and a player standing at the depth the camera is
+       actually focused on comes out at 0.875 rather than 1. The two
+       nearest size steps are the ones a four-pixel digit survives. */
+    if (sc < 0.8) return;
+    var f = o.face;
+    if (f !== "n" && f !== "ne") return;          // only from behind
+    var p = this.project(o.wx, o.wy);
+    var ctx = this.ctx;
+    var str = String(o.num);
+    var w = textWidth(str);
+    /* on the shoulder blades: a third of the way down the figure from
+       the top of the head, which lands between the neck and the waist */
+    var x = Math.round(p.x - w / 2) + (f === "ne" ? (o.flip ? 2 : -2) : 0);
+    /* ON THE SHOULDER BLADES, MEASURED UP FROM THE BOOTS.
+
+       Measuring down from the top of the CELL is measuring from empty
+       space: the cell is sixty-four tall, the figure is forty-eight of
+       it, and the head takes the first third of that — so three tenths
+       of the cell put the number in her hair, which is exactly where it
+       appeared. The feet are the one landmark that is always at a known
+       place (the projected point itself), so the upper back is six
+       tenths of the figure's height above them. */
+    var y = Math.round(p.y - (o.air || 0) * sc - o.at.figure * sc * 0.60);
+    drawText(ctx, str, x, y + 1, "rgba(8,12,10,.55)");
+    drawText(ctx, str, x, y, o.numCol || "#f4f6f2");
   };
 
   /* the ball: three tones and a hard edge, never a gradient */
@@ -1541,6 +1592,78 @@ window.CupPitch2D = (function () {
       px(ctx, p.x, by, "#3a3f38");
     });
   };
+
+  /* =======================================================================
+     WHO THE PASS IS GOING TO
+
+     Pressing pass and finding out afterwards who received it is the
+     oldest complaint about football games, and the answer every one of
+     them arrived at is the same: show the receiver before the ball is
+     struck. Two marks, because one is not enough:
+
+       THE CHEVRON above the man, which says WHO. It bobs, because a
+       static arrow over a running player reads as part of the sprite
+       and a moving one reads as a pointer.
+
+       THE LANE on the grass, which says WHERE — and, because it is
+       drawn along the actual line the ball will travel, it also shows
+       when a defender is standing in it without having to say so.
+
+     Both are drawn under everything that stands on the pitch, so a
+     player never has a lane painted across his chest.
+     ======================================================================= */
+  Pitch.prototype.marker = function (wx, wy, col, phase) {
+    var self = this;
+    this.add(wy - 0.01, function () {
+      var p = self.project(wx, wy);
+      if (!p.flat && p.d <= NEAR + 1) return;
+      var bob = Math.round(Math.sin((phase || 0) * 6) * 1.5);
+      var x = Math.round(p.x), y = Math.round(p.y) - 56 + bob;
+      var ctx = self.ctx;
+      /* a chevron, drawn as three rows so it is a wedge and not a v */
+      for (var r = 0; r < 4; r++) {
+        var w = 7 - r * 2;
+        if (w < 1) break;
+        ctx.fillStyle = "#0d1412";
+        ctx.fillRect(x - Math.floor(w / 2) - 1, y + r, w + 2, 1);
+      }
+      for (var r2 = 0; r2 < 4; r2++) {
+        var w2 = 7 - r2 * 2;
+        if (w2 < 1) break;
+        ctx.fillStyle = r2 === 0 ? lift2(col, 60) : col;
+        ctx.fillRect(x - Math.floor(w2 / 2), y + r2, w2, 1);
+      }
+    });
+  };
+
+  /* the lane, dotted and travelling, so it reads as a direction rather
+     than as a line somebody drew on the pitch */
+  Pitch.prototype.lane = function (x0, y0, x1, y1, col, phase) {
+    var a = this.project(x0, y0), b2 = this.project(x1, y1);
+    if ((!a.flat && a.d <= NEAR + 1) || (!b2.flat && b2.d <= NEAR + 1)) return;
+    var dx = b2.x - a.x, dy = b2.y - a.y;
+    var L = Math.sqrt(dx * dx + dy * dy);
+    if (L < 6) return;
+    var n = Math.floor(L / 5);
+    var ctx = this.ctx;
+    for (var i = 1; i < n; i++) {
+      var t = ((i / n) + ((phase || 0) * 0.35 % (1 / n))) % 1;
+      var px2 = Math.round(a.x + dx * t), py2 = Math.round(a.y + dy * t);
+      /* it fades toward the receiver, so the eye runs the right way */
+      ctx.globalAlpha = 0.16 + 0.5 * (1 - t);
+      ctx.fillStyle = col;
+      ctx.fillRect(px2, py2, 2, 1);
+    }
+    ctx.globalAlpha = 1;
+  };
+
+  function lift2(hex, amt) {
+    var c = parseInt(hex.slice(1), 16);
+    var f = function (sh) {
+      return Math.max(0, Math.min(255, ((c >> sh) & 255) + amt));
+    };
+    return "#" + ((1 << 24) + (f(16) << 16) + (f(8) << 8) + f(0)).toString(16).slice(1);
+  }
 
   /* a bead of the super's trail: no additive blending, no soft edges,
      just a hard disc of the shot's own colour going dark behind it */
@@ -1726,6 +1849,8 @@ window.CupPitch2D = (function () {
   };
   /* somebody scored: send it round the ground */
   Pitch.prototype.startWave = function () { this.wave = 0; };
+  Pitch.prototype.setMood = function (v) { this.mood = clampN(v, -1, 1); };
+  function clampN(v, a, b) { return v < a ? a : (v > b ? b : v); }
 
   Pitch.prototype.tick = function (dt) {
     if (this.flash > 0) this.flash = Math.max(0, this.flash - dt * 2.6);
@@ -1733,6 +1858,13 @@ window.CupPitch2D = (function () {
     if (this.wave >= 0) {
       this.wave += dt * 0.55;
       if (this.wave > 2.6) this.wave = -1;      // two and a half laps
+    }
+    /* the mood fades back to an ordinary Saturday over about ten
+       seconds, which is roughly how long a crowd stays on its feet */
+    if (this.mood !== 0) {
+      var k = dt * 0.10;
+      this.mood += this.mood > 0 ? -Math.min(k, this.mood)
+                                 : Math.min(k, -this.mood);
     }
   };
 
@@ -1743,7 +1875,12 @@ window.CupPitch2D = (function () {
      it, and it goes up faster than it comes down. Everything else in
      the stand is the idle sway, which never stops. */
   Pitch.prototype.standLift = function (colFrac, row) {
-    var idle = Math.sin(this.t * 2.1 + colFrac * 9 + row) * 0.9;
+    /* A JUBILANT CROWD BOUNCES AND A SICK ONE SITS DOWN. The idle sway
+       is the same sine either way; what changes is how much of it there
+       is, and at a goal against them it very nearly stops — which reads,
+       from the far end of a pitch, exactly as a stand going quiet. */
+    var amp = 0.9 * (1 + this.mood * (this.mood > 0 ? 1.6 : 0.85));
+    var idle = Math.sin(this.t * (2.1 + this.mood * 1.1) + colFrac * 9 + row) * amp;
     if (this.wave < 0) return idle;
     var front = (this.wave % 1);
     var d = colFrac - front;
