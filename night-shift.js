@@ -165,47 +165,65 @@ const NS = {
      man who cannot say the thing would say. She finds that out herself,
      over six nights, which is the only way it would land. ---------- */
   intro: {
+    /* EVERY ONE OF THESE SHOTS USED TO OPEN INSIDE A WALL.
+
+       Measured with tools/introshot.js, which walks each move and fires
+       rays through the middle of the frame: at the start of the push-in
+       the nearest thing was two CENTIMETRES away on the foyer, the
+       workshop and the party room, and zero on the hall and the arcade
+       -- the camera began outside the room's shell, in the geometry,
+       and emerged a third of the way through. The stage flew through
+       something at 38% and the office at 75%. What that looks like when
+       you play it is a shot that opens on a black shape and then
+       clears, seven times in a row, in the first ninety seconds of the
+       chapter; the party room's was a dome across the middle of the
+       frame, which is what a prop looks like from inside.
+
+       The LOOK of every beat is untouched -- the framing was his. Only
+       the start and end of each move changed, by the smallest amount
+       that keeps the whole of it clear of the room, and every one still
+       travels far enough to read as a move rather than a still. */
     head: "PLAYBACK — PROPRIETOR STATEMENT",
     sub: "recorded eleven days before decease",
     beats: [
       { room: "foyer", secs: 9,
-        from: [2.7, 1.62, 3.1], to: [1.5, 1.5, 1.1], look: [-0.5, 1.2, -2.0], fov: 58,
+        from: [2.51, 1.72, 2.79], to: [1.5, 1.6, 1.1], look: [-0.5, 1.2, -2.0], fov: 58,
         lines: [
           "Ouissy.",
           "If you are listening to this, the shop is yours, and I am not there to explain it.",
         ] },
       { room: "hall", secs: 11,
-        from: [0.05, 2.2, 6.4], to: [0.05, 1.72, 1.8], look: [-0.05, 1.1, -5.2], fov: 62,
+        from: [0.04, 2.2, 5.7], to: [0.05, 1.72, 1.8], look: [-0.05, 1.1, -5.2], fov: 62,
         lines: [
           "For fifteen years you asked me how my day had been.",
           "For fifteen years I told you it was fine.",
         ] },
       { room: "workshop", secs: 10,
-        from: [-2.6, 1.9, 2.9], to: [-1.1, 1.42, 1.5], look: [0.4, 0.95, -1.7], fov: 56,
+        from: [-2.42, 1.9, 2.62], to: [-1.1, 1.42, 1.5], look: [0.4, 0.95, -1.7], fov: 56,
         lines: [
           "I made toys. That part was true.",
           "I made them very well. That was the problem.",
         ] },
       { room: "stage", secs: 12,
-        from: [0.2, 2.5, 6.2], to: [0.2, 1.9, 2.6], look: [0, 1.3, -2.4], fov: 60,
+        from: [0.16, 2.5, 4.65], to: [0.2, 1.9, 2.6], look: [0, 1.3, -2.4], fov: 60,
         lines: [
           "The ones I sold did not stay sold.",
           "That is all I am going to say about it tonight. You will find the rest yourself, and I would rather you did.",
         ] },
       { room: "arcade", secs: 11,
-        from: [2.1, 2.2, 4.6], to: [1.1, 1.6, 2.2], look: [-0.4, 1.0, -3.0], fov: 58,
+        from: [1.8, 2.2, 3.69], to: [1.1, 1.6, 2.2], look: [-0.4, 1.0, -3.0], fov: 58,
         lines: [
           "There is a book under the till. Do not open it on the first night.",
           "Open it when you have had enough of me being careful.",
         ] },
       { room: "party", secs: 12,
-        from: [-3.4, 2.2, 3.6], to: [-1.9, 1.5, 1.4], look: [0.4, 1.0, -1.2], fov: 60,
+        from: [-3.17, 2.3, 3.31], to: [-1.9, 1.6, 1.4], look: [0.4, 1.0, -1.2], fov: 60,
         lines: [
           "There are four in the back room that I never sold. Cogsworth. Chime. Marabelle. Jax.",
           "They are the only ones I ever made right.",
         ] },
       { room: "office", secs: 13,
-        from: [0, 2.0, 4.2], to: [0, 1.66, 2.36], look: [0, 1.0, -2.7], fov: 66,
+        from: [0.35, 2.4, 2.52], to: [0, 1.66, 2.1], look: [0, 1.0, -2.7], fov: 66,
         lines: [
           "Wind them. Every night, before six.",
           "And whatever else comes to that door — and something will — do not open it.",
@@ -18707,6 +18725,49 @@ const testHooks = {
   /* which room is actually on the glass, and the camera that is making
      the picture -- so a check about what she can see reads the thing
      doing the seeing rather than the number she pressed */
+  /* THE OPENING FILM, HELD STILL ON ONE BEAT.
+
+     endcheck can judge the last hour's film because pump() walks it
+     shot by shot. The opening statement had no such door: it runs on
+     the wall clock from the moment BEGIN THE SHIFT is pressed, so the
+     only way to look at one of its frames was to play it and catch
+     one. This puts the real camera on a beat at a given point through
+     its move -- the same lerp, the same ease, the same room offset
+     cineTick uses -- shows that room, and draws it. `k` is 0 at the
+     start of the move and 1 at the end, which is the camera's closest
+     approach and the frame most likely to have something jammed
+     against the lens. */
+  introPose: (beat, k) => {
+    const b = NS.intro && NS.intro.beats[beat];
+    if (!b || !view) return null;
+    /* the page's own loop redraws the menu behind the card on every
+       frame, so a pose set and then read back is a pose that has
+       already been painted over. Hold the loop for the look. */
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    showRoom(b.room);
+    /* AND THE LIGHTS COME WITH IT.
+
+       showRoom only swaps which room is visible. The six-lamp rig that
+       lights it is moved by useView, which the frame loop calls right
+       beside showRoom -- so posing the camera without it leaves every
+       lamp behind in the room before, and the shot reads as black. It
+       cost three wrong answers to notice: a measurement of the opening
+       film reported all seven beats as a hole in the picture while the
+       screenshots of that same film were plainly lit. */
+    useView(b.room, "main");
+    const rec = rooms[b.room];
+    const ox = rec ? rec.index * SPACING : 0;
+    const e = clamp(k == null ? 1 : k, 0, 1);
+    const ease = e * e * (3 - 2 * e);
+    view.position.set(lerp(b.from[0], b.to[0], ease) + ox,
+                      lerp(b.from[1], b.to[1], ease),
+                      lerp(b.from[2], b.to[2], ease));
+    view.lookAt(b.look[0] + ox, b.look[1], b.look[2]);
+    view.fov = b.fov;
+    view.updateProjectionMatrix();
+    if (renderer) renderer.render(scene, view);
+    return { room: b.room, pos: view.position.toArray() };
+  },
   shown: () => shownRoom,
   view: () => view,
   castDefs: () => CAST,

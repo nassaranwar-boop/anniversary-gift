@@ -71,9 +71,18 @@ module.exports = async function (c) {
       for (const side of ['left', 'right', 'hatch']) {
         if (s.at[side] !== s.doors[side]) await press(side);
       }
-      /* cameras: a sweep every couple of seconds, then the monitor down */
-      if (!s.monitor) await press('monitor');
-      else await press('next');
+      /* CAMERAS, THE WAY A PERSON USES THEM.
+
+         The first version of this raised the monitor and then only ever
+         pressed NEXT, so the monitor was never lowered -- which drains
+         the meter, and which parks the tutorial for ever on "MONITOR:
+         LOWER IT. IT DRAWS WHILE IT IS UP." A real player sweeps a few
+         rooms and drops it. Up, three rooms, down, a beat in the dark. */
+      c.sweep = (c.sweep || 0) + 1;
+      const phase = c.sweep % 8;
+      if (phase === 0) await press('monitor');            // up
+      else if (phase < 4) await press('next');            // three rooms
+      else if (phase === 4 && s.monitor) await press('monitor');  // down
 
       if (s.hour !== lastHour) {
         lastHour = s.hour;
