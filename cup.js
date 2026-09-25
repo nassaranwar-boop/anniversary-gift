@@ -2917,7 +2917,7 @@ window.OuissyCup = (function () {
       var n = 0;
       outs.forEach(function (q) {
         if (q === carrier) return;
-        q.mark = null; q.markT = 0;
+        q.mark = null;
         if (q === G.controlled) { q.job = null; return; }
         if (q === fetch) { q.job = "chase"; return; }
         q.job = n === 0 ? "run" : (n === 1 ? "support" : "hold");
@@ -2958,7 +2958,7 @@ window.OuissyCup = (function () {
          nobody carries out — and worse, "mark" given to her left a
          stale man pinned to her forever, which the register that stops
          two defenders marking the same striker went on believing. */
-      if (q === G.controlled) { q.job = null; q.mark = null; q.markT = 0; return; }
+      if (q === G.controlled) { q.job = null; q.mark = null; return; }
       q.job = q === second ? "cover" : "mark";
     });
     /* A MAN YOU ARE NO LONGER MARKING IS NOT YOUR MAN.
@@ -2970,43 +2970,122 @@ window.OuissyCup = (function () {
        stale claim. Measured at 98% of defending frames with a
        duplicate in them. It is cleared where the job is decided,
        because that is the moment it stops being true. */
+    var markers = [];
     outs.forEach(function (q) {
-      if (q.job !== "mark") { q.mark = null; q.markT = 0; }
+      if (q.job !== "mark") { q.mark = null; return; }
+      markers.push(q);
     });
+    assignMarks(team, markers);
   }
 
-  /* WHO A MARKER PICKS UP.
+  /* WHERE A DEFENDER STANDS TO MARK A MAN: on the line between him and
+     the goal being defended, a fraction of the way along it. Goal-side
+     by construction, and tighter the nearer to goal he gets, because
+     the line is short in the box and long at the halfway line. Both the
+     job board and the defender himself have to agree on this point, or
+     the assignment is optimising for somewhere nobody runs to. */
+  function markSpot(team, o, along) {
+    var ownGy = ownGoalY(team);
+    return { x: o.x + (PITCH.cx - o.x) * along,
+             y: o.y + (ownGy - o.y) * along };
+  }
+  var MARK_ALONG = 0.24;
 
-     The most dangerous unmarked opponent, where "dangerous" is how far
-     up the pitch they are plus how free they are, and where "unmarked"
-     is checked against the players who have already chosen — so two
-     defenders do not both follow the same striker and leave the other
-     one standing on the penalty spot on his own. */
-  function pickMark(p, taken) {
-    var own = ownGoalY(p.team);
-    var best = null, bs = -1e9;
+  /* =======================================================================
+     WHO PICKS UP WHOM IS A DECISION FOR THE WHOLE DEFENCE
+
+     It used to be a decision each defender made for himself, twice a
+     second, from a shared register of who had already been claimed —
+     the most dangerous man nobody else had taken yet. That is a greedy
+     algorithm whose answer depends on the order the defenders happen to
+     think in, and its failure mode is not a slightly worse pairing. It
+     is this:
+
+       A's timer runs out first. He looks at the register, which does
+       not yet contain B's man because B has not thought this frame, and
+       takes him — he is the more dangerous of the two. B then thinks,
+       finds his own man claimed, and takes A's. They have swapped. Half
+       a second later they swap back.
+
+     Measured, the mark changed hands 2.3 times a second, which with a
+     half-second timer means essentially every re-pick handed the
+     defender a different man. A defender who is given a new man twice a
+     second never gets goal-side of any of them: he was 82 units from
+     his marking position when he was on the wrong side of his man, and
+     23 when he was on the right side. He was not being outrun — the
+     markers were fractionally the FASTER of the two — and his aiming
+     point was goal-side 100% of the time. He was simply never pointed
+     at the same place for long enough to arrive.
+
+     So the pairing is chosen for the side as a whole, once a frame, in
+     the same place the pressing and covering jobs are. Four a side
+     means at most three markers and three opponents, so every possible
+     pairing can be tried and the cheapest taken — no greedy order to
+     depend on, and the same input always gives the same answer, which
+     is what actually stops the swapping.
+
+     A marker keeps his man unless another pairing is better by a clear
+     margin. That hysteresis is not a tie-break nicety: two pairings
+     within a few units of each other alternate frame to frame on
+     nothing but the players' own movement, and alternating is the whole
+     disease.
+     ======================================================================= */
+  var MARK_STICK = 34;      // world units of "he is already on him"
+  var MARK_NOBODY = 900;    // only when there are more markers than men
+
+  function assignMarks(team, markers) {
+    if (!markers.length) return;
+    var opps = [];
     G.players.forEach(function (o) {
-      if (o.team === p.team || o.gk) return;
-      if (taken[o.idx + "|" + o.team]) return;
-      /* DANGER IS CLOSENESS TO THE GOAL BEING DEFENDED.
-
-         This used to read `clamp((own - o.y) * d / PITCH.h, 0, 1)`,
-         which is negative for every player on the pitch and therefore
-         clamped to zero for every player on the pitch — so the whole
-         term vanished and a defender simply picked up whoever was
-         NEAREST him, which is very often the man he has already gone
-         past. It is written out longhand now, because the compact
-         version of this is exactly the kind of thing that can be wrong
-         for months without looking wrong. */
-      var danger = clamp(1 - Math.abs(o.y - own) / PITCH.h, 0, 1);
-      /* and a man in the middle is worth more than a man by the flag */
-      var central = 1 - Math.min(1, Math.abs(o.x - PITCH.cx) / (PITCH.w * 0.5));
-      var far = dist(p, o);
-      var sc = danger * 150 * (0.55 + 0.45 * central) - far * 0.5;
-      if (sc > bs) { bs = sc; best = o; }
+      if (o.team === team || o.gk || o.sentOff) return;
+      opps.push(o);
     });
-    if (best) taken[best.idx + "|" + best.team] = 1;
-    return best;
+    if (!opps.length) { markers.forEach(function (q) { q.mark = null; }); return; }
+
+    var own = ownGoalY(team);
+    /* HOW MUCH IT COSTS TO LEAVE THIS MAN ALONE — closeness to the goal
+       being defended, weighted toward the middle, because a man by the
+       corner flag is not the one who scores. */
+    var danger = opps.map(function (o) {
+      var near = clamp(1 - Math.abs(o.y - own) / PITCH.h, 0, 1);
+      var central = 1 - Math.min(1, Math.abs(o.x - PITCH.cx) / (PITCH.w * 0.5));
+      return near * 150 * (0.55 + 0.45 * central);
+    });
+    var spot = opps.map(function (o) { return markSpot(team, o, MARK_ALONG); });
+    /* what it costs THIS defender to take THAT man: how far he has to
+       run to get goal-side of him, less how badly the man needs marking */
+    var cost = markers.map(function (p) {
+      return opps.map(function (o, j) {
+        var c = len(p.x - spot[j].x, p.y - spot[j].y) - danger[j];
+        if (p.mark === o) c -= MARK_STICK;
+        return c;
+      });
+    });
+
+    var bestPick = null, bestC = 1e18, used = [];
+    var walk = function (i, acc, sum) {
+      if (i === markers.length) {
+        if (sum < bestC) { bestC = sum; bestPick = acc.slice(); }
+        return;
+      }
+      for (var j = 0; j < opps.length; j++) {
+        if (used[j]) continue;
+        used[j] = 1; acc.push(j);
+        walk(i + 1, acc, sum + cost[i][j]);
+        acc.pop(); used[j] = 0;
+      }
+      /* more defenders than attackers: somebody has to mark space */
+      if (opps.length < markers.length) {
+        acc.push(-1);
+        walk(i + 1, acc, sum + MARK_NOBODY);
+        acc.pop();
+      }
+    };
+    walk(0, [], 0);
+    markers.forEach(function (p, i) {
+      var j = bestPick ? bestPick[i] : -1;
+      p.mark = j >= 0 ? opps[j] : null;
+    });
   }
 
   /* =======================================================================
@@ -3194,29 +3273,10 @@ window.OuissyCup = (function () {
       /* MARKING: goal-side and a shoulder off him, not on top of him.
          Standing ON a striker means the first touch takes him past;
          standing between him and the goal means it does not. */
-      /* THE REGISTER IS CLEARED EVERY FRAME, SO A KEPT MARK MUST
-         RE-CLAIM ITSELF. Without this line a defender who is happily
-         tracking somebody does not appear in the register, the next
-         defender to choose sees that striker as unmarked, and both of
-         them end up following him while the other one runs free. */
-      var reg = G.marked || (G.marked = {});
-      var key = p.mark ? p.mark.idx + "|" + p.mark.team : null;
-      var keep = p.mark && p.mark.team !== p.team && p.markT > 0 && !reg[key];
-      if (keep) {
-        reg[key] = 1;
-      } else {
-        /* A MARK SOMEBODY ELSE HAS ALREADY CLAIMED IS NOT YOURS.
-
-           The first version only re-picked when the timer ran out, so a
-           defender whose man had been taken by a team-mate earlier in
-           the same frame simply kept following him anyway — and both of
-           them tracked the same striker while the other one stood
-           unmarked in the box. Measured at 61% of defending frames. */
-        p.mark = pickMark(p, reg);
-        p.markT = 0.5;                 // re-pick twice a second, not per frame
-      }
-      p.markT -= dt;
-      var m = p.mark;
+      /* WHO HE IS MARKING WAS DECIDED FOR THE WHOLE SIDE, in
+         assignMarks, before anybody thought this frame. He does not get
+         a say — that is the point of it; see the note there. */
+      var m = p.mark && p.mark.team !== p.team && !p.mark.sentOff ? p.mark : null;
       if (m) {
         /* =============================================================
            MARKING IS A POSITION ON A LINE, NOT AN OFFSET FROM A MAN
@@ -3242,10 +3302,9 @@ window.OuissyCup = (function () {
            the area.
            ============================================================= */
         var behind = !goalSide(p, m);
-        var ownGx = PITCH.cx, ownGy = ownGoalY(p.team);
-        var along = behind ? 0.42 : 0.24;
-        tx = m.x + (ownGx - m.x) * along;
-        ty = m.y + (ownGy - m.y) * along;
+        var spot = markSpot(p.team, m, behind ? 0.42 : MARK_ALONG);
+        tx = spot.x;
+        ty = spot.y;
         /* the block still pulls him sideways, because following a man
            into a corner should cost something — but barely along the
            axis that decides goal-side, because being dragged off his
@@ -3255,6 +3314,13 @@ window.OuissyCup = (function () {
         /* the one moment a marker is allowed to run flat out is the one
            where he is on the wrong side of his man */
         urgency = behind ? 1.12 : 0.95;
+        /* WHERE HE WANTED TO BE, kept so a harness can tell the two
+           failure modes apart. A marker who is standing on his target
+           and STILL the wrong side of his man has a target that is
+           wrong; one who is nowhere near it cannot get there. Those
+           want opposite fixes, and from the outside they look
+           identical. */
+        p.want = { x: tx, y: ty };
       }
       /* A LOOSE BALL IS NOT EVERYBODY'S.
 
@@ -4191,10 +4257,8 @@ window.OuissyCup = (function () {
            about the whole side; four players each answering them
            privately is how a defence ends up with two men on the ball
            and nobody in front of the goal. Taken here, before anybody
-           thinks, both sides get exactly one presser and exactly one
-           cover — and the marking register is cleared first so two
-           defenders cannot claim the same striker. */
-        G.marked = {};
+           thinks, both sides get exactly one presser, exactly one
+           cover, and one man each to pick up. */
         assignJobs(0); assignJobs(1);
         G.players.forEach(function (p) { if (p !== G.controlled) think(p, dt); });
         /* A LOOSE BALL IS NOT POSSESSION, AND CERTAINLY NOT HERS.
@@ -9548,7 +9612,9 @@ window.OuissyCup = (function () {
                    job: p.job || null,
                    mark: p.mark ? G.players.indexOf(p.mark) : -1,
                    sentOff: !!p.sentOff, yellow: p.yellow || 0,
-                   sp: +len(p.vx, p.vy).toFixed(1) };
+                   sp: +len(p.vx, p.vy).toFixed(1),
+                   spd: +((p.mul || FLAT_MUL).speed).toFixed(3),
+                   want: p.want ? [+p.want.x.toFixed(1), +p.want.y.toFixed(1)] : null };
         }),
         stat: { shots: G.stat.shots.slice(), poss: G.stat.poss.slice(),
                 passes: G.stat.passes.slice(),

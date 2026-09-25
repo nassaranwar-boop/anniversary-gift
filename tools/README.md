@@ -206,6 +206,19 @@ heading; waiting for `state().state === 'play'` lets the flash decay.
   the real baked atlas. It exists because a greybox cannot answer the
   question that decides the camera: its blocks scale and a 64-pixel
   sprite never does.
+- **`cupmark.js`** — why a marker is on the wrong side, which a single
+  percentage cannot say. There are only two ways to be wrong-side and
+  they want opposite fixes: the aiming point is not goal-side, or it is
+  and he is nowhere near it. So this reports both, plus the pace of the
+  markers against the men they are marking and how often the mark
+  changes hands.
+
+  It is what found the swap. The target was goal-side 100% of the time
+  and the markers were fractionally the quicker — but they sat 82 units
+  from their own marking position when wrong-side against 23 when
+  right-side, and the mark changed hands 2.3 times a second. Two
+  defenders trading men on a loop, which no aggregate number would ever
+  have named.
 - **`cupside.js`** — the SAME moment photographed both ways round. A
   reload gives a different match, and two screenshots of two different
   matches cannot answer "is side-on better?" — so this steps one match
