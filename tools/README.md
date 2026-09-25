@@ -297,3 +297,11 @@ moving.
   coverage per tenth of the frame, top to bottom, because the total does
   not say which of eight things to remove — 8.9% overall hid the fact
   that the top tenth alone was 42 per cent chrome.
+- **`cupbox.js`** — is the penalty box skewed, or just in perspective?
+  A rectangle painted on grass does NOT have right angles on screen, so
+  "it looks skewed" has two causes wanting opposite answers: the lines
+  are somewhere the geometry does not put them, which is a bug, or they
+  are exactly where they belong and the shape is correct. This asks the
+  projection where each corner lands and samples the rendered pitch at
+  that pixel. All six corners came back painted — the box is right and
+  the shape is the camera.

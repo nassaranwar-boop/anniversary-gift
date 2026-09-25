@@ -170,9 +170,9 @@ window.CupPitch2D = (function () {
      Part 1.3's discipline applied to the world as well as the people:
      three tones per material and no more. */
   var C = {
-    grassA: "#3f7a3c", grassB: "#4a8a44", grassLit: "#59a052",
-    grassDk: "#2f5e2e", line: "#eaf4e4", lineDk: "#b8cfb2",
-    net: "#dfe8e0", post: "#f4f8f2", postDk: "#b6c4b6",
+    grassA: "#3f8a44", grassB: "#57ad5a", grassLit: "#6ac06d",
+    grassDk: "#35743a", line: "#eaf4e4", lineDk: "#b8cfb2",
+    net: "#dfe4d8", post: "#f4f4e8", postDk: "#c8ccc0",
     board: "#1d2733", boardLip: "#33465a",
     wall: "#2a2233", wallLit: "#3b3145",
     tier: "#1e1926", tierLit: "#2c2534", rail: "#4a4157",
@@ -232,12 +232,19 @@ window.CupPitch2D = (function () {
     var g0 = v.grass || "#4a8a44";
     /* lift the base a little: a floodlit pitch on television is a much
        more saturated green than a photograph of grass */
-    var g = mix(g0, "#8fd86a", night ? 0.16 : 0.10);
+    /* THE LIFT USED TO BE APPLIED TWICE — once toward a yellow-green
+       and again toward white — so a venue asking for a particular green
+       got something noticeably paler and flatter than it wrote down,
+       and the mown bands came out close enough together to read as one
+       colour. Now the config's two greens are very nearly what lands on
+       the screen, which is the only way a per-ground palette is worth
+       having: what you type is what you see. */
+    var g = mix(g0, "#8fd86a", 0.10);
     var st = v.stripe || mix(g, "#000000", 0.20);
-    C.grassB = mix(g, "#ffffff", 0.11);
+    C.grassB = mix(g, "#ffffff", 0.05);
     C.grassA = st;
-    C.grassLit = mix(g, "#ffffff", 0.26);
-    C.grassDk = mix(st, "#000000", night ? 0.26 : 0.16);
+    C.grassLit = mix(g, "#ffffff", 0.30);
+    C.grassDk = mix(st, "#000000", night ? 0.18 : 0.14);
     C.line = night ? "#f4f8f4" : "#eaf4e4";
     C.lineDk = mix(C.line, st, 0.4);
     var sd = v.stand || "#5b6570";
@@ -1222,6 +1229,13 @@ window.CupPitch2D = (function () {
     var farEdge = this.swap ? (w.halfW + 12 - this.cam.x)
                             : (w.len + 12 - this.cam.y);
     var farY = this.A + this.B / (NEAR + farEdge * this.k) - this.oy;
+    /* how deep the ground goes, which is how far along these walls run:
+       the pitch's depth extent plus its run-off, at both ends */
+    var camDeep = this.swap ? this.cam.x : this.cam.y;
+    var deepLo = this.swap ? -(w.halfW + 7 / this.k) : -(7 / this.k);
+    var deepHi = this.swap ? (w.halfW + 12) : (w.len + 12);
+    var dLo = Math.max(NEAR, NEAR + (deepLo - camDeep) * this.k);
+    var dHi = NEAR + (deepHi - camDeep) * this.k;
 
     for (var si = 0; si < 2; si++) {
       var wx = across[si];
@@ -1243,6 +1257,22 @@ window.CupPitch2D = (function () {
         if (side < 0 ? off >= -1 : off <= 1) continue;
         var d = (wx - acrossCam) * this.k * FOCAL / off;
         if (!isFinite(d) || d <= NEAR) continue;
+        /* A WALL IS A FINITE THING.
+
+           This walks screen columns and asks, for each, at what depth
+           the wall crosses it — which is right, and was answered for
+           every depth from the lens to infinity. A wall that runs to
+           infinity comes to a point, so as the camera panned toward one
+           end of the ground that end's wall collapsed into a ONE PIXEL
+           COLUMN of crowd painted straight down the middle of the
+           pitch, over the grass, because the sides are drawn after it.
+           It reads exactly like a corrupted sprite and it is really a
+           wall two hundred metres long seen end-on.
+
+           The wall only exists across the width of the ground, so the
+           columns that would show it beyond that are columns where
+           there is no wall. */
+        if (d < dLo || d > dHi) continue;
         var gy = Math.round(this.A + this.B / d - this.oy);
         /* nothing beyond the far corner: that is the end stand's job,
            and two stands drawn over each other is a wall with a seam */
@@ -1535,6 +1565,72 @@ window.CupPitch2D = (function () {
     this.warc(hw, L, w.circleR * 0.2, Math.PI, Math.PI * 1.5);
   };
 
+  /* =======================================================================
+     A NET IS A MESH, NOT A FEW THREADS
+
+     The netting was six straight lines across a panel and four down it,
+     which at this size reads as a wire fence: you can see through the
+     gaps to the grass and the eye finds a grid rather than a fabric.
+     What says "net" is the CROSS-HATCH — two families of diagonals
+     crossing at a few pixels' pitch — because that is the only pattern
+     that stays a texture as it gets smaller instead of breaking into
+     separate lines.
+
+     The panel is a bilinear quad, so the mesh follows whatever
+     perspective the four corners are already in: it leans with the goal
+     rather than being laid over the top of it. Diagonals are counted in
+     cells, not in a fixed number of threads, so a goal in the far
+     distance gets a few and the one you are standing next to gets many,
+     and neither of them gets a moire.
+     ======================================================================= */
+  function netMesh(ctx, A, B, C2, D, cell, alpha, col) {
+    /* A-B is the top edge, D-C2 the bottom; u runs A->B, v runs A->D */
+    var at = function (u, v) {
+      var x0 = A[0] + (B[0] - A[0]) * u, y0 = A[1] + (B[1] - A[1]) * u;
+      var x1 = D[0] + (C2[0] - D[0]) * u, y1 = D[1] + (C2[1] - D[1]) * u;
+      return [x0 + (x1 - x0) * v, y0 + (y1 - y0) * v];
+    };
+    var len = function (a, b) {
+      var dx = a[0] - b[0], dy = a[1] - b[1];
+      return Math.sqrt(dx * dx + dy * dy);
+    };
+    var eU = (len(A, B) + len(D, C2)) / 2;
+    var eV = (len(A, D) + len(B, C2)) / 2;
+    if (eU < 5 || eV < 5) return;               // too small to be a net
+    /* CAPPED, because the cost of a net is the number of threads and a
+       goal filling the screen during a celebration would otherwise ask
+       for a hundred and sixty of them per panel. Past about two dozen
+       the weave is a texture anyway and more threads only cost. */
+    var nU = Math.max(2, Math.min(24, Math.round(eU / cell)));
+    var nV = Math.max(2, Math.min(24, Math.round(eV / cell)));
+
+    /* where a diagonal of index k crosses the panel's four edges. sgn is
+       +1 for the family running one way and -1 for the other, which is
+       the whole of the difference between them. */
+    var ends = [];
+    var edge = function (k, sgn) {
+      ends.length = 0;
+      var u, v;
+      u = k / nU;              if (u >= 0 && u <= 1) ends.push([u, 0]);
+      u = (k - sgn * nV) / nU; if (u >= 0 && u <= 1) ends.push([u, 1]);
+      v = sgn * k / nV;        if (v > 0 && v < 1) ends.push([0, v]);
+      v = sgn * (k - nU) / nV; if (v > 0 && v < 1) ends.push([1, v]);
+      return ends.length >= 2;
+    };
+
+    ctx.globalAlpha = alpha;
+    for (var fam = 0; fam < 2; fam++) {
+      var sgn = fam ? -1 : 1;
+      var lo = sgn > 0 ? 0 : -nV, hi = sgn > 0 ? nU + nV : nU;
+      for (var k = lo; k <= hi; k++) {
+        if (!edge(k, sgn)) continue;
+        var a = at(ends[0][0], ends[0][1]), b = at(ends[1][0], ends[1][1]);
+        line(ctx, a[0], a[1], b[0], b[1], col);
+      }
+    }
+    ctx.globalAlpha = 1;
+  }
+
   /* --------------------------------------------------------- the goals
      A frame, and a net made of a one-pixel lattice rather than a grey
      wash: the lattice is what says "net" at this size. `bulge` is how
@@ -1666,26 +1762,36 @@ window.CupPitch2D = (function () {
     /* ---- the netting. The panel you actually see from here is the
        SIDE of the net nearest the camera, which face on is the one
        panel that is edge-on and invisible. */
-    var thread = function (a, b, alpha) {
-      ctx.globalAlpha = alpha;
-      line(ctx, a[0], a[1], b[0], b[1], C.net);
-      ctx.globalAlpha = 1;
-    };
+    /* THREE PANELS AND A ROOF, each a cross-hatch over its own four
+       corners — the back of the net, the far side, and the roof. The
+       NEAR side is deliberately missing from this pass: it is the one
+       panel between the camera and the goalmouth, so it waits for the
+       depth pass at the bottom of this function and is drawn in front
+       of whoever is standing in the goal. */
+    /* WHICH PANEL YOU ACTUALLY SEE, AND HOW HARD IT SHOULD PUSH.
+
+       From a touchline the camera looks ALONG the goal line, so the two
+       SIDE panels are the ones facing it square and the back panel is
+       nearly edge-on. That is the opposite of the face-on camera, and
+       it is why the side net has to be the loose one: drawn at the
+       density the back panel wants, it fills the whole mouth with a
+       sheet of frosted glass and you cannot see the ball go in.
+
+       So the side you look through is wide-celled and faint, and the
+       back — which you are seeing through it — is tighter and brighter,
+       because a net reads as a net mostly from the panel BEHIND the
+       one you are looking through. */
+    var CELL = 4;
     if (solid) {
-      /* the back panel, across and down */
-      for (var t1 = 0; t1 <= 1.0001; t1 += 0.2) {
-        thread(P(t1, 1, 0), P(t1, 1, 1), 0.5);
-      }
-      for (var h1 = 0; h1 <= 1.0001; h1 += 0.25) {
-        thread(P(0, 1, h1), P(1, 1, h1), 0.34);
-      }
-      /* the near side panel is deliberately NOT drawn here — it is the
-         one panel between the camera and the goalmouth, so it waits for
-         the depth pass at the bottom of this function */
-      /* the roof, a few threads */
-      for (var t2 = 0; t2 <= 1.0001; t2 += 0.25) {
-        thread(P(t2, 0, 1), P(t2, 1, 1), 0.34);
-      }
+      /* the back: from near post to far post, at the back of the net */
+      netMesh(ctx, P(0, 1, 1), P(1, 1, 1), P(1, 1, 0), P(0, 1, 0),
+              CELL, 0.50, C.net);
+      /* the far side, mostly hidden behind the near one */
+      netMesh(ctx, P(1, 0, 1), P(1, 1, 1), P(1, 1, 0), P(1, 0, 0),
+              CELL + 1, 0.20, C.net);
+      /* the roof, a lid rather than a surface */
+      netMesh(ctx, P(0, 0, 1), P(1, 0, 1), P(1, 1, 1), P(0, 1, 1),
+              CELL + 1, 0.18, C.net);
     }
 
     /* ---- the frame */
@@ -1722,11 +1828,11 @@ window.CupPitch2D = (function () {
                      Math.round(barA[1] + (barB[1] - barA[1]) * bt), 2, 2);
       }
       post(0, 0, true);
-      /* the near side netting belongs in front of the keeper too, or he
-         stands outside his own goal */
+      /* the near side panel, which from a touchline is the big one and
+         the one a keeper stands behind */
       if (solid) {
-        for (var u2 = 0.25; u2 <= 1.0001; u2 += 0.25) thread(P(0, u2, 0), P(0, u2, 1), 0.34);
-        for (var h3 = 0.34; h3 <= 1.0001; h3 += 0.34) thread(P(0, 0, h3), P(0, 1, h3), 0.26);
+        netMesh(ctx, P(0, 0, 1), P(0, 1, 1), P(0, 1, 0), P(0, 0, 0),
+                CELL + 1, 0.24, C.net);
       }
       return self2;
     }, -w.goalHalf);

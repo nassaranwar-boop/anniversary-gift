@@ -419,7 +419,7 @@ window.CUP_CONFIG = {
     { id: "night", name: "THE DERBY \u00b7 UNDER THE LIGHTS", city: "Casablanca",
       hour: "21:00", note: "floodlights, and nobody has gone home",
       sky: "#101a2e", horizon: "#2a3a58", sun: "#cfe0ff", sunStrength: 1.5,
-      ambient: 0.58, grass: "#3f8f46", stripe: "#35803c",
+      ambient: 0.58, grass: "#4a9d4e", stripe: "#3f8a44",
       stand: "#3a424e", seats: "bright", fog: [280, 620], floodlit: true },
   ],
 
