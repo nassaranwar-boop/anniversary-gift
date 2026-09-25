@@ -303,6 +303,24 @@ window.CUP_CONFIG = {
 
      `venue` is the campus a side plays its home games at — see VENUES.
      `squad` is four ids from the ROSTER, keeper first.
+
+     `stadium` is how THEIR ground differs from that campus's default.
+     It is merged over the VENUE when they are the home side, so a
+     venue stays the base and a team only writes down what it changes:
+
+       mow        "along"  bands running goal to goal
+                  "across" bands running touchline to touchline
+                  "check"  both, which is the mown chequerboard
+       mowWidth   a multiplier on the band — under 1 is tighter
+       stand      the concrete, which tints the seats with it
+       density    how full it is, 0 to 1
+       backdrop   a silhouette behind the stands: "marrakech",
+                  "oldtown", "coast", "hills", "campus", or none
+       lighting   "day" | "dusk" | "night" | "sunset". Sunset is
+                  reserved for the final and is applied by the round
+                  rather than by a team.
+       energy     the baseline the crowd sits at before anything has
+                  happened, 0 to 1
      ================================================================ */
   TEAMS: [
     {
@@ -313,6 +331,8 @@ window.CUP_CONFIG = {
              shortsDark: "#cdbf9f", socks: "#1d6b6e", trim: "#e8b23c" },
       gkKit: { shirt: "#2a2438", shirtDark: "#1a1626", shorts: "#12101c",
                shortsDark: "#0a0812", socks: "#2a2438", trim: "#f2b8c6" },
+      stadium: { mow: "across", mowWidth: 0.72, stand: "#2f4a5e",
+                 density: 0.90, backdrop: "coast", lighting: "night" },
       squad: ["marina", "anwar", "sage", "thorn"], captain: "anwar",
       formation: "diamond",
     },
@@ -320,10 +340,12 @@ window.CUP_CONFIG = {
       id: "fmpm", name: "FMPM MARRAKECH", short: "FMPM",
       sub: "Medicine and Pharmacy",
       crest: "caduceus", flag: "crest", venue: "marrakech",
-      kit: { shirt: "#c1272d", shirtDark: "#8f1a20", shorts: "#f6efdd",
-             shortsDark: "#cdbf9f", socks: "#c1272d", trim: "#e8b23c" },
+      kit: { shirt: "#e08a3c", shirtDark: "#b06428", shorts: "#3a2a1e",
+             shortsDark: "#241a12", socks: "#e08a3c", trim: "#f6efdd" },
       gkKit: { shirt: "#1f6f4a", shirtDark: "#134a31", shorts: "#12241c",
                shortsDark: "#0b1712", socks: "#1f6f4a", trim: "#ffd45e" },
+      stadium: { mow: "along", mowWidth: 1.15, stand: "#7a5a2c",
+                 density: 0.82, backdrop: "oldtown", lighting: "dusk" },
       squad: ["gustav", "ember", "lumi", "atlas"], captain: "lumi",
       formation: "diamond",
     },
@@ -335,6 +357,8 @@ window.CUP_CONFIG = {
              shortsDark: "#c8ced6", socks: "#2f5fa8", trim: "#ffd45e" },
       gkKit: { shirt: "#1f2b3c", shirtDark: "#141c28", shorts: "#0f151d",
                shortsDark: "#080c11", socks: "#1f2b3c", trim: "#7fd4f5" },
+      stadium: { mow: "check", mowWidth: 0.9, stand: "#3a4a6e",
+                 density: 0.78, backdrop: "hills", lighting: "day" },
       squad: ["marina", "comet", "sage", "boulder"], captain: "comet",
       formation: "wide",
     },
@@ -342,10 +366,24 @@ window.CUP_CONFIG = {
       id: "upm", name: "UPM MARRAKECH", short: "UPM",
       sub: "Private University of Marrakech",
       crest: "mortar", flag: "crest", derby: "hers", home: true, venue: "marrakech",
-      kit: { shirt: "#e08a3c", shirtDark: "#b06428", shorts: "#3a2a1e",
-             shortsDark: "#241a12", socks: "#e08a3c", trim: "#f6efdd" },
+      /* HER COLOURS, because she wears them.
+
+         Ouissy's roster entry pins her own red and cream — the ones she
+         has in every other chapter of this site, deliberately, so that
+         she is the same person in all of them. FMPM's kit had been
+         built to match her exactly, which is why she never looked out
+         of place in it. Moving her to UPM without moving the kit put
+         the star of the side in red on an orange team, clashing with
+         her own team-mates. The two kits swap; all six stay distinct. */
+      kit: { shirt: "#c1272d", shirtDark: "#8f1a20", shorts: "#f6efdd",
+             shortsDark: "#cdbf9f", socks: "#c1272d", trim: "#e8b23c" },
       gkKit: { shirt: "#7a3a1e", shirtDark: "#502414", shorts: "#2a1810",
                shortsDark: "#180e09", socks: "#7a3a1e", trim: "#ffd45e" },
+      /* HERS. Tight stripes because a crisp pitch is the one thing a
+         home ground can say about itself before anybody kicks a ball,
+         and the fullest stand of the six. */
+      stadium: { mow: "along", mowWidth: 0.68, stand: "#7a3a34",
+                 density: 0.96, backdrop: "marrakech", lighting: "dusk" },
       squad: ["gustav", "ouissy", "echo", "willow"], captain: "ouissy",
       formation: "wide",
     },
@@ -357,6 +395,8 @@ window.CUP_CONFIG = {
              shortsDark: "#cdc8b6", socks: "#5f9a5c", trim: "#e8b23c" },
       gkKit: { shirt: "#2a4a2c", shirtDark: "#1a301c", shorts: "#142016",
                shortsDark: "#0c140e", socks: "#2a4a2c", trim: "#bfe8a8" },
+      stadium: { mow: "across", mowWidth: 1.0, stand: "#4a6e4c",
+                 density: 0.74, backdrop: "coast", lighting: "day" },
       squad: ["marina", "willow", "lumi", "boulder"], captain: "willow",
       formation: "flat",
     },
@@ -368,6 +408,8 @@ window.CUP_CONFIG = {
              shortsDark: "#1a1626", socks: "#7a4fb0", trim: "#f2b8c6" },
       gkKit: { shirt: "#2f2a3e", shirtDark: "#1e1a2a", shorts: "#14111c",
                shortsDark: "#0c0a12", socks: "#2f2a3e", trim: "#e87ab0" },
+      stadium: { mow: "check", mowWidth: 1.25, stand: "#4a3a6e",
+                 density: 0.88, backdrop: "campus", lighting: "night" },
       squad: ["gustav", "echo", "atlas", "thorn"], captain: "atlas",
       formation: "flat",
     },
@@ -452,7 +494,11 @@ window.CUP_CONFIG = {
       before: "Rabat in the semi. Nobody had you getting this far.",
       won: "Into the final. The whole faculty is standing up.",
       lost: "Rabat were better. Nobody who watched it will say otherwise." },
-    { id: "fmdc",  round: "THE FINAL", venue: "night", skill: 0.80, derby: true,
+    /* SUNSET IS THE FINAL'S, not a ground's. It overrides whatever
+       light the host's stadium would have had, which is the point: the
+       last match of the cup should not look like any of the others. */
+    { id: "fmdc",  round: "THE FINAL", venue: "night", lighting: "sunset",
+      skill: 0.80, derby: true,
       before: "And the final is against his faculty. Of course it is.",
       won: "You beat him. In front of everybody.",
       lost: "He beat you, and he has the decency to look sorry about it." },

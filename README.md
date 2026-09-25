@@ -1361,3 +1361,54 @@ something is FUN, and it is the one that found the three defects that
 made the football unplayable.
 
 Run the site on `127.0.0.1:8899` first — `python3 -m http.server 8899`.
+
+## Ouissy's Cup — teams, grounds and anthems
+
+Everything about a side lives in one entry of `TEAMS` in
+`cup.config.js`, so a team is defined in one place and the renderer and
+the audio just read it.
+
+**Switching the home team.** One field: `home: true` marks whose side
+she plays for, and `derby: "hers"` marks which half of the derby they
+are. Move both to another team and everything follows — the team screen,
+the cup bracket, the score bug, the crowd's colours and the ground the
+final is played at. The only other thing worth moving with her is the
+KIT: her roster entry pins her own red and cream on purpose, so that she
+is the same person in every chapter of this site, and a team whose kit
+does not match those colours will have its star clashing with her own
+team-mates.
+
+**Renaming a team.** `name` is the long form on the cards, `short` is
+the three or four letters on the score bug, `sub` is the line under it.
+`crest` picks the badge shape.
+
+**Rethemeing a ground.** A VENUE is a campus — the sky, the hour, the
+light. A team's `stadium` block is what THEIR ground does differently,
+and it is merged over the venue when they are at home, so a venue stays
+a shared base and a team only writes down what it changes:
+
+| field | what it does |
+|---|---|
+| `mow` | `"along"` goal to goal, `"across"` touchline to touchline, `"check"` the mown chequerboard |
+| `mowWidth` | multiplier on the band; under 1 is tighter stripes |
+| `stand` | the concrete, which tints the seats with it |
+| `density` | how full it gets, 0 to 1 |
+| `backdrop` | the silhouette over the roofline: `marrakech`, `oldtown`, `coast`, `hills`, `campus` |
+| `lighting` | `day` / `dusk` / `night` / `sunset` |
+| `energy` | where the crowd sits before anything has happened, 0 to 1 |
+
+`sunset` is the final's rather than any team's — it rides on the ROUND
+and overrides the host ground's light, so the last match of the cup does
+not look like the other two.
+
+`tools/cupground.js` photographs every team's ground from the same
+camera at the same moment, which is the only way to tell whether they
+actually look different.
+
+**Anthem stems.** Each team's `anthem` block carries a key, a tempo, a
+mood and a set of five layer names. The layers are SYNTHESISED at
+runtime — this site ships no audio files, and every sound in it is made
+in the browser — so the names select a voice rather than load a file. A
+licensed track can be dropped in later without touching code by giving
+the block a `stems` object of file paths; the mixer prefers files where
+they exist and falls back to the synthesised voice where they do not.

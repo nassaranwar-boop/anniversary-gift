@@ -228,6 +228,20 @@ window.CupPitch2D = (function () {
        dropped. The pitch's average stays the colour that was picked,
        the mowing is a real twenty-odd values apart, and the whole
        ground reads brighter because half of it genuinely is. */
+    /* =====================================================================
+       THE LIGHT OF THE GROUND
+
+       "lighting" is the readable name the config uses and it decides
+       two things: whether the ground is floodlit, and what colour the
+       sky over it is. Sunset is not a venue, it is a TIME — it belongs
+       to the final rather than to any one team's ground, which is why
+       it overrides the sky rather than living in the VENUES table.
+       ===================================================================== */
+    if (v.lighting === "sunset") {
+      v = Object.keys(v).reduce(function (o, k) { o[k] = v[k]; return o; }, {});
+      v.sky = "#6b4a7a"; v.horizon = "#f4a86b"; v.sun = "#e8746a";
+      v.floodlit = false;
+    }
     var night = !!v.floodlit;
     var g0 = v.grass || "#4a8a44";
     /* lift the base a little: a floodlit pitch on television is a much
@@ -264,9 +278,26 @@ window.CupPitch2D = (function () {
      "#2f5a4c", "#7a4630", "#3a3644", "#3a3644", "#2f2b38"].forEach(function (c) {
       CROWD.push(mix(c, tone, night ? 0.28 : 0.16));
     });
+    /* WHAT THIS PARTICULAR GROUND DOES DIFFERENTLY.
+
+       A venue is a campus and a stadium is a club's ground on it, so
+       the team's own block is merged over the venue before it gets
+       here — see groundFor() in cup.js. Everything below is a property
+       of the GROUND rather than of the renderer, which is the whole
+       point: a new ground is a few lines of config, not a code path. */
+    GROUND.mow = v.mow || "along";
+    GROUND.mowWidth = v.mowWidth || 1;
+    GROUND.density = v.density === undefined ? 0.88 : v.density;
+    GROUND.backdrop = v.backdrop || null;
+    GROUND.night = night;
     bakeGrass();
     bakeBoards();
   }
+
+  /* the ground's own settings, read by the drawing rather than passed
+     down through six arguments */
+  var GROUND = { mow: "along", mowWidth: 1, density: 0.88,
+                 backdrop: null, night: false };
 
   /* =======================================================================
      THE BOARDS, BAKED ONCE AND WRAPPED ROUND THE CORNER
@@ -861,7 +892,10 @@ window.CupPitch2D = (function () {
         var pitchX = 5.2 + r * 0.42;
         /* and the back of a tier is emptier as well as darker: the seats
            nobody wants, plus the ones the overhang eats */
-        var gone = 0.10 + (1 - r / Math.max(1, T.rows - 1)) * 0.10;
+        /* the ground's own fullness, plus the back rows being emptier
+           as well as darker: the seats nobody wants, and the ones the
+           overhang eats */
+        var gone = (1 - GROUND.density) + (1 - r / Math.max(1, T.rows - 1)) * 0.10;
         for (var cxx = -2; cxx < this.vw / pitchX + 2; cxx++) {
           var id = band * 977 + r * 131 + cxx * 7;
           if (this.rnd(id) < gone) continue;              // an empty seat
@@ -1039,6 +1073,7 @@ window.CupPitch2D = (function () {
       ctx.globalAlpha = 1;
     }
 
+    this.drawBackdrop(roofY);
     this.drawPylons(roofY);
 
     /* ======================================================= THE HOARDINGS
@@ -1125,6 +1160,110 @@ window.CupPitch2D = (function () {
      A lamp is not a white blob: it is a bank of bulbs on a head, with a
      soft halo under it that falls on the roof. The halo is the reason
      the pylon reads as LIT rather than as a shape. */
+  /* =======================================================================
+     WHAT IS BEHIND THE STAND
+
+     A ground with nothing over its roofline is a ground that could be
+     anywhere, and "could be anywhere" is the one thing a home stadium
+     must not be. A silhouette costs almost nothing — it is a run of
+     dark rectangles against the sky — and it is the single cheapest way
+     to make two grounds feel like two places.
+
+     It is drawn BEHIND the roof, dark, with no detail in it, because a
+     skyline seen over a floodlit stand at night is a shape and nothing
+     else. Anything more would compete with the match.
+     ======================================================================= */
+  Pitch.prototype.drawBackdrop = function (roofY) {
+    var kind = GROUND.backdrop;
+    if (!kind || roofY < 14) return;
+    var ctx = this.ctx;
+    /* HOW MUCH SKY THERE IS TO STAND IN.
+
+       Written against a fixed set of heights, the tallest blocks came
+       to thirty-six rows in a sky that is thirty-one — so every
+       building ran off the top of the frame and the skyline became a
+       solid dark band with no silhouette in it at all. A silhouette
+       needs sky ABOVE it or it is just a wall, so the whole run is
+       scaled to leave the top third of the sky empty. */
+    var room = roofY * 0.66;
+    var sky = C.sky;
+    /* A SILHOUETTE HAS TO BE THE LIGHTER SHAPE HERE.
+
+       Drawn darker than the sky, which is what a skyline is in
+       daylight, it vanished: the frame's edges are dimmed hard by the
+       vignette, so the sky at the top of the picture is already down at
+       a twentieth of its own brightness and there is nothing left below
+       it to be darker THAN. A city seen from a ground at dusk or under
+       lights is the lit thing anyway — haze, windows, streetlight
+       bouncing off it — so it goes lighter and reads immediately. */
+    var near = mix(sky, "#ffe8c0", 0.20);
+    var far = mix(sky, "#ffe8c0", 0.10);
+    /* the skyline PARALLAXES: it is miles away, so it moves a fraction
+       of what the camera does rather than not at all, which is what
+       stops it reading as a sticker on the glass */
+    var pan = ((this.swap ? this.cam.y : this.cam.x) * 0.06) | 0;
+
+    var topOf = function (i, seed, base, vary) {
+      return roofY - base - Math.round(vary * (0.35 + seed));
+    };
+    var put = function (x, w2, h2, col) {
+      var yTop = Math.max(0, roofY - h2);
+      if (yTop >= roofY) return;
+      ctx.fillStyle = col;
+      ctx.fillRect(x, yTop, w2, roofY - yTop);
+    };
+
+    if (kind === "hills") {
+      /* two ridges, the far one paler, drawn as a run of steps */
+      for (var pass = 0; pass < 2; pass++) {
+        var col = pass ? near : far;
+        var amp = (pass ? 13 : 9) * room / 22, base = (pass ? 4 : 9) * room / 22;
+        for (var hx = -8; hx < this.vw + 8; hx += 4) {
+          var u = (hx + pan * (pass ? 1 : 0.6)) * 0.021 + pass * 3.1;
+          var hh = base + Math.round((Math.sin(u) * 0.6 + Math.sin(u * 2.3) * 0.4 + 1) * amp * 0.5);
+          put(hx, 4, hh, col);
+        }
+      }
+      return;
+    }
+
+    /* the built skylines: a run of blocks of varying height, with a
+       landmark or two standing above them */
+    var spec = {
+      marrakech: { w: [7, 11, 5], h: [7, 22], towerEvery: 5, towerH: 30, minaret: true },
+      oldtown:   { w: [9, 6, 13], h: [5, 15], towerEvery: 7, towerH: 22, minaret: true },
+      coast:     { w: [6, 9, 7], h: [8, 26], towerEvery: 4, towerH: 34, minaret: false },
+      campus:    { w: [13, 9, 17], h: [6, 18], towerEvery: 6, towerH: 24, minaret: false },
+    }[kind] || { w: [9, 7, 12], h: [6, 18], towerEvery: 6, towerH: 24, minaret: false };
+
+    var hs = room / 30;                   // the spec is written for 30 rows
+    var i = 0, x = -((pan % 40) + 40);
+    while (x < this.vw + 8) {
+      var sd = this.rnd(i * 47 + 3);
+      var bw2 = spec.w[i % spec.w.length];
+      var bh2 = Math.round((spec.h[0] + sd * (spec.h[1] - spec.h[0])) * hs);
+      var isTower = (i % spec.towerEvery) === 2;
+      if (isTower) bh2 = Math.round((spec.towerH + sd * 6) * hs);
+      bh2 = Math.max(2, bh2);
+      put(x, bw2, bh2, i % 2 ? near : mix(near, far, 0.45));
+      /* a lit window or two, which is the only detail it gets */
+      if (GROUND.night && bh2 > 10 && sd > 0.4) {
+        ctx.fillStyle = "#e8c87a";
+        var wy2 = roofY - bh2 + 3 + ((this.rnd(i * 13) * (bh2 - 6)) | 0);
+        ctx.globalAlpha = 0.7;
+        ctx.fillRect(x + 1 + ((bw2 - 2) >> 1), wy2, 1, 1);
+        ctx.globalAlpha = 1;
+      }
+      /* and a minaret's cap, where the ground has one */
+      if (isTower && spec.minaret) {
+        ctx.fillStyle = near;
+        ctx.fillRect(x + ((bw2 - 3) >> 1), Math.max(0, roofY - bh2 - 4), 3, 4);
+        ctx.fillRect(x + ((bw2 - 1) >> 1), Math.max(0, roofY - bh2 - 6), 1, 2);
+      }
+      x += bw2 + 2; i++;
+    }
+  };
+
   Pitch.prototype.drawPylons = function (roofY) {
     var ctx = this.ctx;
     if (roofY < 12) return;                 // no sky to stand them in
@@ -1268,7 +1407,19 @@ window.CupPitch2D = (function () {
        and those project to straight lines: work out where the edges
        land and fill between them.
        ===================================================================== */
-    var band = 11 / this.k;              // mowing band, in world units
+    /* THE BAND, AND WHICH WAY IT RUNS.
+
+       "along" is goal to goal, which is the classic side-on look and
+       what the camera was tuned against. "across" is touchline to
+       touchline — bands of constant depth, so they lie flat across the
+       screen and narrow toward the far side. "check" is both, which is
+       the mown chequerboard a groundsman does for a cup tie.
+
+       The width multiplier is what actually makes two grounds look
+       different at a glance: a tight-striped pitch and a wide-striped
+       one read as two different places before you have noticed
+       anything else about them. */
+    var band = 11 / this.k * (GROUND.mowWidth || 1);
     /* HOW FAR THE GROUND GOES, IN THE DIRECTION THE CAMERA LOOKS.
 
        The shading ramp — lifted just in front of the lens, dropped into
@@ -1289,6 +1440,14 @@ window.CupPitch2D = (function () {
       var gi = Math.min(GRADE_N - 1, Math.max(0, Math.round(t * (GRADE_N - 1))));
       var cA = C.gradA[gi], cB = C.gradB[gi];
 
+      /* BANDS ACROSS THE PITCH are bands of depth, so the whole row is
+         one band and there is nothing to solve along it. */
+      if (GROUND.mow === "across") {
+        var bDepth = Math.floor(wy / band);
+        ctx.fillStyle = (bDepth & 1) ? cA : cB;
+        ctx.fillRect(0, y, this.vw, 1);
+        continue;
+      }
       /* how wide one band is on this row, and where its edges fall */
       var perBand = band * this.k * FOCAL / d;
       if (!(perBand > 2)) {
@@ -1310,7 +1469,12 @@ window.CupPitch2D = (function () {
       var b0 = Math.floor(leftW / band);
       ctx.fillStyle = cA;
       ctx.fillRect(0, y, this.vw, 1);
-      ctx.fillStyle = cB;
+      /* A CHEQUERBOARD IS THE TWO PATTERNS MULTIPLIED. Flipping which
+         colour the along-bands paint on every other depth-band is all
+         a mown check is, and it costs one XOR. */
+      var flip = GROUND.mow === "check" && (Math.floor(wy / band) & 1);
+      ctx.fillStyle = flip ? cA : cB;
+      if (flip) ctx.fillStyle = mix(cA, cB, 0.5);
       if (b0 & 1) b0 += 1;               // start on a band cB owns
       var xEdge = this.vw / 2 + (b0 * band - camAlong) * scale;
       for (; xEdge < this.vw; xEdge += perBand * 2) {
@@ -1752,6 +1916,35 @@ window.CupPitch2D = (function () {
                   sg > 0 ? Math.PI - cut : Math.PI * 2 - cut);
       }
     }
+    /* =====================================================================
+       THE CREST IN THE CENTRE CIRCLE
+
+       Ghosted into the turf, the way a club paints or mows its badge
+       there. It is the one piece of a ground that says WHOSE it is
+       without a word on it, and at this size it only works if it is
+       nearly invisible: a crest drawn solid in the middle of a pitch is
+       a sticker the players walk over. A tenth of an alpha, in the
+       grass's own light colour, reads as mown rather than painted.
+       ===================================================================== */
+    if (this.emblem) {
+      var ec = this.project(0, L / 2);
+      if (ec.flat || ec.d > NEAR + 1) {
+        var ew = Math.round(w.circleR * 1.5 * ec.k);
+        var eh = Math.round(ew * (this.emblem.height / this.emblem.width));
+        if (ew >= 8 && ew < this.vw) {
+          /* drawMarkings works through the band helpers and has no ctx
+             of its own, which is why this one asks for it */
+          var ectx = this.ctx;
+          ectx.save();
+          ectx.globalAlpha = 0.13;
+          ectx.imageSmoothingEnabled = false;
+          ectx.drawImage(this.emblem, Math.round(ec.x - ew / 2),
+                         Math.round(ec.y - eh / 2), ew, eh);
+          ectx.restore();
+        }
+      }
+    }
+
     /* the four corner quadrants */
     this.warc(-hw, 0, w.circleR * 0.2, 0, Math.PI / 2);
     this.warc(hw, 0, w.circleR * 0.2, Math.PI / 2, Math.PI);
@@ -2733,6 +2926,10 @@ window.CupPitch2D = (function () {
   };
 
   /* decay the two things that are time-based and not part of the sim */
+  /* the home side's badge, baked by the chapter because the crests live
+     there — the renderer only needs something it can stamp */
+  Pitch.prototype.setEmblem = function (canvas) { this.emblem = canvas || null; };
+
   Pitch.prototype.setCrowd = function (home, away) {
     this.crowdHome = home || null;
     this.crowdAway = away || null;

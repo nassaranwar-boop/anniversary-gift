@@ -602,11 +602,61 @@ window.OuissyCup = (function () {
     return list[0] || null;
   }
 
-  function applyVenue(id) {
-    var v = venueById(id);
+  /* =======================================================================
+     A VENUE IS A CAMPUS; A STADIUM IS A CLUB'S GROUND ON IT
+
+     The venue carries the place and the light — the sky, the hour, the
+     fog. The team carries what THEIR ground does differently: how it is
+     mown, how full it gets, what colour the concrete is, what stands
+     behind the roof. Merging the second over the first means a venue
+     stays a shared base and a team only writes down what it changes,
+     which is the difference between six grounds and six copies of one.
+
+     The host is whoever is at home. In the cup that is the side the
+     fixture is played at, and the caller says which. */
+  function groundFor(venueId, hostId) {
+    var v = venueById(venueId);
+    if (!v) return null;
+    var t = hostId ? teamById(hostId) : null;
+    if (!t || !t.stadium) return v;
+    var out = {};
+    Object.keys(v).forEach(function (k) { out[k] = v[k]; });
+    Object.keys(t.stadium).forEach(function (k) { out[k] = t.stadium[k]; });
+    /* the concrete tints the seats with it, so a ground's stand colour
+       is one field rather than two that can disagree */
+    if (t.stadium.stand) out.stand = t.stadium.stand;
+    /* "lighting" is the readable name for what the renderer calls
+       floodlit, and the one the bible's config uses */
+    if (out.lighting) out.floodlit = (out.lighting === "night");
+    return out;
+  }
+
+  function applyVenue(id, hostId) {
+    /* WHO IS AT HOME, when nobody says.
+
+       This defaulted to run.myTeam, which is the side she has PICKED —
+       and that is not set at all until she has been through the team
+       screen. Every match started any other way, a harness included,
+       therefore merged no stadium block and got the bare campus: right
+       colours, no mow pattern, no skyline, no fullness. The match
+       itself always knows who is at home, so ask it first. */
+    if (hostId === undefined) {
+      hostId = (G && G.ids && G.ids[0]) || run.myTeam;
+    }
+    var v = groundFor(id, hostId);
     if (!v) return;
+    if (G && G.lighting) {
+      v = Object.keys(v).reduce(function (o, k) { o[k] = v[k]; return o; }, {});
+      v.lighting = G.lighting;
+      v.floodlit = (v.lighting === "night");
+    }
     VEN.cur = v;
     if (window.CupPitch2D) window.CupPitch2D.venue(v);
+    /* and the home side's badge, mown into the centre circle */
+    if (R2 && R2.setEmblem) {
+      var ht = teamById(hostId);
+      R2.setEmblem(ht ? hardEdge(badgeCanvas(ht, 48, 40)) : null);
+    }
     dressCrowd();
   }
 
@@ -1090,6 +1140,10 @@ window.OuissyCup = (function () {
       ids: [(opts && opts.mine) || run.myTeam || "upm",
             (opts && opts.theirs) || round.id],
       venue: (opts && opts.venue) || round.venue || "rabat",
+      /* THE ROUND'S OWN LIGHT, where it has one. Sunset belongs to the
+         final rather than to whichever ground the final is played at,
+         so it rides on the match and overrides the stadium. */
+      lighting: (opts && opts.lighting) || round.lighting || null,
       score: [0, 0], half: 1, clock: 0,
       state: "kickoff", stateT: 0, msg: "",
       players: [], ball: { x: PITCH.cx, y: PITCH.cy, z: 0, vx: 0, vy: 0, vz: 0,
@@ -10155,6 +10209,15 @@ window.OuissyCup = (function () {
     teams: function () { return cfg("TEAMS", []); },
     venues: function () { return cfg("VENUES", []); },
     venue: function (id) { applyVenue(id); },
+    /* DRESS THE PITCH AS A PARTICULAR TEAM'S GROUND, so two of them can
+       be photographed from the same camera at the same moment with
+       nothing different but whose ground it is. */
+    ground: function (teamId) {
+      var t = teamById(teamId);
+      if (!t) return null;
+      applyVenue(t.venue, t.id);
+      return { team: t.id, venue: t.venue, stadium: t.stadium || null };
+    },
     /* a full frame, not just a camera move: draw() is what walks the
        players out to where the simulation says they are, and without it
        every rig sits stacked on the centre spot */
