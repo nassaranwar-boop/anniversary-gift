@@ -354,14 +354,54 @@ window.CupPitch2D = (function () {
     GROUND.density = v.density === undefined ? 0.88 : v.density;
     GROUND.backdrop = v.backdrop || null;
     GROUND.night = night;
+    GROUND.tiers = TIER_PLANS[v.tiers] ? v.tiers : "triple";
+    GROUND.roof = v.roof || "cantilever";
+    GROUND.banners = v.banners || "flags";
+    /* a ground with no roof cannot hang its lights off one */
+    GROUND.lights = v.lights || (GROUND.roof === "open" ? "pylon" : "roof");
+    GROUND.bays = v.bays || 9;
     bakeGrass();
     bakeBoards();
   }
 
   /* the ground's own settings, read by the drawing rather than passed
      down through six arguments */
+  /* =======================================================================
+     WHAT MAKES TWO GROUNDS DIFFERENT GROUNDS
+
+     Colour is the weakest answer. Six stadiums that differ only in the
+     hex of their seats are one stadium photographed six times, and the
+     eye reads that instantly even when it cannot say why — because the
+     SILHOUETTE is identical, and silhouette is what you recognise a
+     place by from a distance.
+
+     So the shape is data too. How many tiers and how deep, whether
+     there is a roof over them and what shape it is, what the crowd
+     brought with them, and where the light comes from. Take the colour
+     out of the six grounds below and they are still six grounds.
+     ======================================================================= */
+  var TIER_PLANS = {
+    /* the original: three banks, the top one small and dark under the
+       roof, which is what reads as a big modern stadium */
+    triple: [[26, 7], [20, 5], [13, 4]],
+    /* two even banks. Neat, unremarkable, municipal. */
+    double: [[32, 8], [24, 6]],
+    /* one enormous lower tier with a shallow one over it — an old
+       ground that was built once and added to later */
+    deep:   [[38, 10], [18, 5]],
+    /* a single bank. Small, and it should feel small. */
+    single: [[52, 13]],
+    /* three tall thin ones: steep, modern, and it looms */
+    tall:   [[22, 6], [22, 6], [16, 5]],
+  };
+
   var GROUND = { mow: "along", mowWidth: 1, density: 0.88,
-                 backdrop: null, night: false };
+                 backdrop: null, night: false,
+                 tiers: "triple",      // which plan above
+                 roof: "cantilever",   // cantilever | gable | open
+                 banners: "flags",     // flags | scarves | tifo | none
+                 lights: "roof",       // roof | pylon | none
+                 bays: 9 };            // how many gangways up the stand
 
   /* =======================================================================
      THE BOARDS, BAKED ONCE AND WRAPPED ROUND THE CORNER
@@ -945,9 +985,13 @@ window.CupPitch2D = (function () {
     /* THREE TIERS, NOT TWO. Two reads as a bank; three reads as a
        stand, because the third one is small and dark and sits up under
        the roof where the eye expects the ground to keep going. */
-    var tiers = [{ h: 26, rows: 7, base: C.tierLit },
-                 { h: 20, rows: 5, base: C.tier },
-                 { h: 13, rows: 4, base: mix(C.tier, "#000000", 0.22) }];
+    var plan = TIER_PLANS[GROUND.tiers] || TIER_PLANS.triple;
+    var tiers = plan.map(function (t, i) {
+      /* each bank further back is darker, however many there are */
+      var base = i === 0 ? C.tierLit
+        : mix(C.tier, "#000000", (i - 1) * 0.22);
+      return { h: t[0], rows: t[1], base: base };
+    });
     var y = lip, band = 0;
     for (var ti = 0; ti < tiers.length; ti++) {
       var T = tiers[ti];
@@ -964,7 +1008,7 @@ window.CupPitch2D = (function () {
       /* WHERE THE STAIRS ARE. Spaced rather than scattered — a stand
          with its gangways bunched at one end is a stand nobody could
          get out of — with enough jitter that they are not a comb. */
-      var bays = 9, bayW = this.vw / bays, aisle = [];
+      var bays = GROUND.bays || 9, bayW = this.vw / bays, aisle = [];
       for (var ai = 1; ai < bays; ai++) {
         aisle.push(ai * bayW + (this.rnd(band * 71 + ai * 29) - 0.5) * bayW * 0.35);
       }
@@ -1073,31 +1117,83 @@ window.CupPitch2D = (function () {
       ctx.fillStyle = C.rail;  ctx.fillRect(0, Math.max(0, y - 2), this.vw, 1);
       ctx.fillStyle = C.roof;  ctx.fillRect(0, Math.max(0, y - 1), this.vw, 1);
 
-      /* AND THE BANNERS TIED TO IT.
+      /* AND WHAT THE CROWD BROUGHT WITH THEM.
 
-         A few per tier, in the two clubs' colours, hung over the front
-         rail the way flags actually are. They are the only wide flat
-         shapes in a stand made of three-pixel people, which is exactly
-         why they read from any distance and why a ground without them
-         looks like a texture rather than somewhere people brought
-         something. */
-      var nB = 4;
-      for (var fb = 0; fb < nB; fb++) {
-        var seed = band * 211 + fb * 53;
-        if (this.rnd(seed) < 0.35) continue;
-        var fx = Math.round(this.rnd(seed + 1) * this.vw);
-        var fw2 = 9 + Math.round(this.rnd(seed + 2) * 12);
-        var fh2 = 3 + Math.round(this.rnd(seed + 3) * 2);
-        var fcol = this.rnd(seed + 4) < 0.5
-          ? (this.crowdHome || "#c8912f") : (this.crowdAway || "#2f4f7a");
-        var fy2 = Math.max(0, y - 2 - fh2);
-        ctx.fillStyle = mix(fcol, "#000000", 0.35);
-        ctx.fillRect(fx, fy2, fw2, fh2);
-        ctx.fillStyle = fcol;
-        ctx.fillRect(fx, fy2, fw2, fh2 - 1);
-        /* a light stripe across it, which is what a banner has on it */
-        ctx.fillStyle = mix(fcol, "#ffffff", 0.55);
-        ctx.fillRect(fx + 1, fy2 + Math.floor(fh2 / 2) - 1, fw2 - 2, 1);
+         The only wide flat shapes in a stand made of three-pixel
+         people, which is exactly why they read from any distance and
+         why a ground without them looks like a texture rather than
+         somewhere people turned up to. Each ground brings something
+         different, and that difference is most of what tells two
+         stands apart once the colour is taken out.
+
+           flags    a few banners hung over the front rail. The usual.
+           scarves  a dense band of them held overhead along the whole
+                    front row — the thing a ground does before kick-off
+           tifo     one enormous block across the middle of the tier,
+                    in the club's colour, with a bar through it. It is
+                    the single biggest shape anywhere in the picture and
+                    it makes a stand look ORGANISED
+           none     an away end nobody travelled to
+      */
+      var home = this.crowdHome || "#c8912f";
+      var away = this.crowdAway || "#2f4f7a";
+      var style = GROUND.banners || "flags";
+
+      if (style === "tifo" && ti === 0) {
+        /* THE BIG ONE, on the lower tier only, because a tifo covers
+           the people who are holding it and they are all in one bank */
+        var tw = Math.round(this.vw * (0.36 + this.rnd(band * 17) * 0.22));
+        var tx0 = Math.round((this.vw - tw) / 2
+                             + (this.rnd(band * 31) - 0.5) * this.vw * 0.18);
+        var th = Math.max(5, Math.round(T.h * 0.46));
+        var ty0 = Math.max(0, y - 3 - th);
+        ctx.fillStyle = mix(home, "#000000", 0.30);
+        ctx.fillRect(tx0, ty0, tw, th);
+        ctx.fillStyle = home;
+        ctx.fillRect(tx0, ty0, tw, th - 1);
+        /* two bars through it, which is what turns a rectangle into a
+           banner somebody made */
+        ctx.fillStyle = mix(home, "#ffffff", 0.62);
+        ctx.fillRect(tx0 + 2, ty0 + Math.floor(th * 0.34), tw - 4, 1);
+        ctx.fillStyle = mix(home, "#000000", 0.55);
+        ctx.fillRect(tx0 + 2, ty0 + Math.floor(th * 0.62), tw - 4, 1);
+        /* and the hands holding the bottom edge */
+        ctx.fillStyle = mix(home, "#f2d9c0", 0.5);
+        for (var hx = tx0 + 3; hx < tx0 + tw - 2; hx += 7) {
+          ctx.fillRect(hx, ty0 + th - 1, 1, 1);
+        }
+      } else if (style === "scarves") {
+        /* HELD OVERHEAD, ALL ALONG THE FRONT. Two pixels each and a
+           thousand of them: individually nothing, together the most
+           recognisable thing a terrace does. */
+        for (var sc = 0; sc < this.vw; sc += 4) {
+          var sd2 = this.rnd(band * 401 + sc * 13);
+          if (sd2 < 0.30) continue;
+          var scol = sd2 < 0.72 ? home : away;
+          var sy4 = Math.max(0, y - 4 - Math.round(this.rnd(sc * 7) * 2));
+          ctx.fillStyle = mix(scol, "#000000", 0.28);
+          ctx.fillRect(sc, sy4 + 1, 3, 1);
+          ctx.fillStyle = scol;
+          ctx.fillRect(sc, sy4, 3, 1);
+        }
+      } else if (style === "flags") {
+        var nB = 4;
+        for (var fb = 0; fb < nB; fb++) {
+          var seed = band * 211 + fb * 53;
+          if (this.rnd(seed) < 0.35) continue;
+          var fx = Math.round(this.rnd(seed + 1) * this.vw);
+          var fw2 = 9 + Math.round(this.rnd(seed + 2) * 12);
+          var fh2 = 3 + Math.round(this.rnd(seed + 3) * 2);
+          var fcol = this.rnd(seed + 4) < 0.5 ? home : away;
+          var fy2 = Math.max(0, y - 2 - fh2);
+          ctx.fillStyle = mix(fcol, "#000000", 0.35);
+          ctx.fillRect(fx, fy2, fw2, fh2);
+          ctx.fillStyle = fcol;
+          ctx.fillRect(fx, fy2, fw2, fh2 - 1);
+          /* a light stripe across it, which is what a banner has on it */
+          ctx.fillStyle = mix(fcol, "#ffffff", 0.55);
+          ctx.fillRect(fx + 1, fy2 + Math.floor(fh2 / 2) - 1, fw2 - 2, 1);
+        }
       }
       y = top; band++;
     }
@@ -1110,61 +1206,97 @@ window.CupPitch2D = (function () {
        ROOFLINE: a lit fascia, the trusses under it, and the floodlights
        standing over the back of it against the sky. */
     var roofY = Math.max(0, y);
-    ctx.fillStyle = C.roof;
-    ctx.fillRect(0, 0, this.vw, roofY + 5);
-    /* the underside of the roof, caught by the lights below it */
-    ctx.fillStyle = mix(C.wallLit, "#ffffff", 0.10);
-    ctx.fillRect(0, roofY, this.vw, 1);
-    ctx.fillStyle = C.wall;
-    ctx.fillRect(0, roofY + 1, this.vw, 3);
-    /* the trusses: a stadium roof is held up by something */
-    ctx.fillStyle = mix(C.roof, "#ffffff", 0.16);
-    for (var tx = 8; tx < this.vw; tx += 34) ctx.fillRect(tx, roofY + 1, 2, 3);
-    /* the fascia, one bright line, which is the whole silhouette */
-    ctx.fillStyle = mix(C.rail, "#ffffff", 0.22);
-    ctx.fillRect(0, Math.max(0, roofY - 1), this.vw, 1);
+    var roofKind = GROUND.roof || "cantilever";
+
+    if (roofKind === "open") {
+      /* NO ROOF AT ALL. An old ground, or a small one, or a warm one:
+         the back row is the top of the stand and the sky starts there.
+         The silhouette this produces — a straight line of heads
+         against the sky, with nothing over them — is completely
+         unlike a covered stand from any distance, which is the point
+         of having it. */
+      ctx.fillStyle = mix(C.rail, "#000000", 0.30);
+      ctx.fillRect(0, Math.max(0, roofY), this.vw, 1);
+      /* the back wall, low, with the crowd standing above its line */
+      ctx.fillStyle = mix(C.wall, "#000000", 0.20);
+      ctx.fillRect(0, Math.max(0, roofY + 1), this.vw, 2);
+    } else {
+      ctx.fillStyle = C.roof;
+      ctx.fillRect(0, 0, this.vw, roofY + 5);
+      /* the underside of the roof, caught by the lights below it */
+      ctx.fillStyle = mix(C.wallLit, "#ffffff", 0.10);
+      ctx.fillRect(0, roofY, this.vw, 1);
+      ctx.fillStyle = C.wall;
+      ctx.fillRect(0, roofY + 1, this.vw, 3);
+      /* the trusses: a stadium roof is held up by something */
+      ctx.fillStyle = mix(C.roof, "#ffffff", 0.16);
+      for (var tx = 8; tx < this.vw; tx += 34) ctx.fillRect(tx, roofY + 1, 2, 3);
+      /* the fascia, one bright line, which is the whole silhouette */
+      ctx.fillStyle = mix(C.rail, "#ffffff", 0.22);
+      ctx.fillRect(0, Math.max(0, roofY - 1), this.vw, 1);
+
+      if (roofKind === "gable") {
+        /* A PEAKED ROOF WITH A BAND ALONG IT. Two lines and a slope at
+           each end, and the stand stops looking like a shelf. */
+        var peak = Math.max(0, roofY - 6);
+        ctx.fillStyle = C.roof;
+        ctx.fillRect(0, peak, this.vw, roofY - peak);
+        for (var gx = 0; gx < 7; gx++) {
+          /* the two slopes, stepped, because a diagonal in a pixel
+             picture is a staircase and pretending otherwise blurs it */
+          ctx.fillStyle = C.sky;
+          ctx.fillRect(gx * 3, peak, 3, 7 - gx);
+          ctx.fillRect(this.vw - (gx + 1) * 3, peak, 3, 7 - gx);
+        }
+        ctx.fillStyle = mix(C.rail, "#ffffff", 0.40);
+        ctx.fillRect(21, peak, this.vw - 42, 1);
+        ctx.fillStyle = mix(C.wallLit, "#000000", 0.20);
+        ctx.fillRect(21, peak + 1, this.vw - 42, 1);
+      }
+    }
 
     /* =====================================================================
-       THE LAMPS ALONG THE ROOF
+       WHERE THE LIGHT COMES FROM
 
-       The corner towers are anchored to the ground's corners now, which
-       is right, and it means that from a camera on the halfway line
-       they are both a hundred units outside the frame — so the sky over
-       the stand went completely empty. A ground of this size does not
-       light itself from four masts anyway; it lights itself from a run
-       of lamps under the roof, and those are the things you actually
-       see glowing at a night match.
-
-       Each one throws a short cone down onto the front of the stand,
-       which is also what puts the light ON the crowd instead of just
-       near it. */
-    var LAMP_EVERY = 58;
-    var lampOff = Math.round(this.rnd(9) * LAMP_EVERY);
-    for (var lx = -lampOff; lx < this.vw; lx += LAMP_EVERY) {
-      var cxl = Math.round(lx + LAMP_EVERY / 2);
-      if (cxl < -8 || cxl > this.vw + 8) continue;
-      var ly2 = Math.max(0, roofY - 1);
-      /* the housing */
-      ctx.fillStyle = mix(C.roof, "#ffffff", 0.34);
-      ctx.fillRect(cxl - 5, ly2 - 3, 10, 3);
-      /* the bulbs, a couple of which are always a shade off */
-      for (var bl = 0; bl < 4; bl++) {
-        var fl2 = this.rnd(bl * 23 + (cxl | 0)) * 6 + this.t * 1.7;
-        ctx.fillStyle = Math.sin(fl2) > -0.9 ? "#fff8e0" : "#c0b490";
-        ctx.fillRect(cxl - 4 + bl * 2, ly2 - 2, 1, 1);
+       Three answers and they look nothing like each other. A run of
+       lamps under a roof is a modern ground at night and is what you
+       actually see glowing. Four masts in the corners is an old one —
+       and from a camera on the halfway line the masts are off both
+       sides of the frame, so what that ground gets is an EMPTY sky,
+       which is exactly right for it. And a ground playing at three in
+       the afternoon has no lights on at all.
+       ===================================================================== */
+    if (GROUND.lights === "roof" && roofKind !== "open") {
+      var LAMP_EVERY = 58;
+      var lampOff = Math.round(this.rnd(9) * LAMP_EVERY);
+      for (var lx = -lampOff; lx < this.vw; lx += LAMP_EVERY) {
+        var cxl = Math.round(lx + LAMP_EVERY / 2);
+        if (cxl < -8 || cxl > this.vw + 8) continue;
+        var ly2 = Math.max(0, roofY - 1);
+        /* the housing */
+        ctx.fillStyle = mix(C.roof, "#ffffff", 0.34);
+        ctx.fillRect(cxl - 5, ly2 - 3, 10, 3);
+        /* the bulbs, a couple of which are always a shade off */
+        for (var bl = 0; bl < 4; bl++) {
+          var fl2 = this.rnd(bl * 23 + (cxl | 0)) * 6 + this.t * 1.7;
+          ctx.fillStyle = Math.sin(fl2) > -0.9 ? "#fff8e0" : "#c0b490";
+          ctx.fillRect(cxl - 4 + bl * 2, ly2 - 2, 1, 1);
+        }
+        /* and the spill down the face of the stand */
+        ctx.fillStyle = "#fff6d8";
+        for (var gl2 = 0; gl2 < 4; gl2++) {
+          var gw2 = 12 + gl2 * gl2 * 4;
+          ctx.globalAlpha = 0.07 / (1 + gl2 * 1.1);
+          ctx.fillRect(Math.round(cxl - gw2 / 2), ly2 + gl2 * 3, Math.round(gw2), 3);
+        }
+        ctx.globalAlpha = 1;
       }
-      /* and the spill down the face of the stand */
-      ctx.fillStyle = "#fff6d8";
-      for (var gl2 = 0; gl2 < 4; gl2++) {
-        var gw2 = 12 + gl2 * gl2 * 4;
-        ctx.globalAlpha = 0.07 / (1 + gl2 * 1.1);
-        ctx.fillRect(Math.round(cxl - gw2 / 2), ly2 + gl2 * 3, Math.round(gw2), 3);
-      }
-      ctx.globalAlpha = 1;
     }
 
     this.drawBackdrop(roofY);
-    this.drawPylons(roofY);
+    /* the corner masts belong to the grounds that light themselves
+       that way, and to nobody else */
+    if (GROUND.lights === "pylon") this.drawPylons(roofY);
 
     /* ======================================================= THE HOARDINGS
 

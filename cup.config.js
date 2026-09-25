@@ -333,7 +333,30 @@ window.CUP_CONFIG = {
        mood     picks the chord progression — anthemic-uplifting,
                 dark-stormy-epic, tense-driving, warm-nostalgic,
                 defiant-underdog
-       motif    the sung figure, in scale degrees
+     THE GROUND'S SHAPE, not just its colour. Six stadiums that differ
+     only in the hex of their seats are one stadium photographed six
+     times, and the eye knows it even when it cannot say why — because
+     the silhouette is identical, and silhouette is how you recognise a
+     place from a distance.
+
+       tiers    triple | double | deep | single | tall
+       roof     cantilever | gable | open
+       banners  flags | scarves | tifo | none
+       lights   roof | pylon | none
+       bays     how many gangways cut up through the stand
+
+       motif    the old flat figure, kept as a fallback
+       hook     THE TUNE. [beat, degree, length] over eight beats — two
+                bars — where degree 0 is the tonic, 7 the octave above
+                it, and a beat that is not a whole number is off the
+                beat, which is where every hook a crowd can actually
+                sing starts. Rests are simply beats with nothing on
+                them, and they matter as much as the notes: five evenly
+                spaced pitches, which is what this was, is a texture.
+                A tune has holes in it.
+       title    what the terrace calls it. Never shown; it is here so
+                that six pieces of music have six names in the source
+                instead of six arrays of numbers.
        stems    file paths, if ever. Left null, the five layers are
                 synthesised in the browser like every other sound on
                 this site; filled in, the mixer would prefer the files.
@@ -347,10 +370,24 @@ window.CUP_CONFIG = {
              shortsDark: "#cdbf9f", socks: "#1d6b6e", trim: "#e8b23c" },
       gkKit: { shirt: "#2a2438", shirtDark: "#1a1626", shorts: "#12101c",
                shortsDark: "#0a0812", socks: "#2a2438", trim: "#f2b8c6" },
+      /* the biggest and the least friendly: three banks under a deep
+         cantilever, lit off the roof, and one enormous tifo across the
+         lower tier. It is meant to look like somewhere you would
+         rather not be drawn away at. */
       stadium: { mow: "across", mowWidth: 0.72, stand: "#2f4a5e",
-                 density: 0.90, backdrop: "coast", lighting: "night" },
+                 density: 0.90, backdrop: "coast", lighting: "night",
+                 tiers: "tall", roof: "cantilever", banners: "tifo",
+                 lights: "roof", bays: 11 },
       /* dark and slow-building: a low held note that leaps */
       anthem: { key: 174.6, scale: "minor", tempo: 84, mood: "dark-stormy-epic",
+                title: "THE TIDE",
+                /* Holds, pushes, and then LEAPS a whole octave on the
+                   fifth beat. The leap is the entire song: everything
+                   before it is a run-up and everything after it is the
+                   fall, which is how a slow minor anthem gets a crowd
+                   of people who do not know it to arrive together. */
+                hook: [[0, 0, 2], [2.5, 0, 0.5], [3, 2, 1],
+                       [4, 7, 2], [6, 5, 1], [7, 4, 1]],
                 motif: [0, 0, 4, 3, 0], stems: null },
       squad: ["marina", "anwar", "sage", "thorn"], captain: "anwar",
       formation: "diamond",
@@ -363,10 +400,28 @@ window.CUP_CONFIG = {
              shortsDark: "#241a12", socks: "#e08a3c", trim: "#f6efdd" },
       gkKit: { shirt: "#1f6f4a", shirtDark: "#134a31", shorts: "#12241c",
                shortsDark: "#0b1712", socks: "#1f6f4a", trim: "#ffd45e" },
+      /* AN OLD GROUND. One huge lower bank with a shallow one added on
+         top later, no roof over either, and four masts in the corners
+         — which from a camera on the halfway line are off both sides
+         of the frame, so what this place gets is an empty dusk sky
+         above a straight line of heads. Nothing else here looks like
+         it. */
       stadium: { mow: "along", mowWidth: 1.15, stand: "#7a5a2c",
-                 density: 0.82, backdrop: "oldtown", lighting: "dusk" },
+                 density: 0.82, backdrop: "oldtown", lighting: "dusk",
+                 tiers: "deep", roof: "open", banners: "flags",
+                 lights: "pylon", bays: 6 },
       /* stomping, four notes, call and answer */
       anthem: { key: 196.0, scale: "minor", tempo: 104, mood: "defiant-underdog",
+                title: "STAND UP",
+                /* Every note is off the beat. Starting on the half-beat
+                   is what makes a chant feel like it is being thrown at
+                   somebody rather than counted out, and the answer bar
+                   ends a step HIGHER than the call — which is the
+                   difference between a song and an argument. */
+                hook: [[0.5, 0, 0.5], [1, 0, 0.5], [1.5, 3, 1],
+                       [3, 2, 0.5], [3.5, 0, 1],
+                       [4.5, 0, 0.5], [5, 0, 0.5], [5.5, 3, 1],
+                       [7, 4, 0.5], [7.5, 3, 0.5]],
                 motif: [0, 3, 2, 0], stems: null },
       squad: ["gustav", "ember", "lumi", "atlas"], captain: "lumi",
       formation: "diamond",
@@ -379,9 +434,24 @@ window.CUP_CONFIG = {
              shortsDark: "#c8ced6", socks: "#2f5fa8", trim: "#ffd45e" },
       gkKit: { shirt: "#1f2b3c", shirtDark: "#141c28", shorts: "#0f151d",
                shortsDark: "#080c11", socks: "#1f2b3c", trim: "#7fd4f5" },
+      /* Newly built and a bit corporate: two even banks, a peaked roof
+         with a band along it, and no floodlights because they kick off
+         at three. The emptiest of the six as well — a ground with
+         better facilities than support. */
       stadium: { mow: "check", mowWidth: 0.9, stand: "#3a4a6e",
-                 density: 0.78, backdrop: "hills", lighting: "day" },
+                 density: 0.78, backdrop: "hills", lighting: "day",
+                 tiers: "double", roof: "gable", banners: "scarves",
+                 lights: "none", bays: 13 },
       anthem: { key: 220.0, scale: "major", tempo: 112, mood: "tense-driving",
+                title: "THE RUN",
+                /* The second bar is the first bar one step up. A
+                   sequence like that does not resolve — it promises to
+                   keep climbing — and a promise to keep climbing is
+                   what tension IS. */
+                hook: [[0, 4, 0.5], [0.5, 4, 0.5], [1, 5, 0.5], [1.5, 4, 0.5],
+                       [2, 2, 1], [3, 4, 1],
+                       [4, 5, 0.5], [4.5, 5, 0.5], [5, 6, 0.5], [5.5, 5, 0.5],
+                       [6, 4, 2]],
                 motif: [4, 4, 2, 4, 5], stems: null },
       squad: ["marina", "comet", "sage", "boulder"], captain: "comet",
       formation: "wide",
@@ -406,12 +476,31 @@ window.CUP_CONFIG = {
       /* HERS. Tight stripes because a crisp pitch is the one thing a
          home ground can say about itself before anybody kicks a ball,
          and the fullest stand of the six. */
+      /* HERS. Tight stripes because a crisp pitch is the one thing a
+         home ground can say about itself before anybody kicks a ball,
+         the fullest stand of the six, and scarves up along the whole
+         front rail — the thing a ground does in the last minute before
+         kick-off, and the only one of these six that does it. */
       stadium: { mow: "along", mowWidth: 0.68, stand: "#7a3a34",
-                 density: 0.96, backdrop: "marrakech", lighting: "dusk" },
+                 density: 0.96, backdrop: "marrakech", lighting: "dusk",
+                 tiers: "triple", roof: "cantilever", banners: "scarves",
+                 lights: "roof", bays: 9 },
       /* HERS. A rising five-note figure that soars and lands on the
          fifth — major, mid-fast, and the only anthem here written to be
          sung rather than shouted. */
       anthem: { key: 207.7, scale: "major", tempo: 98, mood: "anthemic-uplifting",
+                title: "THE LONG WAY",
+                /* HERS, and the only one of the six written to be sung
+                   rather than shouted. Two steps up and a hold, a drop
+                   back, and then the octave on the second bar held for
+                   two whole beats — the longest note anywhere in this
+                   chapter. The hold is the point. A crowd arriving
+                   together on a high note and then STAYING there is
+                   the whole of what people mean by goosebumps, and it
+                   costs one number: the length of that note. */
+                hook: [[0, 2, 0.5], [0.5, 4, 0.5], [1, 5, 2],
+                       [3, 4, 1],
+                       [4, 7, 2], [6, 6, 1], [7, 4, 1]],
                 motif: [0, 2, 4, 5, 4], stems: null },
       squad: ["gustav", "ouissy", "echo", "willow"], captain: "ouissy",
       formation: "wide",
@@ -424,9 +513,21 @@ window.CUP_CONFIG = {
              shortsDark: "#cdc8b6", socks: "#5f9a5c", trim: "#e8b23c" },
       gkKit: { shirt: "#2a4a2c", shirtDark: "#1a301c", shorts: "#142016",
                shortsDark: "#0c140e", socks: "#2a4a2c", trim: "#bfe8a8" },
+      /* The small one, and it should feel small: a single open bank in
+         the afternoon sun with a few flags on the rail. Somewhere a
+         side can be got at rather than intimidated. */
       stadium: { mow: "across", mowWidth: 1.0, stand: "#4a6e4c",
-                 density: 0.74, backdrop: "coast", lighting: "day" },
+                 density: 0.74, backdrop: "coast", lighting: "day",
+                 tiers: "single", roof: "open", banners: "flags",
+                 lights: "none", bays: 5 },
       anthem: { key: 185.0, scale: "major", tempo: 92, mood: "warm-nostalgic",
+                title: "THE OLD ROAD",
+                /* A falling phrase, then the same phrase lower. Nothing
+                   in it leaps and nothing in it hurries; it is the only
+                   anthem of the six that sounds like it is remembering
+                   something rather than demanding it. */
+                hook: [[0, 5, 1.5], [1.5, 4, 0.5], [2, 2, 2],
+                       [4, 4, 1.5], [5.5, 2, 0.5], [6, 0, 2]],
                 motif: [2, 1, 0, 2, 4], stems: null },
       squad: ["marina", "willow", "lumi", "boulder"], captain: "willow",
       formation: "flat",
@@ -439,9 +540,26 @@ window.CUP_CONFIG = {
              shortsDark: "#1a1626", socks: "#7a4fb0", trim: "#f2b8c6" },
       gkKit: { shirt: "#2f2a3e", shirtDark: "#1e1a2a", shorts: "#14111c",
                shortsDark: "#0c0a12", socks: "#2f2a3e", trim: "#e87ab0" },
+      /* Built last year and it looks it: two even banks, a lit peak
+         over them, a chequerboard cut into the pitch, and a tifo in
+         the lower tier. The only ground of the six whose roofline is a
+         shape rather than a shelf. */
       stadium: { mow: "check", mowWidth: 1.25, stand: "#4a3a6e",
-                 density: 0.88, backdrop: "campus", lighting: "night" },
+                 density: 0.88, backdrop: "campus", lighting: "night",
+                 tiers: "double", roof: "gable", banners: "tifo",
+                 lights: "roof", bays: 12 },
       anthem: { key: 164.8, scale: "minor", tempo: 120, mood: "tense-driving",
+                title: "CIRCUITRY",
+                /* The fastest thing in the chapter and the only hook
+                   that ends ABOVE where it started. A minor tune that
+                   resolves up an octave does not sound resolved; it
+                   sounds like it is about to go round again, which at
+                   a hundred and twenty beats a minute is exactly the
+                   feeling of being pinned in your own half. */
+                hook: [[0, 0, 0.5], [0.5, 0, 0.5], [1, 4, 0.5], [1.5, 3, 0.5],
+                       [2, 4, 1], [3, 6, 1],
+                       [4, 0, 0.5], [4.5, 0, 0.5], [5, 4, 0.5], [5.5, 3, 0.5],
+                       [6, 7, 2]],
                 motif: [0, 4, 3, 4, 6], stems: null },
       squad: ["gustav", "echo", "atlas", "thorn"], captain: "atlas",
       formation: "flat",

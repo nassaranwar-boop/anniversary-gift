@@ -305,6 +305,21 @@ moving.
   projection where each corner lands and samples the rendered pitch at
   that pixel. All six corners came back painted — the box is right and
   the shape is the camera.
+- **`cupchantrender.js`** — render a ground's chant offline and write a
+  .wav, so it can be HEARD. A tune is the one thing in this repository
+  that no assertion can judge: you can prove a chant engine schedules
+  bars, mixes five layers and fades them in the right order, and still
+  have written eight bars of nothing. It also prints each song bar by
+  bar, which is where the structure either exists or does not — bed,
+  bed, hook, hook, a hole, then full voice at twice the level. Two
+  things had to be right before that number meant anything: the first
+  version read a gain node's `.value` to find where a ramp was HEADED,
+  which offline is where it started, which is zero, so a working engine
+  rendered silence; and the drop was first measured across the whole
+  bar, where a held note and a two-second stadium reverb ring straight
+  past the bar line. A hole is felt in the middle of a bar, so that is
+  where it is read.
+
 - **`cupshape.js`** — do they keep a shape, or do they all go and stand
   by the goal? "Sometimes all of them are next to the goal" is a
   complaint about a thing that happens SOMETIMES, which is exactly what
@@ -368,9 +383,14 @@ moving.
   four distinguishable materials is asking perspective not to happen.
 
 - **`cupground.js`** — every team's ground, same camera, same moment,
-  only the host changing. A per-team stadium system is worth having only
-  if the grounds actually look different, and "looks different" is the
-  kind of claim that is easy to believe about your own work.
+  only the host changing — and then the harder question: with the
+  COLOUR TAKEN OUT, are they still six grounds? Colour is the cheap
+  answer. Six stadiums differing only in the hex of their seats are one
+  stadium photographed six times, and the eye knows it even when it
+  cannot say why, because the silhouette is identical and silhouette is
+  how you recognise a place from a distance. Every pair is compared in
+  luminance only, over the part of the frame the architecture is in.
+  The closest pair differs in 36 per cent.
 - **`cupchant.js`** — does the ground actually react? A layered chant is
   a claim about a mixer, and a mixer sounds fine in a description while
   doing nothing in code. You cannot listen to it from a harness, but you
