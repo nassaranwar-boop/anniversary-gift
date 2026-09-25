@@ -38,7 +38,13 @@ module.exports = async function (c) {
     const ev = (t) => new PointerEvent(t, { clientX: r.left + r.width / 2, clientY: r.top + r.height / 2,
                                             bubbles: true, cancelable: true, pointerId: 1, isPrimary: true });
     el.dispatchEvent(ev('pointerdown'));
-    await new Promise((res) => setTimeout(res, 1500));
+    /* WIND.hold is 1.15 seconds on the WALL clock, on purpose -- a wind
+       costs a wind however fast the machine is. But the check that the
+       hold is done runs inside stepWind, which runs inside the frame
+       loop, and this container gives that loop a frame every second and
+       a half. A 1.5-second hold is a coin toss on whether a frame lands
+       inside it at all. Three and a half guarantees two. */
+    await new Promise((res) => setTimeout(res, 3500));
     el.dispatchEvent(ev('pointerup'));
     return true;
   });
@@ -120,7 +126,11 @@ module.exports = async function (c) {
           if (!s.monitor) await press('monitor'); else await press('next');
         }
         else if (want.indexOf('HOLD IT') >= 0 || want.indexOf('KEY IN HIS BACK') >= 0) await windHold();
-        await T(300);
+        /* the lines that are not asking for anything are on `hold:`
+           timers, and those are dt inside playStep like everything else
+           -- so orientation needs the clock carried too, or a 2.8-second
+           beat takes forty seconds of staring at it */
+        await warp(0.8);
         continue;                       /* orientation owns the hands */
       }
 

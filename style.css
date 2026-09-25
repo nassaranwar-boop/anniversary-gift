@@ -8587,6 +8587,21 @@ img{-webkit-user-drag:none; user-select:none;}
 
 .ns-cine-skip{
   position:absolute; right:2.4cqw; bottom:3.4%; pointer-events:auto;
+  /* AND IT HAS TO BE ON TOP OF THE LETTERBOX BAR.
+
+     The bars are `.ns-cine::before` and `::after`, and `::after` paints
+     after every child of the element it belongs to. This button sits
+     3.4% off the bottom, which is inside the bottom bar's 11% -- so the
+     bar, which is opaque #05060a, painted straight over it. The button
+     was in the DOM on every beat of the film, it animated in on cue, it
+     answered a click, and it could not be seen: a minute of statement
+     with no visible way out of it. Nothing caught it because the checks
+     click the element, and an invisible button clicks perfectly well.
+
+     The terms card uses the same class and was always fine, because it
+     mounts inside the overlay, where there is no bar to lose it behind
+     -- which is what gave the fault away. */
+  z-index:2;
   /* It measured 52x17 on a phone, which is a third of a thumb. The panel
      is a size container, so cqh at this stage height is about two pixels
      — every one of these needs a pixel floor under it. 44px is the
