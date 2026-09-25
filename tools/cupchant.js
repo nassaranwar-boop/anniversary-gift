@@ -117,6 +117,31 @@ const ok = (msg, cond, extra) => {
   ok('and no two share a key and tempo',
      new Set(songs.map(s2 => s2[1] + '/' + s2[2])).size === songs.length, songs);
 
+  /* =======================================================================
+     THREE ROUNDS, THREE DIFFERENT SONGS
+
+     Six tracks are worth writing only if more than one of them is ever
+     heard. The chant used to take its anthem from G.ids[0], which is
+     always HER side — so the same piece played at every ground for a
+     whole cup run and the other five existed only in the config.
+     ======================================================================= */
+  const heard = [];
+  for (let round = 0; round < 3; round++) {
+    const d = await p.evaluate((r) => {
+      const H = OuissyCup.__cup;
+      H.quick(r); H.auto(true);
+      for (let i = 0; i < 400 && H.state().state !== 'play'; i++) H.step(1, 0, 0, false);
+      return new Promise(res => setTimeout(() => res(H.chant()), 500));
+    }, round);
+    heard.push(d && d.anthem ? d.anthem : null);
+    console.log('   round ' + (round + 1) + ': '
+      + (d && d.anthem ? d.anthem.key + 'Hz  ' + d.anthem.tempo + 'bpm  ' + d.anthem.mood
+         : 'nothing'));
+  }
+  ok('every round has a song', heard.every(Boolean), heard);
+  ok('and no two rounds are the same song',
+     new Set(heard.map(h => h && (h.key + '/' + h.tempo))).size === heard.length, heard);
+
   ok('no page errors', errs.length === 0, errs.slice(0, 3));
   console.log('');
   console.log(pass + ' passed, ' + fail + ' failed');

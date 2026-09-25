@@ -724,8 +724,22 @@ window.OuissyCup = (function () {
   function startChant() {
     if (!window.CupChant || !audio() || !soundOn) return;
     window.CupChant.init(AC, master, { volume: 0.55 });
-    var host = teamById((G && G.ids && G.ids[0]) || run.myTeam);
-    if (host && host.anthem) window.CupChant.setTeam(host.anthem);
+    /* =====================================================================
+       WHOSE SONG PLAYS: THE ONE SHE IS PLAYING AGAINST.
+
+       This took the anthem off G.ids[0], which is always HER side — so
+       across a whole cup run she heard the same piece of music at every
+       ground, and the five other songs in the config were never played
+       once. Six tracks, one of which anybody would ever hear.
+
+       Taking it off the opponent means every round of the tournament
+       sounds different, which is the whole point of writing six of
+       them: the draw is a new song, and by the final she has heard
+       three grounds she will never hear again.
+       ===================================================================== */
+    var them = teamById((G && G.ids && G.ids[1])
+                        || (G && G.ids && G.ids[0]) || run.myTeam);
+    if (them && them.anthem) window.CupChant.setTeam(them.anthem);
     window.CupChant.mute(!soundOn);
   }
   function chantSay(kind) {
@@ -10544,6 +10558,12 @@ window.OuissyCup = (function () {
     /* the score, so a harness can ask what is playing and in what key
        rather than trying to listen to a headless browser */
     score: function () { return window.CupScore ? window.CupScore.debug() : null; },
+    /* which ground's song the crowd is singing, so a harness can check
+       that three rounds really are three different pieces of music */
+    chant: function () {
+      var d = window.CupChant ? window.CupChant.debug() : null;
+      return d ? { anthem: d.anthem, layers: d.layers, bar: d.bar } : null;
+    },
     scoreTo: function (n) { scoreCue(n); return window.CupScore && window.CupScore.debug(); },
     /* Kept for the harnesses and for the settings screen, and now it
        costs nothing either way: every shadow in the game is an ellipse

@@ -320,6 +320,15 @@ moving.
   past the bar line. A hole is felt in the middle of a bar, so that is
   where it is read.
 
+  A third trap turned up later and was the worst of the three: the
+  live scheduler keeps running during an offline render. init() starts
+  a setTimeout loop that posts the next third of a second of music onto
+  the clock, and against an OfflineAudioContext currentTime stays at
+  zero until the render runs — so that loop piled whole extra bars on
+  top of each other at t=0, differently every time, and went on doing
+  it during startRendering(). The same six songs measured differently
+  on every run, and the shape of the record moved around the table.
+  Nothing about the music was wrong; the tape was being recorded over.
 - **`cupshape.js`** — do they keep a shape, or do they all go and stand
   by the goal? "Sometimes all of them are next to the goal" is a
   complaint about a thing that happens SOMETIMES, which is exactly what

@@ -126,9 +126,14 @@ window.CupChant = (function () {
        reverb, because two reverbs is two rooms */
     bus = AC.createGain(); bus.gain.value = 1;
     verb = AC.createConvolver();
-    verb.buffer = impulse(2.2, 2.6);
-    var wet = AC.createGain(); wet.gain.value = 0.34;
-    var dry = AC.createGain(); dry.gain.value = 0.8;
+    /* A SHORTER, DRIER ROOM. Two and a bit seconds of tail with a
+       choir in it is a cathedral, and a cathedral is a genre. A
+       stadium bowl is a fast, hard slap — and once there is a band in
+       front of it, the reverb's job is to put the CROWD behind the
+       band rather than to make everything enormous. */
+    verb.buffer = impulse(1.3, 2.2);
+    var wet = AC.createGain(); wet.gain.value = 0.22;
+    var dry = AC.createGain(); dry.gain.value = 0.92;
     bus.connect(dry); dry.connect(out);
     bus.connect(verb); verb.connect(wet); wet.connect(out);
 
@@ -139,6 +144,21 @@ window.CupChant = (function () {
     L.hum = gain(0.0);
     L.chant = gain(0.0);
     L.peaks = gain(0.9);
+    /* THE BAND, AND WHY IT HAS ITS OWN ROUTE.
+
+       The crowd goes through a two-second convolution because a crowd
+       is a thing you hear bouncing off a concrete bowl. A kick drum
+       through the same reverb is mud, and a snare through it is a
+       gunshot in a cave — which, with a choir over the top, is exactly
+       how you score a thriller. The rhythm section is nearly dry and
+       sits in front; the crowd sings behind it, in the room. That
+       separation is most of the difference between a stadium with a
+       band playing in it and a cathedral. */
+    L.band = AC.createGain(); L.band.gain.value = 0.0;
+    var bandDry = AC.createGain(); bandDry.gain.value = 1.0;
+    var bandWet = AC.createGain(); bandWet.gain.value = 0.10;
+    L.band.connect(bandDry); bandDry.connect(out);
+    L.band.connect(bandWet); bandWet.connect(verb);
 
     startAmbience();
     on = true;
@@ -328,6 +348,167 @@ window.CupChant = (function () {
     o.start(t); o.stop(t + 0.3);
   }
 
+  /* =======================================================================
+     THE BAND
+
+     What was here was a choir, a sustained chord bed and a long
+     reverb. Those three things together are not "a crowd singing" —
+     they are the standard recipe for scoring a thriller, which is
+     exactly what it sounded like. Every one of the records this is
+     meant to stand next to is a BAND, and a band is four things this
+     did not have:
+
+       A BACKBEAT. A snare on two and four. This is the single biggest
+       omission: without it nothing can feel like pop music, because
+       the backbeat is what pop music IS. A kick and a clap on their
+       own read as a ritual, not a song.
+
+       HI-HATS. Eighths, with the offbeats louder than the downbeats.
+       They are almost inaudible alone and they are the entire reason a
+       track feels like it is MOVING rather than sitting there.
+
+       A BASS THAT WALKS. A held root is a drone and a drone is film
+       music. A bass that plays root-root-fifth-octave, syncopated,
+       pulls the whole bar forward.
+
+       STABS, NOT PADS. A chord played SHORT and slightly late is a
+       band hitting it. The same chord held for four beats is a string
+       section, and a string section is a different genre.
+     ======================================================================= */
+
+  /* the kick: a sine dropping fast, with a click on the front so it
+     cuts through on a phone speaker that cannot reproduce the sine */
+  function kick(t, vol) {
+    var o = AC.createOscillator(); o.type = "sine";
+    o.frequency.setValueAtTime(150, t);
+    o.frequency.exponentialRampToValueAtTime(44, t + 0.055);
+    var g = AC.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.20);
+    o.connect(g); g.connect(L.band);
+    o.start(t); o.stop(t + 0.24);
+    var c = AC.createBufferSource(); c.buffer = shortNoise();
+    var cf = AC.createBiquadFilter();
+    cf.type = "highpass"; cf.frequency.value = 1800;
+    var cg = AC.createGain();
+    cg.gain.setValueAtTime(vol * 0.18, t);
+    cg.gain.exponentialRampToValueAtTime(0.0001, t + 0.012);
+    c.connect(cf); cf.connect(cg); cg.connect(L.band);
+    c.start(t); c.stop(t + 0.03);
+  }
+
+  /* THE SNARE. Noise through two bands — a body around 200 and a crack
+     up at 1800 — with a short tuned thump under it. On two and four,
+     for ever, because that is the deal. */
+  function snare(t, vol) {
+    var n = AC.createBufferSource(); n.buffer = shortNoise();
+    var hp = AC.createBiquadFilter();
+    hp.type = "highpass"; hp.frequency.value = 700;
+    var bp = AC.createBiquadFilter();
+    bp.type = "bandpass"; bp.frequency.value = 1900; bp.Q.value = 0.7;
+    var g = AC.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
+    n.connect(hp); hp.connect(bp); bp.connect(g); g.connect(L.band);
+    n.start(t); n.stop(t + 0.16);
+    var o = AC.createOscillator(); o.type = "triangle";
+    o.frequency.setValueAtTime(220, t);
+    o.frequency.exponentialRampToValueAtTime(150, t + 0.05);
+    var og = AC.createGain();
+    og.gain.setValueAtTime(vol * 0.5, t);
+    og.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
+    o.connect(og); og.connect(L.band);
+    o.start(t); o.stop(t + 0.09);
+  }
+
+  /* the hat. Twelve milliseconds of bright noise, and the offbeat one
+     is louder than the downbeat one — which is the groove. */
+  function hat(t, vol, open) {
+    var n = AC.createBufferSource(); n.buffer = shortNoise();
+    var hp = AC.createBiquadFilter();
+    hp.type = "highpass"; hp.frequency.value = 7000;
+    var g = AC.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + (open ? 0.11 : 0.026));
+    n.connect(hp); hp.connect(g); g.connect(L.band);
+    n.start(t); n.stop(t + (open ? 0.14 : 0.05));
+  }
+
+  /* THE BASS. A saw and a square an octave apart through a lowpass
+     with a fast envelope on it — which is a plucked electric bass, and
+     the envelope is the finger. Short, so the gaps between the notes
+     are as much of the line as the notes. */
+  function bassHit(t, f, dur, vol) {
+    var lp = AC.createBiquadFilter();
+    lp.type = "lowpass"; lp.Q.value = 5;
+    lp.frequency.setValueAtTime(Math.min(3000, f * 9), t);
+    lp.frequency.exponentialRampToValueAtTime(Math.max(90, f * 2.2), t + 0.09);
+    var g = AC.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(vol * 0.45, t + dur * 0.5);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    [["sawtooth", f, 1], ["square", f / 2, 0.55]].forEach(function (v) {
+      var o = AC.createOscillator();
+      o.type = v[0]; o.frequency.value = v[1];
+      var vg = AC.createGain(); vg.gain.value = v[2];
+      o.connect(vg); vg.connect(lp);
+      o.start(t); o.stop(t + dur + 0.05);
+    });
+    lp.connect(g); g.connect(L.band);
+  }
+
+  /* A CHORD PLAYED SHORT. Three notes, a hair apart so it is strummed
+     rather than stamped, through a bandpass that gives it a body — an
+     electric piano or a muted guitar, depending how hard you hit it. */
+  function stab(t, freqs, dur, vol, bright) {
+    var bp = AC.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = bright ? 1500 : 900;
+    bp.Q.value = 0.55;
+    var g = AC.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
+    g.gain.exponentialRampToValueAtTime(vol * 0.2, t + dur * 0.4);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    freqs.forEach(function (f, i) {
+      var o = AC.createOscillator();
+      o.type = bright ? "sawtooth" : "triangle";
+      o.frequency.value = f;
+      o.detune.value = (i - 1) * 6;
+      var og = AC.createGain(); og.gain.value = 1 / freqs.length;
+      var at = t + i * 0.012;
+      o.connect(og); og.connect(bp);
+      o.start(at); o.stop(t + dur + 0.06);
+    });
+    bp.connect(g); g.connect(L.band);
+  }
+
+  /* THE LEAD, which carries the hook so the crowd has something to
+     sing ALONG WITH rather than being the whole tune on their own. Two
+     saws a few cents apart through a resonant lowpass that opens on
+     the attack: bright, present, and completely unlike a choir. */
+  function lead(t, f, dur, vol) {
+    var lp = AC.createBiquadFilter();
+    lp.type = "lowpass"; lp.Q.value = 6;
+    lp.frequency.setValueAtTime(f * 2.2, t);
+    lp.frequency.exponentialRampToValueAtTime(Math.min(9000, f * 7), t + 0.05);
+    lp.frequency.exponentialRampToValueAtTime(Math.max(600, f * 2.6), t + dur);
+    var g = AC.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.014);
+    g.gain.setValueAtTime(vol, t + Math.max(0.02, dur * 0.62));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    [-7, 7].forEach(function (d) {
+      var o = AC.createOscillator();
+      o.type = "sawtooth"; o.frequency.value = f; o.detune.value = d;
+      var og = AC.createGain(); og.gain.value = 0.5;
+      o.connect(og); og.connect(lp);
+      o.start(t); o.stop(t + dur + 0.05);
+    });
+    lp.connect(g); g.connect(L.band);
+  }
+
   /* ---------------------------------------------------------- the scheduler
      Layers are scheduled a bar ahead and always on the bar, so a layer
      fading in lands in time with the ones already playing instead of
@@ -368,77 +549,118 @@ window.CupChant = (function () {
 
   function hookNotes() {
     if (anthem && anthem.hook && anthem.hook.length) return anthem.hook;
-    /* the old flat figure, spread evenly, for a team with no hook */
     var m = (anthem && anthem.motif) || [0, 2, 4, 2, 0];
     var step = 8 / m.length;
     return m.map(function (d, i) { return [i * step, d, step * 0.95]; });
   }
 
+  /* =======================================================================
+     THE ARRANGEMENT
+
+     Eight bars, and what changes across them is not the volume — it is
+     WHO IS PLAYING. That is how a record builds and it is the thing a
+     fader cannot fake:
+
+       0-1  drums and bass. The groove, on its own, so the ear has
+            something to lock onto before anything melodic happens
+       2-3  the stabs come in, and the lead plays the hook
+       4    THE DROP: the band stops dead. One bar of hats and a clap.
+       5-7  everything, the crowd singing the hook over the lead, and
+            the last two bars with the octave underneath
+
+     The crowd is a DOUBLING now, not the tune. It sits behind the lead
+     in the room while the band plays dry in front of it, which is what
+     a stadium PA with thirty thousand people singing over it actually
+     sounds like — and is the opposite of a choir alone in a church,
+     which is what this was.
+     ======================================================================= */
   function scheduleBar(t) {
     if (!anthem) return;
     var b = beatSecs();
     var root = anthem.key || 196;
     var scale = anthem.scale || "minor";
-    var prog = PROGS[anthem.mood] || PROGS["dark-stormy-epic"];
-    var pos = bar % CYCLE;                    // where we are in the song
+    var prog = PROGS[anthem.mood] || PROGS["anthemic-uplifting"];
+    var pos = bar % CYCLE;
     var chord = prog[bar % prog.length];
     var croot = hz(root, scale, chord, 0);
 
-    /* WHICH PART OF THE SONG THIS BAR IS. */
-    var drop = pos === 4 && E > 0.3;          // the held bar
-    var sung = pos >= 2 && !drop;             // are they singing at all
-    var full = pos >= 5;                      // both sides, full voice
-    var lift = pos >= 6;                      // and doubled underneath
+    var drop = pos === 4 && E > 0.3;
+    var band = !drop;                      // is the rhythm section in
+    var stabsIn = pos >= 2 && !drop;
+    var sung = pos >= 5 || (pos >= 2 && pos <= 3 && E > 0.62);
+    var full = pos >= 5;
+    var lifted = pos >= 6;
 
-    /* THE STOMP. It never stops, including through the drop — it is
-       what the drop is FOR. */
-    /* A DROP IS QUIETER. Which sounds obvious and was got wrong: the
-       first version made the stomp HARDER through the held bar, on the
-       idea that the drums should carry it. Measured bar by bar, the
-       two fastest grounds then had no drop at all — a short bar full
-       of loud drums has the same energy as a bar of singing, so the
-       hole the next bar is supposed to crash into was not there.
-
-       What a terrace actually does is stop. Two beats, spaced, and
-       nothing else — and the silence between them is the instrument. */
-    if (drop) {
-      drum(t, 0.40);
-      drum(t + b * 2, 0.30);
+    /* ------------------------------------------------------------ DRUMS
+       A pop pattern, not a march: kick on one and on the and-of-three,
+       snare on two and four, hats in eighths with the offbeats louder.
+       The kick landing off the beat is what makes it lean forward. */
+    if (band) {
+      kick(t, 0.62);
+      kick(t + b * 2.5, 0.50);
+      if (pos >= 2) kick(t + b * 3.75, 0.26);
+      snare(t + b, 0.34);
+      snare(t + b * 3, 0.36);
+      /* the extra one before the turnaround, which is the fill */
+      if (pos === 7) { snare(t + b * 3.5, 0.26); snare(t + b * 3.75, 0.32); }
+      for (var h = 0; h < 8; h++) {
+        hat(t + b * h * 0.5, h % 2 ? 0.075 : 0.045, h === 7);
+      }
+    } else {
+      /* THE DROP. Hats and one clap, and the hole between them. */
+      for (var hd = 0; hd < 8; hd++) hat(t + b * hd * 0.5, hd % 2 ? 0.08 : 0.04);
       clap(t + b, 0.30, -0.5);
       clap(t + b * 3, 0.30, 0.5);
-    } else {
-      drum(t, 0.5);
-      drum(t + b * 2, 0.42);
-      for (var k = 0; k < 4; k++) {
-        clap(t + b * k, 0.34, k % 2 ? 0.55 : -0.55);
-        /* the off-beat clap is what makes it a terrace rather than a
-           metronome, and it only appears once they are interested */
-        if (E > 0.45) clap(t + b * (k + 0.5), 0.16, k % 2 ? -0.4 : 0.4);
-      }
-    }
-    /* THE RISE INTO THE DROP. One bar of accelerating claps and a
-       filter sweep: the thing that tells a crowd to get ready. */
-    if (pos === 3 && E > 0.45) {
-      for (var r = 0; r < 8; r++) {
-        clap(t + b * 3 + b * (r / 8) * 1.0, 0.10 + r * 0.03, r % 2 ? 0.5 : -0.5);
-      }
+      /* ONE HIT, not a roll. A fill that fills the bar is not a drop,
+         it is a drum solo — measured, the 116bpm ground had no hole at
+         all because two snares and eight hats in a short bar add up to
+         the same energy as the bar of singing they are supposed to be
+         a hole in. The last sixteenth is enough to say "here it
+         comes". */
+      snare(t + b * 3.75, 0.36);
     }
 
-    /* the bed under the voices — out during the drop, which is most of
-       why the drop works */
-    if (!drop) chordBed(croot, t, b * 4, full ? 0.20 : 0.14);
+    /* ------------------------------------------------------------- BASS
+       Root, root, fifth, octave, syncopated — and short, because the
+       gaps are as much of the line as the notes are. */
+    if (band) {
+      var lo = croot / 2;
+      var fifth = hz(root, scale, chord + 4, 0) / 2;
+      bassHit(t, lo, b * 0.42, 0.30);
+      bassHit(t + b * 0.75, lo, b * 0.30, 0.20);
+      bassHit(t + b * 1.5, lo, b * 0.40, 0.26);
+      bassHit(t + b * 2.5, fifth, b * 0.40, 0.26);
+      bassHit(t + b * 3.5, lo * 2, b * 0.36, 0.22);
+    }
+
+    /* ------------------------------------------------------------ STABS
+       On the offbeats, which is where a band puts them and where a
+       string section never would. */
+    if (stabsIn) {
+      var voiced = [0, 2, 4].map(function (add) {
+        return hz(root, scale, chord + add, 1);
+      });
+      [0.5, 1.5, 2.5, 3.25].forEach(function (beat, i) {
+        stab(t + b * beat, voiced, b * 0.30, i === 0 ? 0.16 : 0.12, full);
+      });
+    }
+
+    /* the terrace clap stays on top of all of it, because that is the
+       crowd rather than the band */
+    if (E > 0.4 && band) {
+      clap(t + b, 0.20, -0.55);
+      clap(t + b * 3, 0.20, 0.55);
+    }
 
     if (!sung) { bar++; return; }
 
-    /* THE HOOK. Two bars long, so each bar plays its own half of it,
-       and which half depends on whether this is an even bar of the
-       pair. Call from one side, answered from the other. */
+    /* ------------------------------------------------- THE HOOK, TWICE OVER
+       Once on the lead — bright, dry, in front — and once by the crowd
+       behind it. */
     var notes = hookNotes();
-    var half = (pos % 2) ? 4 : 0;             // beats 0-3 or 4-7
-    var side = (pos % 2) ? 0.62 : -0.62;
-    /* how hard they are singing: the song's own shape, raised by how
-       roused the ground is */
-    var drive = (full ? 0.66 : 0.34) + E * 0.34;
+    var half = (pos % 2) ? 4 : 0;
+    var side = (pos % 2) ? 0.5 : -0.5;
+    var drive = (full ? 0.7 : 0.4) + E * 0.3;
 
     for (var i = 0; i < notes.length; i++) {
       var nb = notes[i][0];
@@ -446,13 +668,10 @@ window.CupChant = (function () {
       var f = hz(root, scale, notes[i][1] + chord, 1);
       var tt = t + (nb - half) * b;
       var dur = notes[i][2] * b;
-      hummed(f, tt, dur * 0.95, full ? 0.11 : 0.08);
-      voices(f, tt, dur * 0.95, full ? 0.20 : 0.13, side, drive, full ? 9 : 5);
-      /* THE OCTAVE UNDERNEATH, last two bars only. A tune doubled an
-         octave down is the cheapest way to make a sound big, and it is
-         what a stand does to a song by accident: the men sing it where
-         they can reach it. */
-      if (lift) voices(f / 2, tt, dur * 0.95, 0.12, -side, drive * 0.7, 5);
+      lead(tt, f * 2, dur * 0.92, full ? 0.16 : 0.11);
+      voices(f, tt, dur * 0.95, full ? 0.17 : 0.11, side, drive, full ? 9 : 5);
+      if (full) hummed(f, tt, dur * 0.9, 0.08);
+      if (lifted) voices(f / 2, tt, dur * 0.95, 0.10, -side, drive * 0.7, 5);
     }
     bar++;
   }
@@ -505,6 +724,12 @@ window.CupChant = (function () {
       ambience: (0.020 + e * 0.020) * d,
       pulse: Math.max(0, (e - 0.22) / 0.78) * 0.30 * d,
       hum: Math.max(0, (e - 0.30) / 0.45) * 0.26 * d,
+      /* THE BAND STARTS EARLY AND STAYS. A record does not fade its
+         drummer in and out with the mood of the crowd; the groove is
+         what the crowd's mood is measured AGAINST. It comes up early,
+         lifts a little when they are roused, and is otherwise the one
+         steady thing in the mix. */
+      band: (0.30 + Math.max(0, (e - 0.20) / 0.80) * 0.32) * d,
       /* the full chant is the last thing in and it comes in fast */
       chant: Math.pow(Math.max(0, (e - 0.55) / 0.45), 0.8) * 0.34 * d,
     };
@@ -516,6 +741,7 @@ window.CupChant = (function () {
     ramp("ambience", L.ambience, v.ambience, 0.6);
     ramp("pulse", L.pulse, v.pulse, 0.8);
     ramp("hum", L.hum, v.hum, 0.9);
+    ramp("band", L.band, v.band, 0.7);
     ramp("chant", L.chant, v.chant, 0.5);
   }
 
@@ -676,7 +902,19 @@ window.CupChant = (function () {
        test of a tune there is.
        ===================================================================== */
     __render: function (seconds, energy) {
-      if (!AC || !anthem) return 0;
+      if (!AC || !anthem) return { bars: 0, barSecs: 1, start: 0 };
+      /* STOP THE LIVE SCHEDULER FIRST.
+
+         init() starts a setTimeout loop that posts the next third of a
+         second of music onto the clock. Against an OfflineAudioContext
+         currentTime stays at zero until the render runs, so that loop
+         keeps piling whole bars on top of each other at t=0 while this
+         function is laying the piece down properly — and it goes on
+         doing it during startRendering(), which is async. The result
+         is a different pile of extra bars every run, which is why the
+         same six songs measured differently each time they were
+         rendered. */
+      if (timer) { clearTimeout(timer); timer = null; }
       E = energy === undefined ? 0.9 : energy;
       /* the faders are ramps, and offline there is no time for one to
          travel — so they are PLACED, at the level the mixer says this
@@ -690,7 +928,12 @@ window.CupChant = (function () {
       bar = 0;
       var t = 0.05, n = 0;
       while (t < seconds) { scheduleBar(t); t += beatSecs() * 4; n++; }
-      return n;
+      /* THE BAR LENGTH, because a caller cannot work it out. The tempo
+         creeps four per cent with the crowd's energy, so a bar is not
+         240/bpm seconds — and a harness measuring bar by bar off the
+         written tempo drifts a whole bar out over eight of them, which
+         makes the drop land in a different column every run. */
+      return { bars: n, barSecs: beatSecs() * 4, start: 0.05 };
     },
 
     debug: function () {
@@ -703,6 +946,7 @@ window.CupChant = (function () {
                  pulse: +L.pulse.gain.value.toFixed(4),
                  hum: +L.hum.gain.value.toFixed(4),
                  chant: +L.chant.gain.value.toFixed(4),
+                 band: +L.band.gain.value.toFixed(4),
                } };
     },
   };

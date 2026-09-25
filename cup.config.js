@@ -346,6 +346,18 @@ window.CUP_CONFIG = {
        bays     how many gangways cut up through the stand
 
        motif    the old flat figure, kept as a fallback
+       THE HOOKS ARE WRITTEN LIKE POP RECORDS, NOT LIKE HYMNS, which is
+       a correction. The first set were long held notes over a slow
+       four — which, sung by a choir over a sustained pad through a
+       two-second reverb, is the standard recipe for scoring a thriller
+       and sounded exactly like one. What the records these stand next
+       to actually have in common is the opposite: SHORT notes, most of
+       them eighths, landing off the beat, repeating a two-bar cell
+       with one small change the second time, in a register a person
+       can shout. Nothing here is held for two beats except the last
+       note of a phrase, and that is the only place a held note earns
+       its keep.
+
        hook     THE TUNE. [beat, degree, length] over eight beats — two
                 bars — where degree 0 is the tonic, 7 the octave above
                 it, and a beat that is not a whole number is off the
@@ -379,15 +391,17 @@ window.CUP_CONFIG = {
                  tiers: "tall", roof: "cantilever", banners: "tifo",
                  lights: "roof", bays: 11 },
       /* dark and slow-building: a low held note that leaps */
-      anthem: { key: 174.6, scale: "minor", tempo: 84, mood: "dark-stormy-epic",
-                title: "THE TIDE",
-                /* Holds, pushes, and then LEAPS a whole octave on the
-                   fifth beat. The leap is the entire song: everything
-                   before it is a run-up and everything after it is the
-                   fall, which is how a slow minor anthem gets a crowd
-                   of people who do not know it to arrive together. */
-                hook: [[0, 0, 2], [2.5, 0, 0.5], [3, 2, 1],
-                       [4, 7, 2], [6, 5, 1], [7, 4, 1]],
+      anthem: { key: 174.6, scale: "minor", tempo: 100, mood: "dark-stormy-epic",
+                title: "TIDELINE",
+                /* A stomp in a minor key with a blues fall in it: two
+                   short notes on the fifth, down through the third to
+                   the tonic, and the second time round it drops BELOW
+                   the tonic before climbing back. Slow enough to swing
+                   and fast enough to be a record. */
+                hook: [[0, 4, 0.5], [0.5, 4, 0.5], [1, 2, 0.5], [1.5, 0, 1],
+                       [3, 2, 0.5], [3.5, 4, 0.5],
+                       [4, 4, 0.5], [4.5, 4, 0.5], [5, 2, 0.5], [5.5, 0, 0.5],
+                       [6, -2, 1], [7, 0, 1]],
                 motif: [0, 0, 4, 3, 0], stems: null },
       squad: ["marina", "anwar", "sage", "thorn"], captain: "anwar",
       formation: "diamond",
@@ -411,17 +425,17 @@ window.CUP_CONFIG = {
                  tiers: "deep", roof: "open", banners: "flags",
                  lights: "pylon", bays: 6 },
       /* stomping, four notes, call and answer */
-      anthem: { key: 196.0, scale: "minor", tempo: 104, mood: "defiant-underdog",
-                title: "STAND UP",
-                /* Every note is off the beat. Starting on the half-beat
-                   is what makes a chant feel like it is being thrown at
-                   somebody rather than counted out, and the answer bar
-                   ends a step HIGHER than the call — which is the
-                   difference between a song and an argument. */
-                hook: [[0.5, 0, 0.5], [1, 0, 0.5], [1.5, 3, 1],
-                       [3, 2, 0.5], [3.5, 0, 1],
-                       [4.5, 0, 0.5], [5, 0, 0.5], [5.5, 3, 1],
-                       [7, 4, 0.5], [7.5, 3, 0.5]],
+      anthem: { key: 196.0, scale: "major", tempo: 116, mood: "defiant-underdog",
+                title: "SOUK FIRE",
+                /* Brass-stab funk. Everything is a sixteenth or an
+                   eighth, nothing lasts, and the phrase answers itself
+                   a fourth higher — the horn-section trick, which is
+                   the most physically exciting thing you can do with
+                   four notes. */
+                hook: [[0, 0, 0.25], [0.5, 0, 0.25], [1, 2, 0.5],
+                       [1.75, 4, 0.25], [2, 4, 0.5], [3, 2, 0.5], [3.5, 0, 0.5],
+                       [4, 3, 0.25], [4.5, 3, 0.25], [5, 5, 0.5],
+                       [5.75, 7, 0.25], [6, 7, 0.5], [7, 4, 1]],
                 motif: [0, 3, 2, 0], stems: null },
       squad: ["gustav", "ember", "lumi", "atlas"], captain: "lumi",
       formation: "diamond",
@@ -442,16 +456,17 @@ window.CUP_CONFIG = {
                  density: 0.78, backdrop: "hills", lighting: "day",
                  tiers: "double", roof: "gable", banners: "scarves",
                  lights: "none", bays: 13 },
-      anthem: { key: 220.0, scale: "major", tempo: 112, mood: "tense-driving",
-                title: "THE RUN",
-                /* The second bar is the first bar one step up. A
-                   sequence like that does not resolve — it promises to
-                   keep climbing — and a promise to keep climbing is
-                   what tension IS. */
-                hook: [[0, 4, 0.5], [0.5, 4, 0.5], [1, 5, 0.5], [1.5, 4, 0.5],
-                       [2, 2, 1], [3, 4, 1],
-                       [4, 5, 0.5], [4.5, 5, 0.5], [5, 6, 0.5], [5.5, 5, 0.5],
-                       [6, 4, 2]],
+      anthem: { key: 220.0, scale: "major", tempo: 124, mood: "tense-driving",
+                title: "BLUE HOUR",
+                /* Four on the floor and a riff that climbs the chord —
+                   the euphoric-festival shape. It goes up to the octave
+                   in the first bar and past it in the second, which is
+                   the cheapest way to make a room put its hands up and
+                   works every single time. */
+                hook: [[0, 0, 0.5], [0.5, 2, 0.5], [1, 4, 0.5], [1.5, 7, 1],
+                       [2.5, 4, 0.5], [3, 5, 1],
+                       [4, 0, 0.5], [4.5, 2, 0.5], [5, 4, 0.5], [5.5, 9, 1],
+                       [6.5, 7, 0.5], [7, 4, 1]],
                 motif: [4, 4, 2, 4, 5], stems: null },
       squad: ["marina", "comet", "sage", "boulder"], captain: "comet",
       formation: "wide",
@@ -488,19 +503,20 @@ window.CUP_CONFIG = {
       /* HERS. A rising five-note figure that soars and lands on the
          fifth — major, mid-fast, and the only anthem here written to be
          sung rather than shouted. */
-      anthem: { key: 207.7, scale: "major", tempo: 98, mood: "anthemic-uplifting",
-                title: "THE LONG WAY",
-                /* HERS, and the only one of the six written to be sung
-                   rather than shouted. Two steps up and a hold, a drop
-                   back, and then the octave on the second bar held for
-                   two whole beats — the longest note anywhere in this
-                   chapter. The hold is the point. A crowd arriving
-                   together on a high note and then STAYING there is
-                   the whole of what people mean by goosebumps, and it
-                   costs one number: the length of that note. */
-                hook: [[0, 2, 0.5], [0.5, 4, 0.5], [1, 5, 2],
-                       [3, 4, 1],
-                       [4, 7, 2], [6, 6, 1], [7, 4, 1]],
+      anthem: { key: 207.7, scale: "major", tempo: 110, mood: "anthemic-uplifting",
+                title: "THE LONG WAY HOME",
+                /* HERS, and the biggest. The first bar is a short
+                   rising figure that lands on the fifth and bounces;
+                   the second bar does the same thing but goes a THIRD
+                   HIGHER and holds, which is the one moment in the
+                   chapter where the tune stops moving. Everything
+                   before it is short and quick, which is exactly what
+                   makes that one long note land — a held note only
+                   works if the notes around it do not. */
+                hook: [[0, 4, 0.5], [0.5, 5, 0.5], [1, 7, 1], [2, 7, 0.5],
+                       [2.5, 5, 0.5], [3, 4, 1],
+                       [4, 4, 0.5], [4.5, 5, 0.5], [5, 9, 1.5],
+                       [6.5, 7, 0.5], [7, 5, 1]],
                 motif: [0, 2, 4, 5, 4], stems: null },
       squad: ["gustav", "ouissy", "echo", "willow"], captain: "ouissy",
       formation: "wide",
@@ -520,14 +536,17 @@ window.CUP_CONFIG = {
                  density: 0.74, backdrop: "coast", lighting: "day",
                  tiers: "single", roof: "open", banners: "flags",
                  lights: "none", bays: 5 },
-      anthem: { key: 185.0, scale: "major", tempo: 92, mood: "warm-nostalgic",
-                title: "THE OLD ROAD",
-                /* A falling phrase, then the same phrase lower. Nothing
-                   in it leaps and nothing in it hurries; it is the only
-                   anthem of the six that sounds like it is remembering
-                   something rather than demanding it. */
-                hook: [[0, 5, 1.5], [1.5, 4, 0.5], [2, 2, 2],
-                       [4, 4, 1.5], [5.5, 2, 0.5], [6, 0, 2]],
+      anthem: { key: 185.0, scale: "major", tempo: 96, mood: "warm-nostalgic",
+                title: "SALT AIR",
+                /* Mid-tempo and syncopated: the same note three times,
+                   pushed a sixteenth late each time so it drags against
+                   the beat. Repetition with a lazy feel rather than a
+                   melody that goes anywhere — the hook is the RHYTHM
+                   here, not the pitches. */
+                hook: [[0, 2, 0.5], [0.75, 2, 0.25], [1, 2, 0.5], [1.5, 4, 0.5],
+                       [2, 2, 1], [3, 0, 1],
+                       [4, 2, 0.5], [4.75, 2, 0.25], [5, 2, 0.5], [5.5, 4, 0.5],
+                       [6, 5, 2]],
                 motif: [2, 1, 0, 2, 4], stems: null },
       squad: ["marina", "willow", "lumi", "boulder"], captain: "willow",
       formation: "flat",
@@ -548,17 +567,17 @@ window.CUP_CONFIG = {
                  density: 0.88, backdrop: "campus", lighting: "night",
                  tiers: "double", roof: "gable", banners: "tifo",
                  lights: "roof", bays: 12 },
-      anthem: { key: 164.8, scale: "minor", tempo: 120, mood: "tense-driving",
-                title: "CIRCUITRY",
-                /* The fastest thing in the chapter and the only hook
-                   that ends ABOVE where it started. A minor tune that
-                   resolves up an octave does not sound resolved; it
-                   sounds like it is about to go round again, which at
-                   a hundred and twenty beats a minute is exactly the
-                   feeling of being pinned in your own half. */
-                hook: [[0, 0, 0.5], [0.5, 0, 0.5], [1, 4, 0.5], [1.5, 3, 0.5],
-                       [2, 4, 1], [3, 6, 1],
-                       [4, 0, 0.5], [4.5, 0, 0.5], [5, 4, 0.5], [5.5, 3, 0.5],
+      anthem: { key: 164.8, scale: "minor", tempo: 128, mood: "tense-driving",
+                title: "NIGHT SHIFT",
+                /* The fastest, and every note is an eighth until the
+                   last one. It alternates tonic and third like a
+                   sequencer and then jumps the octave at the end of the
+                   second bar, so it never settles — which at a hundred
+                   and twenty-eight is the feeling of being pinned in
+                   your own half. */
+                hook: [[0, 0, 0.5], [0.5, 3, 0.5], [1, 0, 0.5], [1.5, 4, 0.5],
+                       [2, 3, 0.5], [2.5, 0, 0.5], [3, 3, 1],
+                       [4, 0, 0.5], [4.5, 3, 0.5], [5, 0, 0.5], [5.5, 4, 0.5],
                        [6, 7, 2]],
                 motif: [0, 4, 3, 4, 6], stems: null },
       squad: ["gustav", "echo", "atlas", "thorn"], captain: "atlas",

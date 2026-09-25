@@ -72,9 +72,10 @@ function wav(channels, rate) {
     const team = (window.CUP_CONFIG.TEAMS.filter(t => t.id === name)[0]
                   || window.CUP_CONFIG.TEAMS[0]);
     window.CupChant.setTeam(team.anthem);
-    const bars = window.CupChant.__render(seconds, 0.92);
+    const r0 = window.CupChant.__render(seconds, 0.92);
     const buf = await off.startRendering();
-    return { notes, bars, rate, bpm: team.anthem.tempo,
+    return { notes, bars: r0.bars, barSecs: r0.barSecs, start: r0.start,
+             rate, bpm: team.anthem.tempo,
              left: Array.from(buf.getChannelData(0)),
              right: Array.from(buf.getChannelData(1)) };
   }, { name, seconds });
@@ -102,7 +103,8 @@ function wav(channels, rate) {
        Eight bars with a hole in bar four is the whole design; if the
        drop is not measurably quieter than the bar that follows it, the
        structure is decoration and the anthem is a loop again. */
-    const barLen = Math.round(r.rate * (60 / r.bpm) * 4);
+    const barLen = Math.round(r.rate * r.barSecs);
+    const bar0 = Math.round(r.rate * r.start);
     /* THE SECOND HALF OF EACH BAR, not the whole of it.
        A held note at the end of the previous bar, plus a stadium
        reverb with a two-second tail on it, rings well past the bar
@@ -111,10 +113,11 @@ function wav(channels, rate) {
        hole is felt in the middle of the bar, so that is where it is
        read, and every bar is read the same way. */
     const bars = [];
-    for (let k = 0; k * barLen < r.left.length && k < 16; k++) {
+    for (let k = 0; bar0 + k * barLen < r.left.length && k < 16; k++) {
       let s2 = 0, n2 = 0;
-      const from = Math.round(k * barLen + barLen * 0.45);
-      for (let i = from; i < Math.min((k + 1) * barLen, r.left.length); i++) {
+      const from = Math.round(bar0 + k * barLen + barLen * 0.45);
+      const to = Math.min(bar0 + (k + 1) * barLen, r.left.length);
+      for (let i = from; i < to; i++) {
         s2 += r.left[i] * r.left[i]; n2++;
       }
       bars.push(Math.sqrt(s2 / Math.max(1, n2)));
