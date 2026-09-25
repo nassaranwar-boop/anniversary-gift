@@ -18751,7 +18751,12 @@ const testHooks = {
     if (!b || !view) return null;
     /* the page's own loop redraws the menu behind the card on every
        frame, so a pose set and then read back is a pose that has
-       already been painted over. Hold the loop for the look. */
+       already been painted over. Hold the loop for the look -- and
+       give it back at the end, because a hook that stops the chapter
+       and never restarts it leaves every check that runs after it
+       looking at a frozen shop. The caller reads the canvas in the
+       same tick, before the resumed loop paints anything else. */
+    const hadRaf = !!raf;
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
     showRoom(b.room);
     /* AND THE LIGHTS COME WITH IT.
@@ -18775,7 +18780,9 @@ const testHooks = {
     view.fov = b.fov;
     view.updateProjectionMatrix();
     if (renderer) renderer.render(scene, view);
-    return { room: b.room, pos: view.position.toArray() };
+    const out = { room: b.room, pos: view.position.toArray() };
+    if (hadRaf && !raf) raf = requestAnimationFrame(frame);
+    return out;
   },
   shown: () => shownRoom,
   view: () => view,
