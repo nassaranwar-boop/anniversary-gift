@@ -156,8 +156,23 @@ module.exports = async function (c) {
          the monitor goes up and parks on her, which is the whole point
          of her -- she is the reason the cameras cost something. The
          sweep is what happens when there is nothing to hold. */
+      /* AND SHE LISTENS TO THE OTHER HALF OF THE INSTRUCTION TOO.
+
+         Night two, at ten past two, in his voice: "Do not look at her
+         all night, though. You will lose the meter and she will still
+         be there." The driver did exactly that -- parked on Marabelle
+         from midnight -- and ran the reserve to nothing at five, went
+         dark, and Jax walked in. That is the game being right: the
+         warning exists, it is specific, and ignoring it costs the
+         night.
+
+         So the camera is a thing she can afford, not a thing she does.
+         Below forty-five per cent the monitor stays down and the doors
+         do the work, which is what he told her on the first night --
+         a shut door holds. */
       const mara = cast.marabelle;
-      const hold = mara && mara.awake && !mara.atDoor && !mara.asleep ? mara.room : null;
+      const hold = mara && mara.awake && !mara.atDoor && !mara.asleep
+                   && G.power > 45 ? mara.room : null;
 
       /* WIND THE FOUR, WHICH IS WHAT THE NOTE ASKED FOR.
 
@@ -182,6 +197,9 @@ module.exports = async function (c) {
           /* hold the camera on her */
           if (!G.monitor) await press('monitor', true);
           else if (G.cam !== hold) await press('next', true);
+        } else if (G.power < 45) {
+          /* low: the monitor goes down and stays down */
+          if (G.monitor) await press('monitor', true);
         } else {
           /* nothing to watch: sweep, and put the monitor down again,
              because it draws the whole time it is up */
