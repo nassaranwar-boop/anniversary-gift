@@ -737,6 +737,28 @@ window.CupPitch2D = (function () {
       ky: this.B / (d * d) * k,  // screen pixels per WORLD unit, in depth
     };
   };
+  /* =======================================================================
+     THE ONE ROW THE STAND AND THE GRASS HAVE TO AGREE ON
+
+     The far stand is drawn standing on the back edge of the ground and
+     the grass is drawn down from it, so they are the same row twice.
+     Computed twice, they disagreed: the stand put its foot seven units
+     past the far line and the grass stopped at four, because side-on
+     the far line is a TOUCHLINE and the seven belongs to a goal end.
+     Two rows in between then belonged to nobody — and nothing clears
+     this canvas, so what showed there was the PREVIOUS FRAME'S grass,
+     scrolling against the current one. It reads exactly like the game
+     is dropping frames, and it is really a two-pixel hole.
+
+     One function, called from both, and the hole cannot come back.
+     ======================================================================= */
+  Pitch.prototype.groundTop = function () {
+    var edge = (this.swap ? EDGE_SIDE : EDGE_END) / this.k;
+    var q = this.swap ? this.project(this.raw.halfW + edge, 0)
+                      : this.project(0, this.raw.len + edge);
+    return Math.min(this.vh - 1, Math.max(0, Math.round(q.y)));
+  };
+
   /* the inverse of project's row, offset and all */
   Pitch.prototype.depthAtY = function (sy) {
     return this.B / (sy + this.oy - this.A);
@@ -872,9 +894,7 @@ window.CupPitch2D = (function () {
        rise behind them; the first build drew them hanging down from it,
        and the grass, which starts at the same line, painted over every
        one of them. */
-    var base = Math.min(this.vh - 1, Math.max(0, Math.round(
-      (this.swap ? this.project(this.raw.halfW + 7 / this.k, 0)
-                 : this.project(0, this.raw.len + 7 / this.k)).y)));
+    var base = this.groundTop();
     var bh = Math.max(3, Math.round(goal.k * 1.6 / this.k));
     var lip = Math.max(0, base - bh);
 
@@ -1195,8 +1215,9 @@ window.CupPitch2D = (function () {
        to one side, so it is not permanently hidden behind the goal —
        and the projection puts it where that lands. */
     var w = 26, h = bh + 6;
-    var anchor = this.project(-this.raw.halfW * 0.62,
-                              this.swap ? 0 : this.raw.len + 7 / this.k);
+    var anchor = this.swap
+      ? this.project(this.raw.halfW + EDGE_SIDE / this.k, this.raw.len * 0.30)
+      : this.project(-this.raw.halfW * 0.62, this.raw.len + EDGE_END / this.k);
     var x = Math.round(anchor.x - w / 2);
     if (x + w < 0 || x > this.vw) return;
     var y = Math.round(lip - 6);
@@ -1504,12 +1525,12 @@ window.CupPitch2D = (function () {
 
     var band = 11 / this.k * (GROUND.mowWidth || 1);
 
-    /* the top of the picture is wherever the far apron ends and the
-       wall begins — above that is the stand's business, and painting a
-       row of it would erase the stand that has already been drawn */
-    var far = this.project(this.swap ? depthMax + edgeDeep : 0,
-                           this.swap ? 0 : depthMax + edgeDeep);
-    var y0 = Math.max(0, Math.round(far.y) + 1);
+    /* the top of the picture is the row the far wall stands on, which
+       is the stand's business above and the ground's below. Not that
+       row PLUS ONE: the stand paints down to it and the grass from it,
+       and a row of daylight between two things that touch is a row
+       nothing paints at all. */
+    var y0 = this.groundTop();
     var prevOut = 1e9;
 
     for (var y = y0; y < this.vh; y++) {
@@ -1536,6 +1557,26 @@ window.CupPitch2D = (function () {
       var apronCol = outD > shadeD ? C.edgeShade : C.apron;
 
       var scale = this.k * FOCAL / d;
+      /* =================================================================
+         DETAIL THAT CANNOT RESOLVE IS NOT DETAIL, IT IS NOISE.
+
+         The far touchline of a side-on view is the whole width of the
+         pitch away, so its entire surround lands in three screen rows.
+         Asking those three rows for a shadow, an apron, a kerb and a
+         strip of run-off does not produce a detailed surround: it
+         produces one grey row, one green row and one grey row, and
+         because the camera pans a third of a pixel at a time, which
+         feature owns which row changes every frame. It flickers, and a
+         flickering band under the hoardings reads as the game dropping
+         frames — which is exactly what it was reported as.
+
+         So: how many rows would this row's surround get? Below about
+         six, it is drawn as one flat band and nothing else. The eye
+         loses nothing it could have seen, and gains a steady picture.
+         ================================================================= */
+      var rowsHere = edgeDeep /
+        Math.max(1e-6, Math.abs(this.depthAtY(y + 1.5) - this.depthAtY(y + 0.5)) / this.k);
+      var fine = rowsHere >= 6;
       var xAt = function (wa) { return this.vw / 2 + (wa - camAlong) * scale; };
       xAt = xAt.bind(this);
       var aLo = xAt(alongMin - edgeAlong), aHi = xAt(alongMax + edgeAlong);
@@ -1558,7 +1599,7 @@ window.CupPitch2D = (function () {
       /* and the same band from the two walls that run across the frame,
          so the corners of the ground go dark from both directions the
          way they actually do */
-      if (outD <= shadeD) {
+      if (fine && outD <= shadeD) {
         var sh = (edgeAlong - runA) * SHADE_SHARE * scale;
         seg(aLo, aLo + sh, C.edgeShade);
         seg(aHi - sh, aHi, C.edgeShade);
@@ -1567,13 +1608,15 @@ window.CupPitch2D = (function () {
          a lighter line, and the two rings stop being two greys and
          start being two SURFACES at different heights. */
       if (outD <= runD) {
-        seg(rLo - 1, rLo, C.apronLip);
-        seg(rHi, rHi + 1, C.apronLip);
+        if (fine) {
+          seg(rLo - 1, rLo, C.apronLip);
+          seg(rHi, rHi + 1, C.apronLip);
+        }
         seg(rLo, rHi, C.runoff);
       }
       /* and the same kerb running across the frame, drawn on whichever
          row the far or near one falls on */
-      if (prevOut > runD && outD <= runD) seg(aLo, aHi, C.apronLip);
+      if (fine && prevOut > runD && outD <= runD) seg(aLo, aHi, C.apronLip);
       prevOut = outD;
 
       /* the pitch itself, only where there actually is pitch */
@@ -1708,17 +1751,16 @@ window.CupPitch2D = (function () {
       ? [0 - EDGE_END / this.k, w.len + EDGE_END / this.k]   // behind each goal
       : [-(w.halfW + EDGE_SIDE / this.k), w.halfW + EDGE_SIDE / this.k];
     var acrossCam = this.swap ? this.cam.y : this.cam.x;
-    var edge = w.halfW + 4 / this.k;          // touchline, then the run-off
     var BOARD = 9, TIER = 42, ROOF = 7;
-    var farEdge = this.swap ? (w.halfW + 12 - this.cam.x)
-                            : (w.len + 12 - this.cam.y);
+    var farEdge = (this.swap ? w.halfW + EDGE_SIDE / this.k - this.cam.x
+                             : w.len + EDGE_END / this.k - this.cam.y);
     var farY = this.A + this.B / (NEAR + farEdge * this.k) - this.oy;
     /* how deep the ground goes, which is how far along these walls run:
        the pitch's depth extent plus its run-off, at both ends */
     var camDeep = this.swap ? this.cam.x : this.cam.y;
     var deepLo = this.swap ? -(w.halfW + EDGE_SIDE / this.k) : -(EDGE_END / this.k);
-    var deepHi = this.swap ? (w.halfW + EDGE_SIDE / this.k + 12)
-                           : (w.len + EDGE_END / this.k + 12);
+    var deepHi = this.swap ? (w.halfW + EDGE_SIDE / this.k)
+                           : (w.len + EDGE_END / this.k);
     var dLo = Math.max(NEAR, NEAR + (deepLo - camDeep) * this.k);
     var dHi = NEAR + (deepHi - camDeep) * this.k;
 
@@ -1798,7 +1840,7 @@ window.CupPitch2D = (function () {
            It stands on the apron now, and two dark green pixels at the
            bottom of a hoarding read as a strip of lawn nobody mows. */
         ctx.fillStyle = C.edgeShade;
-        ctx.fillRect(x, gy, 1, 2);
+        ctx.fillRect(x, gy, 1, 1);
       }
 
       /* pass two: the people, three pixels across like the ones opposite */

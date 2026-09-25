@@ -1047,10 +1047,10 @@ window.OuissyCup = (function () {
      left touchline and 1 at the right. Kept as fractions so the same four
      numbers work whichever end a side is kicking towards. */
   var SLOTS = {
-    gk:  { up: 0.035, across: 0.5 },
-    def: { up: 0.26,  across: 0.5 },
-    mid: { up: 0.50,  across: 0.34 },
-    st:  { up: 0.70,  across: 0.62 },
+    gk:  { up: 0.035, across: 0.50 },
+    def: { up: 0.26,  across: 0.50 },
+    mid: { up: 0.50,  across: 0.22 },
+    st:  { up: 0.70,  across: 0.76 },
   };
 
   /* WHICH SHAPE A SIDE IS PLAYING.
@@ -2510,7 +2510,50 @@ window.OuissyCup = (function () {
      are driving and the other seven is where the direction comes from:
      yours comes from a thumb, theirs comes from `think`.
      ======================================================================= */
+  /* =======================================================================
+     NOBODY STANDS ON A TEAM-MATE
+
+     A formation says where everybody belongs. It does not say what to
+     do when two of them want the same square metre, and the jobs —
+     press, chase, cover, support — regularly ask for exactly that,
+     because they are all arranged around one ball. Measured, two
+     team-mates were inside a body's width of each other for an eighth
+     of the time the ball was in play.
+
+     The fix is not a rule about jobs. It is a standing instruction that
+     belongs to every player at once: if a team-mate is inside your
+     personal space, the place you are going shifts away from him. It
+     runs in moveTo because that is the single funnel every AI movement
+     goes through, so there is no job that can forget about it.
+
+     Two details earn their keep. The player with the BALL is exempt:
+     he has somewhere to be and a team-mate arriving to help should not
+     shove the target off him. And a player going for a loose ball only
+     half-applies it, because two people converging on a ball is
+     football and holding them apart would mean neither arrives.
+     ======================================================================= */
+  function spaceOut(p, tx, ty) {
+    if (p.gk || p.sentOff || G.ball.owner === p) return null;
+    /* two players converging on a loose ball is football, so the one
+       going to get it only half-keeps his distance; everybody else
+       keeps all of it */
+    var urgent = p.job === "chase" || p.job === "press";
+    var s2 = separation(p, urgent ? 20 : 36);
+    if (!s2.x && !s2.y) return null;
+    /* KEEPING OFF EACH OTHER MUST NOT COST THE GOAL SIDE. The push is
+       symmetric, so two defenders converging in a crowded box would
+       shove each other up and down the pitch as readily as apart — and
+       being shoved a stride upfield of your man is exactly the mistake
+       marking exists to avoid. A man holding a mark is pushed ACROSS
+       the pitch only. */
+    var sy = p.job === "mark" ? s2.y * 0.2 : s2.y;
+    return [clamp(tx + s2.x, PITCH.x0 + 6, PITCH.x1 - 6),
+            clamp(ty + sy, PITCH.y0 + 6, PITCH.y1 - 6)];
+  }
+
   function moveTo(p, tx, ty, dt, speedMul) {
+    var room = spaceOut(p, tx, ty);
+    if (room) { tx = room[0]; ty = room[1]; }
     var dx = tx - p.x, dy = ty - p.y;
     var d = len(dx, dy);
     if (d < 1.2) { p.vx *= 0.7; p.vy *= 0.7; return; }
@@ -2904,11 +2947,21 @@ window.OuissyCup = (function () {
        symmetrical: a side defends deeper than it attacks high, because
        conceding is worse than not scoring. */
     var height = mine ? 0.10 + up * 0.62 : -0.06 + up * 0.44;
-    /* and it is not a narrow one: squeezed to three-quarters of the
-       formation's width, three players holding one line ended up
-       standing on each other in the middle of the pitch */
-    var width = mine ? 1.06 : 0.92;
-    var drift = clamp((b.x - PITCH.cx) / (PITCH.w / 2), -1, 1) * (mine ? 0.20 : 0.34);
+    /* AND IT DOES NOT SQUEEZE ITSELF SHUT.
+
+       A side out of possession narrows, in eleven-a-side, because there
+       are eight other players to cover the ground it gives up. With
+       three outfielders there is nobody: narrowing takes a shape that
+       was already only a third of the pitch wide and makes it a
+       quarter, and three players inside a quarter of a pitch is the
+       huddle she was looking at. It still narrows, by a little, because
+       that is what defending is; it no longer collapses.
+
+       `drift` is the same argument. Sliding the whole block a third of
+       the way towards the ball's side, on top of a narrow shape, puts
+       everybody in one corner of the pitch. */
+    var width = mine ? 1.12 : 1.0;
+    var drift = clamp((b.x - PITCH.cx) / (PITCH.w / 2), -1, 1) * (mine ? 0.18 : 0.24);
     /* THE DEFENSIVE LINE.
 
        A block whose depth comes only off the BALL sits where the ball
@@ -2964,11 +3017,25 @@ window.OuissyCup = (function () {
        player is held to the line PLUS a slice of his own slot depth, so
        the shape stays a back man, a middle man and a front man rather
        than a wall. */
-    if (!blk.mine) upF = Math.min(upF, blk.line + (s.up - 0.26) * 0.26);
+    /* A QUARTER OF A SLOT'S DEPTH IS NOT A LAYER. At 0.26 the back man,
+       the middle man and the front man were spread over a ninth of the
+       pitch, which is one row with a rounding error in it. */
+    if (!blk.mine) upF = Math.min(upF, blk.line + (s.up - 0.26) * 0.48);
     return {
       x: clamp(PITCH.x0 + across * PITCH.w, PITCH.x0 + 10, PITCH.x1 - 10),
       y: clamp(blk.own + blk.d * upF * PITCH.h, PITCH.y0 + 12, PITCH.y1 - 12),
     };
+  }
+
+  /* WHICH SIDE OF THE PITCH THIS PLAYER IS. Out of his own slot, so it
+     does not change when the ball does. A slot in the middle has no
+     side of its own, so it takes the one away from the ball — which is
+     the original rule, kept for the one player it is right for. */
+  function slotSide(p, ref) {
+    var a = (p.slot || SLOTS[p.role] || SLOTS.mid).across;
+    if (a < 0.44) return -1;
+    if (a > 0.56) return 1;
+    return (ref && ref.x) < PITCH.cx ? 1 : -1;
   }
 
   /* ------------------------------------------------------------ the jobs
@@ -3254,11 +3321,24 @@ window.OuissyCup = (function () {
     }
 
     if (p.job === "run") {
-      /* THE RUN IN BEHIND. Ahead of the ball, into the channel the
-         carrier is NOT in, so the pass has somewhere to go that is not
-         straight at the man marking him. */
-      var side = car.x < PITCH.cx ? 1 : -1;
-      tx = clamp(PITCH.cx + side * PITCH.w * 0.26 + blk.drift * 30,
+      /* THE RUN IN BEHIND, IN HIS OWN CHANNEL.
+
+         This picked the channel off the CARRIER: whichever side of the
+         pitch he was not on. Which sounds right and is the reason the
+         team had no width at all. The carrier crosses the middle of the
+         pitch several times a passage, and every time he does, the
+         runner's channel flips and he sprints all the way across —
+         so the player whose job is to give the side its width spends
+         most of his time in the middle of it, running through.
+         Measured, the striker's average position was five units from
+         the centre spot when his slot asks for seventy-five.
+
+         A footballer has a side. Taking it from his own slot makes it
+         stable, gives the two of them one channel each without anybody
+         having to coordinate, and means the pass into the channel is
+         always to the same man rather than to whoever has just arrived. */
+      var side = slotSide(p, car);
+      tx = clamp(PITCH.cx + side * PITCH.w * 0.34 + blk.drift * 30,
                  PITCH.x0 + 14, PITCH.x1 - 14);
       ty = clamp(car.y + d * (54 + skill * 26), PITCH.y0 + 16, PITCH.y1 - 16);
       /* DO NOT RUN PAST THE LAST DEFENDER AND STAND THERE.
@@ -3284,9 +3364,18 @@ window.OuissyCup = (function () {
       /* THE SHORT OPTION: level with the ball and a good way to the
          side of it, which is the pass that is always on and the reason
          a side under pressure can keep the ball at all. */
-      var sx = car.x + (car.x < PITCH.cx ? 46 : -46);
+      /* SIX UNITS BEHIND HIM IS LEVEL WITH HIM. A supporting player
+         standing level offers a sideways ball, which goes nowhere and
+         keeps the whole side on one row of the pitch — measured, a team
+         in possession occupied fifteen per cent of the pitch's length.
+         An angle is the pass that is actually always on, and it is what
+         gives the shape depth for free. */
+      /* and the short option comes from HIS side too, half the way
+         across to the ball: near enough to be a pass, far enough that
+         the two of them are not in the same channel */
+      var sx = (PITCH.cx + slotSide(p, car) * PITCH.w * 0.30 + car.x) / 2;
       tx = clamp(sx, PITCH.x0 + 14, PITCH.x1 - 14);
-      ty = clamp(car.y - d * 6, PITCH.y0 + 16, PITCH.y1 - 16);
+      ty = clamp(car.y - d * 26, PITCH.y0 + 16, PITCH.y1 - 16);
       urgency = 0.94;
       aiSprint(p, false, dt);
     } else {
@@ -3298,18 +3387,20 @@ window.OuissyCup = (function () {
          depth is taken from the BALL when the ball is up the pitch and
          from the block when it is not, so the holding player drops as
          an attack goes forward and steps up when it comes back. */
-      var back = clamp(car.y - d * 50, PITCH.y0 + 20, PITCH.y1 - 20);
+      var back = clamp(car.y - d * 62, PITCH.y0 + 20, PITCH.y1 - 20);
       ty = (back + home.y) / 2;
-      tx = (tx + PITCH.cx) / 2;
+      /* HE DOES NOT DRIFT INTO THE MIDDLE. Averaging his slot with the
+         centre circle is what put the spare man on the same column as
+         everybody else: the side that has just lost the ball then has
+         its whole shape inside one corridor, which is a huddle with a
+         tactical name on it. He keeps his own side and only leans in. */
+      tx = tx * 0.78 + PITCH.cx * 0.22;
       urgency = 0.82;
       aiSprint(p, false, dt);
     }
 
-    /* DO NOT STAND ON A TEAMMATE. Two players converging on the same
-       patch is the single most common way a four-a-side shape turns
-       into a huddle, and it costs one loop to push them apart. */
-    var sep = separation(p, 30);
-    tx += sep.x; ty += sep.y;
+    /* the spacing is moveTo's job now, so that no branch here and no
+       branch added later can be the one that forgets it */
     moveTo(p, clamp(tx, PITCH.x0 + 8, PITCH.x1 - 8),
            clamp(ty, PITCH.y0 + 10, PITCH.y1 - 10), dt, urgency);
   }
@@ -3351,7 +3442,13 @@ window.OuissyCup = (function () {
          is to be where the ball goes if the first one is beaten. */
       var ref = car || b;
       var dd = attackDir(p.team);
-      tx = (ref.x + PITCH.cx) / 2;
+      /* Inside the presser, but not ON the centre spot. Covering at the
+         exact middle of the pitch every time means the second defender
+         has no side of his own either, and a back two that share one
+         column are a back one. A third of his own shape keeps him where
+         the ball is likely to be played, without taking him off the
+         inside shoulder that is the whole job. */
+      tx = ref.x * 0.34 + PITCH.cx * 0.34 + home.x * 0.32;
       ty = ref.y - dd * 34;
       /* never deeper than the block, or the cover becomes a spare
          defender standing on his own keeper */
@@ -3448,17 +3545,10 @@ window.OuissyCup = (function () {
       urgency *= aiSprint(p, !!(m && !goalSide(p, m) && dist(p, m) > 16), dt);
     }
 
-    /* KEEPING OFF EACH OTHER MUST NOT COST THE GOAL SIDE.
-
-       The spacing push is symmetric, so two defenders converging in a
-       crowded box shoved each other up and down the pitch as readily as
-       apart — and being shoved a stride upfield of your man is exactly
-       the mistake this whole branch exists to avoid. When a player is
-       holding a mark, the push is applied across the pitch only. */
-    var sep = separation(p, 34);
-    var sepY = p.job === "mark" ? sep.y * 0.2 : sep.y;
-    moveTo(p, clamp(tx + sep.x, PITCH.x0 + 8, PITCH.x1 - 8),
-           clamp(ty + sepY, PITCH.y0 + 10, PITCH.y1 - 10), dt, urgency);
+    /* the spacing, and the marking caveat that goes with it, live in
+       moveTo — see spaceOut */
+    moveTo(p, clamp(tx, PITCH.x0 + 8, PITCH.x1 - 8),
+           clamp(ty, PITCH.y0 + 10, PITCH.y1 - 10), dt, urgency);
     /* anybody within reach can have a go, not only the presser */
     if (car && dist(p, car) < TUNE.tackleReach * pm.tackle + 4) {
       tryChallenge(p, skill * 0.7, pm);
@@ -3535,7 +3625,7 @@ window.OuissyCup = (function () {
       var dx = p.x - q.x, dy = p.y - q.y;
       var dd = len(dx, dy);
       if (dd > want || dd < 0.01) continue;
-      var f = (want - dd) / want * 20;
+      var f = (want - dd) / want * 32;
       sx += dx / dd * f; sy += dy / dd * f;
     }
     return { x: sx, y: sy };

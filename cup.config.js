@@ -546,15 +546,22 @@ window.CUP_CONFIG = {
      shape is not decoration: a flat back three really does sit deeper.
      ================================================================ */
   FORMATIONS: [
+    /* HOW WIDE IS WIDE ENOUGH.
+       These were 0.34 to 0.62 at their broadest, which is a third of
+       the pitch: measured, a side occupied 28 per cent of the width and
+       had its three outfielders inside one 46-unit circle for a ninth
+       of the time the ball was in play. Three players are not a lot to
+       cover a pitch with, and the answer to that is to SPREAD them, not
+       to keep them where they can all be tackled at once. */
     { id: "diamond", name: "DIAMOND", note: "balanced — one up, one back, one wide",
       slots: { gk: { up: 0.035, across: 0.50 }, def: { up: 0.26, across: 0.50 },
-               mid: { up: 0.50, across: 0.34 }, st:  { up: 0.70, across: 0.62 } } },
+               mid: { up: 0.50, across: 0.22 }, st:  { up: 0.70, across: 0.76 } } },
     { id: "wide", name: "WIDE", note: "stretched — good for running at them",
-      slots: { gk: { up: 0.035, across: 0.50 }, def: { up: 0.22, across: 0.34 },
-               mid: { up: 0.52, across: 0.76 }, st:  { up: 0.76, across: 0.44 } } },
+      slots: { gk: { up: 0.035, across: 0.50 }, def: { up: 0.22, across: 0.18 },
+               mid: { up: 0.52, across: 0.84 }, st:  { up: 0.76, across: 0.46 } } },
     { id: "flat", name: "FLAT", note: "deep — hard to get through, slow to break",
-      slots: { gk: { up: 0.035, across: 0.50 }, def: { up: 0.18, across: 0.42 },
-               mid: { up: 0.38, across: 0.60 }, st:  { up: 0.66, across: 0.50 } } },
+      slots: { gk: { up: 0.035, across: 0.50 }, def: { up: 0.18, across: 0.30 },
+               mid: { up: 0.38, across: 0.72 }, st:  { up: 0.66, across: 0.50 } } },
   ],
 
   /* ================================================================
