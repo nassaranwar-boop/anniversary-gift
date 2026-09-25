@@ -91,6 +91,23 @@ module.exports = async function (c) {
       for (const side of ['left', 'right', 'hatch'])
         if (at[side] !== G.doors[side]) press(side);
 
+      /* AND SHE PLAYS THE WAY THE GAME TELLS HER TO.
+
+         The first version of this swept the cameras on a fixed cycle --
+         up, three rooms, down -- and lost night one five times running.
+         The card it lost to says, in Marabelle's own words, what it was
+         doing wrong: "Frozen while she is on camera. Moves the moment
+         you look away. ... do not take your eyes off me."
+
+         A suite that ignores the one instruction the game stops the
+         night to give her is not measuring the game, it is measuring
+         the suite. So when Marabelle is awake and not yet at a door,
+         the monitor goes up and parks on her, which is the whole point
+         of her -- she is the reason the cameras cost something. The
+         sweep is what happens when there is nothing to hold. */
+      const mara = cast.marabelle;
+      const hold = mara && mara.awake && !mara.atDoor && !mara.asleep ? mara.room : null;
+
       /* WIND THE FOUR, WHICH IS WHAT THE NOTE ASKED FOR.
 
          _nightplay2 and 3 never wound anything after orientation, so
@@ -100,18 +117,28 @@ module.exports = async function (c) {
          keeper beat, the wound-one lines and the meter cost ever get
          exercised by a playthrough. */
       let wound = false;
-      if (G.monitor) {
+      /* and never with something at a door: a wind is a second and a
+         half of both hands, and Jax gives her three and a bit */
+      const clear = !at.left && !at.right && !at.hatch;
+      if (G.monitor && clear) {
         for (const id in cast) { const ch = cast[id];
           if (ch.def && ch.def.door && ch.room === G.cam && !ch.atDoor && (ch.wound || 0) < 1.5) {
             wound = await wind(); break; } }
       }
 
-      /* cameras, the way a person uses them: up, three rooms, down */
       if (!wound) {
-        const ph = (window.__sweep++) % 8;
-        if (ph === 0) press('monitor');
-        else if (ph < 4) press('next');
-        else if (ph === 4 && G.monitor) press('monitor');
+        if (hold) {
+          /* hold the camera on her */
+          if (!G.monitor) press('monitor');
+          else if (G.cam !== hold) press('next');
+        } else {
+          /* nothing to watch: sweep, and put the monitor down again,
+             because it draws the whole time it is up */
+          const ph = (window.__sweep++) % 8;
+          if (ph === 0) press('monitor');
+          else if (ph < 4) press('next');
+          else if (ph === 4 && G.monitor) press('monitor');
+        }
       }
 
       if (G.hour !== seen.hour) { seen.hour = G.hour;
@@ -119,8 +146,11 @@ module.exports = async function (c) {
         for (const id in cast) if (cast[id].awake)
           where.push(id + '@' + (cast[id].room || '?') + (cast[id].atDoor ? '!' : '')
                      + '·' + Math.round(cast[id].wound || 0));
+        const shut = ['left', 'right', 'hatch'].filter((k) => G.doors[k]);
         log.push('  ' + G.hour + " o'clock — power " + Math.round(G.power)
-                 + '% — cam ' + G.cam + ' — ' + where.join(' ')); }
+                 + '% — cam ' + (G.monitor ? G.cam : 'down')
+                 + (shut.length ? ' — shut: ' + shut.join(',') : '')
+                 + ' — ' + where.join(' ')); }
       const tp = txt('ns-tape'), sy = txt('ns-say');
       if (tp && tp !== seen.tape) { seen.tape = tp; log.push('   " ' + tp.replace(/\n/g, ' ')); }
       if (sy && sy !== seen.say) { seen.say = sy; log.push('   [ ' + sy.replace(/\n/g, ' ')); }
@@ -158,6 +188,12 @@ module.exports = async function (c) {
         if (shots < 7) { await shot(`n${night}-h${r.hour}`); shots++; }
       }
       if (r.phase === 'play') continue;
+      if (r.phase === 'over') {
+        const how = await p.evaluate(() => { const G = OuissysNightShift.__night.state();
+          return { who: G.killChar || (G.dead && G.dead.id) || '?', doors: G.doors,
+                   monitor: !!G.monitor, cam: G.cam, power: Math.round(G.power) }; }).catch(() => null);
+        if (how) say('  (how: ' + JSON.stringify(how) + ')');
+      }
 
       const c2 = await card();
       if (c2.card) {

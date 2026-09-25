@@ -9923,7 +9923,14 @@ img{-webkit-user-drag:none; user-select:none;}
 
 /* ---------- what the building just said ---------- */
 .ns-say{
-  position:absolute; left:50%; bottom:14cqh; transform:translateX(-50%);
+  /* 14cqh is where it sits when his tape is quiet. When the tape is up
+     the strip rises by however much it has to to clear the caption's
+     top edge -- measured in `sayClear2()`, because the tape is one line
+     or three and the type has a pixel floor under a cq size, so its
+     height at a given stage height is not something a stylesheet can
+     know. Zero when there is nothing to clear. */
+  position:absolute; left:50%; bottom:calc(14cqh + var(--ns-say-lift, 0px));
+  transform:translateX(-50%);
   margin:0; z-index:6; pointer-events:none; max-width:70cqw; text-align:center;
   padding:.7cqh 1.6cqw; border-radius:.4cqw;
   font-family:var(--ns-face); font-size:clamp(9.5px, 1.7cqh, 15px); letter-spacing:.18em;

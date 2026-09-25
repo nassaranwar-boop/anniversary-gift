@@ -1573,10 +1573,26 @@ const NS = {
      `h` is the hour it appears at. The last one that has come round is
      the one showing. --------------------------------------------- */
   tonight: {
+    /* NIGHT ONE USED TO OPEN BY PROMISING SOMETHING IT DOES NOT DO.
+
+       The line at midnight was "Learn where things are. Nothing in here
+       wants to hurt you yet." Night one's roster is
+       `{ cogsworth: 0, marabelle: 2, jax: 4 }` -- one of them is walking
+       from the moment the clock starts, and by four there are three,
+       including the one with the shortest patience at a door. Played
+       cold, taking that line at its word, the first night was lost
+       three times running: sightsee until two, and Marabelle is already
+       in the hall.
+
+       A first night is allowed to be gentle. It is not allowed to say
+       nothing is coming and then send three. So midnight tells the
+       truth about the one that is up, and four says the other thing a
+       new player has no way to know -- that Jax does not wait. */
     1: [
-      { h: 0, t: "Learn where things are. Nothing in here wants to hurt you yet." },
+      { h: 0, t: "Learn where things are. One of them is already up, and he is patient." },
       { h: 2, t: "The four in the back are not stock. Look at them on the cameras." },
       { h: 3, t: "Something of his is taped where his hand would go." },
+      { h: 4, t: "The jack-in-the-box is out. He is the one who will not wait at a door." },
       { h: 5, t: "One hour. Whatever you can hear out there, it stops at six." },
     ],
     2: [
@@ -14326,6 +14342,48 @@ function tapeSay(line, who, through) {
   return true;
 }
 
+/* AND IT IS NOT ALLOWED TO LAND ON HIS WORDS.
+
+   The annunciator was given a fixed `bottom:14cqh` and the tape a fixed
+   `bottom:9cqh`, which is fine while the tape is one line of his and
+   wrong the moment it is three -- a name, a line, and THROUGH THE DOOR
+   under it. That is most of what the caption ever is once the four of
+   them start talking, and the hour turns six times a night, so
+   "HOUR ZERO TWO" printed straight through the middle of Chime saying
+   the one thing she says about him being early.
+
+   The same objection is already written into the line above about
+   orientation: two boxes of words stacked on each other read as a bug.
+   It was simply never applied to the tape.
+
+   A fixed number cannot fix it -- the tape is one line or three, and
+   the type has a pixel floor under a cq size, so its height at a given
+   stage height is not something a stylesheet can know. So it is
+   measured, once, whenever what is on the screen changes: how far the
+   strip would have to rise to sit clear of the caption's top edge, in
+   pixels, handed to CSS as a custom property. Nothing is read per
+   frame; a caption that has not changed costs one integer compare. */
+const SAY_GAP = 6;                   // pixels of air between the two
+let sayLift = 0, sayKey = "";
+function sayClear2(on) {
+  const say = EL["ns-say"], tape = EL["ns-tape"], st = stageEl;
+  if (!say || !st) return;
+  if (!on) { sayKey = ""; return; }
+  /* the tape's height is the only thing that moves the answer, and it
+     only moves when the line does */
+  const up = !!(tape && !tape.hidden);
+  const key = (up ? tape.offsetHeight : 0) + "|" + (G.caption || "").length;
+  if (key === sayKey) return;
+  sayKey = key;
+  if (!up) { sayLift = 0; st.style.setProperty("--ns-say-lift", "0px"); return; }
+  const a = say.getBoundingClientRect(), b = tape.getBoundingClientRect();
+  if (!a.height || !b.height) return;
+  /* where it is now, against where its bottom edge has to be */
+  const want = sayLift + (a.bottom - (b.top - SAY_GAP));
+  sayLift = Math.max(0, Math.round(want));
+  st.style.setProperty("--ns-say-lift", sayLift + "px");
+}
+
 /* the ones that wait for her rather than for the clock */
 /* SOMETHING SHE DID, ANSWERED.
 
@@ -17449,6 +17507,7 @@ function uiTick(dt) {
                (G.phase === "play" || G.phase === "pause");
     EL["ns-say"].hidden = !on;
     if (on) EL["ns-say"].textContent = G.caption;
+    sayClear2(on);
   }
 
   /* the static: a real noise field, redrawn a few times a second, so a
