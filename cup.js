@@ -5960,49 +5960,76 @@ window.OuissyCup = (function () {
     var aCol = (a.kit && a.kit.shirt) || "#c1272d";
     var bCol = (b.kit && b.kit.shirt) || "#6d5fa8";
 
-    /* ---- THE BOARD, top centre ---------------------------------- */
-    var bw = 168, bx = Math.round((UIW - bw) / 2), by = 3;
-    box(bx, by, bw, 24, "#0d1412");
-    box(bx + 1, by + 1, bw - 2, 22, "#16222a");
+    /* =====================================================================
+       ONE SCORE BUG, IN A CORNER
+
+       There used to be five separate things across the top of the
+       picture: a board in the middle, a clock hanging off it, a chip
+       saying which round it was, a chip saying which half it was, and a
+       hundred-and-twenty-pixel heart meter with a name plate beside it.
+       Measured, the top tenth of the frame was 42 per cent chrome and
+       the second tenth another 19, which is a third of the sky over a
+       stadium covered in furniture.
+
+       What a match actually needs on screen is the score, the clock,
+       and nothing else. The round is on the card before kick-off and on
+       every card after it; the half belongs on the clock, which is
+       where a clock keeps it; and the meter is hers, so it goes where
+       her other instrument already is rather than in the middle of the
+       shot.
+
+       And it sits in a corner, the way a broadcast bug does, because
+       the middle of the top edge is where the stand and the sponsor
+       boards are and they are the things that make it look like a
+       stadium.
+       ===================================================================== */
+    /* 48 of side block is what a four-letter short name needs at this
+       size once the crest has taken its 14: FMPM came out as "FM..." at
+       42, which is a bug that cannot tell her whose score is whose. */
+    var bw = 140, bx = 4, by = 4, half = 48;
+    box(bx, by, bw, 22, "#0d1412");
+    box(bx + 1, by + 1, bw - 2, 20, "#16222a");
     line(bx + 1, by + 1, bw - 2, 1, "#2f4450");
-    /* each side wears its own colour down its own end of the board,
-       which is how she knows which number is hers without reading */
-    box(bx + 1, by + 1, 52, 22, aCol);
-    box(bx + bw - 53, by + 1, 52, 22, bCol);
-    box(bx + 1, by + 1, 52, 1, lift(aCol, 60));
-    box(bx + bw - 53, by + 1, 52, 1, lift(bCol, 60));
-    if (a.id) pixCrest(a, bx + 4, by + 6, 16, 12);
-    if (b.id) pixCrest(b, bx + bw - 20, by + 6, 16, 12);
-    drawText(bx + 23, fitText(a.short || "", 28, 1), by + 9, { colour: "#ffffff" });
-    drawText(bx + bw - 23, fitText(b.short || "", 28, 1), by + 9,
+    /* each side wears its own colour down its own end of the bug, which
+       is how she knows which number is hers without reading */
+    box(bx + 1, by + 1, half, 20, aCol);
+    box(bx + bw - half - 1, by + 1, half, 20, bCol);
+    box(bx + 1, by + 1, half, 1, lift(aCol, 60));
+    box(bx + bw - half - 1, by + 1, half, 1, lift(bCol, 60));
+    if (a.id) pixCrest(a, bx + 3, by + 6, 14, 11);
+    if (b.id) pixCrest(b, bx + bw - 18, by + 6, 14, 11);
+    drawText(bx + 19, fitText(a.short || "", 28, 1), by + 8, { colour: "#ffffff" });
+    drawText(bx + bw - 19, fitText(b.short || "", 28, 1), by + 8,
              { align: "right", colour: "#ffffff" });
-    drawText(bx + Math.round(bw / 2), G.score[0] + " : " + G.score[1], by + 5,
+    drawText(bx + Math.round(bw / 2), G.score[0] + ":" + G.score[1], by + 4,
              { align: "center", scale: 2, colour: "#ffffff",
                outline: "#0d1412", outlineW: 2 });
 
-    /* the clock, on a tab under the board */
+    /* THE CLOCK CARRIES THE HALF, because that is what a clock is for
+       and it is two chips fewer on the grass. */
     var mins;
-    if (G.golden) mins = "90+";
+    if (G.golden) mins = "90+ GOLDEN";
     else {
       var base = G.half === 1 ? 0 : 45;
-      mins = Math.floor(base + (G.clock / TUNE.halfSeconds) * 45) + "\u2019";
+      mins = Math.floor(base + (G.clock / TUNE.halfSeconds) * 45) + "\u2019"
+             + (G.half === 1 ? " 1ST" : " 2ND");
     }
     var cw = textWidth(mins) + 10;
-    box(bx + Math.round((bw - cw) / 2), by + 24, cw, 10, "#0d1412");
-    box(bx + Math.round((bw - cw) / 2) + 1, by + 24, cw - 2, 9, "#243640");
-    drawText(bx + Math.round(bw / 2), mins, by + 26,
+    box(bx, by + 22, cw, 10, "#0d1412");
+    box(bx + 1, by + 22, cw - 2, 9, "#243640");
+    drawText(bx + Math.round(cw / 2), mins, by + 24,
              { align: "center", colour: "#ffe9a8" });
 
-    /* ---- the round and the half, top left ----------------------- */
-    var rn = EL["cup-round"] ? EL["cup-round"].textContent : "";
-    hudChip(4, 4, rn || "MATCH", "#243640");
-    hudChip(4, 18, G.golden ? "GOLDEN GOAL"
-            : G.half === 1 ? "1ST HALF" : "2ND HALF", "#1b2a32", "#9fb0a8");
-
-    /* ---- THE HEART METER, under the board ----------------------- */
+    /* ---- THE HEART METER, DOWN WITH HER OTHER INSTRUMENT ---------
+       It was a hundred and twenty pixels wide — a quarter of the frame
+       — parked across the middle of the stand with a name plate beside
+       it. It is hers, like the stamina bar under it, and the two of
+       them together in the corner is one place to look instead of two.
+       Small, because five pips are a count and a count does not need to
+       be big to be read. */
     var sup = superOf(0);
     var hc = (sup && sup.colour) || "#ff5f8f";
-    var hw = 120, hx = Math.round((UIW - hw) / 2), hy = by + 38;
+    var hw = 58, hx = 6, hy = UIH - 26;
     /* the heart itself, which beats when the meter is full */
     var armed = superArmed(0);
     /* THE METER WAS DIVIDING BY A FIELD THAT DOES NOT EXIST.
@@ -6023,7 +6050,7 @@ window.OuissyCup = (function () {
        it is the shape the rest of the chapter is already in. The last
        one to fill beats, and when they are all full they all do. */
     var beat = armed ? 1 + (Math.floor(UI.t * 5) % 2) : 0;
-    var N = 5, gap = 4, hs = Math.floor((hw - gap * (N - 1)) / N);
+    var N = 5, gap = 2, hs = Math.floor((hw - gap * (N - 1)) / N);
     for (var q2 = 0; q2 < N; q2++) {
       var lo = q2 / N, part = clamp((frac - lo) * N, 0, 1);
       var qx2 = hx + q2 * (hs + gap);
@@ -6036,39 +6063,40 @@ window.OuissyCup = (function () {
       var ph = Math.floor(UI.t * 12) % 4;
       for (var i2 = 0; i2 < hw; i2++) {
         if ((i2 + ph) % 4 < 2) {
-          box(hx + i2, hy - 4, 1, 1, "#ffffff");
-          box(hx + i2, hy + 11, 1, 1, "#ffffff");
+          box(hx + i2, hy - 3, 1, 1, "#ffffff");
+          box(hx + i2, hy + hs + 2, 1, 1, "#ffffff");
         }
       }
     }
-    /* the super's name on a plate of its own: white lettering straight
-       onto a stand full of people is lettering you have to hunt for */
-    var sn = fitText((sup && sup.name) || "SUPER", 104, 1);
-    var snw = textWidth(sn) + 6;
-    box(hx + hw + 4, hy - 1, snw, 9, "#0d1412");
-    drawText(hx + hw + 7, sn, hy,
-             { colour: armed ? "#ffffff" : "#7f9a92" });
+    /* THE NAME, ONLY ONCE IT CAN BE FIRED.
+
+       It used to be on a plate beside the meter for the whole match,
+       which is a hundred pixels of lettering telling her the name of
+       something she cannot do yet. Armed, it is the most useful thing
+       on the screen; before that it is furniture. */
+    if (armed) {
+      var sn = fitText((sup && sup.name) || "SUPER", 92, 1);
+      var snw = textWidth(sn) + 6;
+      box(hx, hy - 12, snw, 9, "#0d1412");
+      drawText(hx + 3, sn, hy - 11, { colour: "#ffffff" });
+    }
     /* theirs, thinner and underneath, and only when they have one */
     if (EL["cup-heart-a"] && !EL["cup-heart-a"].hidden) {
       var tc = (superOf(1) && superOf(1).colour) || "#8fa8a0";
-      hudBar(hx, hy + 13, hw, 3, (G.heart[1] || 0) / TUNE.superCost, tc);
+      hudBar(hx, hy + hs + 4, hw, 2, (G.heart[1] || 0) / TUNE.superCost, tc);
     }
 
-    /* ---- POSSESSION AND SHOTS, bottom centre -------------------- */
-    var tot = G.stat.poss[0] + G.stat.poss[1];
-    var hp = tot > 2 ? G.stat.poss[0] / tot : 0.5;
-    var px2 = Math.round((UIW - 150) / 2), py2 = UIH - 20;
-    var fill = hudBar(px2, py2, 150, 6, hp, aCol, bCol);
-    /* the share, printed on whichever end of the strip has room for it */
-    var lab = Math.round(hp * 100) + "%";
-    if (fill > textWidth(lab) + 6) {
-      drawText(px2 + 3, lab, py2, { colour: "#ffffff" });
-    } else {
-      drawText(px2 + 150 - 3, lab, py2, { align: "right", colour: "#ffffff" });
-    }
-    drawText(px2 + Math.round(150 / 2),
-             G.stat.shots[0] + " SHOTS " + G.stat.shots[1], py2 + 9,
-             { align: "center", colour: "#9fb0a8" });
+    /* POSSESSION AND SHOTS ARE NOT LIVE INSTRUMENTS.
+
+       They were a hundred and fifty pixel strip and a line of type
+       across the bottom middle of the picture, under the play, for the
+       whole match. Nobody changes what they are doing on the pitch
+       because possession has moved from 54 to 56 per cent — it is a
+       thing you read afterwards, and it is already on the half-time
+       card and the full-time card, laid out properly, where she is
+       sitting still and can actually take it in.
+
+       Taken off the grass, that is the bottom of the frame back. */
 
     /* =====================================================================
        THE RADAR
@@ -6253,9 +6281,16 @@ window.OuissyCup = (function () {
 
     /* ---- STAMINA, low on the left where her thumb already is ----- */
     var st = G.controlled ? G.controlled.stamina : 1;
-    hudBar(6, UIH - 10, 84, 4, st,
+    hudBar(6, UIH - 10, 58, 4, st,
            st < 0.3 ? "#e0556b" : st < 0.6 ? "#e8b23c" : "#5fd6cc");
-    drawText(6, "RUN", UIH - 19, { colour: "#5f8a7a" });
+    /* the word only while the legend it belongs to is still up. After
+       that the bar is the only bar on the screen and it is sitting
+       under her own meter, which is label enough. */
+    if (legend > 0) {
+      UIX.save(); UIX.globalAlpha = legend;
+      drawText(6, "RUN", UIH - 17, { colour: "#5f8a7a" });
+      UIX.restore();
+    }
 
     /* ---- THE CONTROLS, measured off the real ones ---------------- */
     var pl = G.controlled;
@@ -6306,7 +6341,7 @@ window.OuissyCup = (function () {
     if (legend <= 0) { /* nothing on the grass */ }
     else if (hudTouch()) {
       UIX.save(); UIX.globalAlpha = legend;
-      drawText(6, "SLIDE TO RUN", UIH - 30, { colour: "#4f7a6a" });
+      drawText(6, "SLIDE TO RUN", UIH - 42, { colour: "#4f7a6a" });
       UIX.restore();
     } else {
       UIX.save(); UIX.globalAlpha = legend;
@@ -6317,7 +6352,8 @@ window.OuissyCup = (function () {
          advertising hoardings and the front rows of the stand. This is
          low enough to be on grass and high enough to clear the
          possession strip. */
-      var kz = UIH - 58;
+      /* clear of the heart meter, which now lives in this corner */
+      var kz = UIH - 74;
       [["W A S D", "run"],
        ["SPACE", "tap to pass \u00b7 hold to shoot"],
        ["SHIFT", "super, when the heart is full"]].forEach(function (k2) {

@@ -289,3 +289,11 @@ skull, a sleeve outside the chest it belonged to — was invisible at 1:1
 and obvious at 4x in PIL. The same goes for the pitch: the markings
 shimmered for weeks because nobody looked at them while the camera was
 moving.
+- **`cuphud.js`** — how much of the screen the HUD is wearing. "It feels
+  too full" is a real complaint and a useless instruction, so this turns
+  it into a number: the HUD has its own canvas over the pitch, so the
+  fraction of that canvas which is not transparent IS the fraction of
+  the match she cannot see through. It reports the total and the
+  coverage per tenth of the frame, top to bottom, because the total does
+  not say which of eight things to remove — 8.9% overall hid the fact
+  that the top tenth alone was 42 per cent chrome.
