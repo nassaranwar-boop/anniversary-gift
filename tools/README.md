@@ -230,6 +230,19 @@ heading; waiting for `state().state === 'play'` lets the flash decay.
   with no thumb pad on it, because the hook unhides the scoreboard and
   not the pad — which reads as "there are no touch controls" and is
   really just the hook being a hook.
+
+  It asserts the two things a screenshot shows a person instantly and
+  no other assertion can see: that the radar and the thumb button are
+  not in the same corner, and that the button is forty-four pixels.
+  The radar is painted on a canvas and the button is a DOM element, so
+  nothing in the page can compare them — `hud()` exists to put both in
+  the same coordinates.
+
+  Beware the fonts. Every harness here blocks non-localhost requests
+  and the site loads its fonts from Google, so all DOM text in these
+  screenshots renders in a fallback. "TACKLE" at 8.5px in fallback
+  monospace looks exactly like a label clipped to "TA…", and I fixed
+  that non-bug once before measuring it.
 - **`rotate.js`** — who gets told to turn their phone. Seven device
   shapes, three screens, plus the way past it for a phone with rotation
   lock on and its return on the next load.

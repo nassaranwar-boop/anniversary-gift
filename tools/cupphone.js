@@ -26,6 +26,12 @@ async function tapUi(p, id) {
   await p.mouse.click(r.x, r.y);
 }
 
+let pass = 0, fail = 0;
+const ok = (msg, cond, extra) => {
+  if (cond) { pass++; console.log('  ok   ' + msg); }
+  else { fail++; console.log('  FAIL ' + msg + (extra !== undefined ? '  ' + JSON.stringify(extra) : '')); }
+};
+
 const SIZES = [
   ['portrait', 390, 844],
   ['landscape', 844, 390],
@@ -111,9 +117,39 @@ const SIZES = [
     });
     console.log(name + ' ' + w + 'x' + h + ' -> /tmp/phone-' + name + '.png');
     console.log('  ' + JSON.stringify(geo));
+
+    /* THE TWO INSTRUMENTS IN THE SAME CORNER.
+
+       The radar is painted on a canvas and the thumb button is a DOM
+       element, so nothing in the page can compare them and no
+       screenshot assertion would either. Both are put into page
+       coordinates here and checked for overlap, because "the pass
+       button is drawn straight over the radar" is obvious to a person
+       and invisible to everything else. */
+    const clash = await p.evaluate(() => {
+      const H = OuissyCup.__cup;
+      const hud = H.hud();
+      if (!hud.radar) return { err: 'no radar box' };
+      const c = document.getElementById('cup-ui').getBoundingClientRect();
+      const sx = c.width / hud.radar.ui[0], sy = c.height / hud.radar.ui[1];
+      const R = { x: c.x + hud.radar.x * sx, y: c.y + hud.radar.y * sy,
+                  w: hud.radar.w * sx, h: hud.radar.h * sy };
+      const b = document.getElementById('cup-btn').getBoundingClientRect();
+      const over = !(R.x + R.w <= b.x || b.x + b.width <= R.x ||
+                     R.y + R.h <= b.y || b.y + b.height <= R.y);
+      return { touch: hud.touch, coarse: hud.coarse, over: over,
+               radar: [Math.round(R.x), Math.round(R.y), Math.round(R.w), Math.round(R.h)],
+               btn: [Math.round(b.x), Math.round(b.y), Math.round(b.width), Math.round(b.height)] };
+    });
+    ok(name + ': the game knows it is a thumb before she touches it', clash.touch === true, clash);
+    ok(name + ': the radar is clear of the thumb button', clash.over === false, clash);
+    ok(name + ': the button is a thumb-sized target',
+       Math.min(clash.btn[2], clash.btn[3]) >= 44, clash.btn);
     if (errs.length) console.log('  PAGE ERRORS: ' + JSON.stringify(errs.slice(0, 3)));
     await ctx.close();
   }
-  console.log('DONE');
+  console.log('');
+  console.log(pass + ' passed, ' + fail + ' failed');
   await b.close();
+  process.exit(fail ? 1 : 0);
 })();

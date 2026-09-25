@@ -7079,6 +7079,11 @@ img{-webkit-user-drag:none; user-select:none;}
 .cup-btn{
   position:absolute; right:3.6cqw; bottom:4.4cqh;
   width:17cqh; height:17cqh; border-radius:50%;
+  /* A THUMB NEEDS FORTY-FOUR PIXELS. Sized off the container's height
+     alone, this comes out at 33 on a phone held upright and 30 on a
+     small one — under the floor every platform's guidance puts on a
+     touch target, and it is the only control on the screen. */
+  min-width:44px; min-height:44px;
   border:0; padding:0; cursor:pointer; touch-action:none;
   background:radial-gradient(circle at 36% 28%, #b8f0ff, #46b6e4 58%, #2481ad);
   box-shadow:0 1.1cqh 0 #1a5f80, 0 2cqh 3.4cqh rgba(0,0,0,.45),
@@ -7912,6 +7917,8 @@ img{-webkit-user-drag:none; user-select:none;}
 .cup-btn{
   position:absolute; right:3.4cqw; bottom:4cqh;
   width:15cqh; height:15cqh; border-radius:50%;
+  /* see the note on the other .cup-btn — forty-four pixels minimum */
+  min-width:44px; min-height:44px;
   border:0; padding:0; cursor:pointer; touch-action:none;
   background:radial-gradient(circle at 36% 30%, #9fe6ff, #3ea7d6 68%, #2b7fa8);
   box-shadow:0 .9cqh 0 #1d5d7d, 0 1.8cqh 3cqh rgba(0,0,0,.45);
@@ -7941,6 +7948,9 @@ img{-webkit-user-drag:none; user-select:none;}
 .cup-sup-btn{
   position:absolute; right:4.4cqw; bottom:21cqh;
   width:11cqh; height:11cqh; border-radius:50%;
+  /* the other thumb target, and the smaller of the two — see the note
+     on .cup-btn. At 11% of a 390-tall stage it was 24 pixels across. */
+  min-width:44px; min-height:44px;
   border:0; padding:0; cursor:pointer; touch-action:none; z-index:3;
   --sc:#ff5f8f;
   background:radial-gradient(circle at 36% 30%,

@@ -5927,12 +5927,30 @@ window.OuissyCup = (function () {
     }
   }
 
-  /* whether she is playing with a thumb rather than a keyboard. The pad
-     has carried a `touch` class since it was written and the stylesheet
-     has always used it to drop the keyboard legend; the drawn legend
-     reads the same class rather than inventing a second way to know. */
+  /* =======================================================================
+     WHETHER SHE IS PLAYING WITH A THUMB OR A KEYBOARD
+
+     The pad has carried a `touch` class since it was written, and the
+     class is added on the first pointerdown on the stick. Which means
+     that for the whole of the first passage of play on a phone — before
+     she has touched anything, when she is reading the screen to find
+     out how to play — the game told her the controls were W A S D,
+     SPACE and SHIFT. The one moment the legend exists for is the one
+     moment it was wrong.
+
+     Asking first is better than waiting to be told, so a coarse pointer
+     counts on its own. A key press still wins: a tablet with a
+     keyboard, or a laptop with a touchscreen she is not using, should
+     get the keys back the moment she uses one. */
+  var COARSE = false;
+  try {
+    COARSE = !!(window.matchMedia && window.matchMedia("(pointer: coarse)").matches);
+  } catch (e) { COARSE = false; }
+  var USED_KEYS = false;
+
   function hudTouch() {
-    return !!(EL["cup-pad"] && EL["cup-pad"].classList.contains("touch"));
+    if (EL["cup-pad"] && EL["cup-pad"].classList.contains("touch")) return true;
+    return COARSE && !USED_KEYS;
   }
 
   function drawHud() {
@@ -6091,7 +6109,27 @@ window.OuissyCup = (function () {
     var rw, rh;
     if (SIDE) { rw = 54; rh = Math.max(14, Math.round(rw * (PITCH.w / PITCH.h) * 0.62)); }
     else { rw = 54; rh = Math.round(rw * (PITCH.h / PITCH.w) * 0.62); }
-    var rx = UIW - rw - 6, ry = UIH - rh - 6;
+    /* AND IT MOVES OUT FROM UNDER HER THUMB.
+
+       Bottom right is the right corner for a radar on a keyboard, and
+       it is exactly where the pass button sits on a phone — a hundred
+       and fifty pixels of blue glass painted straight over the one
+       instrument that exists to tell her about the players she cannot
+       see. Two instruments in one corner is not one instrument and a
+       half, it is neither.
+
+       Moving it to the top right instead put it straight through the
+       super's nameplate, which lives up there and is longer than it
+       looks. So it stays in its own corner and slides inboard of the
+       button — the bottom of the frame is the emptiest part of a
+       side-on shot, and a radar an inch to the left is still a radar
+       where she is already looking. */
+    var rx = UIW - rw - 6 - (hudTouch() ? Math.round(UIW * 0.15) : 0);
+    var ry = UIH - rh - 6;
+    /* kept where a harness can read it: the radar is painted on a
+       canvas and the thumb button is a DOM element, so "do these two
+       overlap" is a question nothing else in the page can answer */
+    RADAR_BOX = { x: rx, y: ry, w: rw, h: rh, ui: [UIW, UIH] };
     /* the box, with the pitch's own dark green inside it */
     box(rx - 2, ry - 2, rw + 4, rh + 4, "#0d1412");
     box(rx - 1, ry - 1, rw + 2, rh + 2, "#2a3a34");
@@ -7039,6 +7077,9 @@ window.OuissyCup = (function () {
      button at this resolution reads as something you can press.
      ======================================================================= */
   var uiCvs = null, UIX = null, UIW = 0, UIH = 0;
+  /* where the radar landed this frame, in UI coordinates — see the note
+     at the point it is written */
+  var RADAR_BOX = null;
 
   /* A colour, lightened or darkened by a fixed step rather than by a
      percentage — at eight bits a proportional shade of a dark colour is
@@ -9344,6 +9385,9 @@ window.OuissyCup = (function () {
 
     document.addEventListener("keydown", function (e) {
       if (!playing) return;
+      /* a real key press settles the question of what she is playing
+         with, on a touchscreen laptop as much as anywhere else */
+      USED_KEYS = true;
       var k = e.key;
       /* a menu takes the keyboard while it is up */
       if (UI.on) {
@@ -9836,6 +9880,16 @@ window.OuissyCup = (function () {
        it. This snaps it to where it is heading, which is what every
        screenshot of the match actually wants. */
     camSnap: function () { placeCamera(0, true); return hooks.state(); },
+    /* THE HUD'S OWN GEOMETRY, so a harness can ask whether two
+       instruments are sitting on top of each other. The radar is
+       painted on a canvas and the thumb button is a DOM element, so
+       there is no other way to compare them, and "the pass button is
+       drawn straight over the radar" is exactly the kind of thing that
+       is obvious in a screenshot and invisible to every assertion. */
+    hud: function () {
+      return { touch: hudTouch(), coarse: COARSE, usedKeys: USED_KEYS,
+               radar: RADAR_BOX };
+    },
     /* TURN THE PITCH SIDEWAYS WITHOUT RELOADING.
 
        The orientation is a config flag, which is the right thing for
