@@ -13,6 +13,120 @@ landed, what is half-done and what the next session should do first.
 **Add a new entry every session.** Anything not written down here is
 lost when the container is reclaimed.
 
+### 2026-09-25 — the night shift, played cold and taken apart
+
+**Asked for:** play the night shift in its branch and analyse everything
+about it — every button, every placement, every line, every sound, the
+process of it — not just by reading the code but as a new player
+visiting the site. Find whatever is wrong or missing, fix it, and make
+it feel like a film rather than a chore.
+
+**First, where it lives.** Not on main. The chapter was taken off main
+on 19 Sept at his own request and the whole site WITH it lives on
+`site-with-night-shift` — 20,210 lines of `night-shift.js` and 278
+voice takes that main does not have. Anything fixed here goes there.
+Merging main back is NOT the way to carry a fix across: main is this
+branch minus the game, so the merge arrives carrying a deletion of the
+chapter. It was tried, it conflicted exactly that way, and it was
+abandoned for a surgical swap of the one `<script>` that needed moving.
+
+**TEN FAULTS. The big one first.**
+
+**EVERY SHOT OF THE OPENING FILM STARTED INSIDE A WALL.** Seven beats,
+ninety seconds, the first thing a new player sees. Measured with the
+new `tools/introshot.js`, which walks each camera move and fires nine
+rays through the middle of the frame: at the start of the push-in the
+nearest geometry was **two centimetres** from the lens on the foyer,
+the workshop and the party room, and **zero** on the hall and the
+arcade. The camera began outside the room's shell, in the geometry, and
+emerged a third of the way through. The stage flew through something at
+38% of its move and the office at 75%. What that looks like when you
+play it is a shot that opens on a black shape and then clears, seven
+times in a row. The party room's was a dome across the middle of the
+frame, which is what a prop looks like from the inside — that is what
+sent me looking, in a screenshot, under the line "There are four in the
+back room that I never sold."
+
+Every LOOK is untouched; the framing was his. Only the start and end of
+each move changed, by the smallest amount that clears the room, and
+every one still travels 0.9 to 3.9 metres so none became a still. The
+office needed a shape rather than a nudge: pulled inside its back wall
+it had 0.18m of travel left, so it is a dolly and crane now.
+
+**THE MENU WAS 23-PIXEL BUTTONS ON A PHONE.** Measured at 390x844: every
+button on the title card was 23–26px and the six night numbers were
+FIFTEEN, against the 44px this site holds every other control to. Two
+right decisions meeting badly — the stage is deliberately 52% of an
+upright phone so the door buttons sit under the picture rather than
+over the doorway, and the overlay is `inset:0` inside that stage. So a
+card wanting 400px was fitted into 219 and `fitCard` shrank it to
+`FIT_MIN`, 0.58. That floor is on READABILITY; nothing anywhere was a
+floor on being able to press the thing. While a card is up there is
+nothing to watch, so it gets the whole screen now — six hundred empty
+pixels became the card's, and nothing needs shrinking or scrolling.
+
+**And eight more:** the chapter's own name at 8.6px on a landscape
+phone (the one caption in the file with no pixel floor); the opening
+title with no plate, invisible against the lit foyer wall; four cards
+labelled `TITLE`, the developer's word, now `THE WEEK`; the location
+pill from the visitor tracker parked under his opening line and, on a
+phone, on top of the door buttons; the branch still carrying the old
+tracker that asks on every refresh; `HOW IT WORKS` telling her to wind
+the four and never once saying how — the chapter's central verb with no
+instructions; the chapter's name printed twice on the first portrait
+screen; and `introPose`, a hook I added, cancelling the frame loop and
+never giving it back.
+
+**THE INSTRUMENTS LIED THREE TIMES**, and each one would have let me
+say it was fine:
+
+- a probe that skipped anything invisible — which is all four of them
+  during the film — and so reported "clear" while looking at nothing;
+- a canvas read one frame after the draw, which on WebGL with no
+  preserved buffer returns black for every pixel, and reported a hole
+  in all seven shots at once;
+- `introPose` calling `showRoom` without `useView`. `showRoom` only
+  swaps which room is VISIBLE; the six-lamp rig that lights it is moved
+  by `useView`, right beside it in the frame loop. Posing without it
+  left every lamp in the room before, so the measurement said black
+  while the screenshots of that same film were plainly lit.
+
+And a fourth, after the fixes: `cardshots` asserted a card "fits inside
+the stage", which was fair until cards were deliberately let out of the
+stage — then it produced six failures that were the fix working. It
+measures against the window now.
+
+**TWO NEW TOOLS.** `tools/introshot.js` — the opening film, judged for
+depth rather than darkness, because a toy shop at night is legitimately
+half black and "how dark is this frame" flags all seven and proves
+nothing. `tools/cardshots.js` — every card in the chapter photographed
+and checked: the title, how it works, the record, the drawer, the
+mixer, the night card, the pause, the find, the page she decides about,
+the save, being caught. Half of those a careful player never reaches,
+which is why nobody had looked at them. 22/22 at laptop size and 22/22
+on a phone.
+
+**Three things that looked like faults and were not**, each settled by
+measurement rather than argument: CUSTOM NIGHT is not on the board until
+the week is done; night two is disabled until night one is finished;
+and the caught card takes twelve seconds to appear IN HERE because the
+frame loop clamps dt to 0.1s so a backgrounded tab cannot skip a night,
+and this container paints about one frame a second with a card up. On a
+phone holding 10fps it lands in the 1.15 seconds it was written for.
+Also the night buttons: 26px visible, but they carry an invisible 44px
+target under `@media (hover:none)` and were right all along.
+
+**Green:** storycheck 114, endcheck 47, overcheck 42, midcheck 67,
+scriptcheck 40 (three playthroughs), camcheck 13, geomcheck 12,
+saycheck 11, revealcheck 7, oncecheck 4, codecheck 7, linecheck 5,
+castcheck 9, enginecheck 3, seamcheck 34 clean seams, nightbeats, and
+cardshots 22 at both sizes. `sidebyside` has 9 failures and not one of
+them is in the night shift — they are the gate, the hub, the keepsake
+and the apocalypse at landscape-phone sizes, and they are the next
+thing to look at. `mainshape` wants a second server on port 8901.
+
+**NEXT:** those nine `sidebyside` failures in the other four chapters.
+
 ### 2026-09-19c — the gate lying down, the big screens, and the faults you have to read for
 
 **Asked for:** a full detailed sweep of the code for mistakes; whether
