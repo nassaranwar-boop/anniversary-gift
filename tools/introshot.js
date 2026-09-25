@@ -24,6 +24,10 @@
    when she is being asked to look at the room. */
 const { chromium } = require('playwright-core');
 const NEAR = Number(process.env.NEAR || 0.75);   // metres: against the lens
+/* and how much of the picture is allowed to be something within arm's
+   reach. A third is foreground -- a counter corner, the edge of a
+   curtain, a shelf the camera is looking past -- and half is a wall. */
+const FILL = Number(process.env.FILL || 0.42);
 
 let pass = 0, fail = 0;
 const t = (n, c, note) => { c ? pass++ : fail++;
@@ -49,9 +53,11 @@ const t = (n, c, note) => { c ? pass++ : fail++;
     const beats = N.script().intro.beats;
     const view = N.view();
     const out = [];
+    const ARM = 1.4;                  /* metres: within arm's reach of the lens */
     for (let i = 0; i < beats.length; i++) {
       const room = N.rooms()[beats[i].room];
       let worst = { k: null, dist: 99, lum: null };
+      let fill = { k: null, frac: 0 };
       const walk = [];
       for (let s = 0; s <= 8; s++) {
         const k = s / 8;
@@ -66,10 +72,33 @@ const t = (n, c, note) => { c ? pass++ : fail++;
             const h = rc.intersectObject(room.group, true);
             if (h.length && h[0].distance < nearest) nearest = h[0].distance;
           }
+        /* AND HOW MUCH OF THE FRAME IT IS.
+
+           Nine rays through the middle half answer "is the lens
+           buried". They do not answer the other half of the question,
+           which playing it cold raised: the foyer beat has a large
+           flat pale slab filling the bottom-right third, and nothing
+           in the middle of that frame is close to anything. A slab in
+           a corner is foreground framing when it is a piece of the
+           shop and an accident when it is a wall the camera has
+           backed into, and the difference is how MUCH of the picture
+           it is. So a 9x9 grid over the whole frame, and the fraction
+           of it standing within arm's reach. */
+        let near = 0, total = 0;
+        for (let gx = 0; gx < 9; gx++)
+          for (let gy = 0; gy < 9; gy++) {
+            const u = -0.9 + (1.8 * gx) / 8, v = -0.9 + (1.8 * gy) / 8;
+            rc.setFromCamera(new three.Vector2(u, v), view);
+            const h = rc.intersectObject(room.group, true);
+            total++;
+            if (h.length && h[0].distance < ARM) near++;
+          }
+        const frac = near / total;
+        if (frac > fill.frac) fill = { k: k, frac: +frac.toFixed(2) };
         walk.push(+nearest.toFixed(2));
         if (nearest < worst.dist) worst = { k: k, dist: +nearest.toFixed(2), lum: N.frameLum() };
       }
-      out.push({ beat: i, room: beats[i].room, walk: walk, worst: worst });
+      out.push({ beat: i, room: beats[i].room, walk: walk, worst: worst, fill: fill });
     }
     return out;
   }, NEAR);
@@ -84,6 +113,13 @@ const t = (n, c, note) => { c ? pass++ : fail++;
       r.worst.dist >= NEAR,
       `closest ${r.worst.dist}m at ${Math.round(r.worst.k*100)}% through the move` +
       (r.worst.lum != null ? `, frame lum ${r.worst.lum}` : ''));
+  });
+  console.log();
+  rows.forEach(r => {
+    t(`beat ${r.beat} (${r.room}): the shot is not mostly a near wall`,
+      r.fill.frac <= FILL,
+      `${Math.round(r.fill.frac*100)}% of the frame within arm's reach` +
+      (r.fill.k != null ? ` at ${Math.round(r.fill.k*100)}% through the move` : ''));
   });
   console.log(`\n${pass} passed, ${fail} failed`);
   await b.close();

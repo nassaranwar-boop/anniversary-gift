@@ -29,6 +29,7 @@ module.exports = async function (c) {
   const run = (warp, ticks) => p.evaluate(async ([warp, ticks]) => {
     const H = OuissysNightShift.__night;
     const log = [];
+    const t0 = performance.now();
     const txt = (id) => { const e = document.getElementById(id);
                           return e ? (e.innerText || '').trim() : ''; };
     const press = (k) => {
@@ -79,7 +80,6 @@ module.exports = async function (c) {
         else if (w.indexOf('HOLD IT') >= 0 || w.indexOf('KEY IN HIS BACK') >= 0) await wind();
         /* the untimed lines are `hold:` timers inside playStep */
         for (let n = 0; n < warp * 30; n++) if (H.pumpFrame(1 / 30) !== 'play') break;
-        await new Promise((r2) => setTimeout(r2, 0));
         continue;
       }
 
@@ -102,7 +102,7 @@ module.exports = async function (c) {
       let wound = false;
       if (G.monitor) {
         for (const id in cast) { const ch = cast[id];
-          if (ch.def && ch.def.door && ch.room === G.cam && !ch.atDoor && (ch.wound || 0) < 3) {
+          if (ch.def && ch.def.door && ch.room === G.cam && !ch.atDoor && (ch.wound || 0) < 1.5) {
             wound = await wind(); break; } }
       }
 
@@ -126,10 +126,19 @@ module.exports = async function (c) {
       if (sy && sy !== seen.say) { seen.say = sy; log.push('   [ ' + sy.replace(/\n/g, ' ')); }
 
       for (let n = 0; n < warp * 30; n++) if (H.pumpFrame(1 / 30) !== 'play') break;
-      await new Promise((r2) => setTimeout(r2, 0));
     }
+    /* ONE FRAME AT THE END, NOT ONE PER TICK.
+
+       The loop used to hand the page back between every tick so its own
+       rAF could run. A frame costs a second and a half here, so ten
+       ticks bought fourteen seconds of rendering nobody was going to
+       look at -- the screenshots are capped at seven a night and they
+       are taken between chunks. One yield at the end is enough to leave
+       a current picture on the glass for whoever takes one. */
+    await new Promise((r2) => setTimeout(r2, 0));
     const G = H.state();
-    return { log: log, phase: G.phase, hour: G.hour, night: G.night, power: Math.round(G.power) };
+    return { log: log, phase: G.phase, hour: G.hour, night: G.night, power: Math.round(G.power),
+             ms: Math.round(performance.now() - t0) };
   }, [warp, ticks]);
 
   for (let night = 1; night <= NIGHTS; night++) {
@@ -142,6 +151,7 @@ module.exports = async function (c) {
       const r = await run(WARP, CHUNK).catch((e) => ({ err: e.message }));
       if (r.err) { say('  !! ' + r.err); break; }
       r.log.forEach((l) => say(l));
+      if (guard === 1) say(`  (a chunk of ${CHUNK} ticks cost ${r.ms}ms in the page)`);
 
       if (r.hour !== lastHour && r.phase === 'play') {
         lastHour = r.hour;
