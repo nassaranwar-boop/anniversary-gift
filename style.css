@@ -9808,6 +9808,19 @@ img{-webkit-user-drag:none; user-select:none;}
    down there going spare, and a thumb on a button is a thumb that is
    not covering the doorway it is meant to be watching. */
 @media (orientation: portrait){
+  /* THE CARDS GET THE WHOLE SCREEN, because there is nothing to watch
+     while one is up. The stage is held to 52% of an upright phone so
+     the door buttons can sit under the picture instead of over the
+     doorway; the overlay lives inside that stage, so a card was being
+     fitted into about 219 pixels with six hundred going spare, and the
+     menu's buttons came out at 23px against the site's own 44px floor.
+     The stage is overflow:visible here already. */
+  .ns-stage[data-card] .ns-overlay{ top:-38vh; bottom:-30vh; }
+  /* and the sign above the stage is the card's own title said twice,
+     so it stands down while a card is up */
+  .ns-stage[data-card] ~ .ns-titlebar,
+  .ns-frame:has(.ns-stage[data-card]) .ns-titlebar{ visibility:hidden; }
+
   .ns-titlebar{ display:block; }
   .ns-frame{ justify-content:center; padding:2vh 0 0; gap:0; }
   .ns-stage{ width:min(100%, calc(var(--app-h) * 0.52 * 1.7778)); overflow:visible; }

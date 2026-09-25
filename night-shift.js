@@ -16235,6 +16235,20 @@ function overlay(html, cls) {
   o.className = "ns-overlay on " + (cls || "");
   o.innerHTML = html;
   o.setAttribute("aria-hidden", "false");
+  /* A CARD IS NOT A PICTURE, SO IT DOES NOT LIVE IN THE PICTURE'S BOX.
+
+     Held upright, the stage is deliberately short -- 52% of the screen
+     -- so that the door buttons can sit UNDER it rather than over the
+     doorway she is watching. The overlay is inset:0 inside that stage,
+     so every card was being squeezed into about 219 pixels with six
+     hundred going spare above and below it, and fitCard had no choice
+     but to shrink the menu until its buttons were 23 pixels and the
+     six night numbers were fifteen.
+
+     While a card is up there is nothing to watch, so it is allowed the
+     whole screen: the portrait rule opens the overlay past the top and
+     bottom of the stage, which already has overflow:visible there. */
+  if (stageEl) stageEl.dataset.card = "1";
   o.querySelectorAll("[data-go]").forEach((b) => {
     b.addEventListener("click", (e) => { e.stopPropagation(); route(b.dataset.go); });
   });
@@ -16251,10 +16265,40 @@ function overlay(html, cls) {
 }
 
 /* the fitter, exposed so a rotation can re-run it */
+/* A THUMB IS FORTY-FOUR PIXELS, AND SCALING DOES NOT KNOW THAT.
+
+   fitCard shrinks a card until it fits and stops at FIT_MIN, 0.58,
+   which is a floor on READABILITY -- "below this it is too small to
+   read". Nothing in it is a floor on being able to press the thing.
+   Held upright, a phone gives this chapter a 16:9 stage about 219
+   pixels tall, the title card is much taller than that, and 0.58 is
+   what came out: measured at 390x844, every button on the menu was 23
+   to 26 pixels and the six night numbers were FIFTEEN. The chapter's
+   own note over .ns-cine-skip says 44px is the target buttons.js holds
+   every other control in the site to.
+
+   A menu is not a picture, so when scaling would take its controls
+   under a thumb the card keeps its size and SCROLLS instead. The
+   overlay is already built to scroll -- it says so over align-items --
+   and fit-scroll pins the buttons to the bottom of it, which is the
+   behaviour the long cards already rely on. */
+const THUMB = 40;
 function fitOverlay() {
   const o = EL["ns-overlay"];
   if (!o || !window.fitCard) return;
-  o.querySelectorAll(".ns-card").forEach((c) => window.fitCard(c, 10));
+  o.querySelectorAll(".ns-card").forEach((c) => {
+    const k = window.fitCard(c, 10);
+    if (k >= 0.999) return;
+    const btn = c.querySelector(".ns-btn, [data-go]");
+    if (!btn || btn.getBoundingClientRect().height >= THUMB) return;
+    /* hand the size back and let it scroll instead */
+    const cs = getComputedStyle(o);
+    const padV = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+    const room = Math.max(120, (o.clientHeight || 0) - padV - 10);
+    c.style.transform = "";
+    c.style.maxHeight = Math.round(room) + "px";
+    c.classList.add("fit-scroll");
+  });
 }
 /* the site re-fits whatever is up when the phone turns; this is how
    the chapter says what "whatever is up" means for it */
@@ -16266,6 +16310,7 @@ function noOverlay() {
   o.className = "ns-overlay";
   o.innerHTML = "";
   o.setAttribute("aria-hidden", "true");
+  if (stageEl) delete stageEl.dataset.card;
 }
 
 function nightsDone() {
