@@ -5540,6 +5540,11 @@ window.OuissyCup = (function () {
        further, which is the same picture for four times the fill. */
     if (cvs.width !== w || cvs.height !== h) { cvs.width = w; cvs.height = h; }
     if (cvs) cvs.classList.add("px");
+    /* AND THE BUFFER IS CHOSEN FROM THE CANVAS, not fixed at 480x270.
+       Told nothing, the renderer blits its fixed buffer at whatever
+       whole number fits and fills the rest of the frame in with the
+       roof colour — 44 per cent of a 1280x720 laptop. See setViewport. */
+    if (R2 && R2.setViewport) R2.setViewport(w, h);
     uiSize();
   }
 
@@ -7224,7 +7229,13 @@ window.OuissyCup = (function () {
        renderer halves that when it cuts in close, and the UI must not
        follow it there: a menu that doubled in size every time the camera
        pushed in would be a different menu. It tracks the BASE screen. */
-    var w = window.CupPitch2D.BASE_W, h = window.CupPitch2D.BASE_H;
+    /* THE SAME PIXEL GRID AS THE PITCH. The renderer's base frame now
+       follows the screen, so a UI pinned to a constant 480x270 would be
+       stretched by a different, fractional amount than the pitch beside
+       it — two pixel grids in one picture, which is the one thing the
+       whole retro layer exists to avoid. */
+    var w = R2.baseW || window.CupPitch2D.BASE_W;
+    var h = R2.baseH || window.CupPitch2D.BASE_H;
     /* WITH THE PIXEL LAYER OFF, the renderer's buffer is the full CSS
        size of the stage — a thousand pixels across. A five-by-seven
        font in that is three millimetres tall and the menus become
@@ -7232,9 +7243,9 @@ window.OuissyCup = (function () {
        is doing. PIXEL.on is about the GAME's look; the menus are pixel
        art either way. */
     if (!cfg("PIXEL.on", true)) {
+      var aspect = w / h;
       h = clamp(Math.round(h / 1.4), 140, 300);
-      w = Math.max(2, Math.round(h * (window.CupPitch2D.BASE_W /
-                                      window.CupPitch2D.BASE_H)));
+      w = Math.max(2, Math.round(h * aspect));
     }
     if (w === UIW && h === UIH) return;
     UIW = uiCvs.width = w;

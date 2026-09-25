@@ -69,10 +69,19 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
     const game = document.getElementById('cup-canvas');
     const cs = getComputedStyle(ui);
     const r = ui.getBoundingClientRect();
+    const R = OuissyCup.__cup.r2();
     return {
       uiStore: [ui.width, ui.height],
       gameStore: [game.width, game.height],
-      base: [window.CupPitch2D.BASE_W, window.CupPitch2D.BASE_H],
+      /* THE PITCH'S OWN RESOLUTION IS THE ONE IT IS CURRENTLY USING,
+         not the module's reference pair. The renderer picks its buffer
+         from the size of the screen it is on so the picture fills the
+         frame at a whole-number scale, so 480x270 is where the camera
+         was tuned and not what it necessarily draws. Reading the
+         constant here asserted the UI matched a number the pitch had
+         stopped using. */
+      base: [R.baseW, R.baseH],
+      refBase: [window.CupPitch2D.BASE_W, window.CupPitch2D.BASE_H],
       css: [Math.round(r.width), Math.round(r.height)],
       rendering: cs.imageRendering,
       radius: cs.borderRadius,

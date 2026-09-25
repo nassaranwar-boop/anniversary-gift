@@ -305,6 +305,9 @@ window.CupPitch2D = (function () {
        so a projection asked for before the first zoomTo is a number
        rather than a NaN that quietly poisons every row on the screen. */
     this.oy = 0;
+    /* the buffer the camera was tuned against; setViewport replaces it
+       with one that fits the screen the moment there is a screen */
+    this.baseW = BASE_W; this.baseH = BASE_H;
     /* the camera's own shape. "persp" is what ships; "oblique" is the
        fixed-foreshortening alternative the greybox exists to compare. */
     this.mode = "persp";
@@ -395,6 +398,58 @@ window.CupPitch2D = (function () {
     this.k = DEFAULT.halfW / half;
   };
 
+  /* =======================================================================
+     A FRAME THE SIZE OF THE SCREEN IT IS ON
+
+     present() blits the buffer at a WHOLE-NUMBER scale, because a pixel
+     that is 1.44 screen pixels wide is two pixels here and one there
+     and the whole picture crawls. That part is right and stays.
+
+     What was wrong is that the buffer was always 480x270, so the whole
+     number it could be blitted at was whatever happened to fit — and
+     the rest of the frame was filled in with the roof colour. At
+     960x540 that is exactly two and there is nothing left over, which
+     is the size every harness in tools/ runs at, which is why a hundred
+     green assertions never once mentioned it. Everywhere else:
+
+       1280x720 laptop        44% of the frame dead
+       1440x900 laptop        44% dead
+       phone, landscape       52% dead
+       phone, upright         cropped by 90x51
+
+     So the buffer is chosen FROM the screen instead. Pick the whole
+     number scale whose resulting frame is nearest the 270 rows the
+     camera was tuned against, then take as many rows and columns as fit
+     at that scale. A bigger window gets more of the stadium rather than
+     the same picture with a border; a smaller one gets fewer, larger
+     pixels, which is what a small screen wants anyway.
+
+     The dimensions come out as multiples of six because the zoom levels
+     are whole divisors — 2 and 3 — and a buffer that does not divide by
+     both of them cleanly would reintroduce the same border every time
+     the camera cut in.
+     ======================================================================= */
+  var REF_H = BASE_H;        // the frame height the camera was tuned against
+
+  Pitch.prototype.setViewport = function (dw, dh) {
+    dw = Math.max(64, dw | 0); dh = Math.max(36, dh | 0);
+    var best = 1, err = 1e9;
+    for (var s = 1; s <= 8; s++) {
+      /* nearest in RATIO, not in pixels: half the rows is as far from
+         the reference as twice the rows, and a difference measured in
+         pixels would not agree */
+      var e = Math.abs(Math.log((dh / s) / REF_H));
+      if (e < err) { err = e; best = s; }
+    }
+    var bw = Math.max(120, 6 * Math.floor(dw / best / 6));
+    var bh = Math.max(72, 6 * Math.floor(dh / best / 6));
+    if (bw === this.baseW && bh === this.baseH) return;
+    this.baseW = bw; this.baseH = bh;
+    var was = this.zoom || 1;
+    this.zoom = 0;                      // make zoomTo rebuild the buffer
+    this.zoomTo(was);
+  };
+
   Pitch.prototype.zoomTo = function (level) {
     /* 1 is the match, 2 is a cut-in, 3 is a portrait. Whole divisors
        only: 480/2 and 480/3 are both whole numbers of pixels and the
@@ -403,8 +458,8 @@ window.CupPitch2D = (function () {
     level = Math.max(1, Math.min(3, Math.round(level || 1)));
     if (level === this.zoom && this.ctx) return;
     this.zoom = level;
-    this.vw = Math.round(BASE_W / level);
-    this.vh = Math.round(BASE_H / level);
+    this.vw = Math.round((this.baseW || BASE_W) / level);
+    this.vh = Math.round((this.baseH || BASE_H) / level);
     this.buf.width = this.vw; this.buf.height = this.vh;
     this.ctx = this.buf.getContext("2d");
     this.ctx.imageSmoothingEnabled = false;
@@ -474,7 +529,7 @@ window.CupPitch2D = (function () {
     var yRef = this.focusD
       ? this.A + this.B / this.focusD
       : 0.78 * BASE_H;                  // before anything has been watched
-    this.oy = yRef * (1 - this.vh / BASE_H);
+    this.oy = yRef * (1 - this.vh / REF_H);
   };
 
   Pitch.prototype.rnd = function (i) { return this.seeds[(i | 0) & 2047]; };

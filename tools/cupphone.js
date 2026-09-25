@@ -47,6 +47,15 @@ const SIZES = [
     await p.route('**/*', r => r.request().url().startsWith('http://127.0.0.1') ? r.continue() : r.abort());
     await p.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
     await p.waitForTimeout(900);
+    /* PAST "TURN YOUR PHONE" THE WAY A PLAYER WITH ROTATION LOCK ON
+       WOULD. In portrait the prompt covers the page and swallows every
+       tap, which is exactly its job — but the point of this harness is
+       to see the match at phone sizes, so it takes the way out rather
+       than pretending the prompt is not there. */
+    await p.evaluate(() => {
+      const b = document.getElementById('rotate-anyway');
+      if (b && getComputedStyle(document.getElementById('rotate-me')).display !== 'none') b.click();
+    });
     await p.evaluate(() => { try { localStorage.clear(); } catch (e) {} showScreen('hub'); startHub(); });
     await p.waitForTimeout(250);
     await p.click('#hub-card-cup');
