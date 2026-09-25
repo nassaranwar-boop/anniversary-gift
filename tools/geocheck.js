@@ -36,15 +36,26 @@ const t = (n, c, note) => { c ? pass++ : fail++;
   /* one browser context per visitor, so localStorage survives the
      reloads the way it does for a real person */
   const run = async (label, how) => {
-    const ctx = await b.newContext({ viewport: { width: 420, height: 800 } });
+    /* The blocked visitor needs the browser's own switch thrown, and
+       Browser.setPermission is a browser-level command: sent down a
+       page session belonging to a fresh context it lands nowhere, which
+       is how the first version of this check "blocked" somebody who was
+       in fact only unasked. So she gets the default context and a
+       browser-level session, with her storage wiped first so nothing
+       carries over from the visitor before her. */
+    const ctx = how === 'block' ? b.contexts()[0] || await b.newContext()
+                                : await b.newContext({ viewport: { width: 420, height: 800 } });
     await ctx.setGeolocation({ latitude: 31.63, longitude: -7.99 });
     if (how === 'allow') await ctx.grantPermissions(['geolocation'], { origin: ORIGIN });
+    const p = await ctx.newPage();
+    await p.setViewportSize({ width: 420, height: 800 });
     if (how === 'block') {
-      const s = await ctx.newCDPSession(await ctx.newPage());
+      await p.goto(ORIGIN + '/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
+      await p.evaluate(() => { try { localStorage.clear(); sessionStorage.clear(); } catch (e) {} });
+      const s = await b.newBrowserCDPSession();
       await s.send('Browser.setPermission', {
         permission: { name: 'geolocation' }, setting: 'denied', origin: ORIGIN });
     }
-    const p = await ctx.newPage();
     await p.route('**/*', (r) => {
       const u = r.request().url();
       /* the worker and the beacon are never really posted to */
@@ -81,14 +92,22 @@ const t = (n, c, note) => { c ? pass++ : fail++;
               return v === 'granted' || v === 'denied'; } catch (e) { return false; }
       }, { timeout: 15000, polling: 250 }).catch(() => {});
       await p.waitForTimeout(1500);
-      loads.push(await p.evaluate(() => ({
+      loads.push(await p.evaluate(async () => ({
         calls: window.__geoCalls,
         pill: window.__pillEver,
         stored: (() => { try { return localStorage.getItem('visit_geo_choice'); } catch (e) { return '?'; } })(),
-        state: null
+        /* what the BROWSER says, not what the test hoped it set. The
+           first version of this check never read it back and so could
+           not tell a real block from a visitor who simply never
+           answered -- which is why it reported a pass it had not
+           earned, and then a failure that was its own. */
+        state: await (async () => {
+          try { return (await navigator.permissions.query({ name: 'geolocation' })).state; }
+          catch (e) { return 'unsupported'; }
+        })()
       })));
     }
-    await ctx.close();
+    if (how !== 'block') await ctx.close(); else await p.close();
     console.log(`\n--- ${label}: ` + JSON.stringify(loads));
     return loads;
   };
@@ -101,6 +120,8 @@ const t = (n, c, note) => { c ? pass++ : fail++;
   t('allowed: and her yes is written down', a[2].stored === 'granted', a[2].stored);
 
   const d = await run('she blocks it', 'block');
+  t('blocked: the browser really is reporting a block',
+    d.every((l) => l.state === 'denied'), 'states: ' + d.map((l) => l.state).join(', '));
   t('blocked: geolocation is never called at all',
     d.every((l) => l.calls === 0), 'calls per load: ' + d.map((l) => l.calls).join(', '));
   t('blocked: and the "Location is off" pop-up never appears',
