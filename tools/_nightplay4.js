@@ -61,6 +61,13 @@ module.exports = async function (c) {
 
     window.__sweep = window.__sweep || 0;
     let seen = { tape: '', say: '', tutor: '', hour: -1 };
+    const ring = [];
+    const note = (G, at) => {
+      const d = (o) => (o.left ? 'L' : '-') + (o.right ? 'R' : '-') + (o.hatch ? 'H' : '-');
+      ring.push(G.hour + ':' + Math.round(G.power) + '% doors=' + d(G.doors)
+                + ' at=' + d(at) + (G.monitor ? ' cam=' + G.cam : ' down'));
+      if (ring.length > 10) ring.shift();
+    };
     for (let i = 0; i < ticks; i++) {
       const G = H.state();
       if (G.phase !== 'play') { log.push('!phase ' + G.phase); break; }
@@ -88,6 +95,7 @@ module.exports = async function (c) {
       const at = { left: false, right: false, hatch: false };
       for (const id in cast) { const ch = cast[id];
         if (ch.awake && ch.atDoor && !ch.talking) at[ch.def.door] = true; }
+      note(G, at);
       for (const side of ['left', 'right', 'hatch'])
         if (at[side] !== G.doors[side]) press(side);
 
@@ -167,8 +175,11 @@ module.exports = async function (c) {
        a current picture on the glass for whoever takes one. */
     await new Promise((r2) => setTimeout(r2, 0));
     const G = H.state();
+    const killed = G.killChar && G.killChar.def ? G.killChar.def.name
+                 : (G.dead && G.dead.def ? G.dead.def.name : null);
     return { log: log, phase: G.phase, hour: G.hour, night: G.night, power: Math.round(G.power),
-             ms: Math.round(performance.now() - t0) };
+             ms: Math.round(performance.now() - t0),
+             last: (killed ? killed + ' — ' : '') + ring.join(' | ') };
   }, [warp, ticks]);
 
   for (let night = 1; night <= NIGHTS; night++) {
@@ -188,11 +199,12 @@ module.exports = async function (c) {
         if (shots < 7) { await shot(`n${night}-h${r.hour}`); shots++; }
       }
       if (r.phase === 'play') continue;
-      if (r.phase === 'over') {
-        const how = await p.evaluate(() => { const G = OuissysNightShift.__night.state();
-          return { who: G.killChar || (G.dead && G.dead.id) || '?', doors: G.doors,
-                   monitor: !!G.monitor, cam: G.cam, power: Math.round(G.power) }; }).catch(() => null);
-        if (how) say('  (how: ' + JSON.stringify(how) + ')');
+      if (r.phase === 'over' && r.last) {
+        /* THE LAST FEW SECONDS, WHICH IS THE ONLY PART THAT EXPLAINS IT.
+           `G.killChar` is a live scene node, so it cannot come back over
+           the wire -- everything here is flattened to a string in the
+           page before it leaves. */
+        say('  (the last ticks: ' + r.last + ')');
       }
 
       const c2 = await card();
