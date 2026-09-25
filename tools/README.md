@@ -305,6 +305,52 @@ moving.
   projection where each corner lands and samples the rendered pitch at
   that pixel. All six corners came back painted — the box is right and
   the shape is the camera.
+- **`cupshape.js`** — do they keep a shape, or do they all go and stand
+  by the goal? "Sometimes all of them are next to the goal" is a
+  complaint about a thing that happens SOMETIMES, which is exactly what
+  you cannot settle by watching: two minutes look fine and the one
+  passage that looked wrong is over before you can say what it was. So
+  it plays three matches, samples every side six times a second with
+  celebrations excluded, and counts four different ways of being wrong
+  — the huddle, a penalty area full of people with the ball elsewhere,
+  two team-mates inside a body's width, and how much of the pitch's
+  width a side actually occupies. The first version read `st.ball.y`,
+  which does not exist — state() carries ballX/ballY — so every crowded
+  box counted as a crowded box with the ball at the other end.
+- **`cupsfx.js`** — is there a sound for every thing that happens? You
+  cannot listen to a harness, so it wraps every entry in the bank and
+  counts the calls across two matches. What it is really for is the
+  silent failure: a sound that is DEFINED and never fires is the same as
+  a sound that is not there, and nothing is wrong — there is simply
+  nothing there. Footsteps were exactly that for the whole of this
+  chapter's life.
+- **`cupscore.js`** — is there actually a different piece of music in
+  each place? Reads the score rather than hearing it: every cue is asked
+  whether it exists, whether it is DIFFERENT (its own key, tempo and
+  dress), and whether it is moving — bars being scheduled and the gain
+  off the floor. The third is the one that fails quietly. It also checks
+  the thing the score is for: three rounds, one piece each, the key
+  climbing and the tempo with it, and the same tune every time.
+- **`cupostrender.js`** — the same offline trick as `ostrender.js`, for
+  the cup. Renders a cue through an OfflineAudioContext and writes a
+  .wav, so the music can be PLAYED, plus peak, RMS, bars and how many
+  oscillators actually started. A synth score that throws inside its
+  note scheduler goes silent without reporting anything.
+- **`cuplive.js`** — is it alive, and is it still? Two opposite questions
+  about one picture. The crowd has to move, or the stand is wallpaper
+  and the eye stops looking at it. The GROUND has to not move: with the
+  camera frozen and the ball dead, every pixel of grass, paint and
+  surround should be identical from one frame to the next. That second
+  one is the one worth having — a hole in a repainted canvas is
+  invisible to every assertion about geometry, colour and layout,
+  because all of those are true, and it only shows up as the picture
+  disagreeing with itself between frames, which on a phone reads as the
+  game dropping frames. Getting it to say anything true took three
+  goes: the chapter's own frame loop was still stepping the match, then
+  camSnap turned out to snap to a target that kept moving (hence
+  `camHold`), and then the lens itself was still easing — freezing the
+  camera is not the same as freezing the picture.
+
 - **`cupedge.js`** — does the field END? For a long time it did not.
   The mowing was painted as a full-width band on every screen row, so
   the touchlines and goal lines were paint on a green plane that ran to

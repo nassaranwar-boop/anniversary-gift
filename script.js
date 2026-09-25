@@ -113,7 +113,7 @@ const CHAPTER_FILES = {
   nightshift: ["night-shift.js"],
   /* the config comes first: cup.js reads it as it initialises */
   cup: ["cup.config.js", "cup.sprites.js", "cup.pitch2d.js",
-        "cup.chant.js", "cup.js"],
+        "cup.chant.js", "cup.ost.js", "cup.js"],
 };
 function loadChapter(name) {
   return Promise.all((CHAPTER_FILES[name] || []).map(loadScript));

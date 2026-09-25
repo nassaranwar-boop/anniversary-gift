@@ -224,6 +224,10 @@ window.CupPitch2D = (function () {
   var BASE = {};
   Object.keys(C).forEach(function (k) { BASE[k] = C[k]; });
 
+  /* Measured, not guessed: of a 7.5ms frame, 3.0ms is drawStand and
+     essentially all of it is the 5538 fillRect calls a stand full of
+     people costs. A cache in front of this bought nothing, because the
+     arithmetic was never the expensive part. Left plain. */
   function mix(a, b, t) {
     var ca = parseInt(a.slice(1), 16), cb = parseInt(b.slice(1), 16);
     var f = function (s) {

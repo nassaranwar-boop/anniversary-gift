@@ -804,6 +804,23 @@ window.OuissyCup = (function () {
     },
     shot:    function () { burst(0.09, 0.30, 1700, 1.0); tone("sine", 220, 60, 0.14, 0.24); },
     tackle:  function () { burst(0.13, 0.18, 380, 0.8); },
+    /* =====================================================================
+       A FOOT GOING INTO GRASS
+
+       The quietest thing in the bank and the one that happens most, so
+       it is built to disappear: eighteen milliseconds of noise around
+       six hundred hertz with almost no resonance, which is a scuff, and
+       a breath of low sine under it, which is the weight landing.
+
+       It alternates between two pitches, because a run is left-right
+       and a single repeated sample at a fixed interval is a metronome.
+       The ear picks that out instantly and then cannot stop hearing it.
+       ===================================================================== */
+    step:    function (vol, other) {
+      var f = other ? 660 : 560;
+      burst(0.018, 0.030 * vol, f, 0.7);
+      tone("sine", other ? 96 : 88, 54, 0.045, 0.026 * vol);
+    },
     post:    function () { tone("square", 900, 520, 0.16, 0.16); },
     net:     function () { burst(0.22, 0.12, 2600, 0.6); },
     save:    function () { burst(0.10, 0.20, 700, 1.0); tone("sine", 120, 60, 0.12, 0.14); },
@@ -906,103 +923,61 @@ window.OuissyCup = (function () {
   };
 
   /* =======================================================================
-     THE MENUS HAVE A TUNE NOW
+     THE MENUS HAVE A SCORE NOW
 
-     There was nothing under the menus at all: she opened the chapter
-     into total silence and the first sound in it was a whistle. This is
-     eight bars of warm nothing-in-particular — four chords, a soft bass
-     under them and one note picked out on top — made the same way as
-     everything else in here, which is to say out of oscillators, because
-     there is not an audio file anywhere in this repository.
+     What was here was eight bars of warm nothing-in-particular: four
+     chords, a bass under them and one note picked out on top, looping
+     every twelve seconds. It was better than the silence it replaced
+     and it was not in the same room as the rest of this site, where the
+     walk theme is played eleven different ways by six synthesised
+     instruments through a generated hall.
 
-     It schedules one bar at a time, a bar ahead, rather than laying the
-     whole loop down at once: a tab left in the background for ten
-     minutes would otherwise come back with ten minutes of chords queued
-     up inside it, all of which would then play.
+     The chapter has a real score now and it lives in cup.ost.js — one
+     original theme, eight bars long, in nine different sets of clothes,
+     with a different key and tempo for each round of the tournament so
+     the bracket TIGHTENS as she goes up it. This is the switch and the
+     wiring; the music is over there.
+
+     It is handed the chapter's own context and master gain, exactly as
+     the chant engine is, so there is one output and one volume control
+     for everything the chapter makes.
      ======================================================================= */
-  var musicOn = false, musicTimer = null, musicGain = null, musicBar = 0;
-  /* Four chords that do not resolve, so the loop has no seam in it. A
-     progression that lands home every eight bars announces itself every
-     eight bars, and a menu she might sit on for two minutes reading a
-     squad list should not keep arriving anywhere. */
-  var MENU_BARS = [
-    { root: 196.00, notes: [196.00, 293.66, 392.00, 587.33] },   // G
-    { root: 220.00, notes: [220.00, 329.63, 440.00, 659.25] },   // Am
-    { root: 164.81, notes: [164.81, 246.94, 329.63, 493.88] },   // Em
-    { root: 174.61, notes: [174.61, 261.63, 349.23, 523.25] },   // F
-  ];
-  var BAR = 3.1;
+  var musicOn = false, musicCue = "menu";
 
-  function menuMusic(on) {
+  function menuMusic(on, which) {
+    if (!window.CupScore) return;
     if (on) {
-      if (musicOn || !soundOn || !audio()) return;
+      if (!soundOn || !audio()) return;
+      window.CupScore.init(AC, master, { volume: 0.5 });
+      window.CupScore.setOn(true);
       musicOn = true;
-      musicBar = 0;
-      musicGain = AC.createGain();
-      musicGain.gain.setValueAtTime(0.0001, AC.currentTime);
-      musicGain.gain.exponentialRampToValueAtTime(0.05, AC.currentTime + 1.4);
-      musicGain.connect(master);
-      musicTick();
+      if (which) musicCue = which;
+      window.CupScore.play(musicCue);
       return;
     }
-    if (!musicOn) return;
     musicOn = false;
-    if (musicTimer) { clearTimeout(musicTimer); musicTimer = null; }
-    if (musicGain && AC) {
-      /* taken down over a beat rather than cut, because a chord that
-         stops dead is a bug however deliberate it was */
-      var g = musicGain, t = AC.currentTime;
-      try {
-        g.gain.cancelScheduledValues(t);
-        g.gain.setValueAtTime(Math.max(0.0001, g.gain.value), t);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
-        setTimeout(function () { try { g.disconnect(); } catch (e) {} }, 1100);
-      } catch (e) {}
-    }
-    musicGain = null;
+    window.CupScore.stop();
   }
 
-  function musicTick() {
-    if (!musicOn || !AC || !musicGain) return;
-    var bar = MENU_BARS[musicBar % MENU_BARS.length];
-    var t0 = AC.currentTime + 0.05;
-
-    var voice = function (f, at, dur, vol, type, glide) {
-      var o = AC.createOscillator(), g = AC.createGain();
-      o.type = type || "triangle";
-      o.frequency.setValueAtTime(f, t0 + at);
-      if (glide) o.frequency.linearRampToValueAtTime(glide, t0 + at + dur);
-      g.gain.setValueAtTime(0.0001, t0 + at);
-      g.gain.exponentialRampToValueAtTime(vol, t0 + at + Math.min(0.5, dur * 0.3));
-      g.gain.exponentialRampToValueAtTime(0.0001, t0 + at + dur);
-      o.connect(g); g.connect(musicGain);
-      o.start(t0 + at); o.stop(t0 + at + dur + 0.05);
-    };
-
-    /* the bass, held under the whole bar */
-    voice(bar.root / 2, 0, BAR * 0.96, 0.30, "sine");
-    /* the chord, the three of them coming in a fraction apart so it is
-       strummed rather than stamped */
-    bar.notes.slice(0, 3).forEach(function (f, i) {
-      voice(f, 0.04 + i * 0.05, BAR * 0.88, 0.16, "triangle");
-    });
-    /* and one note on top, in a different place each bar */
-    var top = bar.notes[3];
-    voice(top, BAR * 0.34, BAR * 0.5, 0.09, "sine");
-    if (musicBar % 2 === 1) voice(top * 1.5, BAR * 0.66, BAR * 0.3, 0.05, "sine");
-
-    musicBar++;
-    musicTimer = setTimeout(musicTick, BAR * 1000);
+  /* MOVE THE SCORE WITHOUT RESTARTING IT. Screens call this rather than
+     switching the music off and on again, because a cue change
+     crossfades and a stop-then-start does not. */
+  function scoreCue(name) {
+    musicCue = name;
+    if (musicOn && window.CupScore) window.CupScore.play(name);
+    else menuMusic(true, name);
   }
 
   function wakeSound() {
     if (!playing || !soundOn) return;
     /* whichever of the two belongs to where she actually is */
+    if (window.CupScore) window.CupScore.mute(false);
     if (G && G.state === "menu") menuMusic(true);
     else startCrowd();
   }
   function sleepSound() {
     stopCrowd(); menuMusic(false);
+    if (window.CupScore) window.CupScore.mute(true);
     /* the chant goes quiet with everything else — it has its own graph,
        so it needs telling */
     if (window.CupChant) window.CupChant.mute(true);
@@ -2669,15 +2644,61 @@ window.OuissyCup = (function () {
       p.legs = "slide";
       if (p.tackleT <= 0) p.coolT = TUNE.tackleCool;
     }
+    var moved = len(p.vx, p.vy) * dt;
     p.x += p.vx * dt; p.y += p.vy * dt;
     p.x = clamp(p.x, PITCH.x0 - 4, PITCH.x1 + 4);
     p.y = clamp(p.y, PITCH.y0 - 10, PITCH.y1 + 10);
+    footfall(p, moved);
 
     /* `legs` is down to two poses now. It used to name a frame of a
        four-frame pixel run cycle; the rig swings its own legs off a sine
        wave, so all the simulation still has to say is whether this
        player is on their feet or sliding. */
     if (p.tackleT <= 0) p.legs = len(p.vx, p.vy) > 6 ? "run" : "stand";
+  }
+
+  /* =======================================================================
+     FOOTSTEPS, OFF THE GROUND COVERED RATHER THAN OFF A TIMER
+
+     A step happens every stride, and a stride is a DISTANCE. Driven off
+     a timer, a sprinting player and a walking one take steps at the
+     same rate and the sound comes apart from the picture; driven off
+     distance, sprinting speeds the steps up for free and pulling up
+     slows them down, without a single line about either.
+
+     What stops eight players turning it into a drum roll is not
+     volume, it is a hearing distance. The camera is on the ball, so
+     that is where the ear is: a step is loud if it is hers, audible if
+     it is near the ball, and silent otherwise. On top of that there is
+     one shared cooldown across the whole match, because two players in
+     step with each other is a flam, and a flam is the one thing that
+     makes a footstep sound like a sound effect.
+     ======================================================================= */
+  var STRIDE = 24;              // world units of ground per step
+  var stepCool = 0;
+
+  function footfall(p, moved) {
+    if (!soundOn || p.gk || p.sentOff) return;
+    if (G.state !== "play" && G.state !== "kickoff") return;
+    if (moved < 0.05) { p.stride = 0; return; }
+    p.stride = (p.stride || 0) + moved;
+    if (p.stride < STRIDE) return;
+    p.stride -= STRIDE;
+    p.stepL = !p.stepL;
+    if (stepCool > 0) return;
+    /* how near the ear is. Hers is always heard; everybody else fades
+       out over the width of a penalty area. */
+    var vol;
+    if (p === G.controlled) vol = 1;
+    else {
+      var d = dist(p, G.ball);
+      if (d > 120) return;
+      vol = 1 - d / 120;
+      vol *= vol;
+      if (vol < 0.06) return;
+    }
+    stepCool = 0.035;
+    SFX.step(vol, p.stepL);
   }
 
   /* players do not stand inside each other */
@@ -4449,6 +4470,8 @@ window.OuissyCup = (function () {
   function step(dt) {
     if (!G) return;
     G.stateT += dt;
+    /* the one shared gap between any two footsteps — see footfall */
+    stepCool = Math.max(0, stepCool - dt);
     /* the card runs on the MATCH clock, so it holds still through
        hit-stop and slow motion like everything else that is part of the
        moment rather than part of the interface */
@@ -4610,6 +4633,10 @@ window.OuissyCup = (function () {
       G.heart = [0, 0]; G.superReady = [false, false];
     }
     SFX.longWhistle();
+    /* the crowd stays; the score comes up underneath it with the first
+       phrase of the theme and nothing else, which is what a ground
+       sounds like fifteen minutes into a break */
+    scoreCue("half");
     /* the broadcast furniture goes while the card is up: a card about
        the half is not improved by the clock and the meter sitting on
        top of it */
@@ -4619,6 +4646,7 @@ window.OuissyCup = (function () {
       name: "half", kicker: "45'", title: "HALF TIME",
       action: "PLAY THE SECOND HALF",
       onGo: function () {
+        menuMusic(false);
         G.half = 2; G.kickoffTeam = 1;
         resetPositions(G.kickoffTeam);
         G.state = "kickoff"; G.stateT = 0;
@@ -5069,8 +5097,23 @@ window.OuissyCup = (function () {
     if (R2.setFocus) R2.setFocus(wX(G.ball.x), wY(G.ball.y));
   }
 
+  var camFrozen = false;
+
   function placeCamera(dt, snap) {
     if (!R2 || !G) return;
+    /* HOLDING THE LENS STILL, for the one harness that needs it.
+
+       The frame loop can be stopped and the camera still will not stop
+       moving, because it EASES towards a target and the target is
+       recomputed every time anything is drawn. A test that wants to
+       know whether the picture flickers has to be able to take two
+       frames from the same place; without this it takes two frames from
+       two places, four fifths of the pixels differ, and it reports a
+       flickering pitch when what it measured was a moving one.
+
+       It is the same affordance the crowd energy already has and it
+       exists for the same reason. */
+    if (camFrozen && !snap) return;
     camMode.t += dt;
     var k = snap ? 1 : Math.min(1, CAM.ease * dt);
 
@@ -8292,7 +8335,7 @@ window.OuissyCup = (function () {
 
   function titleMenu() {
     lineUp(run.myTeam);
-    menuMusic(true);
+    scoreCue("menu");
     var modes = cfg("MODES", []);
     var mine = teamById(run.myTeam) || {};
     var accent = (mine.kit && mine.kit.shirt) || "#c1272d";
@@ -8511,7 +8554,7 @@ window.OuissyCup = (function () {
     }
     patchTeamLookup();
     heroStage(t.id, 0.32);
-    menuMusic(true);
+    scoreCue("squad");
 
     var accent = (t.kit && t.kit.shirt) || "#c1272d";
     var trim = (t.kit && t.kit.trim) || "#e8b23c";
@@ -9387,7 +9430,11 @@ window.OuissyCup = (function () {
     /* her side, standing at the campus this one is being played at, so
        the fixture card is a photograph of the actual fixture */
     lineUp(run.myTeam, (run.fixture && run.fixture.venue) || r.venue);
-    menuMusic(true);
+    /* ONE PIECE OF MUSIC PER ROUND. The same theme each time, a minor
+       third higher and eight beats a minute faster than the last one —
+       which is the one device that makes a bracket feel like a bracket
+       without a word of commentary being written. */
+    scoreCue(window.CupScore ? window.CupScore.round(run.round) : "menu");
     var kick = function () {
       uiClose();
       menuMusic(false);
@@ -9430,7 +9477,10 @@ window.OuissyCup = (function () {
     setTimeout(function () {
       if (!playing) return;
       stopCrowd();
-      menuMusic(true);
+      /* the same seven notes either way. The loss gets them with the
+         third flattened, which is not a different piece of music: it is
+         the same one, heard on a worse night. */
+      scoreCue(won ? "win" : "lose");
       /* THE MATCH IS OVER, SO THE BROADCAST FURNITURE GOES.
          The pad was being hidden and the scoreboard was not, so the
          memory card between the rounds came up with the score, the
@@ -9523,6 +9573,7 @@ window.OuissyCup = (function () {
        left them */
     lineUp(run.myTeam);
     SFX.memory();
+    scoreCue("memory");
     /* IT IS NOT A FIXTURE CARD AND IT MUST NOT LOOK LIKE ONE.
 
        This is the one screen in the chapter that is not about football,
@@ -9573,7 +9624,7 @@ window.OuissyCup = (function () {
     /* her side, on the grass, under the floodlights, while she reads it */
     lineUp(run.myTeam, "night");
     SFX.trophy();
-    menuMusic(true);
+    scoreCue("trophy");
     confettiBurst({ x: PITCH.cx, y: PITCH.cy }, 200, "#ffd45e");
 
     /* THE QUIETEST SCREEN IN THE CHAPTER.
@@ -10197,6 +10248,8 @@ window.OuissyCup = (function () {
        it. This snaps it to where it is heading, which is what every
        screenshot of the match actually wants. */
     camSnap: function () { placeCamera(0, true); return hooks.state(); },
+    /* freeze the lens where it is, so two frames can be compared */
+    camHold: function (on) { camFrozen = !!on; return !!camFrozen; },
     /* hold the ground at an energy, or let the match have it back */
     energy: function (v) {
       if (v === null || v === undefined) { CROWD_E.hold = false; return CROWD_E; }
@@ -10429,6 +10482,11 @@ window.OuissyCup = (function () {
                  facing: p.facing, legs: p.legs, gk: p.gk };
       });
     },
+    /* THE SOUND BANK ITSELF, so a harness can wrap each entry and count
+       it. You cannot listen to a headless browser, but you can ask
+       which sounds a real passage of football produced — and a sound
+       that is defined and never fires is a sound that is not there. */
+    sfx: function () { return SFX; },
     /* the renderer itself, for harnesses that need to ask the lens
        where something lands rather than looking at a screenshot */
     r2: function () { return R2; },
@@ -10481,7 +10539,12 @@ window.OuissyCup = (function () {
     soundOff: function () {
       soundOn = false;
       if (window.CupChant) window.CupChant.mute(true);
+      if (window.CupScore) window.CupScore.setOn(false);
     },
+    /* the score, so a harness can ask what is playing and in what key
+       rather than trying to listen to a headless browser */
+    score: function () { return window.CupScore ? window.CupScore.debug() : null; },
+    scoreTo: function (n) { scoreCue(n); return window.CupScore && window.CupScore.debug(); },
     /* Kept for the harnesses and for the settings screen, and now it
        costs nothing either way: every shadow in the game is an ellipse
        drawn on the grass, so there is no map to switch off and no
