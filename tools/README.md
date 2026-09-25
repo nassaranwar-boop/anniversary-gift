@@ -305,6 +305,22 @@ moving.
   projection where each corner lands and samples the rendered pitch at
   that pixel. All six corners came back painted — the box is right and
   the shape is the camera.
+- **`cupedge.js`** — does the field END? For a long time it did not.
+  The mowing was painted as a full-width band on every screen row, so
+  the touchlines and goal lines were paint on a green plane that ran to
+  the edge of the picture, and behind the goal the grass went straight
+  into the hoardings. Every other harness here was happy: a pitch with
+  no edges renders perfectly. This one walks outward from the middle in
+  all four directions and reads the PIXELS — turf, unmown run-off, hard
+  apron, the shade the wall stands in — because the code has been right
+  and the picture wrong before. The rings were computed correctly for a
+  whole afternoon while the touchline wall stood at four units and the
+  apron was drawn out to seven, so every wall was built on top of its
+  own surround and none of it was ever visible. It also scales what it
+  demands to what the camera can resolve: the far touchline of a
+  side-on view is three pixels of surround, and asking three pixels for
+  four distinguishable materials is asking perspective not to happen.
+
 - **`cupground.js`** — every team's ground, same camera, same moment,
   only the host changing. A per-team stadium system is worth having only
   if the grounds actually look different, and "looks different" is the

@@ -84,6 +84,27 @@ window.CupPitch2D = (function () {
   var A0 = 10;
   var NEAR = 54;             // depth of the bottom edge of the screen
 
+  /* =======================================================================
+     HOW FAR THE GROUND GOES PAST THE PAINT
+
+     A wall has to stand ON something, and for a long time these two
+     numbers lived inside drawSides while the grass ran to the edge of
+     the screen — so the field had no boundary and the walls stood on
+     nothing. They are up here now because the grass and the walls have
+     to agree about them to the pixel: if the ground stops short the
+     stand floats, and if it runs long the stand is drawn standing in
+     the middle of a lawn.
+
+     The two ends get more room than the two sides, because they do in
+     a real ground: behind a goal there is a keeper's warm-up area and
+     a camera position, and beside a touchline there is a bench and not
+     much else. That asymmetry is also why one number would not do.
+     ======================================================================= */
+  var EDGE_END = 7;          // renderer units of ground beyond a goal line
+  var EDGE_SIDE = 4;         // ... and beyond a touchline
+  var RUN_SHARE = 0.72;      // of which this much is turf, and the rest apron
+  var SHADE_SHARE = 0.55;    // of the apron, the part the wall keeps in shade
+
   /* the pitch, in internal units, if nobody says otherwise */
 
   /* =======================================================================
@@ -262,6 +283,45 @@ window.CupPitch2D = (function () {
     C.line = night ? "#f4f8f4" : "#eaf4e4";
     C.lineDk = mix(C.line, st, 0.4);
     var sd = v.stand || "#5b6570";
+    /* =====================================================================
+       WHAT IS AROUND THE FIELD
+
+       A pitch is not green all the way to the wall. Outside the paint
+       there is a strip of unmown grass, and outside that a hard apron
+       the photographers and the substitutes stand on — and those two
+       bands are the entire reason a real ground reads as a FIELD
+       sitting inside a bowl rather than as a green rectangle with a
+       stand behind it.
+
+       Without them the grass simply runs to the hoarding, which is
+       what it did: the mowing was drawn as a full-width band on every
+       row, so the field had no edges anywhere and behind the goal it
+       never ended at all.
+
+       The run-off is the same turf with no stripe in it. The apron is
+       taken from the stand's own concrete so it belongs to the ground
+       it is in. */
+    /* THE RUN-OFF IS TURF AND HAS TO LOOK LIKE TURF, just turf nobody
+       mows in a pattern and nobody walks on: darker, and pulled towards
+       the stripe's own colour so it belongs to this ground's grass
+       rather than to a palette. It was barely a shade off the pitch the
+       first time, which is the same as not drawing it. */
+    C.runoff = mix(mix(g, "#0a1408", night ? 0.34 : 0.26), st, 0.30);
+    /* THE APRON IS NOT GREEN. That is the whole job it does. The eye
+       reads the field's edge off the moment the ground stops being
+       grass, so an apron tinted green is an apron that does nothing.
+       It takes a little of the stand's colour, so each ground's
+       surround still belongs to it, and is then dragged most of the way
+       to concrete. */
+    C.apron = mix(mix(sd, "#6d6a66", 0.62), "#000000", night ? 0.40 : 0.24);
+    C.apronLip = mix(C.apron, "#ffffff", night ? 0.16 : 0.24);
+    /* and the dark under the hoardings, which is what the wall stands in */
+    C.beyond = mix(sd, "#000000", night ? 0.76 : 0.66);
+    /* the stand's shade, thrown out across the apron and the run-off:
+       one band of it is worth more for depth than anything else drawn
+       out here, because a shadow is the only thing in the picture that
+       proves the wall has a height */
+    C.edgeShade = mix(C.apron, "#000000", 0.38);
     C.tierLit = mix(sd, "#000000", 0.42);
     C.tier = mix(sd, "#000000", 0.58);
     C.rail = mix(sd, "#ffffff", 0.18);
@@ -1385,63 +1445,140 @@ window.CupPitch2D = (function () {
      Drawn row by row from the bottom of the screen up. Each screen row
      is a different depth, so the mowing bands are worked out per row and
      come out correctly foreshortened for nothing. */
+  /* =========================================================================
+     THE GROUND, AND WHERE IT STOPS
+
+     This drew the mowing as a full-width band on every screen row —
+     fillRect(0, y, vw, 1) — which means the pitch had no edges at all.
+     The touchlines and goal lines were paint on an infinite green
+     plane, and behind the goal the field simply never ended: the grass
+     ran straight into the hoarding with nothing between them. That is
+     the single reason the goal end looked flat and cheap, and no amount
+     of work on the stand behind it was ever going to fix it, because
+     the thing that was missing was in front of the stand.
+
+     A real ground is four materials in concentric rings:
+
+         the pitch        mown, striped, with the paint on it
+         the run-off      the same turf, unmown, a few metres of it
+         the apron        hard standing, where the photographers sit
+         the wall         hoardings, and the stand above them
+
+     Drawn as rings, the field becomes a bounded object with a near
+     edge, a far edge and two ends — and a bounded object in
+     perspective is what reads as three-dimensional. The rings are real
+     ground, so they foreshorten and converge by themselves; nothing
+     here draws a trapezoid.
+
+     Every row therefore asks two questions: which ring it is in by
+     DEPTH, and where the rings fall ALONG it. A row deep in the apron
+     is apron all the way across; a row through the middle of the pitch
+     is apron, run-off, pitch, run-off, apron.
+     ========================================================================= */
   Pitch.prototype.drawGrass = function () {
-    var ctx = this.ctx;
+    var ctx = this.ctx, w = this.raw;
     if (this.mode === "oblique") return this.drawGrassFlat();
-    var y0 = Math.max(0, Math.round(
-      (this.swap ? this.project(this.raw.halfW + 7 / this.k, 0)
-                 : this.project(0, this.raw.len + 7 / this.k)).y) + 2);
-    /* =====================================================================
-       THE MOWING RUNS GOAL TO GOAL
 
-       It used to run the other way — bands of constant DEPTH, so a band
-       was a band of screen rows and the whole thing was one fillRect
-       per row. Cheap, and from a camera behind the goal it was right:
-       the stripes narrowed toward the far end and the perspective came
-       free because the bands were real ground.
+    /* THE RINGS, PER AXIS, because the ends and the sides are not the
+       same width — see EDGE_END and EDGE_SIDE. Side-on, the depth axis
+       is the pitch's WIDTH, so the rings that recede away from the
+       camera are the touchlines' and the rings that run across the
+       frame are the goal ends'; turned up the pitch it is the other way
+       about. Getting this the same for both was the bug that hid the
+       whole far surround: the touchline wall stands at four units and
+       the apron was drawn out to seven, so the wall was built on top of
+       its own apron and the eye saw grass running into a hoarding. */
+    var edgeDeep = (this.swap ? EDGE_SIDE : EDGE_END) / this.k;
+    var edgeAlong = (this.swap ? EDGE_END : EDGE_SIDE) / this.k;
+    var runD = edgeDeep * RUN_SHARE;
+    var runA = edgeAlong * RUN_SHARE;
 
-       Turned side-on that same mowing lies flat. Every stripe runs
-       parallel to the touchline, straight across the screen, and a
-       dozen horizontal bands of two greens is the flattest thing you
-       can put under a football match — it reads as a painted backdrop.
-
-       Mown the other way the bands stand up and converge, which is the
-       single strongest depth cue on an empty pitch and the reason a
-       side-on shot of a real ground looks like somewhere rather than
-       something. It costs a handful of rectangles a row instead of one,
-       because a band edge is a line of constant distance-up-the-pitch
-       and those project to straight lines: work out where the edges
-       land and fill between them.
-       ===================================================================== */
-    /* THE BAND, AND WHICH WAY IT RUNS.
-
-       "along" is goal to goal, which is the classic side-on look and
-       what the camera was tuned against. "across" is touchline to
-       touchline — bands of constant depth, so they lie flat across the
-       screen and narrow toward the far side. "check" is both, which is
-       the mown chequerboard a groundsman does for a cup tie.
-
-       The width multiplier is what actually makes two grounds look
-       different at a glance: a tight-striped pitch and a wide-striped
-       one read as two different places before you have noticed
-       anything else about them. */
-    var band = 11 / this.k * (GROUND.mowWidth || 1);
-    /* HOW FAR THE GROUND GOES, IN THE DIRECTION THE CAMERA LOOKS.
-
-       The shading ramp — lifted just in front of the lens, dropped into
-       the far half — was measured against the pitch's LENGTH. Side-on
-       the camera looks across the width instead, so the far touchline
-       came out at 0.71 of a ramp built to reach 1, and the whole far
-       half of the pitch was lit as though it were the middle. */
-    var depthSpan = this.swap ? this.raw.halfW * 2 : this.raw.len;
-    var depthMin = this.swap ? -this.raw.halfW : 0;
+    /* WHICH WORLD AXIS IS WHICH depends on the camera. */
+    var depthMin = this.swap ? -w.halfW : 0;
+    var depthMax = this.swap ? w.halfW : w.len;
+    var alongMin = this.swap ? 0 : -w.halfW;
+    var alongMax = this.swap ? w.len : w.halfW;
     var camAlong = this.swap ? this.cam.y : this.cam.x;
     var camDeep = this.swap ? this.cam.x : this.cam.y;
+    var depthSpan = depthMax - depthMin;
+
+    var band = 11 / this.k * (GROUND.mowWidth || 1);
+
+    /* the top of the picture is wherever the far apron ends and the
+       wall begins — above that is the stand's business, and painting a
+       row of it would erase the stand that has already been drawn */
+    var far = this.project(this.swap ? depthMax + edgeDeep : 0,
+                           this.swap ? 0 : depthMax + edgeDeep);
+    var y0 = Math.max(0, Math.round(far.y) + 1);
+    var prevOut = 1e9;
 
     for (var y = y0; y < this.vh; y++) {
       var d = this.depthAtY(y + 0.5);
       if (d <= 0) continue;
       var wy = camDeep + (d - NEAR) / this.k;
+
+      /* HOW FAR OUTSIDE THE FIELD THIS ROW IS, in world units. Negative
+         is inside it. One number answers the depth ring. */
+      var outD = Math.max(depthMin - wy, wy - depthMax);
+      if (outD > edgeDeep) {
+        ctx.fillStyle = C.beyond;
+        ctx.fillRect(0, y, this.vw, 1);
+        prevOut = outD;
+        continue;
+      }
+      /* A WALL THROWS A SHADOW ON WHAT IT STANDS ON, and a band of it
+         hugging the hoardings is worth more for depth than anything
+         else out here: it is the only thing in the picture that proves
+         the wall has a HEIGHT. It has to be a band, though. Shading the
+         whole surround, which is what this did first, does not read as
+         a stand casting shade — it reads as a hole behind the goal. */
+      var shadeD = runD + (edgeDeep - runD) * (1 - SHADE_SHARE);
+      var apronCol = outD > shadeD ? C.edgeShade : C.apron;
+
+      var scale = this.k * FOCAL / d;
+      var xAt = function (wa) { return this.vw / 2 + (wa - camAlong) * scale; };
+      xAt = xAt.bind(this);
+      var aLo = xAt(alongMin - edgeAlong), aHi = xAt(alongMax + edgeAlong);
+      var rLo = xAt(alongMin - runA), rHi = xAt(alongMax + runA);
+      var pLo = xAt(alongMin), pHi = xAt(alongMax);
+
+      var seg = function (x0, x1, col) {
+        var a = Math.max(0, Math.round(x0)), b = Math.min(this.vw, Math.round(x1));
+        if (b <= a) return;
+        ctx.fillStyle = col;
+        ctx.fillRect(a, y, b - a, 1);
+      };
+      seg = seg.bind(this);
+
+      /* OUTSIDE IN. Each ring paints over the one outside it, which is
+         cheaper than working out the gaps and impossible to leave a
+         seam in. */
+      seg(0, this.vw, C.beyond);
+      seg(aLo, aHi, apronCol);
+      /* and the same band from the two walls that run across the frame,
+         so the corners of the ground go dark from both directions the
+         way they actually do */
+      if (outD <= shadeD) {
+        var sh = (edgeAlong - runA) * SHADE_SHARE * scale;
+        seg(aLo, aLo + sh, C.edgeShade);
+        seg(aHi - sh, aHi, C.edgeShade);
+      }
+      /* THE KERB, where the hard standing meets the turf. One pixel of
+         a lighter line, and the two rings stop being two greys and
+         start being two SURFACES at different heights. */
+      if (outD <= runD) {
+        seg(rLo - 1, rLo, C.apronLip);
+        seg(rHi, rHi + 1, C.apronLip);
+        seg(rLo, rHi, C.runoff);
+      }
+      /* and the same kerb running across the frame, drawn on whichever
+         row the far or near one falls on */
+      if (prevOut > runD && outD <= runD) seg(aLo, aHi, C.apronLip);
+      prevOut = outD;
+
+      /* the pitch itself, only where there actually is pitch */
+      if (outD > 0) continue;
+
       var t = Math.max(0, Math.min(1, (wy - depthMin) / depthSpan));
       var gi = Math.min(GRADE_N - 1, Math.max(0, Math.round(t * (GRADE_N - 1))));
       var cA = C.gradA[gi], cB = C.gradB[gi];
@@ -1449,43 +1586,30 @@ window.CupPitch2D = (function () {
       /* BANDS ACROSS THE PITCH are bands of depth, so the whole row is
          one band and there is nothing to solve along it. */
       if (GROUND.mow === "across") {
-        var bDepth = Math.floor(wy / band);
-        ctx.fillStyle = (bDepth & 1) ? cA : cB;
-        ctx.fillRect(0, y, this.vw, 1);
+        seg(pLo, pHi, (Math.floor(wy / band) & 1) ? cA : cB);
         continue;
       }
-      /* how wide one band is on this row, and where its edges fall */
-      var perBand = band * this.k * FOCAL / d;
+      var perBand = band * scale;
       if (!(perBand > 2)) {
         /* too far away to resolve — one flat row rather than a hundred
            one-pixel rectangles fighting each other */
-        ctx.fillStyle = cA;
-        ctx.fillRect(0, y, this.vw, 1);
+        seg(pLo, pHi, cA);
         continue;
       }
-      /* ONE COLOUR CHANGE A ROW, NOT ONE A BAND.
-
-         Setting fillStyle is what a 2D canvas actually charges for, and
-         alternating it band by band put eight or ten of them on every
-         row of the pitch — which doubled the cost of a frame. Laying
-         one colour down the whole row and then painting only the other
-         one's bands over it is the same picture for two. */
-      var scale = this.k * FOCAL / d;
-      var leftW = camAlong + (0 - this.vw / 2) / scale;
-      var b0 = Math.floor(leftW / band);
-      ctx.fillStyle = cA;
-      ctx.fillRect(0, y, this.vw, 1);
-      /* A CHEQUERBOARD IS THE TWO PATTERNS MULTIPLIED. Flipping which
-         colour the along-bands paint on every other depth-band is all
-         a mown check is, and it costs one XOR. */
+      /* ONE COLOUR CHANGE A ROW, NOT ONE A BAND. Setting fillStyle is
+         what a 2D canvas actually charges for; laying one colour down
+         and painting the other one's bands over it is the same picture
+         for two. */
+      seg(pLo, pHi, cA);
       var flip = GROUND.mow === "check" && (Math.floor(wy / band) & 1);
-      ctx.fillStyle = flip ? cA : cB;
-      if (flip) ctx.fillStyle = mix(cA, cB, 0.5);
+      ctx.fillStyle = flip ? mix(cA, cB, 0.5) : cB;
+      var lo = Math.max(0, pLo), hi = Math.min(this.vw, pHi);
+      var b0 = Math.floor((camAlong + (lo - this.vw / 2) / scale) / band);
       if (b0 & 1) b0 += 1;               // start on a band cB owns
       var xEdge = this.vw / 2 + (b0 * band - camAlong) * scale;
-      for (; xEdge < this.vw; xEdge += perBand * 2) {
-        var sx2 = Math.max(0, Math.round(xEdge));
-        var ex2 = Math.min(this.vw, Math.round(xEdge + perBand));
+      for (; xEdge < hi; xEdge += perBand * 2) {
+        var sx2 = Math.max(lo, Math.round(xEdge));
+        var ex2 = Math.min(hi, Math.round(xEdge + perBand));
         if (ex2 > sx2) ctx.fillRect(sx2, y, ex2 - sx2, 1);
       }
     }
@@ -1581,8 +1705,8 @@ window.CupPitch2D = (function () {
        side-on view with a stadium round it and a side-on view with two
        bare edges where the goals are. */
     var across = this.swap
-      ? [0 - 7 / this.k, w.len + 7 / this.k]       // behind each goal line
-      : [-(w.halfW + 4 / this.k), w.halfW + 4 / this.k];
+      ? [0 - EDGE_END / this.k, w.len + EDGE_END / this.k]   // behind each goal
+      : [-(w.halfW + EDGE_SIDE / this.k), w.halfW + EDGE_SIDE / this.k];
     var acrossCam = this.swap ? this.cam.y : this.cam.x;
     var edge = w.halfW + 4 / this.k;          // touchline, then the run-off
     var BOARD = 9, TIER = 42, ROOF = 7;
@@ -1592,8 +1716,9 @@ window.CupPitch2D = (function () {
     /* how deep the ground goes, which is how far along these walls run:
        the pitch's depth extent plus its run-off, at both ends */
     var camDeep = this.swap ? this.cam.x : this.cam.y;
-    var deepLo = this.swap ? -(w.halfW + 7 / this.k) : -(7 / this.k);
-    var deepHi = this.swap ? (w.halfW + 12) : (w.len + 12);
+    var deepLo = this.swap ? -(w.halfW + EDGE_SIDE / this.k) : -(EDGE_END / this.k);
+    var deepHi = this.swap ? (w.halfW + EDGE_SIDE / this.k + 12)
+                           : (w.len + EDGE_END / this.k + 12);
     var dLo = Math.max(NEAR, NEAR + (deepLo - camDeep) * this.k);
     var dHi = NEAR + (deepHi - camDeep) * this.k;
 
@@ -1666,8 +1791,13 @@ window.CupPitch2D = (function () {
         ctx.fillStyle = C.roof;     ctx.fillRect(x, gy - BOARD - 1, 1, 1);
         ctx.fillStyle = C.wallLit;  ctx.fillRect(x, top - ROOF, 1, 1);
 
-        /* and the shadow the stand throws onto the run-off */
-        ctx.fillStyle = C.grassDk;
+        /* AND THE SHADOW THE STAND THROWS AT ITS OWN FOOT.
+           In the stand's own shade, not in the grass's: this was
+           C.grassDk, from back when the ground ran to the edge of the
+           picture and whatever a wall stood on was turf by definition.
+           It stands on the apron now, and two dark green pixels at the
+           bottom of a hoarding read as a strip of lawn nobody mows. */
+        ctx.fillStyle = C.edgeShade;
         ctx.fillRect(x, gy, 1, 2);
       }
 
