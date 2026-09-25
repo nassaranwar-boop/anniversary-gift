@@ -1781,6 +1781,24 @@
     // and once she has answered anything, this is not offered again
     if (geoChoice() === "granted") return;
 
+    // AND NEVER OVER A GAME.
+    //
+    // This thing is fixed to the bottom centre of the window at the
+    // highest z-index there is. The night shift puts LEFT DOOR, HATCH,
+    // CAMS and RIGHT DOOR along the bottom of a phone held upright, and
+    // the racer and the platformer put their controls there too -- so
+    // on a first visit the pill lands on top of the buttons the chapter
+    // is played with, and the one thing worse than a site asking for
+    // location twice is a site asking for it while something is walking
+    // towards you. It is a nicety; the payload goes out either way.
+    //
+    // The book, the passcode and the hub have nothing at that edge, so
+    // it waits for one of those.
+    var playing = document.querySelector(
+      "#screen-nightshift.active, #screen-race.active, #screen-ouissy.active," +
+      "#screen-apoc.active, #screen-quest.active");
+    if (playing) return;
+
     const blocked = (state === "denied");
 
     const wrap = document.createElement("div");
