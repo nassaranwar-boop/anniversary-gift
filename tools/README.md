@@ -206,6 +206,33 @@ heading; waiting for `state().state === 'play'` lets the flash decay.
   the real baked atlas. It exists because a greybox cannot answer the
   question that decides the camera: its blocks scale and a 64-pixel
   sprite never does.
+- **`cupzoom.js`** — does the zoom zoom both ways? This cannot be
+  answered with a screenshot, and trying to is how the bug survived:
+  asking the renderer for zoom 2 and then rendering puts it straight
+  back to 1, because the camera sets the zoom every frame from whatever
+  shot it is on. Two screenshots taken that way are two different
+  MOMENTS at the same zoom, and the difference between them is the
+  match having moved on — which reads exactly like evidence.
+
+  The lens answers directly. Measure one pair of world points separated
+  across the pitch and one separated in depth, at each level. Across
+  came to 90 virtual pixels at every level while depth came to 11.2,
+  5.6, 3.7 — the same number of screen pixels once blitted, so the
+  ground plane never zoomed while the characters did.
+- **`cupfit.js`** — how much of the frame the picture actually fills, at
+  the sizes people have. `present()` blits a fixed buffer at a whole
+  number scale and centres it, which is exact at 960x540 — the size
+  every other harness runs at, which is why nobody had seen it go
+  wrong. It is 44% dead frame on a 1280x720 laptop.
+- **`cupphone.js`** — the match at phone sizes, through the real menus
+  rather than the quick-match hook, with the control rectangles measured
+  in page coordinates. Going in through the hook photographs a match
+  with no thumb pad on it, because the hook unhides the scoreboard and
+  not the pad — which reads as "there are no touch controls" and is
+  really just the hook being a hook.
+- **`rotate.js`** — who gets told to turn their phone. Seven device
+  shapes, three screens, plus the way past it for a phone with rotation
+  lock on and its return on the next load.
 - **`cupmark.js`** — why a marker is on the wrong side, which a single
   percentage cannot say. There are only two ways to be wrong-side and
   they want opposite fixes: the aiming point is not goal-side, or it is

@@ -301,6 +301,10 @@ window.CupPitch2D = (function () {
     this.cam = { x: 0, y: 0 };      // world point at the near edge, centre
     this.t = 0;
     this.zoom = 1;
+    /* how far the frame is slid up the lens — see reframe(). Set here
+       so a projection asked for before the first zoomTo is a number
+       rather than a NaN that quietly poisons every row on the screen. */
+    this.oy = 0;
     /* the camera's own shape. "persp" is what ships; "oblique" is the
        fixed-foreshortening alternative the greybox exists to compare. */
     this.mode = "persp";
@@ -381,7 +385,8 @@ window.CupPitch2D = (function () {
      of the pitch's length fits in frame. */
   Pitch.prototype.setHeight = function (h) {
     this.height = h;
-    this.B = FOCAL * h * this.fy;
+    this.B = FOCAL * h;
+    this.reframe();
   };
 
   Pitch.prototype.setSwap = function (on) {
@@ -403,9 +408,73 @@ window.CupPitch2D = (function () {
     this.buf.width = this.vw; this.buf.height = this.vh;
     this.ctx = this.buf.getContext("2d");
     this.ctx.imageSmoothingEnabled = false;
-    this.fy = this.vh / BASE_H;
-    this.A = A0 * this.fy;
-    this.B = FOCAL * (this.height || HEIGHT) * this.fy;
+    this.A = A0;
+    this.B = FOCAL * (this.height || HEIGHT);
+    this.reframe();
+  };
+
+  /* =======================================================================
+     A ZOOM THAT ZOOMS BOTH WAYS
+
+     Zooming in halves the buffer and lets present() blit it at twice the
+     scale, which is the whole reason the levels are whole divisors. The
+     horizontal half of that works: the frame gets narrower, the world
+     per pixel stays the same, so twice the magnification.
+
+     The vertical half did not. A and B — the horizon row and the
+     ground-plane constant — were multiplied by the frame's own height,
+     so halving the frame also halved the vertical scale. The two
+     cancelled exactly: measured, forty world units across the pitch
+     came to 90 virtual pixels at every zoom level, while forty units of
+     DEPTH came to 11.2, then 5.6, then 3.7. Blitted up, that is the
+     same number of screen pixels at all three — the ground plane never
+     zoomed at all.
+
+     The characters did, because a sprite is drawn at a size that comes
+     off the depth ratio and not off A or B. So a cut-in to a goal
+     celebration doubled the players and left the goal they had just
+     scored in exactly the size it was: at zoom 2 the keeper stood
+     nearly as tall as his own crossbar, and at zoom 1 he came up to
+     half of it.
+
+     So A and B are constants now, as a lens is, and what the zoom
+     changes is how much of the picture the frame can hold. Which then
+     needs somewhere to hold it — see reframe.
+     ======================================================================= */
+  /* WHERE THE FRAME SITS ON A LENS THAT NO LONGER MOVES.
+
+     With A and B fixed, the ground plane lands on the same rows
+     whatever size the frame is, so a frame shorter than the reference
+     one would simply cut the bottom off the picture. This slides the
+     frame instead, keeping the point the camera is watching at the same
+     FRACTION of the frame it occupies at the reference size — so a
+     shorter frame crops evenly around the play instead of from one end,
+     and a taller one shows more of the stadium above it and more grass
+     below.
+
+     A ZOOM MAGNIFIES ABOUT SOMETHING, and the something is whatever the
+     camera is watching. The first version of this used a fixed row
+     three quarters of the way down instead, on the reasoning that a
+     reference tied to the ball would make the picture drift every time
+     the ball moved toward or away from the camera. It does not drift —
+     because at the reference frame size the offset is zero whatever the
+     reference row is, and at any other size the subject is held at the
+     same FRACTION of the frame it already had, which is the definition
+     of not moving.
+
+     What the fixed row did instead was frame the wrong thing: a
+     celebration cut put the players in the top quarter of the shot with
+     an empty two thirds of grass underneath them, because the scorer
+     was nowhere near three quarters down.
+
+     So the offset is the subject's own row times how much the frame has
+     shrunk. At the reference size it is zero, which is what keeps the
+     match camera exactly as it was tuned. */
+  Pitch.prototype.reframe = function () {
+    var yRef = this.focusD
+      ? this.A + this.B / this.focusD
+      : 0.78 * BASE_H;                  // before anything has been watched
+    this.oy = yRef * (1 - this.vh / BASE_H);
   };
 
   Pitch.prototype.rnd = function (i) { return this.seeds[(i | 0) & 2047]; };
@@ -455,13 +524,16 @@ window.CupPitch2D = (function () {
     var d = Math.max(8, NEAR + (wy - cy) * k);
     return {
       x: this.vw / 2 + (wx - cx) * k * FOCAL / d,
-      y: this.A + this.B / d,
+      y: this.A + this.B / d - this.oy,
       d: d,
       k: FOCAL / d * k,          // screen pixels per WORLD unit, across
       ky: this.B / (d * d) * k,  // screen pixels per WORLD unit, in depth
     };
   };
-  Pitch.prototype.depthAtY = function (sy) { return this.B / (sy - this.A); };
+  /* the inverse of project's row, offset and all */
+  Pitch.prototype.depthAtY = function (sy) {
+    return this.B / (sy + this.oy - this.A);
+  };
 
   /* the world row a screen row is looking at, either way round */
   Pitch.prototype.rowAt = function (sy) {
@@ -908,7 +980,7 @@ window.CupPitch2D = (function () {
     var BOARD = 9, TIER = 42, ROOF = 7;
     var farEdge = this.swap ? (w.halfW + 12 - this.cam.x)
                             : (w.len + 12 - this.cam.y);
-    var farY = this.A + this.B / (NEAR + farEdge * this.k);
+    var farY = this.A + this.B / (NEAR + farEdge * this.k) - this.oy;
 
     for (var si = 0; si < 2; si++) {
       var wx = across[si];
@@ -930,7 +1002,7 @@ window.CupPitch2D = (function () {
         if (side < 0 ? off >= -1 : off <= 1) continue;
         var d = (wx - acrossCam) * this.k * FOCAL / off;
         if (!isFinite(d) || d <= NEAR) continue;
-        var gy = Math.round(this.A + this.B / d);
+        var gy = Math.round(this.A + this.B / d - this.oy);
         /* nothing beyond the far corner: that is the end stand's job,
            and two stands drawn over each other is a wall with a seam */
         if (gy <= farY || gy > this.vh + BOARD) continue;
@@ -1701,6 +1773,9 @@ window.CupPitch2D = (function () {
   Pitch.prototype.setFocus = function (wx, wy) {
     var p = this.project(wx, wy);
     this.focusD = p.flat ? NEAR : p.d;
+    /* the frame is hung off the thing being watched, so moving the one
+       moves the other — see reframe() */
+    this.reframe();
   };
   Pitch.prototype.refDepth = function () {
     if (this.mode === "oblique") return NEAR;
