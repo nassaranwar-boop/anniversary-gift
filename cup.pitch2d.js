@@ -736,23 +736,78 @@ window.CupPitch2D = (function () {
        steps, each one lit slightly differently, with a rail along the
        front and a dark gap under it — and that stack is what gives the
        far end depth without a single line of perspective. */
-    var tiers = [{ h: 26, rows: 7 }, { h: 20, rows: 5 }];
+    /* =====================================================================
+       A CROWD, RATHER THAN A TEXTURE
+
+       The first one was a perfectly even lattice of identical three-by-
+       two blocks, all the same distance apart, on a flat fill. At this
+       size that is not a stand full of people; it is wallpaper, and the
+       eye reads it as noise and stops looking.
+
+       Four things fix it, and none of them is more pixels:
+
+         THE ROOF SHADOW. A stand is not evenly lit. The back rows sit
+         under the overhang and go nearly black; the front rows catch
+         the floodlights. A ramp instead of a flat fill is the single
+         biggest change here, because it gives the stand a top and a
+         bottom.
+
+         GANGWAYS. Every stand has stairs up through it. The vertical
+         breaks are most of what says "a structure with people in it"
+         rather than "a repeating pattern", and they cost one skipped
+         column each.
+
+         ROW SPACING THAT GOES THE RIGHT WAY. It widened toward the
+         back, which is backwards: the back rows are further away, so
+         they should be TIGHTER and their people smaller. Getting that
+         inverted flattened the whole stand.
+
+         A HEAD. Two pixels of body read as a dash. One lighter pixel
+         above it reads as a person, and at three pixels a row that is
+         the entire difference.
+       ===================================================================== */
+    var tiers = [{ h: 26, rows: 7, base: C.tierLit },
+                 { h: 20, rows: 5, base: C.tier }];
     var y = lip, band = 0;
     for (var ti = 0; ti < tiers.length; ti++) {
       var T = tiers[ti];
       var top = y - T.h;
-      ctx.fillStyle = ti ? C.tier : C.tierLit;
-      ctx.fillRect(0, Math.max(0, top), this.vw, Math.min(T.h, y));
+
+      /* the light falling down the tier, back to front */
+      for (var sy2 = 0; sy2 < T.h; sy2++) {
+        var f = sy2 / Math.max(1, T.h - 1);
+        ctx.fillStyle = mix(mix(T.base, "#090810", 0.66), T.base, f * f);
+        var ry2 = top + sy2;
+        if (ry2 >= 0 && ry2 < this.vh) ctx.fillRect(0, ry2, this.vw, 1);
+      }
+
+      /* WHERE THE STAIRS ARE. Spaced rather than scattered — a stand
+         with its gangways bunched at one end is a stand nobody could
+         get out of — with enough jitter that they are not a comb. */
+      var bays = 9, bayW = this.vw / bays, aisle = [];
+      for (var ai = 1; ai < bays; ai++) {
+        aisle.push(ai * bayW + (this.rnd(band * 71 + ai * 29) - 0.5) * bayW * 0.35);
+      }
 
       var step = T.h / T.rows;
       for (var r = 0; r < T.rows; r++) {
         var ry = Math.round(top + r * step);
         if (ry < -4 || ry > this.vh) continue;
-        var pitchX = 6 + (T.rows - r) * 0.25;
+        /* front rows are nearer, so they are further apart on screen */
+        var pitchX = 5.2 + r * 0.42;
+        /* and the back of a tier is emptier as well as darker: the seats
+           nobody wants, plus the ones the overhang eats */
+        var gone = 0.10 + (1 - r / Math.max(1, T.rows - 1)) * 0.10;
         for (var cxx = -2; cxx < this.vw / pitchX + 2; cxx++) {
           var id = band * 977 + r * 131 + cxx * 7;
-          if (this.rnd(id) < 0.12) continue;              // an empty seat
-          var sxp = Math.round(cxx * pitchX + this.rnd(id + 3) * 2);
+          if (this.rnd(id) < gone) continue;              // an empty seat
+          var sxp = Math.round(cxx * pitchX + this.rnd(id + 3) * 2.4);
+          /* nobody sits on the stairs */
+          var onStair = false;
+          for (var q2 = 0; q2 < aisle.length; q2++) {
+            if (Math.abs(sxp - aisle[q2]) < 2.2) { onStair = true; break; }
+          }
+          if (onStair) continue;
           /* the sway is VERTICAL, and always was meant to be: a crowd
              seen from the far end of a pitch bobs, it does not shuffle
              sideways, and drawing the idle motion in x made the whole
@@ -760,10 +815,30 @@ window.CupPitch2D = (function () {
              wave rides on the same number. */
           var cf = Math.max(0, Math.min(0.999, sxp / this.vw));
           var lift = Math.round(this.standLift(cf, r));
-          ctx.fillStyle = this.seatCol(id, cf);
-          ctx.fillRect(sxp, ry + lift, 3, 2);
-          ctx.fillStyle = "#1a1620";
-          ctx.fillRect(sxp, ry + lift + 2, 3, 1);
+          var col = this.seatCol(id, cf);
+          /* the further back, the deeper in shadow — the same ramp the
+             tier behind them is drawn with, so they sit IN it */
+          var shade = 0.42 * (1 - r / Math.max(1, T.rows - 1));
+          col = mix(col, "#0b0a12", shade);
+          var yy = ry + lift;
+          /* head, body, and the dark under the seat in front */
+          ctx.fillStyle = mix(col, "#f2d9c0", 0.34);
+          ctx.fillRect(sxp + 1, yy - 1, 1, 1);
+          ctx.fillStyle = col;
+          ctx.fillRect(sxp, yy, 3, 2);
+          ctx.fillStyle = "#141018";
+          ctx.fillRect(sxp, yy + 2, 3, 1);
+        }
+      }
+      /* the stairs themselves, once the people are down, so a gangway
+         is a lit strip up the stand rather than a hole in it */
+      for (var q3 = 0; q3 < aisle.length; q3++) {
+        var axp = Math.round(aisle[q3]);
+        for (var sy3 = 0; sy3 < T.h; sy3 += 2) {
+          var ay3 = top + sy3;
+          if (ay3 < 0 || ay3 >= this.vh) continue;
+          ctx.fillStyle = mix(T.base, "#ffffff", 0.16 * (sy3 / T.h));
+          ctx.fillRect(axp, ay3, 2, 1);
         }
       }
       ctx.fillStyle = C.rail;  ctx.fillRect(0, Math.max(0, y - 2), this.vw, 1);
@@ -974,23 +1049,134 @@ window.CupPitch2D = (function () {
     var y0 = Math.max(0, Math.round(
       (this.swap ? this.project(this.raw.halfW + 7 / this.k, 0)
                  : this.project(0, this.raw.len + 7 / this.k)).y) + 2);
-    /* THE MOWING RUNS ACROSS THE PITCH, so a band is a band of DEPTH
-       and therefore a band of screen rows — which is exactly why the
-       stripes come out as trapezoids narrowing toward the far goal
-       without anything here having to draw a trapezoid. Perspective
-       does it, because the bands are real ground. */
+    /* =====================================================================
+       THE MOWING RUNS GOAL TO GOAL
+
+       It used to run the other way — bands of constant DEPTH, so a band
+       was a band of screen rows and the whole thing was one fillRect
+       per row. Cheap, and from a camera behind the goal it was right:
+       the stripes narrowed toward the far end and the perspective came
+       free because the bands were real ground.
+
+       Turned side-on that same mowing lies flat. Every stripe runs
+       parallel to the touchline, straight across the screen, and a
+       dozen horizontal bands of two greens is the flattest thing you
+       can put under a football match — it reads as a painted backdrop.
+
+       Mown the other way the bands stand up and converge, which is the
+       single strongest depth cue on an empty pitch and the reason a
+       side-on shot of a real ground looks like somewhere rather than
+       something. It costs a handful of rectangles a row instead of one,
+       because a band edge is a line of constant distance-up-the-pitch
+       and those project to straight lines: work out where the edges
+       land and fill between them.
+       ===================================================================== */
     var band = 11 / this.k;              // mowing band, in world units
-    var L = this.raw.len;
+    /* HOW FAR THE GROUND GOES, IN THE DIRECTION THE CAMERA LOOKS.
+
+       The shading ramp — lifted just in front of the lens, dropped into
+       the far half — was measured against the pitch's LENGTH. Side-on
+       the camera looks across the width instead, so the far touchline
+       came out at 0.71 of a ramp built to reach 1, and the whole far
+       half of the pitch was lit as though it were the middle. */
+    var depthSpan = this.swap ? this.raw.halfW * 2 : this.raw.len;
+    var depthMin = this.swap ? -this.raw.halfW : 0;
+    var camAlong = this.swap ? this.cam.y : this.cam.x;
+    var camDeep = this.swap ? this.cam.x : this.cam.y;
+
     for (var y = y0; y < this.vh; y++) {
       var d = this.depthAtY(y + 0.5);
       if (d <= 0) continue;
-      var wy = (this.swap ? this.cam.x : this.cam.y) + (d - NEAR) / this.k;
-      var bi = Math.floor(wy / band);
-      var t = Math.max(0, Math.min(1, wy / L));
+      var wy = camDeep + (d - NEAR) / this.k;
+      var t = Math.max(0, Math.min(1, (wy - depthMin) / depthSpan));
       var gi = Math.min(GRADE_N - 1, Math.max(0, Math.round(t * (GRADE_N - 1))));
-      ctx.fillStyle = (bi & 1) ? C.gradA[gi] : C.gradB[gi];
+      var cA = C.gradA[gi], cB = C.gradB[gi];
+
+      /* how wide one band is on this row, and where its edges fall */
+      var perBand = band * this.k * FOCAL / d;
+      if (!(perBand > 2)) {
+        /* too far away to resolve — one flat row rather than a hundred
+           one-pixel rectangles fighting each other */
+        ctx.fillStyle = cA;
+        ctx.fillRect(0, y, this.vw, 1);
+        continue;
+      }
+      /* ONE COLOUR CHANGE A ROW, NOT ONE A BAND.
+
+         Setting fillStyle is what a 2D canvas actually charges for, and
+         alternating it band by band put eight or ten of them on every
+         row of the pitch — which doubled the cost of a frame. Laying
+         one colour down the whole row and then painting only the other
+         one's bands over it is the same picture for two. */
+      var scale = this.k * FOCAL / d;
+      var leftW = camAlong + (0 - this.vw / 2) / scale;
+      var b0 = Math.floor(leftW / band);
+      ctx.fillStyle = cA;
       ctx.fillRect(0, y, this.vw, 1);
+      ctx.fillStyle = cB;
+      if (b0 & 1) b0 += 1;               // start on a band cB owns
+      var xEdge = this.vw / 2 + (b0 * band - camAlong) * scale;
+      for (; xEdge < this.vw; xEdge += perBand * 2) {
+        var sx2 = Math.max(0, Math.round(xEdge));
+        var ex2 = Math.min(this.vw, Math.round(xEdge + perBand));
+        if (ex2 > sx2) ctx.fillRect(sx2, y, ex2 - sx2, 1);
+      }
     }
+  };
+
+  /* =======================================================================
+     THE CORNER FLAGS
+
+     Four of them, and they were simply missing — which is the kind of
+     absence nobody names and everybody feels, because a corner of a
+     pitch with nothing standing in it does not read as a corner. They
+     are also the only thing on the ground that shows which way the wind
+     is going, and a pennant that moves is worth more than its nine
+     pixels on a wide shot of an empty half.
+
+     They go into the depth list with the players rather than being
+     painted with the markings, because a flag is a thing standing UP on
+     the grass and a striker running past one should pass in front of it
+     or behind it depending on where he is.
+     ======================================================================= */
+  Pitch.prototype.cornerFlags = function () {
+    var w = this.raw, self = this;
+    var pts = [[-w.halfW, 0], [w.halfW, 0], [-w.halfW, w.len], [w.halfW, w.len]];
+    pts.forEach(function (c, i) {
+      var wx = c[0], wy = c[1];
+      self.add(wy, function () {
+        var p = self.project(wx, wy);
+        if (!p.flat && p.d <= NEAR + 1) return;
+        var sc = self.depthScale(p);
+        var hgt = Math.max(5, Math.round(17 * sc));
+        var x = Math.round(p.x), y = Math.round(p.y);
+        var ctx = self.ctx;
+        /* the shadow it throws, so it stands on the grass rather than
+           floating above it */
+        ctx.globalAlpha = 0.24;
+        fillEllipse(ctx, x, y, Math.max(1, Math.round(2 * sc)),
+                    Math.max(1, Math.round(p.ky * 1.4)), "#000000");
+        ctx.globalAlpha = 1;
+        /* the pole */
+        ctx.fillStyle = "#e8eee6";
+        ctx.fillRect(x, y - hgt, 1, hgt);
+        ctx.fillStyle = "#9fb0a8";
+        ctx.fillRect(x, y - 1, 1, 1);
+        /* the pennant, which flutters — the phase is off the flag's own
+           index so the four of them are not one flag drawn four times */
+        var fw = Math.max(2, Math.round(hgt * 0.42));
+        var fh = Math.max(2, Math.round(hgt * 0.30));
+        var flap = Math.sin(self.t * 3.1 + i * 1.7);
+        var dir = wx < 0 ? 1 : -1;
+        for (var ry = 0; ry < fh; ry++) {
+          var curl = Math.round(Math.sin(self.t * 3.1 + i * 1.7 + ry * 0.9) * 0.8);
+          var len = Math.max(1, Math.round(fw * (1 - ry / (fh + 1) * 0.35)));
+          ctx.fillStyle = ry === 0 ? "#ffd166" : (flap > 0 ? "#f5b73f" : "#e8a92f");
+          ctx.fillRect(dir > 0 ? x + 1 : x - len,
+                       y - hgt + ry + curl, len, 1);
+        }
+      }, wx);
+    });
   };
 
   /* ============================================================ THE SIDES
@@ -2186,6 +2372,7 @@ window.CupPitch2D = (function () {
     this.drawMarkings();
     this.drawGoal(true, bulge && bulge[1]);
     this.drawGoal(false, bulge && bulge[0]);
+    this.cornerFlags();
   };
 
   /* far things first. Everything that touches the grass went into one
