@@ -17,6 +17,19 @@ module.exports = async function (c) {
     return true;
   }, k);
 
+  /* the key in its back: press and hold until the ring fills */
+  const windHold = () => p.evaluate(async () => {
+    const el = document.getElementById('ns-key');
+    if (!el || el.hidden) return false;
+    const r = el.getBoundingClientRect();
+    const ev = (t) => new PointerEvent(t, { clientX: r.left + r.width/2, clientY: r.top + r.height/2,
+                                            bubbles: true, cancelable: true, pointerId: 1, isPrimary: true });
+    el.dispatchEvent(ev('pointerdown'));
+    await new Promise((res) => setTimeout(res, 1800));
+    el.dispatchEvent(ev('pointerup'));
+    return true;
+  });
+
   const peek = () => p.evaluate(() => {
     const N = OuissysNightShift.__night, G = N.state(), cast = N.cast();
     const at = { left: false, right: false, hatch: false };
@@ -65,6 +78,37 @@ module.exports = async function (c) {
         if (!after || after.phase === 'play') continue;
         if (guard > 400) break;
         continue;
+      }
+
+      /* ORIENTATION ASKS FOR THINGS, AND A PLAYER DOES THEM.
+
+         Night one opens with a tutorial that waits: it will sit on
+         "WEST DOOR: CLOSE IT" for ever until the door is closed. A
+         policy that only touches a door when something is behind it
+         never gets past it, because during orientation nothing is. So
+         the tutor's line is read and obeyed, which is also the only
+         way to find out whether each step can actually be satisfied. */
+      const tut = (await card()).tutor || '';
+      if (tut) {
+        const want = tut.toUpperCase();
+        if (want.indexOf('MONITOR: RAISE') >= 0 && !s.monitor) await press('monitor');
+        else if (want.indexOf('MONITOR: LOWER') >= 0 && s.monitor) await press('monitor');
+        else if (want.indexOf('STEP THROUGH THE ROOMS') >= 0) {
+          if (!s.monitor) await press('monitor'); else await press('next');
+        }
+        else if (want.indexOf('WEST DOOR: CLOSE') >= 0 && !s.doors.left) await press('left');
+        else if (want.indexOf('SHUT DOOR HOLDS') >= 0 && s.doors.left) await press('left');
+        else if (want.indexOf('HATCH: LATCH') >= 0 && !s.doors.hatch) await press('hatch');
+        else if (want.indexOf('UNLATCH') >= 0 && s.doors.hatch) await press('hatch');
+        else if (want.indexOf('FIND HIM') >= 0) {
+          if (!s.monitor) await press('monitor');
+          else await press('next');
+        }
+        else if (want.indexOf('HOLD IT') >= 0 || want.indexOf('KEY IN HIS BACK') >= 0) {
+          await windHold();
+        }
+        await T(500);
+        continue;                       // orientation owns the hands
       }
 
       /* doors: shut whatever is at one, open again when it is gone */

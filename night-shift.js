@@ -16433,8 +16433,17 @@ function screenHowTo() {
 
       '<p class="ns-how-lab">THE FOUR IN THE BACK ROOM</p>' +
       '<ul class="ns-who2s">' + who + '</ul>' +
-      '<p class="ns-how-foot">Wind them whenever you pass one. A wound one leaves your door sooner, ' +
-        'and will stand in front of anything that gets past it. He asked for all four, every night, ' +
+      /* AND IT HAS TO SAY HOW.
+
+         This card told her to wind them and never once said what
+         winding IS. Orientation teaches it properly on night one --
+         "THERE IS A KEY IN HIS BACK. HOLD IT" -- but this is the page
+         she comes back to, off the title screen, in the middle of the
+         week, and the chapter's central verb was missing from it. Nine
+         words, in the same breath as the reason. */
+      '<p class="ns-how-foot">Find one on a camera and hold the key in its back until ' +
+        'the ring fills. A wound one leaves your door sooner, and will stand in front of ' +
+        'anything that gets past it. He asked for all four, every night, ' +
         'and he never said why.</p>' +
 
       '<div class="ns-btns">' +
