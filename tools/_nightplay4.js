@@ -97,7 +97,15 @@ module.exports = async function (c) {
         if (ch.awake && ch.atDoor && !ch.talking) at[ch.def.door] = true; }
       note(G, at);
       for (const side of ['left', 'right', 'hatch'])
-        if (at[side] !== G.doors[side]) press(side);
+        if (at[side] !== G.doors[side]) {
+          const found = press(side);
+          /* A PRESS THAT DOES NOT MOVE THE DOOR IS THE ONLY THING WORTH
+             A LINE IN THE LOG. "She was caught" is not a diagnosis. */
+          if (G.doors[side] !== at[side])
+            log.push('   !! ' + side + ' would not move: found=' + found
+                     + ' blackout=' + !!G.blackout + ' phase=' + G.phase
+                     + ' mon=' + !!G.monitor + ' shut=' + !!G.doors[side]);
+        }
 
       /* AND SHE PLAYS THE WAY THE GAME TELLS HER TO.
 
