@@ -321,6 +321,22 @@ window.CUP_CONFIG = {
                   rather than by a team.
        energy     the baseline the crowd sits at before anything has
                   happened, 0 to 1
+
+     `anthem` is the ground's song, and it is ORIGINAL — a motif is a
+     handful of scale degrees and a progression is a sequence of chords,
+     and neither of those is a thing anybody owns. Nothing here is
+     derived from an existing song.
+
+       key      the root, in hertz
+       scale    "minor" for storm and defiance, "major" for anthems
+       tempo    beats per minute; it creeps up with the crowd's energy
+       mood     picks the chord progression — anthemic-uplifting,
+                dark-stormy-epic, tense-driving, warm-nostalgic,
+                defiant-underdog
+       motif    the sung figure, in scale degrees
+       stems    file paths, if ever. Left null, the five layers are
+                synthesised in the browser like every other sound on
+                this site; filled in, the mixer would prefer the files.
      ================================================================ */
   TEAMS: [
     {
@@ -333,6 +349,9 @@ window.CUP_CONFIG = {
                shortsDark: "#0a0812", socks: "#2a2438", trim: "#f2b8c6" },
       stadium: { mow: "across", mowWidth: 0.72, stand: "#2f4a5e",
                  density: 0.90, backdrop: "coast", lighting: "night" },
+      /* dark and slow-building: a low held note that leaps */
+      anthem: { key: 174.6, scale: "minor", tempo: 84, mood: "dark-stormy-epic",
+                motif: [0, 0, 4, 3, 0], stems: null },
       squad: ["marina", "anwar", "sage", "thorn"], captain: "anwar",
       formation: "diamond",
     },
@@ -346,6 +365,9 @@ window.CUP_CONFIG = {
                shortsDark: "#0b1712", socks: "#1f6f4a", trim: "#ffd45e" },
       stadium: { mow: "along", mowWidth: 1.15, stand: "#7a5a2c",
                  density: 0.82, backdrop: "oldtown", lighting: "dusk" },
+      /* stomping, four notes, call and answer */
+      anthem: { key: 196.0, scale: "minor", tempo: 104, mood: "defiant-underdog",
+                motif: [0, 3, 2, 0], stems: null },
       squad: ["gustav", "ember", "lumi", "atlas"], captain: "lumi",
       formation: "diamond",
     },
@@ -359,6 +381,8 @@ window.CUP_CONFIG = {
                shortsDark: "#080c11", socks: "#1f2b3c", trim: "#7fd4f5" },
       stadium: { mow: "check", mowWidth: 0.9, stand: "#3a4a6e",
                  density: 0.78, backdrop: "hills", lighting: "day" },
+      anthem: { key: 220.0, scale: "major", tempo: 112, mood: "tense-driving",
+                motif: [4, 4, 2, 4, 5], stems: null },
       squad: ["marina", "comet", "sage", "boulder"], captain: "comet",
       formation: "wide",
     },
@@ -384,6 +408,11 @@ window.CUP_CONFIG = {
          and the fullest stand of the six. */
       stadium: { mow: "along", mowWidth: 0.68, stand: "#7a3a34",
                  density: 0.96, backdrop: "marrakech", lighting: "dusk" },
+      /* HERS. A rising five-note figure that soars and lands on the
+         fifth — major, mid-fast, and the only anthem here written to be
+         sung rather than shouted. */
+      anthem: { key: 207.7, scale: "major", tempo: 98, mood: "anthemic-uplifting",
+                motif: [0, 2, 4, 5, 4], stems: null },
       squad: ["gustav", "ouissy", "echo", "willow"], captain: "ouissy",
       formation: "wide",
     },
@@ -397,6 +426,8 @@ window.CUP_CONFIG = {
                shortsDark: "#0c140e", socks: "#2a4a2c", trim: "#bfe8a8" },
       stadium: { mow: "across", mowWidth: 1.0, stand: "#4a6e4c",
                  density: 0.74, backdrop: "coast", lighting: "day" },
+      anthem: { key: 185.0, scale: "major", tempo: 92, mood: "warm-nostalgic",
+                motif: [2, 1, 0, 2, 4], stems: null },
       squad: ["marina", "willow", "lumi", "boulder"], captain: "willow",
       formation: "flat",
     },
@@ -410,6 +441,8 @@ window.CUP_CONFIG = {
                shortsDark: "#0c0a12", socks: "#2f2a3e", trim: "#e87ab0" },
       stadium: { mow: "check", mowWidth: 1.25, stand: "#4a3a6e",
                  density: 0.88, backdrop: "campus", lighting: "night" },
+      anthem: { key: 164.8, scale: "minor", tempo: 120, mood: "tense-driving",
+                motif: [0, 4, 3, 4, 6], stems: null },
       squad: ["gustav", "echo", "atlas", "thorn"], captain: "atlas",
       formation: "flat",
     },

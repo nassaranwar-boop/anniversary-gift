@@ -305,3 +305,19 @@ moving.
   projection where each corner lands and samples the rendered pitch at
   that pixel. All six corners came back painted — the box is right and
   the shape is the camera.
+- **`cupground.js`** — every team's ground, same camera, same moment,
+  only the host changing. A per-team stadium system is worth having only
+  if the grounds actually look different, and "looks different" is the
+  kind of claim that is easy to believe about your own work.
+- **`cupchant.js`** — does the ground actually react? A layered chant is
+  a claim about a mixer, and a mixer sounds fine in a description while
+  doing nothing in code. You cannot listen to it from a harness, but you
+  can read the faders: at each energy the five layers should be at
+  particular places, and the ORDER they arrive in is the design.
+
+  It found the bug that mattered. mix() runs on every frame, and each
+  call cancelled the running automation and started a fresh half-second
+  ramp from wherever the last had got to — so every fader crawled a
+  frame's worth per frame and stopped short forever. The clap sat at
+  0.05 of a target of 0.30 and the full chant never left the floor: the
+  anthem simply never played, and nothing about the code looked wrong.

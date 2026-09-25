@@ -712,8 +712,29 @@ window.OuissyCup = (function () {
     return AC;
   }
 
+  /* =======================================================================
+     THE GROUND'S SONG
+
+     The chant engine is its own file and its own audio graph; this is
+     the one place the two meet. It is handed the context and the master
+     node the rest of the chapter already uses, so there is one output
+     and one volume control rather than two, and the anthem of whoever
+     is at home.
+     ======================================================================= */
+  function startChant() {
+    if (!window.CupChant || !audio() || !soundOn) return;
+    window.CupChant.init(AC, master, { volume: 0.55 });
+    var host = teamById((G && G.ids && G.ids[0]) || run.myTeam);
+    if (host && host.anthem) window.CupChant.setTeam(host.anthem);
+    window.CupChant.mute(!soundOn);
+  }
+  function chantSay(kind) {
+    if (window.CupChant && soundOn) window.CupChant.event(kind);
+  }
+
   function startCrowd() {
     if (!audio() || crowdSrc || !soundOn) return;
+    startChant();
     crowdSrc = AC.createBufferSource();
     crowdSrc.buffer = noiseBuf; crowdSrc.loop = true;
     var band = AC.createBiquadFilter();
@@ -980,7 +1001,12 @@ window.OuissyCup = (function () {
     if (G && G.state === "menu") menuMusic(true);
     else startCrowd();
   }
-  function sleepSound() { stopCrowd(); menuMusic(false); }
+  function sleepSound() {
+    stopCrowd(); menuMusic(false);
+    /* the chant goes quiet with everything else — it has its own graph,
+       so it needs telling */
+    if (window.CupChant) window.CupChant.mute(true);
+  }
 
   /* =======================================================================
      9. THE MATCH
@@ -2185,6 +2211,10 @@ window.OuissyCup = (function () {
     superBanner(s, p);
     SFX.superCharge();
     crowdSwell(0.10, 2.2);
+    /* THE HELD BREATH. Everything ducks to a rising hiss for the
+       wind-up, because a goal is not the loudest thing in a stadium —
+       the silence before it is what makes it loud. */
+    chantSay("superWind");
   }
 
   /* HOW GOOD THE KEEPER FACING IT IS.
@@ -2312,6 +2342,9 @@ window.OuissyCup = (function () {
   }
 
   function fireSuper(s) {
+    /* and the release: quiet, then everything */
+    chantSay("superHit");
+    crowdPush(0.8);
     var p = s.by, b = G.ball, K = s.kind;
     var mul = (p.mul || FLAT_MUL).power;
     var speed = TUNE.superSpeed * K.speed * mul;
@@ -2368,6 +2401,9 @@ window.OuissyCup = (function () {
     G.heart[p.team] = 0;                 // spent on contact, not on press
     setAnim(p, "superKick", 0.6);
     G.stat.shots[p.team]++;
+    /* a shot is the moment a crowd comes up off its seat, whoever took
+       it — the sharp intake before it is a goal or it is not */
+    crowdPush(p.team === 0 ? 0.42 : 0.24);
     G.shake = 1;
     G.flash = 1;
     G.flashCol = s.def.colour;
@@ -2437,6 +2473,8 @@ window.OuissyCup = (function () {
        at the wrong one gets the opposite: the stand stops moving. Both
        are the same two lines of code and the difference between a
        stadium and a texture. */
+    if (team === 0) { crowdPush(1); chantSay("goalHome"); }
+    else { crowdHush(0.9); chantSay("goalAway"); }
     if (R2 && R2.startWave) {
       if (team === 0) R2.startWave();
       if (R2.setMood) R2.setMood(team === 0 ? 1 : -0.85);
@@ -3995,6 +4033,9 @@ window.OuissyCup = (function () {
     kickBall(p, ang, sp, power * TUNE.shotLift * 46, p);
     setAnim(p, "kick", 0.34);
     G.stat.shots[p.team]++;
+    /* a shot is the moment a crowd comes up off its seat, whoever took
+       it — the sharp intake before it is a goal or it is not */
+    crowdPush(p.team === 0 ? 0.42 : 0.24);
     addHeart(p.team, TUNE.heartShot);
     SFX.shot();
     crowdSwell(0.03, 0.8);
@@ -4224,6 +4265,97 @@ window.OuissyCup = (function () {
   /* =======================================================================
      16. THE CLOCK AND THE STATES
      ======================================================================= */
+  /* =======================================================================
+     WHAT THE CROWD IS FEELING, AS ONE NUMBER
+
+     Nought is a ground waiting for something to happen and one is the
+     ground the moment a goal goes in. Everything visible and everything
+     audible hangs off it — the sway, the brightness, how far forward
+     they are leaning, and which layers of the chant are playing — so
+     that the two can never disagree. A stand that looks roused while it
+     sounds bored is worse than one that does neither.
+
+     It has a floor it settles back to (the ground's own `energy`, so a
+     full house hums louder than an empty one before anybody has
+     kicked anything), a target the match keeps pushing, and a rise that
+     is faster than its fall — which is what a crowd does. They come up
+     in a second and take ten to come down.
+     ======================================================================= */
+  var CROWD_E = { now: 0.25, target: 0.25, spike: 0, hush: 0 };
+
+  function crowdBase() {
+    var v = VEN.cur || {};
+    return v.energy === undefined ? 0.26 : v.energy;
+  }
+
+  /* an event pushes it up for a moment: a shot, a tackle in the box, a
+     near miss. `hush` is the opposite and is what an away goal does. */
+  function crowdPush(amount) {
+    CROWD_E.spike = Math.min(1, CROWD_E.spike + amount);
+  }
+  function crowdHush(amount) {
+    CROWD_E.hush = Math.min(1, CROWD_E.hush + amount);
+  }
+
+  function crowdEnergyStep(dt) {
+    /* HELD, for a harness. You cannot listen to a mixer from a test, so
+       a test has to be able to put the ground at a given energy and
+       read the faders — and it cannot do that while the match is
+       writing over the value sixty times a second. */
+    if (CROWD_E.hold) {
+      if (R2 && R2.setEnergy) R2.setEnergy(CROWD_E.now);
+      if (window.CupChant) window.CupChant.energy(CROWD_E.now, matchPhase());
+      return;
+    }
+    var base = crowdBase();
+    var t = base;
+    if (G && G.state === "play") {
+      /* HOW NEAR SOMEBODY IS TO SCORING is most of what a crowd
+         responds to, and it is a question about the BALL rather than
+         about possession: a ball in your box is frightening whoever
+         put it there. */
+      var d0 = Math.abs(G.ball.y - ownGoalY(0)) / PITCH.h;
+      var d1 = Math.abs(G.ball.y - ownGoalY(1)) / PITCH.h;
+      var near = 1 - Math.min(d0, d1);            // 1 at either goal
+      t += Math.max(0, near - 0.55) * 1.35;
+      /* and the home end lifts more when it is THEIR attack */
+      var hold = ballHolder();
+      if (hold && hold.team === 0 && d1 < 0.4) t += 0.12;
+      /* a close game late is its own kind of noise */
+      var late = G.clock / TUNE.halfSeconds;
+      if (G.half === 2 && late > 0.7 && Math.abs(G.score[0] - G.score[1]) <= 1) {
+        t += 0.10 + (late - 0.7) * 0.5;
+      }
+    } else if (G && (G.state === "goal" || G.state === "replay")) {
+      t = 0.55;
+    }
+    CROWD_E.target = clamp(t, 0, 1);
+
+    /* the spike and the hush both decay, and the spike decays slower
+       because a roar hangs about and a hush does not */
+    CROWD_E.spike = Math.max(0, CROWD_E.spike - dt * 0.55);
+    CROWD_E.hush = Math.max(0, CROWD_E.hush - dt * 0.8);
+
+    var want = clamp(CROWD_E.target + CROWD_E.spike - CROWD_E.hush, 0, 1);
+    /* UP FAST, DOWN SLOW — a crowd rises in a second and takes ten to
+       settle, and getting that backwards makes every reaction feel
+       like a light switch */
+    var k = want > CROWD_E.now ? 1 - Math.pow(0.02, dt) : 1 - Math.pow(0.55, dt);
+    CROWD_E.now += (want - CROWD_E.now) * k;
+
+    if (R2 && R2.setEnergy) R2.setEnergy(CROWD_E.now);
+    if (window.CupChant) window.CupChant.energy(CROWD_E.now, matchPhase());
+  }
+
+  /* what the chant needs to know beyond the number */
+  function matchPhase() {
+    if (!G) return "idle";
+    if (G.state === "goal" || G.state === "replay") return "goal";
+    if (G.state === "kickoff") return "kickoff";
+    if (G.state === "half" || G.state === "full") return "break";
+    return "play";
+  }
+
   function step(dt) {
     if (!G) return;
     G.stateT += dt;
@@ -5025,6 +5157,7 @@ window.OuissyCup = (function () {
 
     placeCamera(dt, false);
     R2.tick(dt);
+    crowdEnergyStep(dt);
     R2.begin(dt, netBulge);
 
     /* =====================================================================
@@ -9859,6 +9992,10 @@ window.OuissyCup = (function () {
          exist while somebody is driving. */
       AUTOPLAY = false;
       if (EL["cup-hud"]) EL["cup-hud"].hidden = false;
+      /* the ground's song, which a real match start brings up through
+         startCrowd — a quick match is still a match and should sound
+         like one */
+      startChant();
       return hooks.state();
     },
     teamStats: function (id) {
@@ -9970,6 +10107,12 @@ window.OuissyCup = (function () {
        it. This snaps it to where it is heading, which is what every
        screenshot of the match actually wants. */
     camSnap: function () { placeCamera(0, true); return hooks.state(); },
+    /* hold the ground at an energy, or let the match have it back */
+    energy: function (v) {
+      if (v === null || v === undefined) { CROWD_E.hold = false; return CROWD_E; }
+      CROWD_E.hold = true; CROWD_E.now = clamp(v, 0, 1);
+      return CROWD_E;
+    },
     /* THE HUD'S OWN GEOMETRY, so a harness can ask whether two
        instruments are sitting on top of each other. The radar is
        painted on a canvas and the thumb button is a DOM element, so
@@ -10245,7 +10388,10 @@ window.OuissyCup = (function () {
     },
     flag: flagCanvas,
     draw: draw,
-    soundOff: function () { soundOn = false; },
+    soundOff: function () {
+      soundOn = false;
+      if (window.CupChant) window.CupChant.mute(true);
+    },
     /* Kept for the harnesses and for the settings screen, and now it
        costs nothing either way: every shadow in the game is an ellipse
        drawn on the grass, so there is no map to switch off and no

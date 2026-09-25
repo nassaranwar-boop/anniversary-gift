@@ -418,6 +418,7 @@ window.CupPitch2D = (function () {
        at the wrong one. A crowd that celebrates identically whichever
        way the ball went in is a crowd that is not watching. */
     this.mood = 0;
+    this.energy = 0.25;
     this.flash = 0; this.flashCol = "#ffffff";
     this.shake = 0;
     this.items = [];
@@ -914,6 +915,11 @@ window.CupPitch2D = (function () {
           var cf = Math.max(0, Math.min(0.999, sxp / this.vw));
           var lift = Math.round(this.standLift(cf, r));
           var col = this.seatCol(id, cf);
+          /* A ROUSED STAND IS A BRIGHTER STAND — people stand up, and
+             standing up is the same thing as catching more of the
+             light coming off the roof. */
+          var eLift = (this.energy === undefined ? 0.25 : this.energy);
+          if (eLift > 0.3) col = mix(col, "#ffe8c0", (eLift - 0.3) * 0.22);
           /* the further back, the deeper in shadow — the same ramp the
              tier behind them is drawn with, so they sit IN it */
           var shade = 0.42 * (1 - r / Math.max(1, T.rows - 1));
@@ -2937,6 +2943,17 @@ window.CupPitch2D = (function () {
   /* somebody scored: send it round the ground */
   Pitch.prototype.startWave = function () { this.wave = 0; };
   Pitch.prototype.setMood = function (v) { this.mood = clampN(v, -1, 1); };
+  /* =======================================================================
+     THE CROWD'S ENERGY
+
+     One number, nought to one, worked out by the match and read by
+     everything: how hard the stand sways, how bright it is, how far
+     forward it is leaning — and, in cup.js, how many layers of the
+     chant are playing. Both halves reading the SAME number is the
+     whole point. Anything else and the ground looks roused while it
+     sounds bored, which is worse than either.
+     ======================================================================= */
+  Pitch.prototype.setEnergy = function (v) { this.energy = clampN(v, 0, 1); };
   function clampN(v, a, b) { return v < a ? a : (v > b ? b : v); }
 
   Pitch.prototype.tick = function (dt) {
@@ -2966,8 +2983,13 @@ window.CupPitch2D = (function () {
        is the same sine either way; what changes is how much of it there
        is, and at a goal against them it very nearly stops — which reads,
        from the far end of a pitch, exactly as a stand going quiet. */
-    var amp = 0.9 * (1 + this.mood * (this.mood > 0 ? 1.6 : 0.85));
-    var idle = Math.sin(this.t * (2.1 + this.mood * 1.1) + colFrac * 9 + row) * amp;
+    /* ENERGY SETS THE BASELINE, MOOD SETS THE SPIKE. A ground that is
+       up for it sways harder and faster all match; a goal against it
+       drops the mood for a few seconds on top of that. */
+    var e = this.energy === undefined ? 0.25 : this.energy;
+    var amp = (0.55 + e * 1.1) * (1 + this.mood * (this.mood > 0 ? 1.6 : 0.85));
+    var idle = Math.sin(this.t * (1.7 + e * 1.4 + this.mood * 1.1)
+                        + colFrac * 9 + row) * amp;
     if (this.wave < 0) return idle;
     var front = (this.wave % 1);
     var d = colFrac - front;
