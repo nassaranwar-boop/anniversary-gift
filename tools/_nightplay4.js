@@ -53,13 +53,22 @@ module.exports = async function (c) {
        So it waits its turn, the way a hand does. Nothing in a tick is
        urgent enough to mind: Jax gives her 3.4 seconds at a door and
        this costs a third of one. */
+    /* Waiting out the window on EVERY press made a chunk cost half a
+       minute, because parking the camera means pressing NEXT up to
+       eight times in a row and each one stood in the queue. A camera is
+       not urgent -- it can wait for the tick after. A door is, so a
+       door waits and a camera is simply skipped when its turn has not
+       come round. */
     const HOLD = 340;
     const lastAt = {};
-    const press = async (k) => {
+    const press = async (k, soft) => {
       const el = document.querySelector('#ns-pad [data-k="' + k + '"]');
       if (!el) return false;
       const since = performance.now() - (lastAt[k] || -1e9);
-      if (since < HOLD) await new Promise((r2) => setTimeout(r2, HOLD - since));
+      if (since < HOLD) {
+        if (soft) return 'waiting';
+        await new Promise((r2) => setTimeout(r2, HOLD - since));
+      }
       const r = el.getBoundingClientRect();
       const ev = (t) => new PointerEvent(t, { clientX: r.left + r.width / 2,
         clientY: r.top + r.height / 2, bubbles: true, cancelable: true,
@@ -171,15 +180,15 @@ module.exports = async function (c) {
       if (!wound) {
         if (hold) {
           /* hold the camera on her */
-          if (!G.monitor) await press('monitor');
-          else if (G.cam !== hold) await press('next');
+          if (!G.monitor) await press('monitor', true);
+          else if (G.cam !== hold) await press('next', true);
         } else {
           /* nothing to watch: sweep, and put the monitor down again,
              because it draws the whole time it is up */
           const ph = (window.__sweep++) % 8;
-          if (ph === 0) await press('monitor');
-          else if (ph < 4) await press('next');
-          else if (ph === 4 && G.monitor) await press('monitor');
+          if (ph === 0) await press('monitor', true);
+          else if (ph < 4) await press('next', true);
+          else if (ph === 4 && G.monitor) await press('monitor', true);
         }
       }
 
@@ -226,7 +235,8 @@ module.exports = async function (c) {
       const r = await run(WARP, CHUNK).catch((e) => ({ err: e.message }));
       if (r.err) { say('  !! ' + r.err); break; }
       r.log.forEach((l) => say(l));
-      if (guard === 1) say(`  (a chunk of ${CHUNK} ticks cost ${r.ms}ms in the page)`);
+      if (guard === 1 || r.ms > 20000)
+        say(`  (a chunk of ${CHUNK} ticks cost ${r.ms}ms in the page)`);
 
       if (r.hour !== lastHour && r.phase === 'play') {
         lastHour = r.hour;
