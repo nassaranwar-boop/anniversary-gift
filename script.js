@@ -6783,3 +6783,25 @@ document.getElementById("hv-quit").addEventListener("click", () => {
   if (window.OST) window.OST.stop();
   pageTurn("hub", startHub);
 });
+
+/* =======================================================================
+   THE WAY PAST "TURN YOUR PHONE"
+
+   The prompt itself is CSS — see the block at the end of style.css —
+   because a media query can never disagree with the real orientation
+   the way a resize listener eventually does. This is the only part that
+   needs script: a phone with rotation lock switched on cannot rotate,
+   and a prompt you cannot dismiss on a phone that cannot obey it is not
+   a prompt, it is a locked door.
+
+   The flag goes on <html> so it outlives every chapter swap, and it is
+   deliberately NOT stored: if she turns rotation lock off later, the
+   prompt should come back and offer her the better picture again.
+   ======================================================================= */
+(function () {
+  var b = document.getElementById("rotate-anyway");
+  if (!b) return;
+  b.addEventListener("click", function () {
+    document.documentElement.classList.add("rotate-ok");
+  });
+})();

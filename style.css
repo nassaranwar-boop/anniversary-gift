@@ -8557,3 +8557,84 @@ img{-webkit-user-drag:none; user-select:none;}
 .cup-sr button{
   position:absolute; width:1px; height:1px;
 }
+
+/* =======================================================================
+   TURN YOUR PHONE
+
+   Shown only where all three are true: the screen is taller than it is
+   wide, the pointer is a finger rather than a mouse, and the thing is
+   phone-sized. All three matter. Orientation alone catches a tall
+   desktop window; coarse pointer alone catches a phone already lying
+   on its side; and without the width bound an iPad in portrait — which
+   every screen here fits perfectly well — would be told to rotate.
+
+   It is display:none the rest of the time, which keeps it out of the
+   accessibility tree rather than merely invisible, and means it costs
+   nothing at all on the device she will actually be holding.
+   ======================================================================= */
+.rotate-me{display:none;}
+@media (orientation:portrait) and (pointer:coarse) and (max-width:600px){
+  .rotate-me{
+    display:flex; position:fixed; inset:0; z-index:400;
+    align-items:center; justify-content:center; padding:24px;
+    background:
+      radial-gradient(120% 80% at 50% 12%, var(--bg-glow), transparent 62%),
+      linear-gradient(170deg, var(--bg-sky-1), var(--bg-sky-3) 62%, var(--bg-sky-4));
+    text-align:center; color:var(--ink);
+  }
+  /* WHEN IT IS DISMISSED IT IS DISMISSED FOR THE SESSION, not until the
+     next screen. The flag goes on <html> so it survives every chapter
+     swap, and it is deliberately not stored: a phone whose rotation
+     lock gets turned off later should get the prompt back. */
+  html.rotate-ok .rotate-me{display:none;}
+}
+.rotate-card{max-width:19rem; display:grid; gap:14px; justify-items:center;}
+.rotate-card h2{
+  font-family:'Fredoka',sans-serif; font-size:1.5rem; margin:0;
+  color:var(--ink);
+}
+.rotate-card p{margin:0; color:var(--ink-soft); line-height:1.5; font-size:.95rem;}
+
+/* the phone, drawn rather than pictured, tipping over and back */
+.rotate-phone{position:relative; width:104px; height:104px;}
+.rotate-phone-body{
+  position:absolute; left:50%; top:50%; width:46px; height:78px;
+  margin:-39px 0 0 -23px; border-radius:9px;
+  background:var(--paper); border:3px solid var(--ink-soft);
+  box-shadow:0 6px 18px rgba(92,58,48,.22);
+  animation:rotateTip 2.6s ease-in-out infinite;
+}
+.rotate-phone-body i{
+  position:absolute; left:50%; bottom:5px; width:16px; height:3px;
+  margin-left:-8px; border-radius:2px; background:var(--ink-muted);
+}
+@keyframes rotateTip{
+  0%,18%   {transform:rotate(0deg);}
+  46%,72%  {transform:rotate(-90deg);}
+  100%     {transform:rotate(0deg);}
+}
+/* a sweep of motion behind it, so the tip reads as "you do this" */
+.rotate-arc{
+  position:absolute; inset:0; border-radius:50%;
+  border:3px dashed var(--rose); border-right-color:transparent;
+  border-bottom-color:transparent; opacity:.55;
+  animation:rotateArc 2.6s ease-in-out infinite;
+}
+@keyframes rotateArc{
+  0%,18%{transform:rotate(0deg); opacity:.2;}
+  46%,72%{transform:rotate(-90deg); opacity:.6;}
+  100%{transform:rotate(0deg); opacity:.2;}
+}
+@media (prefers-reduced-motion:reduce){
+  .rotate-phone-body,.rotate-arc{animation:none;}
+  .rotate-phone-body{transform:rotate(-90deg);}
+}
+.rotate-anyway{
+  margin-top:4px; padding:9px 16px; border-radius:999px; cursor:pointer;
+  border:2px solid var(--ink-muted); background:transparent;
+  font-family:'Poppins',sans-serif; font-size:.82rem; color:var(--ink-soft);
+  /* comfortably past the 44px a thumb needs, because this is the one
+     control on the screen and missing it is the dead end */
+  min-height:44px; min-width:44px;
+}
+.rotate-anyway:active{transform:translateY(1px);}

@@ -65,14 +65,14 @@
 <title>For My Love</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="style.css?v=244">
+<link rel="stylesheet" href="style.css?v=245">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Silkscreen:wght@400;700&family=VT323&family=Rye&family=Pixelify+Sans:wght@400;500;600&family=Press+Start+2P&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&family=Fredoka:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=Caveat:wght@600;700&family=Great+Vibes&display=swap" rel="stylesheet">
 <!-- defer, not a plain tag. three.js is the biggest single file here and
      in the head it blocked the parser for its whole download, so nothing
      was painted until it had arrived. defer fetches it just as early and
      runs it after the document is parsed — and deferred scripts still run
      in the order they are written, so book-scene.js below still finds it. -->
-<script defer src="vendor/three.bundle.js?v=244"></script>
+<script defer src="vendor/three.bundle.js?v=245"></script>
 
 </head>
 <body>
@@ -1311,8 +1311,38 @@
     </div>
   </section>
 
-<script defer src="book-scene.js?v=244"></script>
-<script defer src="scrapbook.js?v=244"></script>
-<script defer src="script.js?v=244"></script>
+  <!-- TURN THE PHONE.
+
+       Every chapter here is a widescreen picture — a pitch, a road, a
+       side-scrolling world — and on a phone held upright each of them
+       gets a band across the middle of the screen with nothing above or
+       below it. The football was the worst of them at about a quarter of
+       the screen, but none of them are right in portrait.
+
+       It is CSS alone, deliberately. A media query cannot get out of
+       step with the real orientation the way a resize listener can, it
+       costs nothing while she is in landscape, and it is out of the
+       accessibility tree entirely until it applies.
+
+       The way past it exists because some phones have rotation lock
+       switched on, and a prompt you cannot dismiss on a phone that
+       cannot rotate is not a prompt, it is a locked door. -->
+  <div class="rotate-me" id="rotate-me" role="status">
+    <div class="rotate-card">
+      <div class="rotate-phone" aria-hidden="true">
+        <span class="rotate-phone-body"><i></i></span>
+        <span class="rotate-arc"></span>
+      </div>
+      <h2>Turn your phone</h2>
+      <p>Everything in here is made wide &mdash; it wants the long way round.</p>
+      <button class="rotate-anyway" id="rotate-anyway" type="button">
+        Stay upright anyway
+      </button>
+    </div>
+  </div>
+
+<script defer src="book-scene.js?v=245"></script>
+<script defer src="scrapbook.js?v=245"></script>
+<script defer src="script.js?v=245"></script>
 </body>
 </html>
