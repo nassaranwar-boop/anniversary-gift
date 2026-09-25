@@ -2,3 +2,6 @@ node_modules
 
 # rendered page shots from tools/pageshots.js — working images, not the site
 .pageshots/
+
+# throwaway probes that need to live under the repo so playwright resolves
+tools/tmp/

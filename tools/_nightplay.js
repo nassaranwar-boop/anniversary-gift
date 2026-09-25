@@ -157,7 +157,7 @@ const say = (s) => { console.log(s); lines.push(s);
     await T(2200);
   }
 
-  await require('/home/user/anniversary-gift/tools/_nightplay2.js')(
+  await require(process.env.PLAY || '/home/user/anniversary-gift/tools/_nightplay2.js')(
     { p, T, tap, card, shot, say, lines, errs, NIGHTS, SPEED, DIR });
 
   fs.writeFileSync(DIR + '/log.txt', lines.join('\n'));
