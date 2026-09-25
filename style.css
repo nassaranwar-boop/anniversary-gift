@@ -8529,13 +8529,30 @@ img{-webkit-user-drag:none; user-select:none;}
   position:absolute; top:13%; left:0; right:0; margin:0; text-align:center;
   font-family:var(--ns-face); line-height:1.6;
 }
+/* AND IT HAS TO BE READABLE OVER A ROOM.
+
+   These two sit absolutely, at 13% down, over whatever the camera
+   happens to be showing -- and the camera is moving through his shop.
+   They had no plate and no shadow, so they were legible on the dark
+   beats and gone on the pale ones: on the very first beat the lens is
+   on the foyer, which is a lit wall, and "PLAYBACK — PROPRIETOR
+   STATEMENT" disappeared into it. That is the opening title of the
+   chapter, over the opening shot, and on a first play it was not there.
+
+   A shadow rather than a box: a slab behind the words would read as a
+   caption bar and this is meant to look like something the machine is
+   printing over the picture. Two shadows -- one tight and black for the
+   edge, one wide and soft to darken the wall behind the whole word --
+   hold it over anything the shop can put underneath. */
 .ns-cine-head b{
   display:block; font-size:max(1.5cqh, 10px); letter-spacing:.34em;
-  color:rgba(255,120,110,.8); font-weight:700;
+  color:rgba(255,140,128,.95); font-weight:700;
+  text-shadow:0 1px 2px rgba(0,0,0,.95), 0 0 14px rgba(0,0,0,.8);
 }
 .ns-cine-head span{
   display:block; font-size:max(1.3cqh, 9px); letter-spacing:.16em;
-  color:rgba(232,223,200,.42);
+  color:rgba(236,228,208,.66);
+  text-shadow:0 1px 2px rgba(0,0,0,.95), 0 0 12px rgba(0,0,0,.75);
 }
 
 /* the transcript */
@@ -9314,12 +9331,25 @@ img{-webkit-user-drag:none; user-select:none;}
   color:var(--ns-brass);
 }
 .ns-sign{ margin:0 0 1cqh; line-height:1.2; }
+/* THE ONE CAPTION IN THE CHAPTER WITH NO FLOOR UNDER IT.
+
+   Everything else in here is sized `max(Ncqh, Npx)` for the reason
+   written over .ns-cine-sub: the stage is a 16:9 letterbox, so a phone
+   lying down gets a panel a couple of hundred pixels tall and one cqh
+   is barely two pixels. This pair was missed, and it is the chapter's
+   own name -- the first words of it anybody reads. Measured by
+   tools/readable.js at 844x390: "NIGHT SHIFT" came out at 8.6px, under
+   the 9px floor every other piece of writing on the site is held to,
+   and at .44em of letter-spacing that is a row of brass specks.
+
+   The sign keeps its cqh so it still grows with the panel; the floor
+   only catches it on the way down. */
 .ns-sign span{
-  display:block; font-size:5.4cqh; font-weight:700; letter-spacing:.16em;
+  display:block; font-size:max(5.4cqh, 26px); font-weight:700; letter-spacing:.16em;
   color:var(--ns-amber); text-shadow:0 0 2.4cqh rgba(255,179,71,.45);
   animation:nsFlicker 5.5s steps(1,end) infinite;
 }
-.ns-sign b{ display:block; margin-top:.5cqh; font-size:2.2cqh; font-weight:700; letter-spacing:.44em; color:var(--ns-brass); }
+.ns-sign b{ display:block; margin-top:.5cqh; font-size:max(2.2cqh, 11px); font-weight:700; letter-spacing:.44em; color:var(--ns-brass); }
 @keyframes nsFlicker{
   0%,72%,100%{ opacity:1; }
   73%{ opacity:.35; } 74%{ opacity:1; } 77%{ opacity:.5; } 78%{ opacity:1; }

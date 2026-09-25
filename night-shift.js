@@ -16649,7 +16649,7 @@ function screenPause() {
         '<button class="ns-btn" data-go="drawer">THE DRAWER</button>' +
         '<button class="ns-btn" data-go="sound">SOUND</button>' +
         '<button class="ns-btn" data-go="restart">RESTART NIGHT</button>' +
-        '<button class="ns-btn" data-go="title">TITLE</button>' +
+        '<button class="ns-btn" data-go="title">THE WEEK</button>' +
         '<button class="ns-btn" data-go="quit">LEAVE</button>' +
       '</div>' +
     '</div>', "ns-ov-pause");
@@ -16680,7 +16680,7 @@ function screenOver() {
       (his ? '<p class="ns-kept">' + his + '</p>' : "") +
       '<div class="ns-btns">' +
         '<button class="ns-btn ns-btn-go" data-go="restart">TRY THE NIGHT AGAIN</button>' +
-        '<button class="ns-btn" data-go="title">TITLE</button>' +
+        '<button class="ns-btn" data-go="title">THE WEEK</button>' +
       '</div>' +
     '</div>', "ns-ov-over");
 }
@@ -16768,7 +16768,7 @@ function screenShift() {
       (missed ? '<p class="ns-missed">' + missed + '</p>' : "") +
       (hook ? '<p class="ns-hook">' + hook + '</p>' : "") +
       '<div class="ns-btns">' + next +
-        '<button class="ns-btn" data-go="title">TITLE</button>' +
+        '<button class="ns-btn" data-go="title">THE WEEK</button>' +
       '</div>' +
     '</div>', "ns-ov-win");
 }
@@ -16861,7 +16861,7 @@ function screenEnding(which) {
       lastPageCard() +
       '<div class="ns-btns">' +
         '<button class="ns-btn ns-btn-go" data-go="galleryOffer">THE SHOP IN DAYLIGHT</button>' +
-        '<button class="ns-btn" data-go="title">TITLE</button>' +
+        '<button class="ns-btn" data-go="title">THE WEEK</button>' +
         '<button class="ns-btn" data-go="quit">CLOCK OFF</button>' +
       '</div>' +
     '</div>', "ns-ov-fin");
