@@ -319,12 +319,12 @@ window.CUP_CONFIG = {
     {
       id: "fmpm", name: "FMPM MARRAKECH", short: "FMPM",
       sub: "Medicine and Pharmacy",
-      crest: "caduceus", flag: "crest", derby: "hers", home: true, venue: "marrakech",
+      crest: "caduceus", flag: "crest", venue: "marrakech",
       kit: { shirt: "#c1272d", shirtDark: "#8f1a20", shorts: "#f6efdd",
              shortsDark: "#cdbf9f", socks: "#c1272d", trim: "#e8b23c" },
       gkKit: { shirt: "#1f6f4a", shirtDark: "#134a31", shorts: "#12241c",
                shortsDark: "#0b1712", socks: "#1f6f4a", trim: "#ffd45e" },
-      squad: ["gustav", "ouissy", "lumi", "atlas"], captain: "ouissy",
+      squad: ["gustav", "ember", "lumi", "atlas"], captain: "lumi",
       formation: "diamond",
     },
     {
@@ -341,12 +341,12 @@ window.CUP_CONFIG = {
     {
       id: "upm", name: "UPM MARRAKECH", short: "UPM",
       sub: "Private University of Marrakech",
-      crest: "mortar", flag: "crest", venue: "marrakech",
+      crest: "mortar", flag: "crest", derby: "hers", home: true, venue: "marrakech",
       kit: { shirt: "#e08a3c", shirtDark: "#b06428", shorts: "#3a2a1e",
              shortsDark: "#241a12", socks: "#e08a3c", trim: "#f6efdd" },
       gkKit: { shirt: "#7a3a1e", shirtDark: "#502414", shorts: "#2a1810",
                shortsDark: "#180e09", socks: "#7a3a1e", trim: "#ffd45e" },
-      squad: ["gustav", "ember", "echo", "willow"], captain: "ember",
+      squad: ["gustav", "ouissy", "echo", "willow"], captain: "ouissy",
       formation: "wide",
     },
     {
@@ -438,7 +438,7 @@ window.CUP_CONFIG = {
     { id: "amical", name: "FRIENDLY MATCH",
       note: "one game, any two sides, any campus" },
     { id: "derby", name: "THE DERBY",
-      note: "dentistry against medicine \u00b7 under the lights" },
+      note: "dentistry against Marrakech \u00b7 under the lights" },
   ],
 
   /* The cup's three rounds. `id` is who she meets; the final is fixed

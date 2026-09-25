@@ -1087,7 +1087,7 @@ window.OuissyCup = (function () {
                 { skill: 0.5, round: "MATCH", venue: "rabat" };
     var g = {
       roundIdx: roundIdx, round: round,
-      ids: [(opts && opts.mine) || run.myTeam || "fmpm",
+      ids: [(opts && opts.mine) || run.myTeam || "upm",
             (opts && opts.theirs) || round.id],
       venue: (opts && opts.venue) || round.venue || "rabat",
       score: [0, 0], half: 1, clock: 0,
@@ -8116,7 +8116,7 @@ window.OuissyCup = (function () {
   function derbyTeam(side) {
     var list = cfg("TEAMS", []);
     for (var i = 0; i < list.length; i++) if (list[i].derby === side) return list[i].id;
-    return side === "hers" ? "fmpm" : "fmdc";
+    return side === "hers" ? "upm" : "fmdc";
   }
 
   /* wireMenu has gone too: it walked a card's [data-go] attributes and
@@ -9779,7 +9779,7 @@ window.OuissyCup = (function () {
          asymmetry follows the team INDEX it is a bug in the code, and
          if it follows the SQUAD it is the fixture being uneven. There
          is no other cheap way to tell those two apart. */
-      var mine = run.myTeam || "fmpm";
+      var mine = run.myTeam || "upm";
       var round = CUP[roundIdx || 0] || {};
       G = swapSides
         ? newMatch(roundIdx || 0, { mine: round.id, theirs: mine })
