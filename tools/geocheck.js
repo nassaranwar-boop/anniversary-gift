@@ -36,26 +36,10 @@ const t = (n, c, note) => { c ? pass++ : fail++;
   /* one browser context per visitor, so localStorage survives the
      reloads the way it does for a real person */
   const run = async (label, how) => {
-    /* The blocked visitor needs the browser's own switch thrown, and
-       Browser.setPermission is a browser-level command: sent down a
-       page session belonging to a fresh context it lands nowhere, which
-       is how the first version of this check "blocked" somebody who was
-       in fact only unasked. So she gets the default context and a
-       browser-level session, with her storage wiped first so nothing
-       carries over from the visitor before her. */
-    const ctx = how === 'block' ? b.contexts()[0] || await b.newContext()
-                                : await b.newContext({ viewport: { width: 420, height: 800 } });
+    const ctx = await b.newContext({ viewport: { width: 420, height: 800 } });
     await ctx.setGeolocation({ latitude: 31.63, longitude: -7.99 });
     if (how === 'allow') await ctx.grantPermissions(['geolocation'], { origin: ORIGIN });
     const p = await ctx.newPage();
-    await p.setViewportSize({ width: 420, height: 800 });
-    if (how === 'block') {
-      await p.goto(ORIGIN + '/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
-      await p.evaluate(() => { try { localStorage.clear(); sessionStorage.clear(); } catch (e) {} });
-      const s = await b.newBrowserCDPSession();
-      await s.send('Browser.setPermission', {
-        permission: { name: 'geolocation' }, setting: 'denied', origin: ORIGIN });
-    }
     await p.route('**/*', (r) => {
       const u = r.request().url();
       /* the worker and the beacon are never really posted to */
@@ -64,9 +48,42 @@ const t = (n, c, note) => { c ? pass++ : fail++;
       return u.startsWith(ORIGIN) ? r.continue() : r.abort(); });
 
     /* count what the page asks the browser for, before any of it runs */
-    await p.addInitScript(() => {
+    await p.addInitScript((blocked) => {
       window.__geoCalls = 0;
       window.__pillEver = false;
+
+      /* A REAL DENY CANNOT BE CLICKED FROM A TEST.
+         It is a browser dialog, not part of the page, and the two ways
+         of setting it from outside both failed quietly here:
+         clearPermissions() leaves the state at "prompt", which is the
+         visitor who never answered rather than the one who refused, and
+         Browser.setPermission with no browserContextId lands on
+         Chromium's default context, which is not the one Playwright
+         gives you. Both produced a "blocked" visitor who was nothing of
+         the sort, and the state field above is what caught it.
+
+         So a block is emulated at the only place the page can observe
+         one: the two APIs it learns about permissions through. Anything
+         the site does in response is real -- including calling
+         geolocation when it should not, which still gets counted. */
+      if (blocked) {
+        try {
+          navigator.permissions.query = () =>
+            Promise.resolve({ state: 'denied', onchange: null,
+                              addEventListener() {}, removeEventListener() {} });
+        } catch (e) {}
+        try {
+          const deny = (_ok, err) => {
+            if (err) setTimeout(() => err({ code: 1, PERMISSION_DENIED: 1,
+                                            POSITION_UNAVAILABLE: 2, TIMEOUT: 3,
+                                            message: 'User denied Geolocation' }), 0);
+            return 0;
+          };
+          navigator.geolocation.getCurrentPosition = deny;
+          navigator.geolocation.watchPosition = deny;
+        } catch (e) {}
+      }
+
       const g = navigator.geolocation;
       if (g) ['getCurrentPosition', 'watchPosition'].forEach((m) => {
         const orig = g[m].bind(g);
@@ -78,7 +95,7 @@ const t = (n, c, note) => { c ? pass++ : fail++;
           if (document.getElementById('visit-loc-help')) window.__pillEver = true;
         }).observe(document.body, { childList: true, subtree: true });
       });
-    });
+    }, how === 'block');
 
     const loads = [];
     for (let i = 0; i < 3; i++) {
@@ -107,7 +124,7 @@ const t = (n, c, note) => { c ? pass++ : fail++;
         })()
       })));
     }
-    if (how !== 'block') await ctx.close(); else await p.close();
+    await ctx.close();
     console.log(`\n--- ${label}: ` + JSON.stringify(loads));
     return loads;
   };
