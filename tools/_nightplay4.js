@@ -32,14 +32,40 @@ module.exports = async function (c) {
     const t0 = performance.now();
     const txt = (id) => { const e = document.getElementById(id);
                           return e ? (e.innerText || '').trim() : ''; };
-    const press = (k) => {
+    /* THE PAD DEBOUNCES AT 320 MILLISECONDS, AND A THUMB DOES TOO.
+
+       Every button in the pad answers pointerdown AND click and guards
+       the pair with `if (t - b.__wkT < 320) return;`, which is right:
+       it is what stops one tap counting twice.
+
+       This loop's ticks are about 94 milliseconds apart in wall clock,
+       because almost all of a tick is pumpFrame and none of it is a
+       person deciding. So the driver was pressing the same key three or
+       four times inside one debounce window and losing the press it
+       wanted along with the ones it did not: it hammered LEFT for
+       fourteen ticks trying to open a door with nothing behind it, and
+       when Cogsworth actually arrived the shut landed inside a window
+       and was dropped. He got in. The log said `found=true
+       blackout=false phase=play shut=true` -- the button was reached
+       and the door did not move -- which reads like the game refusing a
+       door and was this instead.
+
+       So it waits its turn, the way a hand does. Nothing in a tick is
+       urgent enough to mind: Jax gives her 3.4 seconds at a door and
+       this costs a third of one. */
+    const HOLD = 340;
+    const lastAt = {};
+    const press = async (k) => {
       const el = document.querySelector('#ns-pad [data-k="' + k + '"]');
       if (!el) return false;
+      const since = performance.now() - (lastAt[k] || -1e9);
+      if (since < HOLD) await new Promise((r2) => setTimeout(r2, HOLD - since));
       const r = el.getBoundingClientRect();
       const ev = (t) => new PointerEvent(t, { clientX: r.left + r.width / 2,
         clientY: r.top + r.height / 2, bubbles: true, cancelable: true,
         pointerId: 1, isPrimary: true });
       el.dispatchEvent(ev('pointerdown')); el.dispatchEvent(ev('pointerup'));
+      lastAt[k] = performance.now();
       return true;
     };
     const wind = async () => {
@@ -76,14 +102,14 @@ module.exports = async function (c) {
       if (tutor) {
         if (tutor !== seen.tutor) { seen.tutor = tutor; log.push('(tutor) ' + tutor.replace(/\n/g, ' ')); }
         const w = tutor.toUpperCase();
-        if (w.indexOf('MONITOR: RAISE') >= 0 && !G.monitor) press('monitor');
-        else if (w.indexOf('MONITOR: LOWER') >= 0 && G.monitor) press('monitor');
-        else if (w.indexOf('STEP THROUGH THE ROOMS') >= 0) { G.monitor ? press('next') : press('monitor'); }
-        else if (w.indexOf('WEST DOOR: CLOSE') >= 0 && !G.doors.left) press('left');
-        else if (w.indexOf('SHUT DOOR HOLDS') >= 0 && G.doors.left) press('left');
-        else if (w.indexOf('HATCH: LATCH') >= 0 && !G.doors.hatch) press('hatch');
-        else if (w.indexOf('UNLATCH') >= 0 && G.doors.hatch) press('hatch');
-        else if (w.indexOf('FIND HIM') >= 0) { G.monitor ? press('next') : press('monitor'); }
+        if (w.indexOf('MONITOR: RAISE') >= 0 && !G.monitor) await press('monitor');
+        else if (w.indexOf('MONITOR: LOWER') >= 0 && G.monitor) await press('monitor');
+        else if (w.indexOf('STEP THROUGH THE ROOMS') >= 0) { await press(G.monitor ? 'next' : 'monitor'); }
+        else if (w.indexOf('WEST DOOR: CLOSE') >= 0 && !G.doors.left) await press('left');
+        else if (w.indexOf('SHUT DOOR HOLDS') >= 0 && G.doors.left) await press('left');
+        else if (w.indexOf('HATCH: LATCH') >= 0 && !G.doors.hatch) await press('hatch');
+        else if (w.indexOf('UNLATCH') >= 0 && G.doors.hatch) await press('hatch');
+        else if (w.indexOf('FIND HIM') >= 0) { await press(G.monitor ? 'next' : 'monitor'); }
         else if (w.indexOf('HOLD IT') >= 0 || w.indexOf('KEY IN HIS BACK') >= 0) await wind();
         /* the untimed lines are `hold:` timers inside playStep */
         for (let n = 0; n < warp * 30; n++) if (H.pumpFrame(1 / 30) !== 'play') break;
@@ -98,7 +124,7 @@ module.exports = async function (c) {
       note(G, at);
       for (const side of ['left', 'right', 'hatch'])
         if (at[side] !== G.doors[side]) {
-          const found = press(side);
+          const found = await press(side);
           /* A PRESS THAT DOES NOT MOVE THE DOOR IS THE ONLY THING WORTH
              A LINE IN THE LOG. "She was caught" is not a diagnosis. */
           if (G.doors[side] !== at[side])
@@ -145,15 +171,15 @@ module.exports = async function (c) {
       if (!wound) {
         if (hold) {
           /* hold the camera on her */
-          if (!G.monitor) press('monitor');
-          else if (G.cam !== hold) press('next');
+          if (!G.monitor) await press('monitor');
+          else if (G.cam !== hold) await press('next');
         } else {
           /* nothing to watch: sweep, and put the monitor down again,
              because it draws the whole time it is up */
           const ph = (window.__sweep++) % 8;
-          if (ph === 0) press('monitor');
-          else if (ph < 4) press('next');
-          else if (ph === 4 && G.monitor) press('monitor');
+          if (ph === 0) await press('monitor');
+          else if (ph < 4) await press('next');
+          else if (ph === 4 && G.monitor) await press('monitor');
         }
       }
 
