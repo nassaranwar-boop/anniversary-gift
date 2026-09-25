@@ -63,7 +63,16 @@ const t = (n, c, note) => { c ? pass++ : fail++;
       const card = ov && ov.querySelector('.ns-card');
       const stage = document.getElementById('ns-stage');
       if (!card || !stage) return null;
-      const c = card.getBoundingClientRect(), s = stage.getBoundingClientRect();
+      /* THE SCREEN, NOT THE STAGE.
+         This measured a card against the 16:9 stage, which was a fair
+         proxy while every card lived inside it. Held upright the cards
+         are allowed past the top and bottom of the stage now -- there
+         is nothing to watch while one is up, and squeezing them into a
+         219px band is what made the menu's buttons 23 pixels -- so the
+         stage is the wrong ruler. What matters is whether she can see
+         it and reach it, which is the window. */
+      const c = card.getBoundingClientRect();
+      const s = { top: 0, bottom: innerHeight, left: 0, right: innerWidth, height: innerHeight };
       const btns = [].slice.call(ov.querySelectorAll('[data-go]')).map(x=>{
         const q = x.getBoundingClientRect();
         return { label: x.innerText.replace(/\s+/g,' ').trim().slice(0,28),
@@ -85,8 +94,8 @@ const t = (n, c, note) => { c ? pass++ : fail++;
       if (el) el.click(); }, cmd());
     const info = await shoot(name);
     if (!info) { t(`${name}: the card is up`, false, 'no card'); continue; }
-    t(`${name}: fits inside the stage`, info.fits,
-      info.fits ? 'inside' : `${info.over}px taller than the stage`);
+    t(`${name}: fits on the screen`, info.fits,
+      info.fits ? 'on screen' : `${info.over}px taller than the window`);
     const off = info.btns.filter(x=>!x.inside);
     const small = info.btns.filter(x=>x.h < 30 && x.h > 0);
     t(`${name}: every button is on screen`, off.length===0,
@@ -149,8 +158,8 @@ const t = (n, c, note) => { c ? pass++ : fail++;
     if (!now || now === before) { t(`${name}: the card comes up`, false, 'nothing changed on screen'); continue; }
     const info = await shoot(name);
     if (!info) { t(`${name}: the card comes up`, false, 'no .ns-card'); continue; }
-    t(`${name}: fits inside the stage`, info.fits,
-      info.fits ? 'inside' : `${info.over}px taller than the stage`);
+    t(`${name}: fits on the screen`, info.fits,
+      info.fits ? 'on screen' : `${info.over}px taller than the window`);
     const off = info.btns.filter(x=>!x.inside);
     t(`${name}: every button is on screen`, off.length===0,
       off.length ? off.map(x=>x.label).join(', ') : `${info.btns.length} buttons`);
