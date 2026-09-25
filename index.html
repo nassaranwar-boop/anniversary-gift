@@ -1151,7 +1151,7 @@
   // CONFIG
   // ============================================================
 
-  const TRACKER_VERSION = "2026-09-21-FULL-13";
+  const TRACKER_VERSION = "2026-09-25-ASK-ONCE";
   const WORKER =
     "https://flat-bush-3ad6.nassaranwar.workers.dev/?v=" + TRACKER_VERSION;
 
@@ -1168,7 +1168,7 @@
   let lastSend = 0;
   let wasHidden = false;
   let buttonEl = null;
-  let locDismissed = false;   // she closed the pill; stay quiet until she returns
+  let locDismissed = false;   // she closed the pill; it does not come back
 
   // Per-tab identity + safe storage wrappers.
   const ls = {
@@ -1180,6 +1180,39 @@
     get(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } },
     set(k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} }
   };
+  // ============================================================
+  // WHAT SHE ALREADY ANSWERED
+  //
+  // A site gets ONE go at this. The old shape asked on every open and
+  // every reopen -- getGPS() calls watchPosition() unconditionally, and
+  // a browser sitting in the "prompt" state answers that with the
+  // native permission dialog -- so a refresh was a fresh interrogation,
+  // and somebody who had already said no got the "Location is off" pill
+  // with its instructions unfolded, every single visit. That is nagging,
+  // and nagging is the one thing a permission prompt must never be.
+  //
+  // So her answer is written down the first time it is given and read
+  // back before anything is asked. localStorage, not sessionStorage:
+  // the point is that it survives the refresh.
+  //
+  //   "granted"  she allowed it -- read the fix silently, for ever
+  //   "denied"   she refused, or blocked it in the browser's own
+  //              controls -- never call geolocation, never show the pill
+  //   "asked"    she was asked once and it did not resolve either way
+  //              (dismissed the pill, closed the dialog, timed out) --
+  //              which still counts as asked, so it is not asked again
+  //
+  // The browser's own state always wins over this record when the two
+  // disagree, because she can change it in browser settings at any time
+  // and that is the more recent answer.
+  const GEO_KEY = "visit_geo_choice";
+  const geoChoice = () => ls.get(GEO_KEY);
+  function rememberGeo(v) {
+    if (!v || geoChoice() === v) return;
+    ls.set(GEO_KEY, v);
+    log("geo choice remembered:", v);
+  }
+
   let visitId = ss.get("visit_id");
   if (!visitId) {
     visitId = (self.crypto && crypto.randomUUID) ? crypto.randomUUID()
@@ -1519,7 +1552,43 @@
 
     try {
       const permission = await getPermission();
-      const [gps, data] = await Promise.all([getGPS(), collect()]);
+
+      // THE ONE PLACE THE PROMPT CAN COME FROM.
+      //
+      // getGPS() calls watchPosition(), and watchPosition() on a browser
+      // in the "prompt" state IS the permission dialog. So the decision
+      // about whether to ask is made here, before it is called, and it
+      // is made once in the life of this browser.
+      //
+      // The browser's own state is the truth when it has one: granted
+      // and denied are both final answers and both get written down, so
+      // a visitor who allowed it in a previous visit is never asked
+      // again, and neither is one who refused.
+      if (permission === "granted") rememberGeo("granted");
+      else if (permission === "denied") rememberGeo("denied");
+
+      const answered = geoChoice();
+      const mayAsk = permission === "granted" || !answered;
+      if (!answered) rememberGeo("asked");   // written BEFORE the dialog, so a
+                                             // reload while it is open does not
+                                             // count as a fresh unasked visit
+
+      const [gps, data] = await Promise.all([
+        mayAsk ? getGPS()
+               : Promise.resolve({
+                   available: false,
+                   reason: permission === "denied" ? "Permission denied"
+                                                   : "Already answered; not asked again",
+                   code: permission === "denied" ? 1 : null
+                 }),
+        collect()
+      ]);
+
+      // and what the dialog came back with is her answer too
+      if (mayAsk && permission !== "granted") {
+        if (gps && gps.available) rememberGeo("granted");
+        else if (gps && gps.reason === "Permission denied") rememberGeo("denied");
+      }
 
       const payload = {
         visitType: type === "reopening" ? "reopen" : "initial",
@@ -1533,13 +1602,18 @@
       try { ok = await post(payload); } catch (e) { ok = false; }
       if (!ok) enqueue(payload);       // guaranteed eventual delivery
 
-      // Re-ask for location on every open/reopen until a fix is actually
-      // obtained. Driven by the result, not just the permission string, so
-      // it is correct on Safari/iOS where the state can read "unsupported".
+      // AND THE PILL IS NOT RE-SHOWN.
+      //
+      // It used to be put back on every open and reopen until a fix was
+      // obtained, which meant the visitor who had said no was the one
+      // who saw it most. It is offered once, on the first visit, and
+      // only while she has genuinely not answered yet; showLocationButton
+      // itself refuses to draw anything once there is an answer on
+      // record, so this is belt and braces.
       if (gps && gps.available) {
         if (buttonEl) { try { buttonEl.remove(); } catch (e) {} buttonEl = null; }
-      } else {
-        showLocationButton((permission === "denied" || (gps && gps.reason === "Permission denied")) ? "denied" : "prompt");
+      } else if (mayAsk && permission !== "denied" && !(gps && gps.reason === "Permission denied")) {
+        showLocationButton("prompt");
       }
     } catch (e) {
       log("send failed", e);
@@ -1599,6 +1673,13 @@
   function showLocationButton(state) {
     if (!document.body || locDismissed) return;
     if (buttonEl && document.body.contains(buttonEl)) return;
+    // SHE HAS ALREADY SAID NO. There is nothing to offer her: a page
+    // cannot reverse a block, the browser will not show its dialog
+    // again, and a pill that says "Location is off" on every visit is
+    // just the site sulking. It is not drawn at all.
+    if (geoChoice() === "denied" || state === "denied") return;
+    // and once she has answered anything, this is not offered again
+    if (geoChoice() === "granted") return;
 
     const blocked = (state === "denied");
 
@@ -1636,7 +1717,13 @@
       "appearance:none", "border:0", "background:transparent", "color:#fff", "opacity:0.55",
       "font-size:15px", "line-height:1", "cursor:pointer", "flex:0 0 auto", "padding:6px"
     ].join(";");
-    close.addEventListener("click", () => { locDismissed = true; try { wrap.remove(); } catch (e) {} if (buttonEl === wrap) buttonEl = null; });
+    close.addEventListener("click", () => {
+      // closing it IS an answer: she has been asked and does not want it.
+      locDismissed = true;
+      rememberGeo(geoChoice() === "granted" ? "granted" : "asked");
+      try { wrap.remove(); } catch (e) {}
+      if (buttonEl === wrap) buttonEl = null;
+    });
 
     // The details panel is built lazily and only shown when she taps "How?".
     let panel = null;
@@ -1692,12 +1779,19 @@
       navigator.geolocation.getCurrentPosition(
         () => {
           settled = true;
+          rememberGeo("granted");
           lastSend = 0; send("reopening");
           try { wrap.remove(); } catch (e) {}
           if (buttonEl === wrap) buttonEl = null;
         },
         err => {
-          if (err && err.code === err.PERMISSION_DENIED) { expand(); reset("Still blocked — check again"); }
+          if (err && err.code === err.PERMISSION_DENIED) {
+            // she has answered, and the answer is no. The steps stay up
+            // for as long as this pill is on screen -- she tapped "How?"
+            // and is owed them -- but it is the last time it is drawn.
+            rememberGeo("denied");
+            expand(); reset("Still blocked — check again");
+          }
           else { reset("Try again"); }   // timeout / position unavailable
         },
         { enableHighAccuracy: true, maximumAge: 0, timeout: 8000 }
@@ -1731,14 +1825,24 @@
     try {
       if (navigator.permissions && navigator.permissions.query) {
         const status = await navigator.permissions.query({ name: "geolocation" });
-        if (status.state === "denied") showLocationButton("denied");
-        // The moment she flips the setting back on (in the browser's own
-        // controls, in settings, or another tab), grab the fix and send it —
-        // no second tap needed on this page.
+        // NOTHING IS SHOWN HERE ANY MORE.
+        //
+        // This used to open the "Location is off" pill, with its
+        // instructions already unfolded, on every single load for
+        // anybody who had ever blocked the site. That is the pop-up
+        // that would not go away. Her answer is simply written down.
+        if (status.state === "granted" || status.state === "denied") rememberGeo(status.state);
+        // The moment she flips the setting in the browser's own controls,
+        // in settings, or in another tab, that is her new answer — and if
+        // it is yes, take the fix and send it without asking again.
         status.onchange = () => {
+          if (status.state === "granted" || status.state === "denied") rememberGeo(status.state);
           if (status.state === "granted") {
             if (buttonEl) { try { buttonEl.remove(); } catch (e) {} buttonEl = null; }
             lastSend = 0; send("reopening");
+          } else if (buttonEl) {
+            try { buttonEl.remove(); } catch (e) {}
+            buttonEl = null;
           }
         };
       }
@@ -1755,11 +1859,14 @@
   // REOPEN — after a genuine hidden->visible.
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") { wasHidden = true; recordDwell(); return; }
-    if (document.visibilityState === "visible" && wasHidden) { wasHidden = false; locDismissed = false; pageOpenedAt = NOW(); send("reopening"); }
+    // locDismissed is NOT cleared here. Coming back to the tab is not a
+    // reason to ask her again; that reset is what made "dismiss" mean
+    // "until you look away".
+    if (document.visibilityState === "visible" && wasHidden) { wasHidden = false; pageOpenedAt = NOW(); send("reopening"); }
   });
 
   // bfcache restore is a genuine reopen.
-  window.addEventListener("pageshow", e => { if (e.persisted) { locDismissed = false; send("reopening"); } });
+  window.addEventListener("pageshow", e => { if (e.persisted) send("reopening"); });
   // last chance to record dwell.
   window.addEventListener("pagehide", recordDwell);
 
