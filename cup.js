@@ -543,6 +543,27 @@ window.OuissyCup = (function () {
 
      Every draw call goes through these two. Nothing else in the file
      holds both ideas at once. */
+  /* =======================================================================
+     WHICH WAY ROUND THE PITCH IS DRAWN
+
+     The renderer takes coordinates in the pitch's own frame — across
+     the pitch first, along it second — and decides for itself which of
+     those becomes the screen's long axis. So turning the match
+     side-on, goals left and right, is one flag here and nothing at all
+     in these two functions.
+
+     What it does change, and what the flag is really for, is a handful
+     of places that had the vertical answer baked into them: which way a
+     sprite is facing relative to the lens, which axis the camera pans
+     along, and which way round the radar is drawn. Each of those asks
+     SIDE rather than assuming.
+     The default is the side-on view. The camera that ships up and down
+     the pitch is still here, one flag away, because it is the better
+     shot for a penalty and because a decision this large should stay
+     reversible — but side-on is what the match is framed for now.
+     ======================================================================= */
+  var SIDE = cfg("RULES.sideOn", true) !== false;
+
   function wX(x) { return x - PITCH.cx; }
   function wY(y) { return PITCH.y1 - y; }
 
@@ -4441,6 +4462,32 @@ window.OuissyCup = (function () {
        puts her two thirds of the way down, which is where a camera
        following somebody actually holds them. */
     trail: 82,
+    /* HOW FAR OFF THE TOUCHLINE THE SIDE-ON CAMERA SITS.
+
+       The one number that decides everything about the side view: how
+       much of the pitch's length is in shot, how big the players are,
+       and how much the near and far touchlines differ in size. Bigger
+       is more pitch and smaller players.
+
+       28 is measured rather than chosen: it is the stand-off at which
+       the near touchline lands 12 per cent up from the bottom of the
+       frame and the far one 41 per cent down from the top, so the
+       pitch itself fills the middle half of the picture with the crowd
+       above it and a band of foreground grass below. At 150 — the
+       first guess — two fifths of the screen was featureless grass in
+       front of the near touchline. */
+    sideBack: 28,
+    /* HOW FAR PAST A GOAL LINE THE SIDE-ON FRAME MAY LOOK. Enough to
+       see the net and the goal-end boards, not enough to turn the
+       stand behind them into a diagonal across the picture.
+
+       It also decides how far out toward the edge the goalmouth ends
+       up: the frame is about 106 units of pitch wide either side of
+       the camera, so at 34 the goal sat 68 per cent of the way to the
+       edge and a shot on it was half off the screen. 60 brings it to
+       43 per cent — toward the side of the picture, where television
+       puts it, and still comfortably inside. */
+    sideOver: 60,
   };
   /* The portrait. `ndc` is where across the frame the subject stands:
      0 is dead centre, +1 is the right edge. */
@@ -4583,8 +4630,16 @@ window.OuissyCup = (function () {
     var lx = b.vx * CAM.lead, ly = b.vy * CAM.lead;
     var pr = R2 && R2.project ? R2.project(wX(b.x), wY(b.y)) : null;
     if (pr && pr.k > 0.001) {
-      var maxX = CAM.leadMax / pr.k;
-      var maxY = CAM.leadMax / Math.max(0.001, pr.ky);
+      /* `k` is pixels per world unit ACROSS THE SCREEN and `ky` is
+         pixels per world unit INTO it. Which of the pitch's two axes
+         each of those describes is the whole of the difference between
+         the two orientations — get it backwards and the lead is
+         clamped by the wrong lens, which is gentle in one direction
+         and violent in the other. */
+      var kAcross = SIDE ? pr.ky : pr.k;
+      var kAlong = SIDE ? pr.k : pr.ky;
+      var maxX = CAM.leadMax / Math.max(0.001, kAcross);
+      var maxY = CAM.leadMax / Math.max(0.001, kAlong);
       lx = clamp(lx, -maxX, maxX);
       ly = clamp(ly, -maxY, maxY);
     }
@@ -4622,6 +4677,17 @@ window.OuissyCup = (function () {
     var dx = there.x - here.x, dy = there.y - here.y;
     var outX = Math.abs(dx) - CAM.dead[0], outY = Math.abs(dy) - CAM.dead[1];
     var x = camNow.x, y = camNow.y;
+    if (SIDE) {
+      /* SIDE-ON THERE IS ONLY ONE DEADZONE THAT MATTERS.
+
+         The camera is on a rail: it pans along the pitch and never
+         moves in depth. So the horizontal break — the play running
+         away down the touchline — is the one that moves it, and it
+         moves the pitch's y. The sign flips because the renderer's
+         long axis counts backwards from the far goal line. */
+      if (outX > 0 && here.k > 0.001) y -= Math.sign(dx) * outX / here.k;
+      return { x: x, y: y };
+    }
     if (outX > 0 && here.k > 0.001) x += Math.sign(dx) * outX / here.k;
     if (outY > 0 && here.ky > 0.001) y += Math.sign(dy) * outY / here.ky * -1;
     return { x: x, y: y };
@@ -4642,10 +4708,25 @@ window.OuissyCup = (function () {
     camNow.y += (y - camNow.y) * k;
     if (!R2) return;
     R2.zoomTo(zoom || 1);
-    /* the renderer's near edge is the camera's y, and the thing being
-       watched should sit above it rather than on it */
-    R2.cam.x = wX(camNow.x);
-    R2.cam.y = wY(camNow.y) - CAM.trail;
+    if (SIDE) {
+      /* A CABLE CAM DOWN THE TOUCHLINE.
+
+         The one camera in football that has never moved: it sits at a
+         fixed distance from the pitch, at a fixed height, and pans. It
+         does not creep toward the near touchline when the play does,
+         because a real one is bolted to a rail. That fixed depth is
+         also what makes the side view legible — the ground under the
+         play stays where it is on screen, and only the play moves. */
+      R2.cam.x = -(PITCH.w / 2) - CAM.sideBack;
+      R2.cam.y = wY(camNow.y);
+    } else {
+      /* the renderer's near edge is the camera's y, and the thing being
+         watched should sit above it rather than on it */
+      R2.cam.x = wX(camNow.x);
+      R2.cam.y = wY(camNow.y) - CAM.trail;
+    }
+    /* full size is whatever the camera is looking at, which is the ball */
+    if (R2.setFocus) R2.setFocus(wX(G.ball.x), wY(G.ball.y));
   }
 
   function placeCamera(dt, snap) {
@@ -4692,9 +4773,14 @@ window.OuissyCup = (function () {
          left-hand edge, because a third of a pitch is nothing like a
          third of a frame once the camera has cut in. */
       var pr = R2.project(wX(hp.x), wY(hp.y));
-      R2.cam.x -= CAMHERO.ndc * (R2.vw / 2) / pr.k;
+      /* WHICH FIELD SLIDES THE FRAME SIDEWAYS. The renderer's `cam`
+         is in its own frame, and turned sideways it is `y` that runs
+         across the screen — nudging `x` would push the camera in or
+         out of the pitch instead of along the frame. */
+      var sideways = SIDE ? "y" : "x";
+      R2.cam[sideways] -= CAMHERO.ndc * (R2.vw / 2) / pr.k;
       /* a slow drift, so a still screen is never still */
-      R2.cam.x += Math.sin(camMode.t * 0.42) * 0.8;
+      R2.cam[sideways] += Math.sin(camMode.t * 0.42) * 0.8;
       return;
     }
 
@@ -4741,7 +4827,8 @@ window.OuissyCup = (function () {
       camTo(PITCH.cx, PITCH.cy + 10 + Math.sin(camMode.t * 0.17) * 4,
             snap ? 1 : Math.min(1, 1.6 * dt), 1);
       var mp = R2.project(0, wY(PITCH.cy));
-      R2.cam.x -= 0.34 * (R2.vw / 2) / mp.k + Math.sin(camMode.t * 0.23) * 1.5;
+      var mside = SIDE ? "y" : "x";
+      R2.cam[mside] -= 0.34 * (R2.vw / 2) / mp.k + Math.sin(camMode.t * 0.23) * 1.5;
       return;
     }
 
@@ -4757,7 +4844,32 @@ window.OuissyCup = (function () {
        off the boards; she had simply never been able to see one. */
     var raw = wantFraming();
     var want = snap ? raw : deadzone(raw.x, raw.y);
-    var y = clamp(want.y, PITCH.y0 + 30, PITCH.y1 + 6);
+    /* SIDE-ON, THE CAMERA PANS ALONG THE LENGTH AND NOTHING ELSE.
+
+       Up and down the pitch, y is depth and has to stop short of the
+       goal lines or the camera ends up behind a net. Side-on, y is
+       what the camera pans ALONG, and x is depth, which the cable cam
+       holds fixed — so the clamp that matters is on the PAN.
+
+       And it is a clamp on what the FRAME sees rather than on where
+       the camera is. Left to follow the ball into a goalmouth, the
+       pan put the frame's edge forty units behind the goal line, and
+       at that angle the stand behind the goal swings diagonally across
+       a quarter of the picture — geometrically correct, and it reads
+       as the camera having fallen over. Stopping the pan when the far
+       edge of the frame reaches a little way past the goal line is
+       what a cable cam does anyway: the goalmouth ends up toward the
+       side of the shot, which is exactly where television puts it. */
+    var y;
+    if (SIDE) {
+      var lens = R2.project(wX(PITCH.cx), wY(camNow.y));
+      var halfAlong = lens.k > 0.001 ? (R2.vw / 2) / lens.k : PITCH.h / 2;
+      var lo = PITCH.y0 - CAM.sideOver + halfAlong;
+      var hi = PITCH.y1 + CAM.sideOver - halfAlong;
+      y = lo <= hi ? clamp(want.y, lo, hi) : PITCH.cy;
+    } else {
+      y = clamp(want.y, PITCH.y0 + 30, PITCH.y1 + 6);
+    }
     /* HOW CLOSE THE CAMERA MAY GET TO A TOUCHLINE.
 
        It was widened to 0.40 so that she could actually see a touchline
@@ -4927,7 +5039,7 @@ window.OuissyCup = (function () {
         R2.bead(wX(t.x), wY(t.y), t.z,
                 Math.max(1, Math.round(1 + f * 2.2)),
                 dark(t.col, "#1a1020", 1 - f));
-      });
+      }, wX(t.x));
     });
   }
 
@@ -5369,6 +5481,7 @@ window.OuissyCup = (function () {
 
   function buildRenderer() {
     R2 = window.CupPitch2D.create(cvs, worldSpec());
+    R2.setSwap(SIDE);
     applyVenue(MENU_VENUE);
     sizeRenderer();
     window.addEventListener("resize", sizeRenderer);
@@ -5422,9 +5535,19 @@ window.OuissyCup = (function () {
   }
 
   function spriteFacing(pl) {
-    /* down the screen is towards the camera, which is +y on the pitch;
-       right across the screen is +x. Octant 0 is facing the lens. */
-    var oct = Math.round(Math.atan2(Math.cos(pl.dir), Math.sin(pl.dir)) / (Math.PI / 4));
+    /* WHICH WAY HE IS FACING IS RELATIVE TO THE LENS, NOT TO THE PITCH.
+
+       Up and down the pitch, down the screen is toward the camera —
+       which is +y — and right across the screen is +x.
+
+       Turned side-on the camera stands off the -x touchline looking
+       across, so "toward the camera" becomes -x, and because the
+       renderer's across-axis runs backwards along the pitch, "right
+       across the screen" becomes -y. Octant 0 is facing the lens in
+       both, which is the only thing the sprite sheet cares about. */
+    var down = SIDE ? -Math.cos(pl.dir) : Math.sin(pl.dir);
+    var right = SIDE ? -Math.sin(pl.dir) : Math.cos(pl.dir);
+    var oct = Math.round(Math.atan2(right, down) / (Math.PI / 4));
     return ((oct % 8) + 8) % 8;
   }
 
@@ -5884,36 +6007,73 @@ window.OuissyCup = (function () {
        both of those make it a second thing to learn. Her goal is the
        one with her colour behind it; that is enough.
        ===================================================================== */
-    var rw = 54, rh = Math.round(rw * (PITCH.h / PITCH.w) * 0.62);
+    /* THE RADAR IS DRAWN THE WAY THE MATCH IS.
+
+       Its whole job is to be the same picture as the grass, only
+       smaller — so if the pitch on screen runs left to right, so does
+       the pitch on the radar. A radar that stayed upright while the
+       match turned would be the second thing to learn that the comment
+       below spends a paragraph refusing to add.
+
+       Both orientations foreshorten the axis going INTO the screen by
+       the same 0.62, which is why the shape changes rather than simply
+       rotating: up and down the pitch that axis is its length, and
+       side-on it is its width. */
+    var rw, rh;
+    if (SIDE) { rw = 54; rh = Math.max(14, Math.round(rw * (PITCH.w / PITCH.h) * 0.62)); }
+    else { rw = 54; rh = Math.round(rw * (PITCH.h / PITCH.w) * 0.62); }
     var rx = UIW - rw - 6, ry = UIH - rh - 6;
     /* the box, with the pitch's own dark green inside it */
     box(rx - 2, ry - 2, rw + 4, rh + 4, "#0d1412");
     box(rx - 1, ry - 1, rw + 2, rh + 2, "#2a3a34");
     /* two mowing bands, so it reads as a pitch and not as a gauge */
-    for (var mb = 0; mb < rh; mb++) {
-      box(rx, ry + mb, rw, 1, (Math.floor(mb / 4) & 1) ? "#2f6b34" : "#37793c");
+    if (SIDE) {
+      for (var mb = 0; mb < rw; mb++) {
+        box(rx + mb, ry, 1, rh, (Math.floor(mb / 4) & 1) ? "#2f6b34" : "#37793c");
+      }
+    } else {
+      for (var mb2 = 0; mb2 < rh; mb2++) {
+        box(rx, ry + mb2, rw, 1, (Math.floor(mb2 / 4) & 1) ? "#2f6b34" : "#37793c");
+      }
     }
     /* the markings: halfway, the circle, and a mouth at each end */
-    box(rx, ry + Math.round(rh / 2), rw, 1, "#7fae86");
     var rcx = rx + Math.round(rw / 2), rcy = ry + Math.round(rh / 2);
+    if (SIDE) box(rcx, ry, 1, rh, "#7fae86");
+    else box(rx, rcy, rw, 1, "#7fae86");
     for (var ca = 0; ca < 12; ca++) {
       var aa = (ca / 12) * Math.PI * 2;
-      box(rcx + Math.round(Math.cos(aa) * 5), rcy + Math.round(Math.sin(aa) * 4),
-          1, 1, "#7fae86");
+      box(rcx + Math.round(Math.cos(aa) * (SIDE ? 5 : 5)),
+          rcy + Math.round(Math.sin(aa) * (SIDE ? 3 : 4)), 1, 1, "#7fae86");
     }
     /* WHICH END IS WHOSE, in the two sides' own colours — the only way
        to know which way you are kicking without a label. */
-    var gw = Math.round(rw * 0.34), gx = rx + Math.round((rw - gw) / 2);
-    var topIsHers = attackDir(0) < 0;
-    box(gx, ry, gw, 2, topIsHers ? bCol : aCol);
-    box(gx, ry + rh - 2, gw, 2, topIsHers ? aCol : bCol);
+    /* `first` is the end the pitch's low y sits at: the top of an
+       upright radar, the right of a side-on one, because the renderer's
+       long axis counts backwards. */
+    var lowYIsHers = attackDir(0) < 0;
+    if (SIDE) {
+      var gh = Math.round(rh * 0.42), gy = ry + Math.round((rh - gh) / 2);
+      box(rx + rw - 2, gy, 2, gh, lowYIsHers ? bCol : aCol);
+      box(rx, gy, 2, gh, lowYIsHers ? aCol : bCol);
+    } else {
+      var gw = Math.round(rw * 0.34), gx = rx + Math.round((rw - gw) / 2);
+      box(gx, ry, gw, 2, lowYIsHers ? bCol : aCol);
+      box(gx, ry + rh - 2, gw, 2, lowYIsHers ? aCol : bCol);
+    }
 
     /* the players. Drawn smallest first so the one being driven and the
        man on the ball end up on top of the pile rather than under it. */
-    var rpx = function (wx, wy) {
-      return { x: rx + Math.round((wx - PITCH.x0) / PITCH.w * (rw - 1)),
-               y: ry + Math.round((wy - PITCH.y0) / PITCH.h * (rh - 1)) };
-    };
+    var rpx = SIDE
+      /* side-on: the length runs across, low y to the right, and the
+         near touchline is at the bottom exactly as it is on the grass */
+      ? function (wx, wy) {
+          return { x: rx + Math.round((PITCH.y1 - wy) / PITCH.h * (rw - 1)),
+                   y: ry + Math.round((PITCH.x1 - wx) / PITCH.w * (rh - 1)) };
+        }
+      : function (wx, wy) {
+          return { x: rx + Math.round((wx - PITCH.x0) / PITCH.w * (rw - 1)),
+                   y: ry + Math.round((wy - PITCH.y0) / PITCH.h * (rh - 1)) };
+        };
     var plot = [];
     G.players.forEach(function (q) {
       plot.push({ p: q, rank: q === G.controlled ? 2 : (G.ball.owner === q ? 1 : 0) });
@@ -5946,7 +6106,31 @@ window.OuissyCup = (function () {
 
        A full rectangle drawn over a forty-pixel radar covers most of
        it; four corners say the same thing and leave the dots visible. */
-    if (R2 && R2.rowAt) {
+    if (SIDE && R2 && R2.project) {
+      /* SIDE-ON THE FRAME IS BOUNDED BY THE LENS, NOT BY THE ROWS.
+
+         Up and down the pitch the top and bottom screen rows are
+         looking at two depths, and `rowAt` reads them straight off.
+         Turned sideways the frame's edges are its left and right,
+         which is the across-the-screen half-width at the depth being
+         watched — arithmetic on the projection rather than a lookup. */
+      var bp = R2.project(wX(G.ball.x), wY(G.ball.y));
+      if (bp.k > 0.001) {
+        var halfW = (R2.vw / 2) / bp.k;
+        var midY = PITCH.y1 - R2.cam.y;
+        var e0 = clamp(midY - halfW, PITCH.y0, PITCH.y1);
+        var e1 = clamp(midY + halfW, PITCH.y0, PITCH.y1);
+        var vxa = Math.min(rpx(PITCH.cx, e0).x, rpx(PITCH.cx, e1).x);
+        var vxb = Math.max(rpx(PITCH.cx, e0).x, rpx(PITCH.cx, e1).x);
+        if (vxb - vxa > 3) {
+          for (var ck = 0; ck < 2; ck++) {
+            var vyr = ck ? ry + rh - 1 : ry;
+            box(vxa, vyr, 3, 1, "#e8f0e8");
+            box(vxb - 2, vyr, 3, 1, "#e8f0e8");
+          }
+        }
+      }
+    } else if (R2 && R2.rowAt) {
       var top = clamp(PITCH.y1 - R2.rowAt(0), PITCH.y0, PITCH.y1);
       var bot = clamp(PITCH.y1 - R2.rowAt(R2.vh - 1), PITCH.y0, PITCH.y1);
       var vy0 = rpx(PITCH.cx, Math.min(top, bot)).y;
@@ -9575,6 +9759,22 @@ window.OuissyCup = (function () {
        it. This snaps it to where it is heading, which is what every
        screenshot of the match actually wants. */
     camSnap: function () { placeCamera(0, true); return hooks.state(); },
+    /* TURN THE PITCH SIDEWAYS WITHOUT RELOADING.
+
+       The orientation is a config flag, which is the right thing for
+       the finished game and useless for comparing the two views: a
+       reload gives a different match, and two different matches
+       photographed from two different angles answer nothing. This
+       turns the SAME match through ninety degrees between frames, so
+       the only difference between the two pictures is the one being
+       judged. */
+    side: function (on, back) {
+      SIDE = !!on;
+      if (typeof back === "number") CAM.sideBack = back;
+      if (R2) R2.setSwap(SIDE);
+      placeCamera(0, true);
+      return { side: SIDE, back: CAM.sideBack };
+    },
     /* force a restart, for photographing one and for testing that the
        marks are where a commentator would say they are */
     /* force a booking, to photograph the card and prove the draw path
@@ -9775,6 +9975,9 @@ window.OuissyCup = (function () {
                  facing: p.facing, legs: p.legs, gk: p.gk };
       });
     },
+    /* the renderer itself, for harnesses that need to ask the lens
+       where something lands rather than looking at a screenshot */
+    r2: function () { return R2; },
     geometry: function () {
       return { view: VIEW, pitch: PITCH, world: WORLD_H, height: PH,
                cam: R2 ? { x: +camNow.x.toFixed(1), y: +camNow.y.toFixed(1),

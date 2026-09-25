@@ -206,6 +206,13 @@ heading; waiting for `state().state === 'play'` lets the flash decay.
   the real baked atlas. It exists because a greybox cannot answer the
   question that decides the camera: its blocks scale and a 64-pixel
   sprite never does.
+- **`cupside.js`** — the SAME moment photographed both ways round. A
+  reload gives a different match, and two screenshots of two different
+  matches cannot answer "is side-on better?" — so this steps one match
+  to a moment, shoots it, turns the pitch through ninety degrees with
+  `side()` without touching the simulation, and shoots the same instant
+  again. The only difference between the two pictures is the one being
+  judged.
 - **`cuplook.js`** — the frames worth looking at, fast, straight in
   through `quick()`: open play, the heart meter, a goalmouth, the
   super's nameplate, a goal replay with the lower third, the pass

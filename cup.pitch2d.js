@@ -509,7 +509,7 @@ window.CupPitch2D = (function () {
         ctx.fillStyle = "#0d1412";
         ctx.fillRect(x + Math.round(w / 2) - 1, y + Math.round(h * 0.4), 2, 4);
       }
-    });
+    }, o.wx);
   };
 
   /* ------------------------------------------------------ pixel drawing
@@ -888,17 +888,33 @@ window.CupPitch2D = (function () {
   Pitch.prototype.drawSides = function () {
     var ctx = this.ctx, w = this.raw;
     if (this.mode === "oblique") return;    // drawStandFlat does both
-    /* the side stands run along the touchlines, which only face the
-       camera when the pitch runs up and down. Turned sideways they are
-       the two GOAL ends, and that is a different piece of geometry —
-       greyboxing does not need it to answer the question it is asking. */
-    if (this.swap) return;
+    /* WHICH TWO WALLS THESE ARE DEPENDS ON WHICH WAY THE PITCH RUNS.
+
+       Up and down the pitch they are the touchlines. Turned sideways
+       they are the two GOAL ENDS — and it is the same piece of
+       geometry, because in both cases they are a wall standing on a
+       line of constant ACROSS-coordinate, receding away from the
+       camera. The only thing that changes is which of the pitch's two
+       axes "across" means and which number the camera sits on.
+
+       Working that out once, here, is the whole difference between a
+       side-on view with a stadium round it and a side-on view with two
+       bare edges where the goals are. */
+    var across = this.swap
+      ? [0 - 7 / this.k, w.len + 7 / this.k]       // behind each goal line
+      : [-(w.halfW + 4 / this.k), w.halfW + 4 / this.k];
+    var acrossCam = this.swap ? this.cam.y : this.cam.x;
     var edge = w.halfW + 4 / this.k;          // touchline, then the run-off
     var BOARD = 9, TIER = 42, ROOF = 7;
-    var farY = this.A + this.B / (NEAR + (w.len + 12 - this.cam.y) * this.k);
+    var farEdge = this.swap ? (w.halfW + 12 - this.cam.x)
+                            : (w.len + 12 - this.cam.y);
+    var farY = this.A + this.B / (NEAR + farEdge * this.k);
 
-    for (var side = -1; side <= 1; side += 2) {
-      var wx = side * edge;
+    for (var si = 0; si < 2; si++) {
+      var wx = across[si];
+      /* which side of the frame this wall is on, which is all `side`
+         was ever used for */
+      var side = wx < acrossCam ? -1 : 1;
       /* WHERE THE GROUND IS, PER COLUMN, WORKED OUT ONCE.
 
          The structure and the crowd are two passes over the same
@@ -912,7 +928,7 @@ window.CupPitch2D = (function () {
         ground[x] = -1;
         var off = (x + 0.5) - this.vw / 2;
         if (side < 0 ? off >= -1 : off <= 1) continue;
-        var d = (wx - this.cam.x) * this.k * FOCAL / off;
+        var d = (wx - acrossCam) * this.k * FOCAL / off;
         if (!isFinite(d) || d <= NEAR) continue;
         var gy = Math.round(this.A + this.B / d);
         /* nothing beyond the far corner: that is the end stand's job,
@@ -1039,8 +1055,32 @@ window.CupPitch2D = (function () {
      ======================================================================= */
   var LINEW = 2.4;                    // world units of paint, both ways
 
-  /* a marking ACROSS the pitch: one depth, therefore one rectangle */
+  /* a marking ACROSS the pitch: one depth, therefore one rectangle —
+     unless the pitch is turned, in which case it is the receding one
+     and has to be solved a row at a time */
   Pitch.prototype.wbandY = function (x0, x1, y, wid, col) {
+    var ctx = this.ctx;
+    if (this.swap) {
+      var a2 = this.project(x0, y), b2 = this.project(x1, y);
+      var r0 = Math.max(0, Math.round(Math.min(a2.y, b2.y)));
+      var r1 = Math.min(this.vh - 1, Math.round(Math.max(a2.y, b2.y)));
+      var lo = Math.min(x0, x1), hi = Math.max(x0, x1);
+      ctx.fillStyle = col || C.line;
+      for (var r = r0; r <= r1; r++) {
+        /* rowAt gives the DEPTH coordinate, which turned sideways is
+           the pitch's x — so the row tells us which x we are looking at
+           and the projection tells us where this line is at that x */
+        var wx2 = this.rowAt(r + 0.5);
+        if (wx2 < lo - 0.6 || wx2 > hi + 0.6) continue;
+        var pr = this.project(wx2, y);
+        if (!pr.flat && pr.d <= NEAR + 0.5) continue;
+        var t = Math.max(1, Math.round(pr.k * (wid || LINEW)));
+        var px0 = Math.round(pr.x - t / 2);
+        if (px0 + t < 0 || px0 > this.vw) continue;
+        ctx.fillRect(px0, r, t, 1);
+      }
+      return;
+    }
     var a = this.project(x0, y), b = this.project(x1, y);
     if (!a.flat && a.d <= NEAR + 0.5) return;
     var th = Math.max(1, Math.round(a.ky * (wid || LINEW)));
@@ -1049,21 +1089,50 @@ window.CupPitch2D = (function () {
     if (ex < sx) return;
     var sy = Math.round(a.y - th / 2);
     if (sy + th < 0 || sy > this.vh) return;
-    this.ctx.fillStyle = col || C.line;
-    this.ctx.fillRect(sx, sy, ex - sx + 1, th);
+    ctx.fillStyle = col || C.line;
+    ctx.fillRect(sx, sy, ex - sx + 1, th);
   };
 
   /* a marking UP the pitch: solved per screen row */
   Pitch.prototype.wbandX = function (x, y0, y1, wid, col) {
-    /* turned sideways this is the other axis's job, and the greybox is
-       the only thing that ever turns it sideways */
-    if (this.swap) return this.wline(x, y0, x, y1, col);
     var a = this.project(x, y0), b = this.project(x, y1);
     var r0 = Math.max(0, Math.round(Math.min(a.y, b.y)));
     var r1 = Math.min(this.vh - 1, Math.round(Math.max(a.y, b.y)));
     var lo = Math.min(y0, y1), hi = Math.max(y0, y1);
     var ctx = this.ctx;
     ctx.fillStyle = col || C.line;
+
+    /* TURNED SIDEWAYS, THIS LINE IS THE OTHER SHAPE.
+
+       Up and down the pitch, a line of constant pitch-x recedes: every
+       screen ROW is looking at a different depth, so it is solved one
+       row at a time. Turned sideways the same line lies ACROSS the
+       screen at a single depth — it is the constant-y case — and
+       solving it by row would walk a hundred rows to draw one
+       rectangle.
+
+       This used to bail out to the one-pixel Bresenham path, on the
+       grounds that only the greybox ever turned the pitch. That is no
+       longer true, and the Bresenham path is the shimmer the band
+       rasteriser exists to get rid of. Both orientations get the
+       treatment they deserve now, which is one rectangle here and the
+       row solve below. */
+    if (this.swap) {
+      /* Both ends of this line share a pitch-x, and turned sideways
+         pitch-x IS the depth — so both project to the same screen row
+         and the line is a horizontal rectangle lying across the frame.
+         Its thickness is paint measured in depth, which is `ky`. */
+      if (!a.flat && a.d <= NEAR + 0.5) return;
+      var th = Math.max(1, Math.round(a.ky * (wid || LINEW)));
+      var sx = Math.max(-2, Math.round(Math.min(a.x, b.x)));
+      var ex = Math.min(this.vw + 2, Math.round(Math.max(a.x, b.x)));
+      if (ex < sx) return;
+      var sy = Math.round(a.y - th / 2);
+      if (sy + th < 0 || sy > this.vh) return;
+      ctx.fillRect(sx, sy, ex - sx + 1, th);
+      return;
+    }
+
     for (var r = r0; r <= r1; r++) {
       var wy = this.rowAt(r + 0.5);
       if (wy < lo - 0.6 || wy > hi + 0.6) continue;
@@ -1182,7 +1251,176 @@ window.CupPitch2D = (function () {
      The wobble is per COLUMN and driven by the clock, so the net
      breathes when nothing is happening and snaps when the ball arrives.
      ======================================================================= */
+  /* =======================================================================
+     A GOAL SEEN FROM THE SIDE IS A DIFFERENT OBJECT
+
+     Not a different drawing of the same object — a different object.
+     Face on, the mouth is a rectangle sixty-eight units wide and the
+     two posts stand at the same distance, so one height and one width
+     describe the whole frame. From a touchline camera the mouth is
+     EDGE ON: the near post is thirty-four units closer than the far
+     one, which puts them at different depths, different heights, and
+     — when the camera is square on to the goal — at exactly the same
+     place across the screen.
+
+     That last part is what broke the face-on drawing rather than
+     merely distorting it. It measures the mouth as the gap between the
+     two posts' screen x and gives up when that gap falls under three
+     pixels, which is the right guard for a goal that has gone behind
+     the lens and precisely the wrong one for a goal you are looking
+     straight at: pan the side-on camera onto the goalmouth and the
+     goal disappeared. So the side view gets its own routine, in which
+     the separation between the posts is vertical and the near post is
+     a thing that stands in FRONT of the keeper.
+     ======================================================================= */
+  Pitch.prototype.drawGoalSide = function (far, bulge) {
+    var ctx = this.ctx, w = this.raw;
+    var gl = far ? w.len : 0;
+    var out = far ? 1 : -1;
+    /* the camera is off the low-x touchline, so -goalHalf is the near
+       post and +goalHalf the far one, in both goals */
+    var fN = this.project(-w.goalHalf, gl), fF = this.project(w.goalHalf, gl);
+    if (fN.d <= NEAR + 1 || fF.d <= NEAR + 1) return;
+    var bk = gl + out * w.goalDepth;
+    var bN = this.project(-w.goalHalf, bk), bF = this.project(w.goalHalf, bk);
+    var solid = bN.d > NEAR + 1 && bF.d > NEAR + 1;
+    var push = Math.sin(Math.max(0, Math.min(1, bulge || 0)) * Math.PI) * 5;
+
+    /* EACH POST IS AS TALL AS A PLAYER STANDING BESIDE IT. The face-on
+       goal uses one fixed height because both its posts are the same
+       distance away; here they are not, and a crossbar drawn level
+       between two posts at different depths is the one thing that
+       would make the whole stadium look flat. */
+    var HGT = 52;
+    var hN = Math.max(8, Math.round(HGT * this.depthScale(fN)));
+    var hF = Math.max(8, Math.round(HGT * this.depthScale(fF)));
+    var hBN = Math.round(hN * 0.70), hBF = Math.round(hF * 0.70);
+
+    var xN = Math.round(fN.x), yN = Math.round(fN.y);
+    var xF = Math.round(fF.x), yF = Math.round(fF.y);
+    /* THE BULGE PUSHES THE BACK PANEL AWAY FROM THE LINE, and from here
+       "away" is whichever way the net already goes on screen — which
+       side of the frame that is depends on which goal this is and
+       where the camera is panned to, so it is taken from the drawing
+       rather than assumed. */
+    var awayX = bN.x - fN.x, awayY = bN.y - fN.y;
+    var awayL = Math.max(0.001, Math.sqrt(awayX * awayX + awayY * awayY));
+    var pushX = awayX / awayL * push, pushY = awayY / awayL * push;
+    var xbN = Math.round(bN.x + pushX), ybN = Math.round(bN.y + pushY);
+    var xbF = Math.round(bF.x + pushX), ybF = Math.round(bF.y + pushY);
+    if (Math.abs(yF - yN) < 3) return;          // edge-on to the point of nothing
+
+    var self = this;
+    var wob = function (i) {
+      return Math.round(Math.sin(self.t * 1.9 + i * 0.7) * 0.8 + push * 0.3);
+    };
+    /* a point on the goal's frame: t runs near post (0) to far post (1),
+       u runs the goal line (0) to the back of the net (1), and h is how
+       far up the frame, 0 at the grass and 1 at the bar */
+    var P = function (t, u, h) {
+      var gx = (xN + (xF - xN) * t) * (1 - u) + (xbN + (xbF - xbN) * t) * u;
+      var gy = (yN + (yF - yN) * t) * (1 - u) + (ybN + (ybF - ybN) * t) * u;
+      var top = (hN + (hF - hN) * t) * (1 - u) + (hBN + (hBF - hBN) * t) * u;
+      return [gx, gy - top * h];
+    };
+
+    /* ---- the shadow the frame throws forward onto the grass */
+    var sf = this.project(-w.goalHalf, gl - out * 4.5);
+    var sfF = this.project(w.goalHalf, gl - out * 4.5);
+    ctx.globalAlpha = 0.24;
+    ctx.fillStyle = "#000000";
+    for (var q = 0; q <= 1.0001; q += 0.08) {
+      var ax = xN + (xF - xN) * q, ay = yN + (yF - yN) * q;
+      var bx = sf.x + (sfF.x - sf.x) * q, by = sf.y + (sfF.y - sf.y) * q;
+      ctx.fillRect(Math.round(Math.min(ax, bx)), Math.round(Math.min(ay, by)),
+                   Math.max(2, Math.round(Math.abs(bx - ax)) + 2),
+                   Math.max(1, Math.round(Math.abs(by - ay)) + 1));
+    }
+    ctx.globalAlpha = 1;
+
+    /* ---- the volume inside, so the ball goes somewhere dark */
+    if (solid) {
+      ctx.globalAlpha = 0.30;
+      ctx.fillStyle = mix(C.grassDk, "#000000", 0.55);
+      ctx.beginPath();
+      var ring = [P(0, 0, 1), P(1, 0, 1), P(1, 1, 1), P(1, 1, 0), P(0, 1, 0), P(0, 0, 0)];
+      ctx.moveTo(ring[0][0], ring[0][1]);
+      for (var ri = 1; ri < ring.length; ri++) ctx.lineTo(ring[ri][0], ring[ri][1]);
+      ctx.closePath(); ctx.fill();
+      ctx.globalAlpha = 1;
+    }
+
+    /* ---- the netting. The panel you actually see from here is the
+       SIDE of the net nearest the camera, which face on is the one
+       panel that is edge-on and invisible. */
+    var thread = function (a, b, alpha) {
+      ctx.globalAlpha = alpha;
+      line(ctx, a[0], a[1], b[0], b[1], C.net);
+      ctx.globalAlpha = 1;
+    };
+    if (solid) {
+      /* the back panel, across and down */
+      for (var t1 = 0; t1 <= 1.0001; t1 += 0.2) {
+        thread(P(t1, 1, 0), P(t1, 1, 1), 0.5);
+      }
+      for (var h1 = 0; h1 <= 1.0001; h1 += 0.25) {
+        thread(P(0, 1, h1), P(1, 1, h1), 0.34);
+      }
+      /* the near side panel is deliberately NOT drawn here — it is the
+         one panel between the camera and the goalmouth, so it waits for
+         the depth pass at the bottom of this function */
+      /* the roof, a few threads */
+      for (var t2 = 0; t2 <= 1.0001; t2 += 0.25) {
+        thread(P(t2, 0, 1), P(t2, 1, 1), 0.34);
+      }
+    }
+
+    /* ---- the frame */
+    var post = function (t, u, bright) {
+      var a = P(t, u, 0), b = P(t, u, 1);
+      ctx.fillStyle = bright ? C.post : C.postDk;
+      ctx.fillRect(Math.round(a[0]) - 1, Math.round(b[1]), 2,
+                   Math.max(2, Math.round(a[1] - b[1])));
+      ctx.fillStyle = C.postDk;
+      ctx.fillRect(Math.round(a[0]) + 1, Math.round(b[1]) + 1, 1,
+                   Math.max(1, Math.round(a[1] - b[1]) - 1));
+    };
+    /* the stanchions at the back of the net, dimmer because further */
+    if (solid) { ctx.globalAlpha = 0.7; post(0, 1); post(1, 1); ctx.globalAlpha = 1; }
+    post(1, 0, true);
+
+    /* ---- AND THE NEAR POST IS NOT SCENERY, IT IS AN OBSTRUCTION.
+
+       Everything above is painted before the players, which is right
+       for a goal you are looking into: the net is behind everybody.
+       The post nearest a touchline camera is not — a keeper on his
+       line stands BEHIND it, and a near post painted first is a post
+       the keeper walks over the top of. So the near post and the
+       crossbar go into the same depth-sorted list as the players, at
+       the post's own distance, and painter's order does the rest. */
+    var self2 = this;
+    this.add(gl, function () {
+      var barA = P(0, 0, 1), barB = P(1, 0, 1);
+      ctx.fillStyle = C.post;
+      var steps = Math.max(2, Math.round(Math.abs(barB[1] - barA[1])) + 1);
+      for (var bi = 0; bi <= steps; bi++) {
+        var bt = bi / steps;
+        ctx.fillRect(Math.round(barA[0] + (barB[0] - barA[0]) * bt),
+                     Math.round(barA[1] + (barB[1] - barA[1]) * bt), 2, 2);
+      }
+      post(0, 0, true);
+      /* the near side netting belongs in front of the keeper too, or he
+         stands outside his own goal */
+      if (solid) {
+        for (var u2 = 0.25; u2 <= 1.0001; u2 += 0.25) thread(P(0, u2, 0), P(0, u2, 1), 0.34);
+        for (var h3 = 0.34; h3 <= 1.0001; h3 += 0.34) thread(P(0, 0, h3), P(0, 1, h3), 0.26);
+      }
+      return self2;
+    }, -w.goalHalf);
+  };
+
   Pitch.prototype.drawGoal = function (far, bulge) {
+    if (this.swap) return this.drawGoalSide(far, bulge);
     var ctx = this.ctx, w = this.raw;
     var gl = far ? w.len : 0;
     var out = far ? 1 : -1;                    // which way is "behind the goal"
@@ -1304,7 +1542,23 @@ window.CupPitch2D = (function () {
      how far away it is. Painter's order is the whole of depth in a 2D
      scene: get it wrong and a defender stands in front of the striker
      they are behind. */
-  Pitch.prototype.add = function (wy, fn) { this.items.push({ y: wy, fn: fn }); };
+  /* WHICH COORDINATE IS "HOW FAR AWAY".
+
+     Up and down the pitch it is the second one, and for most of this
+     file's life there was no reason to say so. Turned sideways it is
+     the FIRST one, and a list sorted on the wrong axis is not subtly
+     wrong: it sorts the players by which end of the pitch they are at
+     instead of by which touchline they are near, so a defender on the
+     far side is painted over the striker in front of him whenever the
+     two happen to be level.
+
+     Both point the same way — the camera sits below the minimum of
+     whichever axis it is watching along, so bigger is always further —
+     so the only thing needed is to be handed the right number. Callers
+     that draw something standing on the grass pass both. */
+  Pitch.prototype.add = function (wy, fn, wx) {
+    this.items.push({ y: this.swap && wx !== undefined ? wx : wy, fn: fn });
+  };
 
   /* Part 1.7: the shadow is an ellipse on the ground, and it SHRINKS and
      darkens towards a point as the character rises. A shadow that stays
@@ -1429,9 +1683,28 @@ window.CupPitch2D = (function () {
      player being driven stands on, so she is always the full 64 and
      everything else is sized relative to her. */
   var MIN_SCALE = 0.625;             // five eighths, and no further
+
+  /* WHAT COUNTS AS FULL SIZE.
+
+     The depth ramp is a ratio against some reference depth, and the
+     reference used to be "whatever depth the screen row four fifths of
+     the way down is looking at" — a property of the lens alone. That is
+     right for a camera that always sits the same distance behind the
+     play, which is what the up-and-down camera does, and completely
+     wrong for one that sits off a touchline: move the camera back and
+     every player on the pitch falls past the clamp at once, so the
+     whole match is drawn at five eighths.
+
+     The reference is the thing the camera is LOOKING AT, which is the
+     ball. The player on it is always full size and everybody else is
+     sized against him, in either orientation, at any distance. */
+  Pitch.prototype.setFocus = function (wx, wy) {
+    var p = this.project(wx, wy);
+    this.focusD = p.flat ? NEAR : p.d;
+  };
   Pitch.prototype.refDepth = function () {
     if (this.mode === "oblique") return NEAR;
-    return this.depthAtY(this.vh * 0.78);
+    return this.focusD || this.depthAtY(this.vh * 0.78);
   };
   Pitch.prototype.depthScale = function (p) {
     if (p.flat) return 1;
@@ -1483,7 +1756,7 @@ window.CupPitch2D = (function () {
       if (o.ring !== undefined && o.ring !== null) self.ring(o.wx, o.wy, o.ring, null, o.ringCol);
       self.sprite(o.at, o.anim, o.face, o.frame, o.wx, o.wy, o.flip, o.air, sc);
       if (o.num) self.shirtNumber(o, sc);
-    });
+    }, o.wx);
   };
 
   /* =======================================================================
@@ -1590,7 +1863,7 @@ window.CupPitch2D = (function () {
            Math.round(by + Math.sin(a) * ry * 0.55), "#3a3f38");
       }
       px(ctx, p.x, by, "#3a3f38");
-    });
+    }, wx);
   };
 
   /* =======================================================================
@@ -1633,7 +1906,7 @@ window.CupPitch2D = (function () {
         ctx.fillStyle = r2 === 0 ? lift2(col, 60) : col;
         ctx.fillRect(x - Math.floor(w2 / 2), y + r2, w2, 1);
       }
-    });
+    }, wx - 0.01);
   };
 
   /* the lane, dotted and travelling, so it reads as a direction rather
