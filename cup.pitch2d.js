@@ -265,6 +265,59 @@ window.CupPitch2D = (function () {
       CROWD.push(mix(c, tone, night ? 0.28 : 0.16));
     });
     bakeGrass();
+    bakeBoards();
+  }
+
+  /* =======================================================================
+     THE BOARDS, BAKED ONCE AND WRAPPED ROUND THE CORNER
+
+     The hoardings along the far touchline carry the words; the ones
+     behind the goals carried only colour, because that wall is drawn a
+     screen column at a time in perspective and you cannot letter a
+     column. So the ground had writing down one side and blank boards
+     at both ends, which is the one place a stadium never is blank —
+     the boards behind a goal are the ones on camera every time anybody
+     shoots.
+
+     Baking the whole run into a strip solves it. Each board is drawn
+     once, flat, with its word on it; the wall then samples the strip by
+     WORLD POSITION along itself, one pixel-column at a time, and the
+     perspective falls out for free — the boards compress toward the
+     corner exactly as the wall does, and the lettering compresses with
+     them, which is what lettering on a board seen at an angle does.
+     ======================================================================= */
+  var BSTRIP = null;                    // the baked run of boards
+  var BSTRIP_H = 12;                    // its height, in strip pixels
+  var BSTRIP_BW = 76;                   // one board, in strip pixels
+  var BSTRIP_WORLD = 34;                // and what that board is, in world
+
+  function bakeBoards() {
+    var n = HOARDING.length;
+    var c = document.createElement("canvas");
+    c.width = n * BSTRIP_BW; c.height = BSTRIP_H;
+    var x = c.getContext("2d");
+    x.imageSmoothingEnabled = false;
+    for (var i = 0; i < n; i++) {
+      var bx = i * BSTRIP_BW;
+      /* the same three faces the touchline boards use, in a fixed order
+         so a ground looks the same every time it is drawn */
+      var face = (i % 3 === 0) ? "#a8283a" : (i % 3 === 1 ? "#c8912f" : "#2f4f7a");
+      x.fillStyle = C.board;
+      x.fillRect(bx, 0, BSTRIP_BW, BSTRIP_H);
+      x.fillStyle = face;
+      x.fillRect(bx + 1, 1, BSTRIP_BW - 3, BSTRIP_H - 2);
+      x.fillStyle = C.boardLip;
+      x.fillRect(bx + 1, 0, BSTRIP_BW - 3, 1);
+      var word = HOARDING[i];
+      var tw = textWidth(word);
+      if (tw <= BSTRIP_BW - 7) {
+        var tx = Math.round(bx + 1 + (BSTRIP_BW - 3 - tw) / 2);
+        var ty = Math.round((BSTRIP_H - GLYPH_H) / 2);
+        drawText(x, word, tx, ty + 1, mix(face, "#000000", 0.55));
+        drawText(x, word, tx, ty, "#f2f6f4");
+      }
+    }
+    BSTRIP = c;
   }
 
   /* THE GROUND'S LIGHT, BAKED ONCE.
@@ -773,8 +826,12 @@ window.CupPitch2D = (function () {
          above it reads as a person, and at three pixels a row that is
          the entire difference.
        ===================================================================== */
+    /* THREE TIERS, NOT TWO. Two reads as a bank; three reads as a
+       stand, because the third one is small and dark and sits up under
+       the roof where the eye expects the ground to keep going. */
     var tiers = [{ h: 26, rows: 7, base: C.tierLit },
-                 { h: 20, rows: 5, base: C.tier }];
+                 { h: 20, rows: 5, base: C.tier },
+                 { h: 13, rows: 4, base: mix(C.tier, "#000000", 0.22) }];
     var y = lip, band = 0;
     for (var ti = 0; ti < tiers.length; ti++) {
       var T = tiers[ti];
@@ -828,13 +885,51 @@ window.CupPitch2D = (function () {
           var shade = 0.42 * (1 - r / Math.max(1, T.rows - 1));
           col = mix(col, "#0b0a12", shade);
           var yy = ry + lift;
-          /* head, body, and the dark under the seat in front */
-          ctx.fillStyle = mix(col, "#f2d9c0", 0.34);
-          ctx.fillRect(sxp + 1, yy - 1, 1, 1);
+          /* =============================================================
+             FIVE PEOPLE, NOT ONE PERSON FIVE THOUSAND TIMES
+
+             Every figure was the same three-by-two block with the same
+             one-pixel head, and a crowd of identical shapes is a
+             pattern however many colours you give it — the eye locks
+             onto the repeat and the whole stand goes flat again.
+
+             Five silhouettes is enough to break that, and they are
+             chosen off the same seeded number as the colour so a given
+             seat is always the same person: a plain one, a broad one, a
+             thin one, one with an arm up, and one holding a scarf over
+             their head. The last two are the ones that read from
+             distance, because a raised arm breaks the top line of the
+             row and that is the only part of a crowd you actually see.
+             ============================================================= */
+          /* WEIGHTED, not one in five each. An arm up and a scarf held
+             overhead are the two that read from distance, which is
+             exactly why they have to be rare: at a fifth of the crowd
+             apiece the stand turned into a field of bright dashes and
+             the very thing that was supposed to catch the eye became
+             the texture. Roughly one in twelve puts an arm up and one
+             in sixteen has a scarf, which is about what a stand looks
+             like when nothing has happened yet. */
+          var kr = this.rnd(id + 77);
+          var kind = kr < 0.42 ? 0 : kr < 0.66 ? 1 : kr < 0.86 ? 2
+                   : kr < 0.94 ? 3 : 4;
+          var skin = mix(col, "#f2d9c0", 0.34);
+          var bw2 = kind === 1 ? 4 : (kind === 2 ? 2 : 3);
+          if (kind === 3) {                       // an arm up
+            ctx.fillStyle = col;
+            ctx.fillRect(sxp + 2, yy - 3, 1, 2);
+          } else if (kind === 4) {                // a scarf held overhead
+            ctx.fillStyle = mix(col, "#ffffff", 0.30);
+            ctx.fillRect(sxp - 1, yy - 3, 5, 1);
+            ctx.fillStyle = col;
+            ctx.fillRect(sxp, yy - 2, 1, 1);
+            ctx.fillRect(sxp + 2, yy - 2, 1, 1);
+          }
+          ctx.fillStyle = skin;
+          ctx.fillRect(sxp + (bw2 > 2 ? 1 : 0), yy - 1, 1, 1);
           ctx.fillStyle = col;
-          ctx.fillRect(sxp, yy, 3, 2);
+          ctx.fillRect(sxp, yy, bw2, 2);
           ctx.fillStyle = "#141018";
-          ctx.fillRect(sxp, yy + 2, 3, 1);
+          ctx.fillRect(sxp, yy + 2, bw2, 1);
         }
       }
       /* the stairs themselves, once the people are down, so a gangway
@@ -848,8 +943,38 @@ window.CupPitch2D = (function () {
           ctx.fillRect(axp, ay3, 2, 1);
         }
       }
+      /* THE RAILING AT THE FRONT OF THE TIER, which is the line that
+         says a tier is a floor with an edge rather than a change of
+         colour */
       ctx.fillStyle = C.rail;  ctx.fillRect(0, Math.max(0, y - 2), this.vw, 1);
       ctx.fillStyle = C.roof;  ctx.fillRect(0, Math.max(0, y - 1), this.vw, 1);
+
+      /* AND THE BANNERS TIED TO IT.
+
+         A few per tier, in the two clubs' colours, hung over the front
+         rail the way flags actually are. They are the only wide flat
+         shapes in a stand made of three-pixel people, which is exactly
+         why they read from any distance and why a ground without them
+         looks like a texture rather than somewhere people brought
+         something. */
+      var nB = 4;
+      for (var fb = 0; fb < nB; fb++) {
+        var seed = band * 211 + fb * 53;
+        if (this.rnd(seed) < 0.35) continue;
+        var fx = Math.round(this.rnd(seed + 1) * this.vw);
+        var fw2 = 9 + Math.round(this.rnd(seed + 2) * 12);
+        var fh2 = 3 + Math.round(this.rnd(seed + 3) * 2);
+        var fcol = this.rnd(seed + 4) < 0.5
+          ? (this.crowdHome || "#c8912f") : (this.crowdAway || "#2f4f7a");
+        var fy2 = Math.max(0, y - 2 - fh2);
+        ctx.fillStyle = mix(fcol, "#000000", 0.35);
+        ctx.fillRect(fx, fy2, fw2, fh2);
+        ctx.fillStyle = fcol;
+        ctx.fillRect(fx, fy2, fw2, fh2 - 1);
+        /* a light stripe across it, which is what a banner has on it */
+        ctx.fillStyle = mix(fcol, "#ffffff", 0.55);
+        ctx.fillRect(fx + 1, fy2 + Math.floor(fh2 / 2) - 1, fw2 - 2, 1);
+      }
       y = top; band++;
     }
 
@@ -874,6 +999,45 @@ window.CupPitch2D = (function () {
     /* the fascia, one bright line, which is the whole silhouette */
     ctx.fillStyle = mix(C.rail, "#ffffff", 0.22);
     ctx.fillRect(0, Math.max(0, roofY - 1), this.vw, 1);
+
+    /* =====================================================================
+       THE LAMPS ALONG THE ROOF
+
+       The corner towers are anchored to the ground's corners now, which
+       is right, and it means that from a camera on the halfway line
+       they are both a hundred units outside the frame — so the sky over
+       the stand went completely empty. A ground of this size does not
+       light itself from four masts anyway; it lights itself from a run
+       of lamps under the roof, and those are the things you actually
+       see glowing at a night match.
+
+       Each one throws a short cone down onto the front of the stand,
+       which is also what puts the light ON the crowd instead of just
+       near it. */
+    var LAMP_EVERY = 58;
+    var lampOff = Math.round(this.rnd(9) * LAMP_EVERY);
+    for (var lx = -lampOff; lx < this.vw; lx += LAMP_EVERY) {
+      var cxl = Math.round(lx + LAMP_EVERY / 2);
+      if (cxl < -8 || cxl > this.vw + 8) continue;
+      var ly2 = Math.max(0, roofY - 1);
+      /* the housing */
+      ctx.fillStyle = mix(C.roof, "#ffffff", 0.34);
+      ctx.fillRect(cxl - 5, ly2 - 3, 10, 3);
+      /* the bulbs, a couple of which are always a shade off */
+      for (var bl = 0; bl < 4; bl++) {
+        var fl2 = this.rnd(bl * 23 + (cxl | 0)) * 6 + this.t * 1.7;
+        ctx.fillStyle = Math.sin(fl2) > -0.9 ? "#fff8e0" : "#c0b490";
+        ctx.fillRect(cxl - 4 + bl * 2, ly2 - 2, 1, 1);
+      }
+      /* and the spill down the face of the stand */
+      ctx.fillStyle = "#fff6d8";
+      for (var gl2 = 0; gl2 < 4; gl2++) {
+        var gw2 = 12 + gl2 * gl2 * 4;
+        ctx.globalAlpha = 0.07 / (1 + gl2 * 1.1);
+        ctx.fillRect(Math.round(cxl - gw2 / 2), ly2 + gl2 * 3, Math.round(gw2), 3);
+      }
+      ctx.globalAlpha = 1;
+    }
 
     this.drawPylons(roofY);
 
@@ -1007,9 +1171,35 @@ window.CupPitch2D = (function () {
         }
       }
     };
-    /* stood behind the corners of the far end */
-    mast(this.vw * 0.11);
-    mast(this.vw * 0.89);
+    /* =====================================================================
+       THE TOWERS STAND ON THE GROUND, NOT ON THE FRAME
+
+       These were placed at eleven and eighty-nine per cent of the
+       screen's width, which means they never moved: pan the camera the
+       length of the pitch and the floodlights slid along the sky with
+       it, always the same distance in from the edges. A thing in the
+       distance that keeps pace with the camera is the one cue that
+       instantly says "painted backdrop", and it was undoing the work
+       the rest of the stadium was doing.
+
+       They belong at the ground's own four corners. Projected, the two
+       behind the far side come out where they should, they separate as
+       the camera nears them and close up as it pans away, and the ones
+       behind the camera are simply off the frame — which is also what a
+       corner floodlight does.
+       ======================================================================= */
+    var w = this.raw;
+    var corners = this.swap
+      ? [[w.halfW + 10 / this.k, -10 / this.k],
+         [w.halfW + 10 / this.k, w.len + 10 / this.k]]
+      : [[-(w.halfW + 10 / this.k), w.len + 10 / this.k],
+         [w.halfW + 10 / this.k, w.len + 10 / this.k]];
+    for (var ci = 0; ci < corners.length; ci++) {
+      var cp = this.project(corners[ci][0], corners[ci][1]);
+      if (!cp.flat && cp.d <= NEAR + 1) continue;
+      if (cp.x < -60 || cp.x > this.vw + 60) continue;
+      mast(cp.x);
+    }
   };
 
   /* the far stand, oblique: a band above the far goal line, and the
@@ -1279,17 +1469,21 @@ window.CupPitch2D = (function () {
         if (gy <= farY || gy > this.vh + BOARD) continue;
         ground[x] = gy;
 
-        /* the boards along the front */
-        var bn = this.rnd((((x / 26) | 0) + side * 7) * 13 + 5);
-        ctx.fillStyle = C.board;
-        ctx.fillRect(x, gy - BOARD, 1, BOARD);
-        ctx.fillStyle = bn > 0.55 ? "#a8283a" : (bn > 0.3 ? "#c8912f" : "#2f4f7a");
-        ctx.fillRect(x, gy - BOARD + 1, 1, BOARD - 2);
-        if (x % 26 === 0 || x % 26 === 24) {
-          ctx.fillStyle = C.roof; ctx.fillRect(x, gy - BOARD, 1, BOARD);
+        /* THE BOARDS ALONG THE FRONT, sampled out of the baked run by
+           where this column is ALONG the wall — see bakeBoards. World
+           position rather than screen position is the whole trick:
+           sampled by screen x the lettering would slide along the
+           boards as the camera panned. */
+        if (BSTRIP) {
+          var wAlong = camDeep + (d - NEAR) / this.k;
+          var span = BSTRIP.width / BSTRIP_BW * BSTRIP_WORLD;
+          var f = ((wAlong % span) + span) % span / span;
+          var sxs = Math.min(BSTRIP.width - 1, Math.floor(f * BSTRIP.width));
+          ctx.drawImage(BSTRIP, sxs, 0, 1, BSTRIP_H, x, gy - BOARD, 1, BOARD);
+        } else {
+          ctx.fillStyle = C.board;
+          ctx.fillRect(x, gy - BOARD, 1, BOARD);
         }
-        ctx.fillStyle = C.boardLip;
-        ctx.fillRect(x, gy - BOARD, 1, 1);
 
         /* the two tiers, the rail between them, and the roof */
         var top = gy - BOARD - TIER, split = Math.round(TIER * 0.44);
