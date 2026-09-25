@@ -3197,34 +3197,42 @@ window.OuissyCup = (function () {
       p.markT -= dt;
       var m = p.mark;
       if (m) {
-        var d2 = attackDir(p.team);
-        tx = m.x + (PITCH.cx - m.x) * 0.16;
-        /* GOAL-SIDE HAS TO SURVIVE THE BLEND.
+        /* =============================================================
+           MARKING IS A POSITION ON A LINE, NOT AN OFFSET FROM A MAN
 
-           Thirteen units of offset, then seventy per cent of the way
-           back toward the block, left the marker on the wrong side of
-           his man half the time — which is a defender about to be run
-           past, every time. The offset is bigger and the blend is much
-           lighter across the axis that decides it; the block still
-           pulls him sideways, because that is the axis where following
-           somebody into a corner actually costs something. */
-        /* IF YOU ARE ON THE WRONG SIDE OF HIM, GET ROUND HIM.
+           This nudged the defender sideways toward the middle and then
+           put him a fixed number of units goal-side along y. Two things
+           are wrong with a fixed offset. It is only goal-side while the
+           man is running straight at the goal — turn him sideways and
+           "goal-side along y" stops meaning anything at all. And it is
+           the same distance whether he is on the halfway line or on the
+           six-yard box, when the whole point of marking is that you get
+           tighter the nearer to goal he gets.
 
-           Aiming at a fixed offset from a man you are already behind
-           means converging on his shoulder and staying there, because
-           he is moving too. Recovering takes a deeper target than
-           holding does — so the defender cuts across and arrives in
-           front rather than trailing him all the way to the box. */
+           A defender stands ON the line between his man and the goal he
+           is defending, a fraction of the way along it. That is
+           goal-side BY CONSTRUCTION — no sign to get wrong, no axis to
+           be turned off — and the fraction does the tightening for
+           free, because the line is short in the box and long at the
+           halfway line.
+
+           Further along it when he has been got in front of, so he cuts
+           back across rather than trailing a shoulder all the way to
+           the area.
+           ============================================================= */
         var behind = !goalSide(p, m);
-        ty = m.y - d2 * (behind ? 34 : 16);
-        tx = tx * 0.70 + home.x * 0.30;
-        ty = ty * 0.96 + home.y * 0.04;
-        /* RECOVERING IS A SPRINT, HOLDING IS A JOG.
-
-           A defender who has been got in front of and jogs back is a
-           defender who stays got in front of, for the rest of the move.
-           The one moment a marker is allowed to run flat out is the one
-           where he is on the wrong side of his man. */
+        var ownGx = PITCH.cx, ownGy = ownGoalY(p.team);
+        var along = behind ? 0.42 : 0.24;
+        tx = m.x + (ownGx - m.x) * along;
+        ty = m.y + (ownGy - m.y) * along;
+        /* the block still pulls him sideways, because following a man
+           into a corner should cost something — but barely along the
+           axis that decides goal-side, because being dragged off his
+           man's shoulder should not */
+        tx = tx * 0.74 + home.x * 0.26;
+        ty = ty * 0.94 + home.y * 0.06;
+        /* the one moment a marker is allowed to run flat out is the one
+           where he is on the wrong side of his man */
         urgency = behind ? 1.12 : 0.95;
       }
       /* A LOOSE BALL IS NOT EVERYBODY'S.
@@ -3245,7 +3253,6 @@ window.OuissyCup = (function () {
       if (!car && dist(p, b) < 16 && nearestTo(b, p.team, true) === p) {
         tx = b.x + b.vx * 0.2; ty = b.y + b.vy * 0.2; urgency = 1.05;
       }
-      /* recovering is the one moment a marker is allowed everything */
       /* A RECOVERY SPRINT WAS TRIED HERE AND MADE IT WORSE.
 
          The idea was obvious enough: a defender caught upfield when the
