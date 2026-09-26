@@ -182,13 +182,22 @@ four have each been survived and their cards read, five and six only in
 pieces — but it is no longer answering an open question about the
 chapter, only about the driver. Worth having, not urgent.
 
-The one thing standing in the way of it has been fixed, untested: the
+The thing standing in the way of it is narrower now but not gone. The
 driver parked the monitor on Marabelle for whole hours, where
 nightbudget's attentive guard spends 68 seconds on it across the
 night, and that is why it kept arriving at five with nothing left. It
-glances now — four ticks on her, eight with the monitor down — which
-still obeys both halves of what the game tells her. Whether that is
-enough to carry it to six on nights five and six has not been run.
+glances instead now — four ticks on her, eight with the monitor down —
+which still obeys both halves of what the game tells her.
+
+Run on night five, the hardest one, it helped and did not finish: 82%
+at one o'clock where the stare left it 78%, 48% at the reveal against
+40%, and still 2% by four, blacked out at five with Jax at the door.
+So the driver is closer and still costlier than an attentive guard,
+and the remaining waste is the doors — it shuts on everything that
+arrives and holds until it leaves, where nightbudget holds 116 seconds
+across a whole night. That is the next thing to narrow for anyone who
+wants the unbroken week. None of it is a question about the chapter:
+nightbudget already shows night five finishing at 10.4% played well.
 
 ### 2026-09-25 — the night shift, played cold and taken apart
 
