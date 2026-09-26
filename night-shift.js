@@ -15677,7 +15677,27 @@ function tapeTick(dt) {
       const words = el.querySelectorAll("i[data-w]");
       for (let i = 0; i < words.length; i++) {
         const w = TAPE.plan.words[i];
-        words[i].className = (mark >= 0 ? i <= mark : (w && t >= w.at)) ? "on" : "";
+        /* A WORD THAT IS WRITTEN STAYS WRITTEN.
+
+           The clock under this can move BACKWARDS within a line, and
+           legitimately: voxAligned re-zeroes it the instant the sound
+           actually starts, which is the whole mechanism that keeps a
+           recording and its subtitle together. If the line had
+           already begun reading on its own -- the hold expired before
+           the take arrived, which is the ordinary case on a slow
+           connection -- a hard re-zero darkens words she has already
+           read and lights them again a moment later. That is the
+           "writes itself, rubs itself out, and writes itself again"
+           this file objects to two hundred lines up, in miniature.
+
+           So the test only ever turns a word ON. Coming into sync
+           costs her nothing to look at: the words she has been given
+           stay, and the voice catches up to them and carries on.
+           Nothing has to un-light within a line, because every line
+           is drawn fresh -- tapeDraw writes the whole element -- so
+           the next line starts dark whatever this one ended as. */
+        if (words[i].className !== "on")
+          words[i].className = (mark >= 0 ? i <= mark : (w && t >= w.at)) ? "on" : "";
       }
     }
     if (!voxTalking() && !TAPE.held && (TAPE.spoke ? TAPE.tail <= 0 : TAPE.speakT <= 0)) tapeHide();
