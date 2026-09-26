@@ -18395,7 +18395,18 @@ const _down = new T.Vector3(0, -1, 0);
 const _cp = new T.Vector3(), _lk = new T.Vector3(), _pt = new T.Vector3(), _sd = new T.Vector3();
 const FIND_WHY = [];
 
-function findSpot(rec, want) {
+/* every place in a room that something could be left, nearest the
+   middle of the picture first. `minY` is what separates a page from a
+   glove: a page has to be on a surface she can believe he put it on,
+   and a glove is allowed to be on the floor of a duct junction.
+
+   That floor is the whole reason the hall, the arcade and the ducts
+   have never had anything hidden in them. It reads as an authorial
+   choice and it is not one -- findSpot only ever accepted a hit
+   between 0.30 and 1.62, those three rooms have no such surface in
+   shot, and so the three rooms a page is never in are simply the
+   three rooms this function could not serve. */
+function findSpots(rec, minY) {
   const cam = rec.cams.main;
   if (!cam) return null;
   const ox = rec.index * SPACING;
@@ -18438,7 +18449,7 @@ function findSpot(rec, want) {
     _ray.far = 3.1;
     const hit = _ray.intersectObject(rec.group, true)
       .filter((h) => !(h.object.userData && h.object.userData.shadow))
-      .filter((h) => h.point.y >= 0.30 && h.point.y <= 1.62)[0];
+      .filter((h) => h.point.y >= (minY === undefined ? 0.30 : minY) && h.point.y <= 1.62)[0];
     if (!hit) continue;
     const y = hit.point.y;
     const at = new T.Vector3(_pt.x, y + 0.004, _pt.z);
@@ -18450,14 +18461,41 @@ function findSpot(rec, want) {
        out, and adding the offset twice put every page in the next room
        along, off the side of the picture */
     found.push({ at: new T.Vector3(at.x - ox, at.y, at.z),
-                 ry: Math.atan2(_sd.x, _sd.z) + 0.4 });
+                 ry: Math.atan2(_sd.x, _sd.z) + 0.4,
+                 d: (px - 50) * (px - 50) + (py - 50) * (py - 50) });
   }
   rec.group.visible = wasVisible;
-  if (!found.length) return null;
-  const w = want || 0;
-  /* nought is still the first one, so every page is exactly where it
-     was before this took an argument */
-  return found[(w * Math.max(1, Math.floor(found.length / 4))) % found.length];
+  /* nearest the middle of the picture first, so the first one out is
+     the one a page has always had */
+  found.sort((a2, b2) => a2.d - b2.d);
+  return found;
+}
+
+/* the page's door into it, unchanged: the best spot in the room */
+function findSpot(rec) {
+  const all = findSpots(rec);
+  return all.length ? all[0] : null;
+}
+
+/* AND A DIFFERENT SPOT FOR EACH THING IN THE SAME ROOM.
+
+   Picking the nth candidate does not work, because FIND_TRY walks the
+   room in a raster and candidate n and candidate n+1 are centimetres
+   apart -- the first pass at this put the mug and the unfinished
+   fifth toy at exactly the same x and z, one on top of the other, and
+   oddcheck caught it at 0.00m. So the spots are taken greedily with a
+   real separation, against everything already placed in that room,
+   the page included. */
+function spaceOut(all, taken, gap) {
+  for (let i = 0; i < all.length; i++) {
+    const c = all[i];
+    let ok = true;
+    for (let k = 0; k < taken.length; k++) {
+      if (Math.hypot(c.at.x - taken[k].x, c.at.z - taken[k].z) < gap) { ok = false; break; }
+    }
+    if (ok) return c;
+  }
+  return null;
 }
 
 function buildFinds() {
@@ -18599,15 +18637,27 @@ const ODD_AT = new T.Vector3();
 let oddNear = null;                    /* the one under the cursor, if any */
 
 function buildOddments() {
-  /* grouped by room so each one in a room asks findSpot for a
-     different spot, and so none of them lands on the page's */
-  const perRoom = {};
+  /* every spot already spoken for in a room, so nothing lands on
+     anything else -- starting with the page, which was there first
+     and whose position must not move by a millimetre */
+  const taken = {};
+  (NS.finds || []).forEach((f) => {
+    const g = findMeshes[f.id];
+    if (!g) return;
+    (taken[f.room] = taken[f.room] || []).push(g.position.clone());
+  });
+  const spots = {};
   (NS.oddments || []).forEach((o) => {
     const rec = rooms[o.room];
     if (!rec) return;
-    perRoom[o.room] = (perRoom[o.room] || 0) + 1;
-    const spot = findSpot(rec, perRoom[o.room]);
+    /* 0.02 rather than 0.30: a mug belongs on a bench and a glove
+       belongs on the floor, and the floor is what the three rooms with
+       no page in them have instead of shelves */
+    if (!spots[o.room]) spots[o.room] = findSpots(rec, 0.02);
+    taken[o.room] = taken[o.room] || [];
+    const spot = spaceOut(spots[o.room], taken[o.room], 0.42);
     if (!spot) { console.warn("night shift: nowhere to put " + o.id + " in " + o.room); return; }
+    taken[o.room].push(spot.at.clone());
     const g = buildOddProp(o.kind);
     g.position.copy(spot.at);
     g.rotation.y = spot.ry;
@@ -20839,6 +20889,30 @@ const testHooks = {
     })),
   }),
   oddTake: () => { takeOdd(); return TAPE.pending ? TAPE.pending.t : null; },
+  /* IS IT IN SHOT, ASKED OF THE ROOM'S OWN CAMERA.
+
+     Not of the live view: oddHotspot runs in the UI tick, which the
+     real frame loop turns and pumpFrame does not, so a suite driving
+     the shift by hand can never see the hotspot and concluded that
+     nothing was visible anywhere. The question that actually matters
+     is whether the thing lands inside the picture the camera that
+     looks at that room takes, and that can be answered from the room
+     definition without a frame at all. */
+  oddShot: () => (NS.oddments || []).map((o) => {
+    const rec = rooms[o.room], g = oddMeshes[o.id];
+    if (!rec || !g || !rec.cams.main) return { id: o.id, room: o.room, in: false, why: "not placed" };
+    const cam = rec.cams.main, ox = rec.index * SPACING;
+    const pc = new T.PerspectiveCamera(cam.fov || 60, 16 / 9, 0.1, 200);
+    pc.position.set(cam.pos[0] + ox, cam.pos[1], cam.pos[2]);
+    pc.lookAt(cam.look[0] + ox, cam.look[1], cam.look[2]);
+    pc.updateMatrixWorld(true);
+    const v = new T.Vector3();
+    g.getWorldPosition(v);
+    v.project(pc);
+    const x = (v.x * 0.5 + 0.5) * 100, y = (-v.y * 0.5 + 0.5) * 100;
+    return { id: o.id, room: o.room, in: !(v.z > 1 || x < 4 || x > 96 || y < 4 || y > 96),
+             x: +x.toFixed(1), y: +y.toFixed(1) };
+  }),
   oddAt: (id) => {
     const g = oddMeshes[id];
     if (!g) return null;

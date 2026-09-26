@@ -76,35 +76,32 @@ const t = (n, c, note) => { c ? pass++ : fail++;
       });
     }
 
-    /* ---- can she see them? put the camera on each room in turn ---- */
+    /* ---- can she see them? ---- */
     N.begin(6); N.midEnd();
-    const unseen = [];
-    const seenIds = [];
-    for (const room of Object.keys(byRoom)) {
-      G().monitor = true; G().cam = room; G().monOut = 0; G().lost = {};
-      N.pumpFrame(1 / 30);
-      await sleep(60);
-      const st = N.odds();
-      byRoom[room].forEach((id) => {
-        if (st.inRoom.indexOf(id) < 0) unseen.push(id + ' is not even out');
-      });
-      /* the hotspot only ever offers the one nearest the middle, so
-         walk them: take the offered one, look again, take the next */
-      for (let k = 0; k < byRoom[room].length; k++) {
-        N.pumpFrame(1 / 30);
-        await sleep(40);
-        const s2 = N.odds();
-        if (!s2.shown || !s2.near) break;
-        seenIds.push(s2.near);
-        N.oddTake();
-        await sleep(40);
+    const shot = N.oddShot();
+    const unseen = shot.filter((x) => !x.in)
+                       .map((x) => x.id + ' is outside the ' + x.room + ' picture' +
+                                   (x.why ? ' (' + x.why + ')' : ' at ' + x.x + ',' + x.y));
+
+    /* ---- and taking one: it says its line and the night carries on ---- */
+    let took = null;
+    {
+      const first = shot.filter((x) => x.in)[0];
+      if (first) {
+        G().monitor = true; G().cam = first.room; G().monOut = 0; G().lost = {};
+        /* the hotspot lives in the UI tick, which pumpFrame does not
+           turn, so reach it the way the button does */
+        for (let i = 0; i < 40 && !N.odds().near; i++) { N.pumpFrame(1 / 30); await sleep(50); }
+        const before = N.odds();
+        const said = N.oddTake();
+        const after = N.odds();
+        took = { id: before.near, said, phase: G().phase,
+                 wasOut: before.out.length, nowOut: after.out.length,
+                 stillThere: after.out.indexOf(before.near) >= 0 };
       }
     }
-    byRoom && Object.keys(byRoom).forEach((room) => {
-      byRoom[room].forEach((id) => { if (seenIds.indexOf(id) < 0) unseen.push(id + ' never came within the picture in the ' + room); });
-    });
 
-    return { o0, at, tooClose, early, unseen, seenIds, fs };
+    return { o0, at, tooClose, early, unseen, shot, took };
   });
 
   console.log(`  ${r.o0.defined.length} defined, ${r.o0.placed.length} placed in the shop\n`);
@@ -126,7 +123,18 @@ const t = (n, c, note) => { c ? pass++ : fail++;
   t('each comes out on the night it was written for, and stays out',
     r.early.length === 0, r.early.slice(0, 3).join('; ') || 'six nights, all correct');
   t('and she can see every one of them from the camera that looks at it',
-    r.unseen.length === 0, r.unseen.slice(0, 3).join('; ') || r.seenIds.length + ' reached');
+    r.unseen.length === 0, r.unseen.slice(0, 4).join('; ') || r.shot.length + ' all inside the picture');
+  if (r.took) {
+    console.log('\n  took "' + r.took.id + '": phase ' + r.took.phase +
+                ', ' + r.took.wasOut + ' out -> ' + r.took.nowOut +
+                '\n    it said: ' + JSON.stringify(String(r.took.said || '').slice(0, 62)) + '\n');
+    t('picking one up says its line', !!r.took.said, r.took.said ? 'queued' : 'nothing queued');
+    t('and does not stop the night', r.took.phase === 'play', r.took.phase);
+    t('and it is gone once she has it', r.took.stillThere === false,
+      r.took.stillThere ? 'still out' : 'off the list');
+  } else {
+    t('there was one to pick up', false, 'none in shot to try');
+  }
   t('nothing in any of that threw', errs.length === 0, errs.slice(0, 2).join(' | ') || 'clean');
 
   console.log(`\n${pass} passed, ${fail} failed`);
