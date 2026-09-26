@@ -349,6 +349,17 @@ moving.
   between the two channels: 1.00 is mono however many speakers you own,
   which is what these were. A record sits near 0.4-0.8, and the low end
   staying centred is why it does not go lower.
+
+  And it prints the song's SHAPE, section by section, because a
+  soundtrack is judged on arrival rather than on any single bar. Chills
+  are a response to contrast — to something being withheld and then
+  given — so the intro has to be genuinely small and the chorus
+  genuinely big, and the ratio between them is the whole measurement.
+  Two versions of this were wrong before it said anything true: it
+  sampled every fourth bar, which landed squarely on the two bars that
+  are DESIGNED to be near-silent and reported a song with no chorus in
+  it; and it rendered a flat number of seconds, which at 76bpm did not
+  reach bar 32 at all.
 - **`cupshape.js`** — do they keep a shape, or do they all go and stand
   by the goal? "Sometimes all of them are next to the goal" is a
   complaint about a thing that happens SOMETIMES, which is exactly what

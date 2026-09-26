@@ -91,9 +91,21 @@ function wav(channels, rate) {
     ? await page.evaluate(() => window.CUP_CONFIG.TEAMS.map(t => t.id))
     : [cue];
 
+  /* the tempos, so the render length can be worked out per ground */
+  const team_bpm = await page.evaluate(() => {
+    const o = {};
+    window.CUP_CONFIG.TEAMS.forEach(t => { o[t.id] = t.anthem.tempo; });
+    return o;
+  });
   const rows = [];
   for (const name of names) {
-    const r = await render(name, all ? 26 : secs);
+    /* LONG ENOUGH TO REACH THE LAST CHORUS, AND NO LONGER.
+       Thirty-three bars, worked out from this ground's own tempo
+       rather than a flat number of seconds \u2014 at 76bpm that is 104
+       seconds and at 132 it is 60, and rendering everything at the
+       slow one's length was most of a ten-minute wait for nothing. */
+    const need = all ? (33 * 4 * 60 / (team_bpm[name] || 100)) : secs;
+    const r = await render(name, need);
     let peak = 0, sum = 0;
     for (let i = 0; i < r.left.length; i++) {
       const v = Math.abs(r.left[i]);
@@ -129,7 +141,7 @@ function wav(channels, rate) {
        hole is felt in the middle of the bar, so that is where it is
        read, and every bar is read the same way. */
     const bars = [];
-    for (let k = 0; bar0 + k * barLen < r.left.length && k < 16; k++) {
+    for (let k = 0; bar0 + k * barLen < r.left.length && k < 32; k++) {
       let s2 = 0, n2 = 0;
       const from = Math.round(bar0 + k * barLen + barLen * 0.45);
       const to = Math.min(bar0 + (k + 1) * barLen, r.left.length);
@@ -146,14 +158,38 @@ function wav(channels, rate) {
        drop is asking them to be the other four — which is the mistake
        that produced six tracks that sounded the same in the first
        place. A build is checked for BUILDING. */
-    const grows = r.groove === 'build' || r.groove === 'ceremony';
-    const drop = bars[4], back = bars[5];
-    const shapeOk = grows
-      ? (bars[7] !== undefined && bars[0] > 0 && bars[7] > bars[0] * 1.3)
-      : (drop !== undefined && back !== undefined && drop < back * 0.8);
+    /* A SONG, NOT A LOOP. The intro must be genuinely small and the
+       chorus genuinely big \u2014 that ratio IS the thing being asked for,
+       because chills are a response to arrival and nothing arrives in
+       a track that is the same size all the way through. */
+    /* SECTION MEANS, not single bars. Sampling every fourth bar landed
+       squarely on the two bars that are DESIGNED to be near-silent \u2014
+       the hole in the chorus and the one at the top of the last \u2014 and
+       reported a song with no chorus at all. A section is judged by
+       its average, with the holes left out of it. */
+    const HOLES = [20, 28];       // the two bars designed to be near-silent
+    const mean = (a, b2) => {
+      const v = [];
+      for (let k = a; k < b2; k++) {
+        if (HOLES.indexOf(k) >= 0) continue;
+        if (bars[k] > 0) v.push(bars[k]);
+      }
+      return v.length ? v.reduce((p2, c2) => p2 + c2, 0) / v.length : 0;
+    };
+    const intro = mean(0, 8), chorus = mean(16, 24), brk = mean(24, 28), last = mean(28, 32);
+    const shapeOk = intro !== undefined && chorus !== undefined
+      && intro > 0 && chorus > intro * 1.7
+      /* 0.80 rather than 0.75, because at 132bpm a bar is 1.8 seconds
+         and the chorus's reverb tail is still sounding through the
+         first half of the breakdown. That is the room, not the
+         arrangement, and it is a real thing a fast record does. */
+      && brk !== undefined && brk < chorus * 0.80
+      && last !== undefined && last > chorus * 0.9;
+    const grows = false;
     rows.push({ name, peak: +peak.toFixed(4), rms: +rms.toFixed(5),
                 notes: r.notes, bars: r.bars, profile: bars,
                 groove: r.groove, title: r.title, grows: grows,
+                sections: { intro, chorus, brk, last },
                 crest: 20 * Math.log10(Math.max(1e-6, peak) / Math.max(1e-6, rms)),
                 corr: corr,
                 dropOk: shapeOk,
@@ -183,13 +219,18 @@ function wav(channels, rate) {
     String(r.bars).padEnd(5), String(r.notes).padEnd(12),
     r.silent ? 'SILENT' : (r.clipping ? 'CLIPPING' : 'ok')));
   console.log('\nthe shape of each song, bar by bar (RMS \u00d7 1000):');
-  console.log('   ' + 'ground'.padEnd(9) + 'groove'.padEnd(12)
-              + '    0    1    2    3    4    5    6    7');
+  console.log('   every bar, RMS \u00d7 1000. intro 0-7 | build 8-15 | '
+              + 'chorus 16-23 | break 24-27 | last 28-31');
   rows.forEach(r => console.log('   ' + r.name.padEnd(9) + (r.groove || '').padEnd(12)
-    + r.profile.slice(0, 8).map(v => String(Math.round(v * 1000)).padStart(5)).join('')
+    + '   intro ' + Math.round(r.sections.intro * 1000)
+    + '  chorus ' + Math.round(r.sections.chorus * 1000)
+    + '  break ' + Math.round(r.sections.brk * 1000)
+    + '  last ' + Math.round(r.sections.last * 1000)
+    + '   (chorus/intro ' + (r.sections.chorus / Math.max(1e-6, r.sections.intro)).toFixed(2) + 'x)'
+    + '\n      ' + r.profile.slice(0, 16).map(v => String(Math.round(v * 1000)).padStart(4)).join('')
+    + '\n      ' + r.profile.slice(16, 32).map(v => String(Math.round(v * 1000)).padStart(4)).join('')
     + (r.profile.length >= 6
-       ? (r.dropOk ? (r.grows ? '   builds' : '   drops')
-                   : (r.grows ? '   DOES NOT BUILD' : '   DOES NOT DROP'))
+       ? (r.dropOk ? '   song' : '   FLAT \u2014 no arrival')
        : '')));
   if (errs.length) console.log('\npage errors: ' + errs.slice(0, 3).join(' | '));
   await browser.close();

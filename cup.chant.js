@@ -166,9 +166,17 @@ window.CupChant = (function () {
     sat.oversample = "2x";
 
     var comp = AC.createDynamicsCompressor();
-    comp.threshold.value = -20;
-    comp.knee.value = 8;
-    comp.ratio.value = 3.5;
+    /* GENTLER THAN A LOOP NEEDS.
+
+       Squashing to a crest factor of seven made the eight-bar version
+       sound like a record and makes a thirty-two bar one sound like a
+       wall: the whole point of an intro is that it is SMALLER than the
+       chorus, and a compressor pulling the quiet parts up by twelve
+       decibels is a machine for deleting that difference. Enough to
+       glue, not enough to flatten the form. */
+    comp.threshold.value = -15;
+    comp.knee.value = 10;
+    comp.ratio.value = 2.4;
     comp.attack.value = 0.008;     // slow enough to let the kick click through
     comp.release.value = 0.14;     // quick enough to breathe
 
@@ -180,7 +188,7 @@ window.CupChant = (function () {
     lim.release.value = 0.05;
 
     /* make up what the chain takes off, or it is quieter and no denser */
-    var makeup = AC.createGain(); makeup.gain.value = 2.15;
+    var makeup = AC.createGain(); makeup.gain.value = 1.55;
 
     /* THE CEILING, FOR REAL.
 
@@ -308,6 +316,37 @@ window.CupChant = (function () {
     /* percussion: its own gain, following the band's fader but routed
        around the duck — see drumsOut */
     L.drums = AC.createGain(); L.drums.gain.value = 0.0;
+    /* =====================================================================
+       THE TWO LAYERS THIS WAS ALWAYS MISSING
+
+       Everything above is a stadium: drums, bass, and a crowd. What it
+       never had was a RECORD — a thing you would listen to with your
+       eyes shut. Two layers do almost all of that work.
+
+       THE LEAD is the melody, played by an instrument. Until now the
+       tune was carried by the crowd's voices, and a crowd singing a
+       melody is a chant however well it is produced; that one routing
+       decision is the whole reason six different songs all sounded
+       like football terraces. It goes to an instrument now and the
+       crowd goes behind it.
+
+       THE PAD is the goosebumps. A wide, slow string swell under
+       everything, with a long tail on it, doing nothing but sustaining
+       the chord — and it is the single most effective device there is
+       for the feeling being asked for here. Chills are a response to
+       something opening UP, and a pad is what opens.
+       ===================================================================== */
+    L.lead = AC.createGain(); L.lead.gain.value = 0.0;
+    var leadDry = AC.createGain(); leadDry.gain.value = 0.92;
+    var leadWet = AC.createGain(); leadWet.gain.value = 0.30;
+    L.lead.connect(leadDry); leadDry.connect(sc.inst);
+    L.lead.connect(leadWet); leadWet.connect(verb);
+
+    L.pad = AC.createGain(); L.pad.gain.value = 0.0;
+    var padDry = AC.createGain(); padDry.gain.value = 0.70;
+    var padWet = AC.createGain(); padWet.gain.value = 0.85;
+    L.pad.connect(padDry); padDry.connect(sc.inst);
+    L.pad.connect(padWet); padWet.connect(verb);
     var drumDry = AC.createGain(); drumDry.gain.value = 1.0;
     var drumWet = AC.createGain(); drumWet.gain.value = 0.07;
     L.drums.connect(drumDry); drumDry.connect(preMaster);
@@ -763,8 +802,124 @@ window.CupChant = (function () {
     mid.connect(ml); ml.connect(mg); mg.connect(g);
     mid.start(t); mid.stop(t + dur + 0.05);
 
-    g.connect(L.band);
+    g.connect(L.lead);
     if (delaySend) { var sd = AC.createGain(); sd.gain.value = 1;
+                     g.connect(sd); sd.connect(delaySend); }
+  }
+
+  /* =======================================================================
+     THE INSTRUMENTS THAT MAKE IT A RECORD
+     ======================================================================= */
+
+  /* A FELT PIANO. Two-operator FM with the modulator decaying much
+     faster than the carrier, which is what reads as a struck string
+     rather than a sine with an envelope on it. It exists for one job:
+     to play the tune ALONE at the start, so that the moment everything
+     else arrives means something. A song that begins at full size has
+     nowhere to go. */
+  function piano(t, f, dur, vol) {
+    var car = AC.createOscillator(); car.type = "sine"; car.frequency.value = f;
+    var mod = AC.createOscillator(); mod.type = "sine"; mod.frequency.value = f * 2.005;
+    var mg = AC.createGain();
+    mg.gain.setValueAtTime(f * 1.7, t);
+    mg.gain.exponentialRampToValueAtTime(f * 0.03, t + 0.38);
+    mod.connect(mg); mg.connect(car.frequency);
+    var g = AC.createGain();
+    var rel = Math.max(0.8, dur * 1.1);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.006);
+    g.gain.exponentialRampToValueAtTime(vol * 0.28, t + 0.45);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + rel);
+    car.connect(g); g.connect(L.lead);
+    car.start(t); mod.start(t);
+    car.stop(t + rel + 0.1); mod.stop(t + rel + 0.1);
+  }
+
+  /* THE STRING PAD, AND WHY IT IS THE WHOLE THING.
+
+     Six detuned saws through a lowpass that opens slowly, spread hard
+     across the stereo field, with a long slow attack and a longer
+     release, drowned in reverb. It plays nothing but the chord. It is
+     not a melody, it is not a rhythm, and it is the layer that makes
+     people describe music as giving them chills — because a chill is
+     a response to something OPENING, and this is the only thing in the
+     file that opens.
+
+     The filter sweep is not decoration either. A pad whose brightness
+     climbs through the bar keeps arriving for the whole bar, which is
+     why it feels like a swell rather than like a held note. */
+  function pad(t, freqs, dur, vol, bright) {
+    var g = AC.createGain();
+    var atk = Math.min(dur * 0.45, 1.2);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + atk);
+    g.gain.setValueAtTime(vol, t + Math.max(atk, dur * 0.8));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.9);
+    freqs.forEach(function (f, i) {
+      for (var d = 0; d < 2; d++) {
+        var lp = AC.createBiquadFilter();
+        lp.type = "lowpass"; lp.Q.value = 0.8;
+        lp.frequency.setValueAtTime(Math.max(300, f * 1.6), t);
+        lp.frequency.linearRampToValueAtTime(
+          Math.max(900, f * (bright ? 7 : 3.4)), t + dur * 0.75);
+        var o = AC.createOscillator();
+        o.type = "sawtooth"; o.frequency.value = f;
+        o.detune.value = (d ? 11 : -11) + (i - 1) * 4;
+        /* slow, independent drift, which is what a section of players
+           does and a bank of oscillators does not */
+        var lfo = AC.createOscillator(); lfo.type = "sine";
+        lfo.frequency.value = 0.18 + i * 0.07 + d * 0.05;
+        var lg = AC.createGain(); lg.gain.value = 5;
+        lfo.connect(lg); lg.connect(o.detune);
+        var pan = AC.createStereoPanner ? AC.createStereoPanner() : null;
+        var og = AC.createGain(); og.gain.value = 1 / (freqs.length * 2);
+        o.connect(lp); lp.connect(og);
+        /* HARD-PANNING TWO NEARLY IDENTICAL VOICES IS NOT WIDTH.
+           Measured, the pad panned left and right came back at 0.96
+           correlation — which is mono — because the two sides were the
+           same note twenty cents apart and the ear sums them straight
+           back to the middle. What actually decorrelates is TIME: nine
+           milliseconds of delay on one side, far too short to hear as
+           an echo and far too long for the ear to fuse. It is the
+           oldest widening trick there is and it is one node. */
+        var tail = og;
+        if (d) {
+          var haas = AC.createDelay(0.05);
+          haas.delayTime.value = 0.009 + i * 0.002;
+          og.connect(haas); tail = haas;
+        }
+        if (pan) { pan.pan.value = (d ? 0.9 : -0.9) * (0.65 + i * 0.18);
+                   tail.connect(pan); pan.connect(g); }
+        else tail.connect(g);
+        o.start(t); o.stop(t + dur + 1.0);
+        lfo.start(t); lfo.stop(t + dur + 1.0);
+      }
+    });
+    g.connect(L.pad);
+  }
+
+  /* the bright plucked arpeggio that runs under the whole middle of
+     the track — the one sound that says this is a record made now */
+  function arp(t, f, dur, vol, side) {
+    var o = AC.createOscillator(); o.type = "triangle"; o.frequency.value = f;
+    var o2 = AC.createOscillator(); o2.type = "sawtooth"; o2.frequency.value = f;
+    o2.detune.value = 9;
+    var o2g = AC.createGain(); o2g.gain.value = 0.35;
+    var lp = AC.createBiquadFilter();
+    lp.type = "lowpass"; lp.Q.value = 3;
+    lp.frequency.setValueAtTime(f * 8, t);
+    lp.frequency.exponentialRampToValueAtTime(Math.max(400, f * 1.8), t + 0.22);
+    var g = AC.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + Math.min(0.8, dur * 1.6));
+    var pan = AC.createStereoPanner ? AC.createStereoPanner() : null;
+    o.connect(lp); o2.connect(o2g); o2g.connect(lp); lp.connect(g);
+    if (pan) { pan.pan.value = side || 0; g.connect(pan); pan.connect(L.lead); }
+    else g.connect(L.lead);
+    o.start(t); o2.start(t);
+    o.stop(t + dur + 0.2); o2.stop(t + dur + 0.2);
+    if (delaySend) { var sd = AC.createGain(); sd.gain.value = 0.6;
                      g.connect(sd); sd.connect(delaySend); }
   }
 
@@ -1093,6 +1248,55 @@ window.CupChant = (function () {
     }
   }
 
+  /* =======================================================================
+     A SONG, WITH SECTIONS
+
+     Thirty-two bars, not eight, and the difference is the entire point.
+     Chills are a response to CONTRAST and ARRIVAL — to something being
+     withheld and then given — and an eight-bar loop can withhold
+     nothing, because you have heard all of it by bar eight.
+
+        0-7    INTRO      the tune on a piano, alone, over a pad.
+                          No drums, no bass, no crowd. Whatever
+                          happens later means nothing unless this
+                          happens first
+        8-15   BUILD      the arpeggio, then the bass, then the kick.
+                          A riser across the last bar
+       16-23   CHORUS     everything at once, the tune an OCTAVE UP on
+                          a wide saw lead, the pad open, the crowd
+                          behind it. The moment
+       24-27   BREAKDOWN  strip it back to the piano and the pad, and
+                          let the reverb tail hang
+       28-31   LAST       and again a WHOLE TONE HIGHER, with a
+                          counter-melody over it. Lifting the key for
+                          the last chorus is the oldest trick in
+                          popular music and the reason it survived a
+                          hundred years is that it works on everybody,
+                          every time, whether or not they notice
+
+     The crowd's energy does not choose the section any more. The song
+     plays its own form; the crowd reacts on top of it. That is how a
+     game with a soundtrack works, and trying to drive musical
+     structure from gameplay is what produced something that could
+     never be more than a loop.
+     ======================================================================= */
+  var CYCLE = 32;
+
+  function sectionOf(pos) {
+    if (pos < 8) return "intro";
+    if (pos < 16) return "build";
+    if (pos < 24) return "chorus";
+    if (pos < 28) return "break";
+    return "last";
+  }
+
+  function hookNotes() {
+    if (anthem && anthem.hook && anthem.hook.length) return anthem.hook;
+    var m = (anthem && anthem.motif) || [0, 2, 4, 2, 0];
+    var step = 8 / m.length;
+    return m.map(function (d, i) { return [i * step, d, step * 0.95]; });
+  }
+
   function scheduleBar(t) {
     if (!anthem) return;
     var b = beatSecs();
@@ -1101,115 +1305,146 @@ window.CupChant = (function () {
     var g = anthem.groove || "stomp";
     var prog = PROGS[anthem.mood] || PROGS["anthemic-uplifting"];
     var pos = bar % CYCLE;
-    var cycle = Math.floor(bar / CYCLE);
+    var sec = sectionOf(pos);
+    var inSec = pos < 8 ? pos : (pos < 16 ? pos - 8 : (pos < 24 ? pos - 16
+                : (pos < 28 ? pos - 24 : pos - 28)));
+
+    /* THE LAST CHORUS IS A WHOLE TONE UP. Two semitones, applied to
+       the root, and everything follows because everything is worked
+       out from it. */
+    var lift = sec === "last" ? Math.pow(2, 2 / 12) : 1;
+    var key = root * lift;
+
     var chord = prog[bar % prog.length];
-    var croot = hz(root, scale, chord, 0);
-    var fifth = hz(root, scale, chord + 4, 0);
+    if (g === "ceremony") chord = prog[0];    // Handel holds one chord
+    var croot = hz(key, scale, chord, 0);
+    var fifth = hz(key, scale, chord + 4, 0);
+    var voiced = [0, 2, 4].map(function (add) { return hz(key, scale, chord + add, 1); });
 
-    /* CEREMONY HOLDS ONE CHORD. Handel's build works because nothing
-       moves underneath it; a chord change every bar turns it into a
-       progression and throws the whole effect away. */
-    if (g === "ceremony") { chord = prog[0]; croot = hz(root, scale, chord, 0);
-                            fifth = hz(root, scale, chord + 4, 0); }
-
-    /* THE HYMN DOES NOT DROP, IT GOES A CAPPELLA.
-
-       A hole with hats ticking through it is a dance-record device and
-       it is wrong over Beethoven. What a hymn does instead is stop the
-       band dead and leave the PEOPLE — one bar of thirty thousand
-       voices with nothing under them at all. Same position in the bar,
-       same length, completely different thing to hear, which is the
-       whole argument of this file in one flag. */
-    var acap = pos === 4 && E > 0.3 && g === "hymn";
-    var drop = pos === 4 && E > 0.3
-               && g !== "ceremony" && g !== "build" && g !== "hymn";
-    var band = !drop && !acap;
-
-    if (!acap) drums(g, t, b, pos, drop, E);
-    if (band) bassLine(g, t, b, croot, fifth, pos);
-
-    /* WHAT HAPPENS AT THE JOINS. The bar before the hole gets a sweep
-       into it; the bar the band comes back on gets hit. A build has no
-       hole, so it gets its riser at the top of the cycle instead,
-       where it is turning over into the next climb. */
-    var hasHole = (pos === 4) && (drop || acap);
-    if (E > 0.4) {
-      if (pos === 3 && (g !== "build" && g !== "ceremony")) riser(t + b * 2, b * 2, 0.14);
-      if (pos === 3 && g === "ceremony") riser(t, b * 4, 0.10);
-      if (pos === 7 && g === "build") riser(t + b * 2, b * 2, 0.12);
-      if (pos === 5 && hasHole) impact(t, 0.34);
-      if (pos === 4 && g === "ceremony") impact(t, 0.30);
-      if (pos === 5 && g === "build") impact(t, 0.26);
+    /* --------------------------------------------------------- THE PAD
+       Under everything, always, at a level that tells you which
+       section you are in without you noticing that is what told you. */
+    var padVol = sec === "intro" ? 0.013
+      : sec === "build" ? 0.050
+      : sec === "break" ? 0.034
+      : sec === "last" ? 0.185 : 0.145;
+    pad(t, voiced.map(function (f) { return f / 2; }), b * 4, padVol,
+        sec === "chorus" || sec === "last");
+    /* and the octave above it in the choruses, which is the top end
+       opening up — the literal sound of a record getting bigger */
+    if (sec === "chorus" || sec === "last") {
+      pad(t, voiced, b * 4, padVol * 0.55, true);
     }
 
-    var voiced = [0, 2, 4].map(function (add) { return hz(root, scale, chord + add, 1); });
-    var stabsIn = band && (g === "build" || g === "ceremony" ? true : pos >= 2);
-    if (stabsIn) chords(g, t, b, voiced, pos, pos >= 5);
+    /* ------------------------------------------------------- THE RHYTHM */
+    var hole = (sec === "chorus" && inSec === 4) || (sec === "last" && inSec === 0);
+    var drumsIn = (sec === "build" && inSec >= 4) || sec === "chorus" || sec === "last";
+    var bassIn = (sec === "build" && inSec >= 2) || sec === "chorus" || sec === "last";
 
-    /* WHO SINGS, AND WHEN. Not the same answer for all six: the build
-       keeps the crowd back until the last two bars, the ceremony hands
-       them the whole thing the moment the choir lands, and the stomp
-       has them in from the start because that is what a stomp is. */
-    var sung, full, lifted;
-    if (g === "build") { sung = pos >= 2; full = pos >= 5; lifted = pos >= 6; }
-    else if (g === "ceremony") {
-      /* Handel's trick is that NOBODY sings for twenty-two bars. The
-         arpeggio turns over alone, the bass joins it, and the voices
-         do not appear at all until the downbeat everything lands on —
-         which is the only reason that downbeat is worth anything. */
-      sung = pos >= 3; full = pos >= 4; lifted = pos >= 5;
+    if (drumsIn && !hole) drums(g, t, b, inSec % 8, false, E);
+    else if (hole) {
+      /* the bar the floor drops out of. Hats and one hit, and the
+         reverb tail of everything that just stopped. */
+      for (var hd = 0; hd < 8; hd++) hat(t + b * hd * 0.5, hd % 2 ? 0.06 : 0.03);
+      snare(t + b * 3.75, 0.34);
     }
-    else if (g === "stomp") { sung = true; full = pos >= 3; lifted = pos >= 5; }
-    else { sung = pos >= 2 || E > 0.62; full = pos >= 5; lifted = pos >= 6; }
-    if (drop) sung = false;
-    /* and the a cappella bar is the one bar they are guaranteed to be
-       singing, because they are all that is left */
-    if (acap) { sung = true; full = true; lifted = true; }
+    if (bassIn && !hole) bassLine(g, t, b, croot, fifth, 6);
 
-    if (!sung) { bar++; return; }
-
-    /* the terrace clap over the top of everything except the grooves
-       that already are a clap */
-    if (E > 0.45 && band && g !== "stomp" && g !== "hymn") {
-      clap(t + b, 0.16, -0.55);
-      clap(t + b * 3, 0.16, 0.55);
+    /* ------------------------------------------------------ THE ARPEGGIO
+       Sixteenths through the build and the choruses, panned wide and
+       alternating — the thing that keeps the middle of the track
+       moving while the melody holds a note. */
+    if (sec === "build" || sec === "chorus" || sec === "last") {
+      var steps = [0, 2, 4, 7, 4, 2, 4, 7];
+      for (var a = 0; a < 8; a++) {
+        if (hole && a > 1) break;
+        arp(t + b * a * 0.5, hz(key, scale, chord + steps[a % steps.length], 1),
+            b * 0.45, sec === "build" ? 0.055 : 0.105, a % 2 ? 0.7 : -0.7);
+      }
     }
+    if ((sec === "chorus" || sec === "last") && !hole) chords(g, t, b, voiced, 6, true);
 
-    /* -------------------------------------------------- THE TUNE, TWICE
-       Once on an instrument, once by the crowd — and WHICH instrument
-       is part of the arrangement. A march is brass. A ceremony is the
-       organ. A build is a pluck that turns into a lead. */
+    /* --------------------------------------------------- THE TRANSITIONS */
+    if (sec === "build" && inSec === 7) riser(t, b * 4, 0.17);
+    if (sec === "chorus" && inSec === 0) impact(t, 0.36);
+    if (sec === "chorus" && inSec === 5) impact(t, 0.26);
+    if (sec === "break" && inSec === 3) riser(t, b * 4, 0.19);
+    if (sec === "last" && inSec === 1) impact(t, 0.40);
+
+    /* ------------------------------------------------------- THE MELODY
+       Which instrument plays it IS the arrangement. Piano alone at the
+       start, the saw lead an octave up in the choruses, and the piano
+       again in the breakdown — the same notes three times, and it is
+       a different song each time. */
     var notes = hookNotes();
-    var half = (pos % 2) ? 4 : 0;
-    var side = (pos % 2) ? 0.5 : -0.5;
-    var drive = (full ? 0.72 : 0.42) + E * 0.28;
-    var leadUp = g === "ceremony" || g === "hymn" ? 1 : 2;   // which octave
-
+    var half = (inSec % 2) ? 4 : 0;
     for (var i = 0; i < notes.length; i++) {
       var nb = notes[i][0];
       if (nb < half || nb >= half + 4) continue;
-      var f = hz(root, scale, notes[i][1] + chord, 1);
+      var f = hz(key, scale, notes[i][1] + chord, 1);
       var tt = t + (nb - half) * b;
       var dur = notes[i][2] * b;
-      /* no instrument in the a cappella bar. That is what makes it one. */
-      var lv = full ? 0.17 : 0.11;
-      /* and the arpeggio comes UP as the piece does, rather than
-         sitting at one level while everything else arrives round it */
-      if (g === "ceremony") lv = pos < 2 ? 0.07 : (pos < 4 ? 0.11 : 0.19);
-      if (!acap) lead(tt, f * leadUp, dur * 0.92, lv);
-      /* A SECOND PASS THAT IS NOT THE FIRST. From the second cycle on a
-         bell rides above the LONG notes of the tune — only the long
-         ones, because a counter-line that doubles everything is not a
-         counter-line, it is a thicker lead. Nothing in a record repeats
-         a section identically, and this looped eight bars for ninety
-         minutes. */
-      if (cycle > 0 && full && notes[i][2] >= 1) {
-        bell(tt + b * 0.5, f * 2, dur * 0.7, 0.10);
+
+      /* THE SECTIONS HAVE TO BE DIFFERENT SIZES, AT SOURCE.
+
+         Measured, the first version of this ran: intro 391, chorus
+         290, break 399. The song was upside down — the intro was the
+         LOUDEST thing in it — because a solo piano at 0.24 is simply a
+         bigger number than any single element of a chorus, and a
+         chorus is only loud because there are eight things in it. Eight
+         quiet things do not beat one loud one.
+
+         Compression makes this worse rather than causing it: a sparse
+         intro sits below the threshold and passes untouched while a
+         dense chorus gets pulled down four decibels. So the gap has to
+         be built at source, and built wide, because the chain will
+         spend some of it. */
+      if (sec === "intro") {
+        piano(tt, f, dur, 0.075);
+        if (inSec >= 4) piano(tt, f * 2, dur, 0.035);
+      } else if (sec === "build") {
+        piano(tt, f, dur, 0.13);
+        if (inSec >= 4) lead(tt, f * 2, dur * 0.9, 0.10);
+      } else if (sec === "break") {
+        /* the breakdown is not a second intro — it is the chorus with
+           everything taken away, which means it has to sound like
+           something has been taken away */
+        piano(tt, f, dur, 0.12);
+        pad(tt, [f], dur * 1.4, 0.022, false);
+      } else if (!hole) {
+        /* THE CHORUS. An octave up, wide, with the piano still under
+           it — a melody doubled at the octave is the cheapest way there
+           is to make one sound enormous. */
+        lead(tt, f * 2, dur * 0.92, sec === "last" ? 0.40 : 0.34);
+        piano(tt, f, dur, 0.09);
+        if (sec === "last" && notes[i][2] >= 0.75) {
+          /* AND THE COUNTER-MELODY, last chorus only. A bell a third
+             above the long notes. A final chorus that is only louder
+             is a repeat; a final chorus with a new LINE in it is an
+             arrival. */
+          bell(tt + b * 0.25, hz(key, scale, notes[i][1] + chord + 2, 2),
+               dur * 0.8, 0.11);
+        }
       }
-      voices(f, tt, dur * 0.95, full ? 0.18 : 0.11, side, drive, full ? 9 : 5);
-      if (full) hummed(f, tt, dur * 0.9, 0.08);
-      if (lifted) voices(f / 2, tt, dur * 0.95, 0.10, -side, drive * 0.7, 5);
     }
+
+    /* ---------------------------------------------------------- THE CROWD
+       Behind it, not in front of it. They are colour in the choruses
+       and a distant hum everywhere else — which is what a crowd is on
+       a record, and the opposite of what this file used to do, which
+       was hand them the tune and wonder why six songs sounded like six
+       football chants. */
+    if (sec === "chorus" || sec === "last") {
+      for (var v = 0; v < notes.length; v++) {
+        var vb = notes[v][0];
+        if (vb < half || vb >= half + 4) continue;
+        if (notes[v][2] < 0.75) continue;        // only the long notes
+        var vf = hz(key, scale, notes[v][1] + chord, 1);
+        voices(vf, t + (vb - half) * b, notes[v][2] * b * 0.95,
+               hole ? 0.20 : 0.13, (v % 2) ? 0.6 : -0.6, 0.5 + E * 0.3, 7);
+      }
+    }
+
     bar++;
   }
 
@@ -1267,6 +1502,14 @@ window.CupChant = (function () {
          lifts a little when they are roused, and is otherwise the one
          steady thing in the mix. */
       band: (0.30 + Math.max(0, (e - 0.20) / 0.80) * 0.32) * d,
+      /* THE SOUNDTRACK IS NOT A CROWD REACTION. The lead and the pad
+         are the record, and a record does not fade out because the
+         match has gone quiet — it plays, and the crowd comes and goes
+         over the top of it. They sit high and move barely at all. */
+      lead: (0.62 + Math.max(0, (e - 0.3) / 0.7) * 0.18) * d,
+      /* UNDER, not over. Six detuned saws is a lot of energy and a pad
+         that competes with the tune is a fog. */
+      pad: (0.38 + Math.max(0, (e - 0.3) / 0.7) * 0.10) * d,
       /* the full chant is the last thing in and it comes in fast */
       chant: Math.pow(Math.max(0, (e - 0.55) / 0.45), 0.8) * 0.34 * d,
     };
@@ -1280,6 +1523,8 @@ window.CupChant = (function () {
     ramp("hum", L.hum, v.hum, 0.9);
     ramp("band", L.band, v.band, 0.7);
     ramp("drums", L.drums, v.band, 0.7);
+    ramp("lead", L.lead, v.lead, 0.6);
+    ramp("pad", L.pad, v.pad, 1.1);
     ramp("chant", L.chant, v.chant, 0.5);
   }
 
@@ -1494,6 +1739,8 @@ window.CupChant = (function () {
                  hum: +L.hum.gain.value.toFixed(4),
                  chant: +L.chant.gain.value.toFixed(4),
                  band: +L.band.gain.value.toFixed(4),
+                 lead: +L.lead.gain.value.toFixed(4),
+                 pad: +L.pad.gain.value.toFixed(4),
                } };
     },
   };

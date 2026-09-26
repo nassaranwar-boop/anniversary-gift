@@ -108,7 +108,24 @@ const ok = (msg, cond, extra) => {
      different row of the world each frame, which moves the mowing and
      differs in nine tenths of the pixels. It converges in well under a
      second; this gives it two. */
-  await p.evaluate(() => { for (let i = 0; i < 120; i++) OuissyCup.__cup.render(); });
+  /* WAIT FOR CONVERGENCE, DO NOT GUESS A FRAME COUNT.
+     A fixed 120 frames was enough most of the time and not all of the
+     time, and the times it was not, this reported a flickering pitch
+     — which is a false alarm about the exact bug it exists to catch,
+     and the worst kind of test there is. It now renders until the
+     lens actually stops moving and says so if it never does. */
+  const settled = await p.evaluate(() => {
+    const R = OuissyCup.__cup.r2();
+    let prev = null;
+    for (let i = 0; i < 600; i++) {
+      OuissyCup.__cup.render();
+      const now = [R.oy, R.A, R.B, R.zoom, R.cam.x, R.cam.y].join(',');
+      if (now === prev) return i;
+      prev = now;
+    }
+    return -1;
+  });
+  if (settled < 0) console.log('  (the lens never settled \u2014 the next number is meaningless)');
   const A = await shot();
   /* twenty hand-driven frames: a third of a second of crowd, and not
      one millisecond of anything else */
