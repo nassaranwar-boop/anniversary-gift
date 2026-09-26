@@ -56,6 +56,13 @@ window.CupChant = (function () {
   var SCALES = {
     minor: [0, 2, 3, 5, 7, 8, 10],
     major: [0, 2, 4, 5, 7, 9, 11],
+    /* WHERE FOOTBALL MUSIC ACTUALLY COMES FROM needs more than two
+       scales. A terrace in Marrakech and a terrace in Belgrade are not
+       playing the same seven notes, and the notes are most of why they
+       do not sound alike. */
+    dorian: [0, 2, 3, 5, 7, 9, 10],        // afrobeat, highlife
+    pent: [0, 3, 5, 7, 10],                // gnawa, and most of west africa
+    hijaz: [0, 1, 4, 5, 7, 8, 10],         // north africa, the balkans, turkey
   };
   /* progressions by mood. A chord is a scale degree; the shapes are the
      common ones because common is what a crowd can sing over. */
@@ -160,7 +167,18 @@ window.CupChant = (function () {
       var x = (ci / 1024) - 1;
       /* tanh, gently driven. Hard enough to round the peaks, soft
          enough that it is not distortion */
-      curve[ci] = Math.tanh(x * 1.9) / Math.tanh(1.9);
+      /* UNITY SLOPE AT ZERO, which this did not have.
+         Normalising by tanh(k) makes the curve reach full scale at
+         full scale, which looks right and is wrong: the SLOPE at the
+         origin is then k/tanh(k), so at k=1.9 every quiet signal was
+         being multiplied by two before the makeup gain had even been
+         applied. Between that and the makeup the chain carried about
+         six times of hidden gain, which brick-walled everything put
+         through it to a crest factor of three decibels — a percussion
+         track with no transients left in it, which is not percussion,
+         it is a tone. tanh(kx)/k has a slope of exactly one at zero
+         and still bends the peaks, which is the entire job. */
+      curve[ci] = Math.tanh(x * 1.9) / 1.9;
     }
     sat.curve = curve;
     sat.oversample = "2x";
@@ -174,21 +192,33 @@ window.CupChant = (function () {
        chorus, and a compressor pulling the quiet parts up by twelve
        decibels is a machine for deleting that difference. Enough to
        glue, not enough to flatten the form. */
-    comp.threshold.value = -15;
-    comp.knee.value = 10;
-    comp.ratio.value = 2.4;
+    /* A CHAIN TUNED FOR THE SOURCE IT ACTUALLY HAS.
+
+       Measured with this bypassed, the percussion sections produce a
+       crest factor of 12.5dB on their own — which is already where a
+       finished record sits. This chain was built when the source was a
+       thin synth mix forty decibels too quiet, and nobody retuned it
+       afterwards: at a threshold of -15 with 2.2 of makeup it took a
+       12.5dB mix and handed back 3.4dB, which is a brick wall with no
+       transients in it. A batucada with no transients is not a
+       batucada, it is a tone.
+
+       It now catches the top and nothing else. */
+    comp.threshold.value = -8;
+    comp.knee.value = 6;
+    comp.ratio.value = 1.8;
     comp.attack.value = 0.008;     // slow enough to let the kick click through
     comp.release.value = 0.14;     // quick enough to breathe
 
     var lim = AC.createDynamicsCompressor();
-    lim.threshold.value = -3;
+    lim.threshold.value = -1.5;
     lim.knee.value = 0;
     lim.ratio.value = 20;
     lim.attack.value = 0.001;
     lim.release.value = 0.05;
 
     /* make up what the chain takes off, or it is quieter and no denser */
-    var makeup = AC.createGain(); makeup.gain.value = 1.55;
+    var makeup = AC.createGain(); makeup.gain.value = 1.18;
 
     /* THE CEILING, FOR REAL.
 
@@ -216,12 +246,18 @@ window.CupChant = (function () {
     ceil.oversample = "4x";
 
     preMaster = AC.createGain(); preMaster.gain.value = 1;
-    preMaster.connect(sat);
-    sat.connect(comp);
-    comp.connect(makeup);
-    makeup.connect(lim);
-    lim.connect(ceil);
-    ceil.connect(out);
+    /* the chain, or straight through it when a harness is measuring
+       what the source actually produces before any of it */
+    if (window.__CHANT_BYPASS) {
+      preMaster.connect(out);
+    } else {
+      preMaster.connect(sat);
+      sat.connect(comp);
+      comp.connect(makeup);
+      makeup.connect(lim);
+      lim.connect(ceil);
+      ceil.connect(out);
+    }
     out.connect(destination || AC.destination);
 
     /* =====================================================================
@@ -808,6 +844,272 @@ window.CupChant = (function () {
   }
 
   /* =======================================================================
+     THE PERCUSSION OF SIX FOOTBALL CULTURES
+
+     Every previous attempt at this used a rock kit — kick, snare on
+     two and four, hats in eighths — and then wondered why six tracks
+     with different melodies all felt the same. A rock kit is a genre.
+     It is the genre of stadium rock and it is not the genre of
+     football, which everywhere outside northern Europe means DRUMS: a
+     section of them, played by people standing up, with the accents in
+     places a rock drummer never puts them.
+
+     The single most important of those places: in samba the big drum
+     hits the SECOND beat, not the first. That one displacement is why
+     a batucada rolls forward and a rock beat marches, and no amount of
+     production turns one into the other.
+
+     What follows is the kit, built as physical objects rather than as
+     drum-machine sounds, because each of these traditions is
+     identified by a specific instrument more than by a pattern — the
+     tamborim, the cuica, the bombo's rim, the talking drum's bend.
+     ======================================================================= */
+
+  /* A PITCHED DRUM, which is most of the world's percussion: surdo,
+     bombo, davul, dum, tom. The pitch drop and how far it falls is the
+     whole difference between a Brazilian surdo and an Argentine bombo
+     leguüero, so both are arguments. */
+  function boom(t, f0, f1, dur, vol, pan) {
+    var o = AC.createOscillator(); o.type = "sine";
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.exponentialRampToValueAtTime(f1, t + dur * 0.35);
+    var g = AC.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    /* the skin: a breath of noise on the front, or it is a sine */
+    var n = AC.createBufferSource(); n.buffer = shortNoise();
+    var nf = AC.createBiquadFilter();
+    nf.type = "bandpass"; nf.frequency.value = f0 * 3.2; nf.Q.value = 0.8;
+    var ng = AC.createGain();
+    ng.gain.setValueAtTime(vol * 0.35, t);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.035);
+    var pn = AC.createStereoPanner ? AC.createStereoPanner() : null;
+    o.connect(g); n.connect(nf); nf.connect(ng);
+    if (pn) { pn.pan.value = pan || 0; g.connect(pn); ng.connect(pn); pn.connect(drumsOut()); }
+    else { g.connect(drumsOut()); ng.connect(drumsOut()); }
+    o.start(t); o.stop(t + dur + 0.05);
+    n.start(t); n.stop(t + 0.05);
+  }
+
+  /* A STICK ON A SKIN. Short, dry, bright — caixa, tamborim, tek, the
+     rim of a bombo. Everything in these traditions that is not a boom
+     is one of these with a different frequency and length. */
+  function crack(t, f, q, dur, vol, pan) {
+    var n = AC.createBufferSource(); n.buffer = shortNoise();
+    var bp = AC.createBiquadFilter();
+    bp.type = "bandpass"; bp.frequency.value = f; bp.Q.value = q;
+    var g = AC.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    var pn = AC.createStereoPanner ? AC.createStereoPanner() : null;
+    n.connect(bp); bp.connect(g);
+    if (pn) { pn.pan.value = pan || 0; g.connect(pn); pn.connect(drumsOut()); }
+    else g.connect(drumsOut());
+    n.start(t); n.stop(t + dur + 0.04);
+  }
+
+  /* METAL. The agogô's two bells, a cowbell, the qraqeb — a short
+     stack of inharmonic partials, which is what makes metal sound like
+     metal rather than like a note. */
+  function metal(t, f, dur, vol, pan) {
+    var g = AC.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    [1, 1.51, 2.37, 3.13].forEach(function (m, i) {
+      var o = AC.createOscillator();
+      o.type = "square"; o.frequency.value = f * m;
+      var og = AC.createGain(); og.gain.value = 0.34 / (i + 1);
+      o.connect(og); og.connect(g);
+      o.start(t); o.stop(t + dur + 0.03);
+    });
+    var pn = AC.createStereoPanner ? AC.createStereoPanner() : null;
+    if (pn) { pn.pan.value = pan || 0; g.connect(pn); pn.connect(drumsOut()); }
+    else g.connect(drumsOut());
+  }
+
+  /* THE SHAKERS, and there are two kinds. A ganzá is beads in a metal
+     tube — bright, tight, sixteenths. A shekere is a gourd in a net of
+     shells — wetter, lower, splashier. Both are the layer that makes a
+     percussion section feel like it is breathing. */
+  function shaker(t, dur, vol, pan, wet) {
+    var n = AC.createBufferSource(); n.buffer = shortNoise();
+    var hp = AC.createBiquadFilter();
+    hp.type = wet ? "bandpass" : "highpass";
+    hp.frequency.value = wet ? 3400 : 6200;
+    if (wet) hp.Q.value = 0.5;
+    var g = AC.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    var pn = AC.createStereoPanner ? AC.createStereoPanner() : null;
+    n.connect(hp); hp.connect(g);
+    if (pn) { pn.pan.value = pan || 0; g.connect(pn); pn.connect(drumsOut()); }
+    else g.connect(drumsOut());
+    n.start(t); n.stop(t + dur + 0.03);
+  }
+
+  /* THE CUÍCA. A stick rubbed against a drum skin from the inside,
+     which produces a sliding squeak that sounds like an animal and is
+     the single most recognisable sound in Brazilian music. Nothing
+     else in the world makes this noise, so one of them tells you which
+     country you are in before the melody has started. */
+  function cuica(t, dur, vol, up) {
+    var o = AC.createOscillator(); o.type = "sawtooth";
+    var a = up ? 210 : 420, b2 = up ? 430 : 200;
+    o.frequency.setValueAtTime(a, t);
+    o.frequency.exponentialRampToValueAtTime(b2, t + dur * 0.8);
+    var bp = AC.createBiquadFilter();
+    bp.type = "bandpass"; bp.frequency.value = 900; bp.Q.value = 5;
+    var g = AC.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(bp); bp.connect(g); g.connect(drumsOut());
+    o.start(t); o.stop(t + dur + 0.03);
+  }
+
+  /* THE APITO — the leader's whistle. A batucada does not start, it is
+     STARTED, and this is the sound that starts it. Two tones a touch
+     apart, beating against each other, which is what a real pea
+     whistle does. */
+  function apito(t, dur, vol) {
+    var g = AC.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+    g.gain.setValueAtTime(vol, t + dur * 0.7);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    [2350, 2560].forEach(function (f) {
+      var o = AC.createOscillator(); o.type = "sine"; o.frequency.value = f;
+      var og = AC.createGain(); og.gain.value = 0.5;
+      o.connect(og); og.connect(g);
+      o.start(t); o.stop(t + dur + 0.03);
+    });
+    /* the pea rattling, which is the breath in it */
+    var n = AC.createBufferSource(); n.buffer = shortNoise();
+    var bp = AC.createBiquadFilter();
+    bp.type = "bandpass"; bp.frequency.value = 2400; bp.Q.value = 2;
+    var ng = AC.createGain(); ng.gain.value = vol * 0.35;
+    n.connect(bp); bp.connect(ng); ng.connect(g);
+    n.start(t); n.stop(t + dur);
+    g.connect(drumsOut());
+  }
+
+  /* A TALKING DRUM. Squeeze the cords and the pitch bends — which is
+     the whole instrument, and why west african percussion sounds like
+     speech rather than like timekeeping. */
+  function talking(t, f0, f1, dur, vol, pan) {
+    var o = AC.createOscillator(); o.type = "triangle";
+    o.frequency.setValueAtTime(f0, t);
+    o.frequency.linearRampToValueAtTime(f1, t + dur * 0.55);
+    var g = AC.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    var n = AC.createBufferSource(); n.buffer = shortNoise();
+    var nf = AC.createBiquadFilter();
+    nf.type = "bandpass"; nf.frequency.value = 1800; nf.Q.value = 1.2;
+    var ng = AC.createGain();
+    ng.gain.setValueAtTime(vol * 0.5, t);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.03);
+    var pn = AC.createStereoPanner ? AC.createStereoPanner() : null;
+    o.connect(g); n.connect(nf); nf.connect(ng);
+    if (pn) { pn.pan.value = pan || 0; g.connect(pn); ng.connect(pn); pn.connect(drumsOut()); }
+    else { g.connect(drumsOut()); ng.connect(drumsOut()); }
+    o.start(t); o.stop(t + dur + 0.04);
+    n.start(t); n.stop(t + 0.05);
+  }
+
+  /* =======================================================================
+     AND THE THINGS THAT PLAY THE TUNE
+     ======================================================================= */
+
+  /* A BRASS SECTION, which is four or five people and not one
+     instrument. Saws through a soft clip with the filter snapping open,
+     each one starting a few milliseconds late — a section is identified
+     by NOT being together, exactly like a crowd. */
+  function brass(t, freqs, dur, vol, pan) {
+    var sh = AC.createWaveShaper();
+    var cv = new Float32Array(1024);
+    for (var i = 0; i < 1024; i++) cv[i] = Math.tanh(((i / 512) - 1) * 2.6);
+    sh.curve = cv;
+    var g = AC.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.028);
+    g.gain.setValueAtTime(vol, t + Math.max(0.04, dur * 0.7));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.08);
+    freqs.forEach(function (f, i) {
+      for (var d = 0; d < 2; d++) {
+        var lp = AC.createBiquadFilter();
+        lp.type = "lowpass"; lp.Q.value = 2.2;
+        lp.frequency.setValueAtTime(f * 1.4, t);
+        lp.frequency.exponentialRampToValueAtTime(Math.min(8000, f * 8), t + 0.05);
+        lp.frequency.exponentialRampToValueAtTime(Math.max(700, f * 3), t + dur);
+        var o = AC.createOscillator();
+        o.type = "sawtooth"; o.frequency.value = f;
+        o.detune.value = (d ? 12 : -12) + (i - 1) * 5;
+        var og = AC.createGain(); og.gain.value = 0.9 / (freqs.length * 2);
+        var at = t + (i * 2 + d) * 0.006;         // nobody comes in together
+        o.connect(lp); lp.connect(og); og.connect(sh);
+        o.start(at); o.stop(t + dur + 0.12);
+      }
+    });
+    var pn = AC.createStereoPanner ? AC.createStereoPanner() : null;
+    sh.connect(g);
+    if (pn) { pn.pan.value = pan || 0; g.connect(pn); pn.connect(L.lead); }
+    else g.connect(L.lead);
+  }
+
+  /* A DOUBLE REED — zurna, ghaita, shawm. The loudest acoustic melody
+     instrument there is, which is why it is the one every outdoor
+     celebration from Belgrade to Marrakech ends up using. A narrow
+     resonant band and a lot of vibrato; it should be slightly painful. */
+  function reed(t, f, dur, vol) {
+    var o = AC.createOscillator(); o.type = "sawtooth"; o.frequency.value = f;
+    var vib = AC.createOscillator(); vib.type = "sine"; vib.frequency.value = 6.2;
+    var vg = AC.createGain(); vg.gain.value = 22;
+    vib.connect(vg); vg.connect(o.detune);
+    var bp = AC.createBiquadFilter();
+    bp.type = "bandpass"; bp.frequency.value = Math.min(3200, f * 3.1); bp.Q.value = 3.4;
+    var pk = AC.createBiquadFilter();
+    pk.type = "peaking"; pk.frequency.value = 1700; pk.Q.value = 1.4; pk.gain.value = 9;
+    var g = AC.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.022);
+    g.gain.setValueAtTime(vol, t + Math.max(0.03, dur * 0.78));
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.05);
+    o.connect(bp); bp.connect(pk); pk.connect(g); g.connect(L.lead);
+    o.start(t); o.stop(t + dur + 0.08);
+    vib.start(t); vib.stop(t + dur + 0.08);
+    if (delaySend) { var sd = AC.createGain(); sd.gain.value = 0.5;
+                     g.connect(sd); sd.connect(delaySend); }
+  }
+
+  /* A SMALL STEEL-STRUNG GUITAR, struck rather than strummed — the
+     cavaquinho of samba and, with the filter moved, the clipped clean
+     guitar of highlife. Very short, very bright, and always on an
+     offbeat. */
+  function pluckChord(t, freqs, dur, vol, pan, bright) {
+    var g = AC.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    freqs.forEach(function (f, i) {
+      var o = AC.createOscillator();
+      o.type = bright ? "sawtooth" : "triangle";
+      o.frequency.value = f; o.detune.value = (i - 1) * 4;
+      var lp = AC.createBiquadFilter();
+      lp.type = "lowpass"; lp.Q.value = 2;
+      lp.frequency.setValueAtTime(f * (bright ? 9 : 6), t);
+      lp.frequency.exponentialRampToValueAtTime(Math.max(400, f * 2), t + 0.09);
+      var og = AC.createGain(); og.gain.value = 1 / freqs.length;
+      o.connect(lp); lp.connect(og); og.connect(g);
+      o.start(t + i * 0.007); o.stop(t + dur + 0.05);   // a strum, not a stamp
+    });
+    var pn = AC.createStereoPanner ? AC.createStereoPanner() : null;
+    if (pn) { pn.pan.value = pan || 0; g.connect(pn); pn.connect(L.lead); }
+    else g.connect(L.lead);
+  }
+
+  /* =======================================================================
      THE INSTRUMENTS THAT MAKE IT A RECORD
      ======================================================================= */
 
@@ -1035,14 +1337,6 @@ window.CupChant = (function () {
      6 and nothing else. At full voice they sing all of it, they sing
      the drop bar too, and they hold the last note.
      ======================================================================= */
-  var CYCLE = 8;
-
-  function hookNotes() {
-    if (anthem && anthem.hook && anthem.hook.length) return anthem.hook;
-    var m = (anthem && anthem.motif) || [0, 2, 4, 2, 0];
-    var step = 8 / m.length;
-    return m.map(function (d, i) { return [i * step, d, step * 0.95]; });
-  }
 
   /* =======================================================================
      SIX ARRANGEMENTS, BECAUSE SIX TUNES IS NOT SIX TRACKS
@@ -1078,207 +1372,270 @@ window.CupChant = (function () {
                    and four, no hats, no stabs, and the bass doubling
                    the boots. The loudest and the simplest
      ======================================================================= */
-  var CYCLE = 8;
-
-  function hookNotes() {
-    if (anthem && anthem.hook && anthem.hook.length) return anthem.hook;
-    var m = (anthem && anthem.motif) || [0, 2, 4, 2, 0];
-    var step = 8 / m.length;
-    return m.map(function (d, i) { return [i * step, d, step * 0.95]; });
-  }
 
   /* -------------------------------------------------------------- DRUMS */
+  /* =======================================================================
+     SIX GROOVES FROM SIX PLACES FOOTBALL IS PLAYED
+
+     A sixteenth grid, because every one of these lives on sixteenths
+     and none of them lives on the eighth-note rock grid the previous
+     versions used. `k` below runs 0 to 15 across one bar.
+
+       batucada     Brazil, the street. The surdo on the SECOND beat,
+                    tamborim on the teleco-teco, caixa running
+                    sixteenths, a cuíca, and the whistle that starts it
+       olodum       Bahia. The same family, half the speed and four
+                    times the size: three surdos answering each other
+                    with a gap in the middle of the bar you could drive
+                    a bus through
+       funk         Rio, the baile. The tamborzão: one heavy pattern,
+                    no swing, no politeness, and almost nothing else
+       hinchada     Buenos Aires. A bombo legüero bouncing on one and
+                    the AND of two, its wooden rim on the offbeats, and
+                    a trumpet over the top
+       highlife     west africa. A talking drum that bends, a shekere
+                    washing over everything, and a bell pattern that
+                    does not line up with the bar on purpose
+       balkan       the brass bands that follow clubs round the Balkans.
+                    A davul thumping two to the bar with a stick
+                    clattering on the rim between, and it never slows
+     ======================================================================= */
+
+  function sixteenth(t, b, k) { return t + b * k * 0.25; }
+
   function drums(g, t, b, pos, drop, e) {
+    var i, S = function (k) { return sixteenth(t, b, k); };
+    var loud = 0.55 + e * 0.35;
+
     if (drop) {
-      /* every groove drops the same way, because a hole is a hole */
-      if (g !== "hymn" && g !== "ceremony") {
-        for (var hd = 0; hd < 8; hd++) hat(t + b * hd * 0.5, hd % 2 ? 0.07 : 0.035);
+      /* THE BREQUE. Every one of these traditions has the same trick:
+         the whole section stops dead on a beat and you hear the street.
+         It is not a dance-music drop, it is older than that. */
+      crack(S(0), 2200, 3, 0.05, 0.4, 0);
+      for (i = 8; i < 16; i++) shaker(S(i), 0.05, 0.05 + i * 0.006, i % 2 ? 0.4 : -0.4, false);
+      crack(S(14), 1900, 2.5, 0.05, 0.3, 0.3);
+      crack(S(15), 1900, 2.5, 0.05, 0.42, -0.3);
+      return;
+    }
+
+    if (g === "batucada") {
+      /* THE SURDO IS ON THE SECOND BEAT. Everything else about samba
+         follows from that one displacement: the bar leans forward into
+         the two instead of sitting down on the one. */
+      boom(S(4), 108, 52, 0.34, loud * 0.5, 0);           // beat 2, open
+      boom(S(12), 108, 52, 0.34, loud * 0.55, 0);         // beat 4, open
+      boom(S(0), 96, 58, 0.16, loud * 0.22, 0);           // 1 and 3, muffled
+      boom(S(8), 96, 58, 0.16, loud * 0.22, 0);
+      /* caixa: every sixteenth, accents where a samba snare puts them */
+      var acc = { 0: 1, 3: 0.9, 6: 0.85, 10: 0.95, 13: 0.8 };
+      for (i = 0; i < 16; i++) {
+        crack(S(i), 3200, 1.1, 0.035, (acc[i] || 0.34) * 0.11, i % 2 ? 0.25 : -0.25);
       }
-      clap(t + b, 0.30, -0.5);
-      clap(t + b * 3, 0.30, 0.5);
-      snare(t + b * 3.75, 0.34);
+      /* tamborim, the teleco-teco. The pattern everybody recognises
+         and nobody can count. */
+      [0, 3, 6, 8, 11, 14].forEach(function (k, n) {
+        crack(S(k), 5200, 4, 0.03, 0.17, n % 2 ? 0.7 : -0.7);
+      });
+      /* agogô: low, high, high */
+      [[0, 1], [3, 0], [4, 0], [8, 1], [11, 0], [12, 0]].forEach(function (v) {
+        metal(S(v[0]), v[1] ? 700 : 940, 0.10, 0.075, 0.5);
+      });
+      for (i = 0; i < 16; i++) shaker(S(i), 0.05, i % 2 ? 0.055 : 0.032, -0.55, false);
+      if (pos % 4 === 3) cuica(S(10), b * 1.2, 0.13, pos % 8 === 3);
+      if (pos % 8 === 0) apito(S(0), b * 0.5, 0.10);
       return;
     }
-    if (g === "ceremony") {
-      /* NOTHING until the choir arrives, and then a timpani rather than
-         a drum kit. Silence is the instrument for the first half. */
-      if (pos >= 5) {
-        kick(t, 0.66);
-        kick(t + b * 2, 0.46);
-        if (pos >= 6) kick(t + b * 3, 0.34);
-      } else if (pos === 4) {
-        kick(t, 0.5);
-      }
+
+    if (g === "olodum") {
+      /* THREE SURDOS AND A HOLE. The first two answer each other on
+         the first half of the bar and then nothing happens for a beat
+         and a half, which is the whole sound — the gap is the hook. */
+      boom(S(0), 78, 42, 0.45, loud * 0.62, -0.2);
+      boom(S(3), 100, 54, 0.30, loud * 0.42, 0.25);
+      boom(S(6), 130, 66, 0.26, loud * 0.40, 0);
+      boom(S(10), 78, 42, 0.45, loud * 0.58, -0.2);
+      boom(S(13), 100, 54, 0.28, loud * 0.40, 0.25);
+      /* the repique, snapping across the top */
+      [2, 5, 8, 12, 15].forEach(function (k, n) {
+        crack(S(k), 2700, 2, 0.05, 0.16, n % 2 ? 0.6 : -0.6);
+      });
+      for (i = 0; i < 16; i += 2) shaker(S(i), 0.07, 0.05, 0.45, true);
+      if (pos % 4 === 3) { crack(S(14), 2400, 1.6, 0.05, 0.22, 0);
+                           crack(S(15), 2400, 1.6, 0.05, 0.3, 0); }
       return;
     }
-    if (g === "hymn") {
-      /* a heartbeat and two pairs of hands. No hats at all — which is
-         what makes it sound like people rather than a record. */
-      kick(t, 0.44);
-      kick(t + b * 2, 0.36);
-      clap(t + b, 0.30, -0.5);
-      clap(t + b * 3, 0.30, 0.5);
-      if (e > 0.6) { clap(t + b * 1.5, 0.12, 0.4); clap(t + b * 3.5, 0.12, -0.4); }
+
+    if (g === "funk") {
+      /* THE TAMBORZÃO. One pattern, repeated without mercy or
+         variation, and the reason a baile can be heard three streets
+         away. The kick is not on the one — it is on the one AND the
+         three-and, which is what makes the whole thing lurch. */
+      boom(S(0), 130, 44, 0.30, loud * 0.75, 0);
+      boom(S(6), 130, 44, 0.28, loud * 0.62, 0);
+      boom(S(10), 130, 44, 0.26, loud * 0.55, 0);
+      [4, 12].forEach(function (k) { crack(S(k), 1600, 0.8, 0.13, 0.30, 0); });
+      /* the rim pattern that runs under it */
+      [2, 3, 7, 9, 11, 14, 15].forEach(function (k, n) {
+        crack(S(k), 3600, 3, 0.03, 0.10, n % 2 ? 0.5 : -0.5);
+      });
+      if (pos % 2 === 1) crack(S(15), 5000, 5, 0.03, 0.2, 0);
       return;
     }
-    if (g === "stomp") {
-      /* BOOTS AND HANDS. Nothing else. The oldest sound in football and
-         the only groove here with no cymbal in it anywhere. */
-      kick(t, 0.78);
-      kick(t + b * 2, 0.70);
-      snare(t + b, 0.44);
-      snare(t + b * 3, 0.46);
-      clap(t + b, 0.34, -0.6);
-      clap(t + b * 3, 0.34, 0.6);
-      if (pos >= 5) { clap(t + b * 1.5, 0.16, 0.5); clap(t + b * 3.5, 0.16, -0.5); }
+
+    if (g === "hinchada") {
+      /* THE BOMBO LEGÜERO. A metre of drum with a sheepskin on it,
+         played with one padded stick and one bare one — the boom and
+         the clack are the same player, and the clack is on the
+         offbeat. It bounces, which is why an Argentine terrace jumps
+         rather than claps. */
+      boom(S(0), 68, 40, 0.42, loud * 0.75, 0);
+      boom(S(6), 68, 40, 0.36, loud * 0.60, 0);
+      boom(S(8), 68, 40, 0.40, loud * 0.70, 0);
+      boom(S(14), 68, 40, 0.30, loud * 0.45, 0);
+      [3, 7, 11, 15].forEach(function (k, n) {          // the rim, offbeat
+        crack(S(k), 2000, 6, 0.04, 0.22, n % 2 ? 0.45 : -0.45);
+      });
+      /* and thousands of people, on the one and the three */
+      clap(S(0), 0.26, -0.6); clap(S(8), 0.26, 0.6);
+      if (e > 0.5) { clap(S(4), 0.14, 0.5); clap(S(12), 0.14, -0.5); }
       return;
     }
-    if (g === "march") {
-      /* OOM-PAH. On the beat, every beat, and never between them. */
-      kick(t, 0.66);
-      kick(t + b * 2, 0.60);
-      snare(t + b, 0.40);
-      snare(t + b * 3, 0.42);
-      if (pos >= 2) { snare(t + b * 3.5, 0.18); snare(t + b * 3.75, 0.22); }
-      for (var hm = 0; hm < 4; hm++) hat(t + b * hm, 0.05);
+
+    if (g === "highlife") {
+      /* A BELL THAT DOES NOT AGREE WITH THE BAR. The west african
+         timeline is five strokes across twelve or sixteen and it
+         deliberately does not land where the drums do; the friction
+         between the two is the groove, and it is the thing european
+         music simply does not have. */
+      [0, 3, 6, 10, 12].forEach(function (k) { metal(S(k), 1180, 0.08, 0.085, 0.55); });
+      boom(S(0), 92, 56, 0.24, loud * 0.42, -0.15);
+      boom(S(7), 92, 56, 0.22, loud * 0.36, -0.15);
+      boom(S(11), 92, 56, 0.20, loud * 0.30, -0.15);
+      /* the talking drum, bending */
+      talking(S(4), 210, 170, 0.18, 0.20, 0.4);
+      talking(S(6), 170, 230, 0.16, 0.16, 0.4);
+      if (pos % 2) talking(S(13), 190, 250, 0.20, 0.18, 0.4);
+      /* shekere, washing */
+      for (i = 0; i < 16; i += 2) shaker(S(i), 0.10, i % 4 ? 0.05 : 0.085, 0.3, true);
+      crack(S(4), 1500, 0.9, 0.10, 0.18, 0);
+      crack(S(12), 1500, 0.9, 0.10, 0.20, 0);
       return;
     }
-    if (g === "secondline") {
-      /* SWUNG, and the kick answers itself off the beat. The second and
-         fourth hats are late, which is the swing. */
-      kick(t, 0.60);
-      kick(t + b * 1.66, 0.42);
-      kick(t + b * 2.66, 0.34);
-      snare(t + b, 0.34);
-      snare(t + b * 2.33, 0.16);
-      snare(t + b * 3, 0.38);
-      snare(t + b * 3.66, 0.22);
-      for (var hs = 0; hs < 4; hs++) {
-        hat(t + b * hs, 0.05);
-        hat(t + b * (hs + 0.66), 0.075);     // the swung offbeat
-      }
-      return;
+
+    /* balkan: a davul, two to the bar, and a stick clattering between */
+    boom(S(0), 74, 46, 0.34, loud * 0.72, 0);
+    boom(S(8), 74, 46, 0.30, loud * 0.62, 0);
+    boom(S(11), 88, 54, 0.18, loud * 0.30, 0);
+    for (i = 0; i < 16; i++) {
+      if (i % 4 === 0) continue;
+      crack(S(i), 2600, 4, 0.025, i % 2 ? 0.13 : 0.07, i % 2 ? 0.5 : -0.5);
     }
-    /* build: the drums arrive in stages, which is the whole idea */
-    if (pos >= 2) { kick(t, 0.58); kick(t + b * 2, 0.48); }
-    if (pos >= 3) { snare(t + b, 0.30); snare(t + b * 3, 0.34); }
-    if (pos >= 5) { kick(t + b * 2.5, 0.40); snare(t + b * 3.75, 0.26); }
-    if (pos >= 2) for (var hb = 0; hb < 8; hb++) hat(t + b * hb * 0.5, hb % 2 ? 0.07 : 0.04);
+    if (pos % 4 === 3) { crack(S(13), 2600, 4, 0.03, 0.18, 0.4);
+                         crack(S(14), 2600, 4, 0.03, 0.22, -0.4);
+                         crack(S(15), 2600, 4, 0.03, 0.28, 0); }
   }
 
-  /* --------------------------------------------------------------- BASS */
+  /* ------------------------------------------------------------- THE BASS
+     Each of these traditions puts the low notes somewhere different,
+     and where the bass sits against the big drum is half of what makes
+     a groove feel like itself. */
   function bassLine(g, t, b, croot, fifth, pos) {
     var lo = croot / 2, hi5 = fifth / 2;
-    if (g === "ceremony") {
-      /* a pedal. One note, held under the whole thing, which is what
-         makes twenty-two bars of arpeggio bearable — but it does not
-         arrive until the second pair of bars, because a build made
-         only of VOLUME does not survive a compressor. Once the master
-         chain is pulling quiet passages up by twelve decibels, the
-         only build that still reads is one made of things ARRIVING. */
-      if (pos >= 2) bassHit(t, lo, b * 3.6, pos >= 4 ? 0.30 : 0.20);
+    var S = function (k) { return sixteenth(t, b, k); };
+    if (g === "batucada") {
+      /* with the surdo, so the second beat is where the weight is */
+      bassHit(S(4), lo, b * 0.4, 0.30);
+      bassHit(S(7), lo, b * 0.2, 0.16);
+      bassHit(S(12), hi5, b * 0.4, 0.28);
+      bassHit(S(15), lo, b * 0.2, 0.16);
       return;
     }
-    if (g === "hymn") {
-      bassHit(t, lo, b * 1.6, 0.26);
-      bassHit(t + b * 2, hi5, b * 1.6, 0.22);
+    if (g === "olodum") {
+      bassHit(S(0), lo, b * 0.6, 0.34);
+      bassHit(S(6), hi5, b * 0.3, 0.20);
+      bassHit(S(10), lo, b * 0.5, 0.30);
       return;
     }
-    if (g === "stomp") {
-      /* doubling the boots exactly. A stomp with a busy bass under it
-         is not a stomp any more. */
-      bassHit(t, lo, b * 0.8, 0.34);
-      bassHit(t + b * 2, lo, b * 0.8, 0.30);
+    if (g === "funk") {
+      /* one note, an octave down, following the kick exactly — baile
+         funk has no bassline, it has a kick with a pitch */
+      bassHit(S(0), lo / 2, b * 0.5, 0.40);
+      bassHit(S(6), lo / 2, b * 0.4, 0.32);
+      bassHit(S(10), lo / 2, b * 0.4, 0.28);
       return;
     }
-    if (g === "march") {
-      /* the oom to the pah: root on one and three, fifth on two and
-         four, dead square */
-      bassHit(t, lo, b * 0.7, 0.30);
-      bassHit(t + b, hi5, b * 0.5, 0.20);
-      bassHit(t + b * 2, lo, b * 0.7, 0.28);
-      bassHit(t + b * 3, hi5, b * 0.5, 0.20);
+    if (g === "hinchada") {
+      /* a tuba, because a murga has one: root and fifth, oom-pah, and
+         it never gets clever */
+      bassHit(S(0), lo, b * 0.5, 0.32);
+      bassHit(S(4), hi5, b * 0.35, 0.22);
+      bassHit(S(8), lo, b * 0.5, 0.30);
+      bassHit(S(12), hi5, b * 0.35, 0.22);
       return;
     }
-    if (g === "secondline") {
-      /* a walk, with the syncopation the kick leaves room for */
-      bassHit(t, lo, b * 0.5, 0.30);
-      bassHit(t + b * 0.66, lo, b * 0.3, 0.18);
-      bassHit(t + b * 1.66, hi5, b * 0.4, 0.24);
-      bassHit(t + b * 2.33, lo * 2, b * 0.3, 0.18);
-      bassHit(t + b * 3, hi5, b * 0.4, 0.22);
-      bassHit(t + b * 3.66, lo, b * 0.3, 0.18);
+    if (g === "highlife") {
+      /* a walking, rolling line in the gaps the bell leaves */
+      [[0, lo], [3, lo], [6, hi5], [8, lo * 2], [11, hi5], [14, lo]].forEach(function (v) {
+        bassHit(S(v[0]), v[1], b * 0.28, 0.24);
+      });
       return;
     }
-    /* build: eighths on the root, relentless, from bar one */
-    for (var i = 0; i < 8; i++) {
-      bassHit(t + b * i * 0.5, i % 4 === 2 ? hi5 : lo, b * 0.30,
-              pos >= 4 ? 0.28 : 0.20);
+    /* balkan: the tuba on every beat, relentless, no syncopation at all */
+    for (var k = 0; k < 16; k += 4) {
+      bassHit(S(k), (k % 8) ? hi5 : lo, b * 0.32, 0.30);
     }
   }
 
-  /* -------------------------------------------------------------- CHORDS */
+  /* ------------------------------------------------------- THE CHORD PART */
   function chords(g, t, b, voiced, pos, full) {
-    if (g === "march") {
-      /* one on every beat, short. The pah. */
-      for (var i = 0; i < 4; i++) stab(t + b * i + b * 0.5, voiced, b * 0.26, 0.15, true);
+    var S = function (k) { return sixteenth(t, b, k); };
+    var v = full ? 0.15 : 0.10;
+    if (g === "batucada") {
+      /* CAVAQUINHO. Offbeat sixteenths, every bar, bright as a knife —
+         the sound of samba that is not a drum. */
+      [2, 3, 6, 7, 10, 11, 14, 15].forEach(function (k, n) {
+        pluckChord(S(k), voiced, b * 0.16, v * (n % 2 ? 1 : 0.6), 0.5, true);
+      });
       return;
     }
-    if (g === "secondline") {
-      for (var j = 0; j < 4; j++) stab(t + b * (j + 0.66), voiced, b * 0.24, 0.13, true);
+    if (g === "olodum") {
+      brass(S(6), voiced, b * 0.5, v * 0.9, 0);
+      brass(S(13), voiced, b * 0.4, v * 0.7, 0);
       return;
     }
-    if (g === "hymn" || g === "ceremony") {
-      /* HELD, not struck. The one place a sustained chord is right is
-         under a hymn, and under Handel. */
-      if (g === "ceremony" && pos < 1) return;
-      stab(t, voiced, b * 3.7,
-           full ? 0.13 : (g === "ceremony" && pos < 4 ? 0.05 : 0.09), false);
+    if (g === "funk") {
+      /* almost nothing. A baile track is a beat and a voice. */
+      if (pos % 2 === 0) pluckChord(S(12), voiced, b * 0.3, v * 0.7, 0, true);
       return;
     }
-    if (g === "stomp") {
-      /* on the stomps only, so the chord is part of the boot */
-      stab(t, voiced, b * 0.5, 0.13, true);
-      stab(t + b * 2, voiced, b * 0.5, 0.12, true);
+    if (g === "hinchada") {
+      /* the pah of the oom-pah, on every offbeat, on brass */
+      [2, 6, 10, 14].forEach(function (k) {
+        brass(S(k), voiced, b * 0.22, v * 0.8, 0.2);
+      });
       return;
     }
-    /* build: nothing until it is well under way, then offbeats */
-    if (pos >= 4) {
-      for (var k = 0; k < 4; k++) stab(t + b * (k + 0.5), voiced, b * 0.22, 0.11, true);
+    if (g === "highlife") {
+      /* CLIPPED CLEAN GUITAR, in two interlocking parts an offbeat
+         apart, which is how a highlife band is actually arranged */
+      [1, 5, 9, 13].forEach(function (k) {
+        pluckChord(S(k), voiced, b * 0.2, v * 0.8, -0.65, false);
+      });
+      [3, 7, 11, 15].forEach(function (k) {
+        pluckChord(S(k), [voiced[1], voiced[2], voiced[0] * 2], b * 0.18, v * 0.6, 0.65, false);
+      });
+      return;
     }
+    /* balkan: the horns punch the offbeats, hard */
+    [2, 6, 10, 14].forEach(function (k) {
+      brass(S(k), voiced, b * 0.2, v, k % 4 === 2 ? -0.3 : 0.3);
+    });
   }
 
   /* =======================================================================
-     A SONG, WITH SECTIONS
-
-     Thirty-two bars, not eight, and the difference is the entire point.
-     Chills are a response to CONTRAST and ARRIVAL — to something being
-     withheld and then given — and an eight-bar loop can withhold
-     nothing, because you have heard all of it by bar eight.
-
-        0-7    INTRO      the tune on a piano, alone, over a pad.
-                          No drums, no bass, no crowd. Whatever
-                          happens later means nothing unless this
-                          happens first
-        8-15   BUILD      the arpeggio, then the bass, then the kick.
-                          A riser across the last bar
-       16-23   CHORUS     everything at once, the tune an OCTAVE UP on
-                          a wide saw lead, the pad open, the crowd
-                          behind it. The moment
-       24-27   BREAKDOWN  strip it back to the piano and the pad, and
-                          let the reverb tail hang
-       28-31   LAST       and again a WHOLE TONE HIGHER, with a
-                          counter-melody over it. Lifting the key for
-                          the last chorus is the oldest trick in
-                          popular music and the reason it survived a
-                          hundred years is that it works on everybody,
-                          every time, whether or not they notice
-
-     The crowd's energy does not choose the section any more. The song
-     plays its own form; the crowd reacts on top of it. That is how a
-     game with a soundtrack works, and trying to drive musical
-     structure from gameplay is what produced something that could
-     never be more than a loop.
+     THE FORM. Thirty-two bars, because an eight-bar loop can withhold
+     nothing — you have heard all of it by bar eight, and every one of
+     these traditions is built on a section arriving.
      ======================================================================= */
   var CYCLE = 32;
 
@@ -1297,85 +1654,85 @@ window.CupChant = (function () {
     return m.map(function (d, i) { return [i * step, d, step * 0.95]; });
   }
 
+  /* WHICH INSTRUMENT PLAYS THE TUNE, per tradition. This is not a
+     detail: a melody on a cavaquinho is samba and the same melody on a
+     zurna is a Balkan wedding, and nobody has to be told which. */
+  function sing(g, t, f, dur, vol, sec) {
+    if (g === "balkan") { reed(t, f, dur, vol * 1.05); return; }
+    if (g === "highlife") {
+      if (sec === "intro" || sec === "break") pluckChord(t, [f], dur, vol * 1.3, 0, false);
+      else brass(t, [f, f * 1.26], dur, vol * 0.9, 0.15);
+      return;
+    }
+    if (g === "funk") {
+      /* a hard synth line, because that is what a baile has — there is
+         no acoustic instrument in this music at all */
+      lead(t, f, dur, vol * 1.1);
+      return;
+    }
+    if (g === "batucada") {
+      if (sec === "intro" || sec === "break") pluckChord(t, [f, f * 1.5], dur, vol * 1.2, 0, true);
+      else brass(t, [f, f * 1.5], dur, vol, 0);
+      return;
+    }
+    /* olodum and hinchada are brass towns */
+    brass(t, [f], dur, vol * (sec === "intro" ? 0.7 : 1), 0);
+  }
+
   function scheduleBar(t) {
     if (!anthem) return;
     var b = beatSecs();
     var root = anthem.key || 196;
     var scale = anthem.scale || "minor";
-    var g = anthem.groove || "stomp";
+    var g = anthem.groove || "batucada";
     var prog = PROGS[anthem.mood] || PROGS["anthemic-uplifting"];
     var pos = bar % CYCLE;
     var sec = sectionOf(pos);
     var inSec = pos < 8 ? pos : (pos < 16 ? pos - 8 : (pos < 24 ? pos - 16
                 : (pos < 28 ? pos - 24 : pos - 28)));
 
-    /* THE LAST CHORUS IS A WHOLE TONE UP. Two semitones, applied to
-       the root, and everything follows because everything is worked
-       out from it. */
     var lift = sec === "last" ? Math.pow(2, 2 / 12) : 1;
     var key = root * lift;
-
     var chord = prog[bar % prog.length];
-    if (g === "ceremony") chord = prog[0];    // Handel holds one chord
     var croot = hz(key, scale, chord, 0);
     var fifth = hz(key, scale, chord + 4, 0);
     var voiced = [0, 2, 4].map(function (add) { return hz(key, scale, chord + add, 1); });
 
-    /* --------------------------------------------------------- THE PAD
-       Under everything, always, at a level that tells you which
-       section you are in without you noticing that is what told you. */
-    var padVol = sec === "intro" ? 0.013
-      : sec === "build" ? 0.050
-      : sec === "break" ? 0.034
-      : sec === "last" ? 0.185 : 0.145;
-    pad(t, voiced.map(function (f) { return f / 2; }), b * 4, padVol,
-        sec === "chorus" || sec === "last");
-    /* and the octave above it in the choruses, which is the top end
-       opening up — the literal sound of a record getting bigger */
-    if (sec === "chorus" || sec === "last") {
-      pad(t, voiced, b * 4, padVol * 0.55, true);
-    }
+    /* A PAD, BUT QUIETLY AND NOT EVERYWHERE. None of these traditions
+       has a synth pad in it — they are all played outdoors by people
+       carrying their instruments — so it exists only to stop the
+       choruses sounding thin, and it stays underneath. */
+    var padVol = sec === "intro" ? 0.010
+      : sec === "build" ? 0.022
+      : sec === "break" ? 0.016
+      : sec === "last" ? 0.060 : 0.046;
+    if (g !== "funk") pad(t, voiced.map(function (f) { return f / 2; }), b * 4, padVol,
+                          sec === "chorus" || sec === "last");
 
-    /* ------------------------------------------------------- THE RHYTHM */
+    /* ------------------------------------------------------- THE SECTION
+       These are percussion traditions, so what builds is the SECTION,
+       not a filter sweep. Drums first and always — in every one of
+       these places the drums start before anything else and stop after
+       everything else. */
     var hole = (sec === "chorus" && inSec === 4) || (sec === "last" && inSec === 0);
-    var drumsIn = (sec === "build" && inSec >= 4) || sec === "chorus" || sec === "last";
+    var percIn = !(sec === "intro" && inSec < 2);
     var bassIn = (sec === "build" && inSec >= 2) || sec === "chorus" || sec === "last";
+    var chordIn = (sec === "build" && inSec >= 4) || sec === "chorus" || sec === "last";
 
-    if (drumsIn && !hole) drums(g, t, b, inSec % 8, false, E);
-    else if (hole) {
-      /* the bar the floor drops out of. Hats and one hit, and the
-         reverb tail of everything that just stopped. */
-      for (var hd = 0; hd < 8; hd++) hat(t + b * hd * 0.5, hd % 2 ? 0.06 : 0.03);
-      snare(t + b * 3.75, 0.34);
-    }
-    if (bassIn && !hole) bassLine(g, t, b, croot, fifth, 6);
+    /* the intro is the section warming up, which is a real thing that
+       happens and is more exciting than a synth rising */
+    if (percIn) drums(g, t, b, pos, hole, sec === "intro" ? 0.3 : E);
+    else { apito(t, b * 0.45, 0.12);
+           if (inSec === 1) apito(t + b * 2, b * 0.3, 0.10); }
 
-    /* ------------------------------------------------------ THE ARPEGGIO
-       Sixteenths through the build and the choruses, panned wide and
-       alternating — the thing that keeps the middle of the track
-       moving while the melody holds a note. */
-    if (sec === "build" || sec === "chorus" || sec === "last") {
-      var steps = [0, 2, 4, 7, 4, 2, 4, 7];
-      for (var a = 0; a < 8; a++) {
-        if (hole && a > 1) break;
-        arp(t + b * a * 0.5, hz(key, scale, chord + steps[a % steps.length], 1),
-            b * 0.45, sec === "build" ? 0.055 : 0.105, a % 2 ? 0.7 : -0.7);
-      }
-    }
-    if ((sec === "chorus" || sec === "last") && !hole) chords(g, t, b, voiced, 6, true);
+    if (bassIn && !hole) bassLine(g, t, b, croot, fifth, pos);
+    if (chordIn && !hole) chords(g, t, b, voiced, pos, sec === "chorus" || sec === "last");
 
-    /* --------------------------------------------------- THE TRANSITIONS */
-    if (sec === "build" && inSec === 7) riser(t, b * 4, 0.17);
-    if (sec === "chorus" && inSec === 0) impact(t, 0.36);
-    if (sec === "chorus" && inSec === 5) impact(t, 0.26);
-    if (sec === "break" && inSec === 3) riser(t, b * 4, 0.19);
-    if (sec === "last" && inSec === 1) impact(t, 0.40);
+    if (sec === "build" && inSec === 7) riser(t, b * 4, 0.10);
+    if (sec === "chorus" && inSec === 0) impact(t, 0.30);
+    if (sec === "last" && inSec === 1) impact(t, 0.34);
 
-    /* ------------------------------------------------------- THE MELODY
-       Which instrument plays it IS the arrangement. Piano alone at the
-       start, the saw lead an octave up in the choruses, and the piano
-       again in the breakdown — the same notes three times, and it is
-       a different song each time. */
+    /* --------------------------------------------------------- THE TUNE */
     var notes = hookNotes();
     var half = (inSec % 2) ? 4 : 0;
     for (var i = 0; i < notes.length; i++) {
@@ -1384,65 +1741,28 @@ window.CupChant = (function () {
       var f = hz(key, scale, notes[i][1] + chord, 1);
       var tt = t + (nb - half) * b;
       var dur = notes[i][2] * b;
-
-      /* THE SECTIONS HAVE TO BE DIFFERENT SIZES, AT SOURCE.
-
-         Measured, the first version of this ran: intro 391, chorus
-         290, break 399. The song was upside down — the intro was the
-         LOUDEST thing in it — because a solo piano at 0.24 is simply a
-         bigger number than any single element of a chorus, and a
-         chorus is only loud because there are eight things in it. Eight
-         quiet things do not beat one loud one.
-
-         Compression makes this worse rather than causing it: a sparse
-         intro sits below the threshold and passes untouched while a
-         dense chorus gets pulled down four decibels. So the gap has to
-         be built at source, and built wide, because the chain will
-         spend some of it. */
-      if (sec === "intro") {
-        piano(tt, f, dur, 0.075);
-        if (inSec >= 4) piano(tt, f * 2, dur, 0.035);
-      } else if (sec === "build") {
-        piano(tt, f, dur, 0.13);
-        if (inSec >= 4) lead(tt, f * 2, dur * 0.9, 0.10);
-      } else if (sec === "break") {
-        /* the breakdown is not a second intro — it is the chorus with
-           everything taken away, which means it has to sound like
-           something has been taken away */
-        piano(tt, f, dur, 0.12);
-        pad(tt, [f], dur * 1.4, 0.022, false);
-      } else if (!hole) {
-        /* THE CHORUS. An octave up, wide, with the piano still under
-           it — a melody doubled at the octave is the cheapest way there
-           is to make one sound enormous. */
-        lead(tt, f * 2, dur * 0.92, sec === "last" ? 0.40 : 0.34);
-        piano(tt, f, dur, 0.09);
+      if (sec === "intro") { if (inSec >= 4) sing(g, tt, f, dur, 0.09, sec); }
+      else if (sec === "build") sing(g, tt, f, dur, 0.13, sec);
+      else if (sec === "break") sing(g, tt, f, dur, 0.12, sec);
+      else if (!hole) {
+        sing(g, tt, f * 2, dur * 0.92, sec === "last" ? 0.26 : 0.22, sec);
+        sing(g, tt, f, dur * 0.9, 0.11, sec);          // and an octave under it
         if (sec === "last" && notes[i][2] >= 0.75) {
-          /* AND THE COUNTER-MELODY, last chorus only. A bell a third
-             above the long notes. A final chorus that is only louder
-             is a repeat; a final chorus with a new LINE in it is an
-             arrival. */
-          bell(tt + b * 0.25, hz(key, scale, notes[i][1] + chord + 2, 2),
-               dur * 0.8, 0.11);
+          bell(tt + b * 0.25, hz(key, scale, notes[i][1] + chord + 2, 2), dur * 0.8, 0.09);
         }
       }
     }
 
     /* ---------------------------------------------------------- THE CROWD
-       Behind it, not in front of it. They are colour in the choruses
-       and a distant hum everywhere else — which is what a crowd is on
-       a record, and the opposite of what this file used to do, which
-       was hand them the tune and wonder why six songs sounded like six
-       football chants. */
+       Shouting on the offbeat, not singing the tune. In every one of
+       these traditions the people are PART OF THE PERCUSSION — they
+       answer the drums, they do not carry the melody. */
     if (sec === "chorus" || sec === "last") {
-      for (var v = 0; v < notes.length; v++) {
-        var vb = notes[v][0];
-        if (vb < half || vb >= half + 4) continue;
-        if (notes[v][2] < 0.75) continue;        // only the long notes
-        var vf = hz(key, scale, notes[v][1] + chord, 1);
-        voices(vf, t + (vb - half) * b, notes[v][2] * b * 0.95,
-               hole ? 0.20 : 0.13, (v % 2) ? 0.6 : -0.6, 0.5 + E * 0.3, 7);
-      }
+      var shout = hz(key, scale, chord, 0);
+      [0, 4, 8, 12].forEach(function (k, n) {
+        voices(shout * 2, sixteenth(t, b, k + 2), b * 0.3,
+               hole ? 0.18 : 0.10, n % 2 ? 0.7 : -0.7, 0.85, 8);
+      });
     }
 
     bar++;
@@ -1491,27 +1811,67 @@ window.CupChant = (function () {
      without the journey: reading a gain node's .value to find out where
      a ramp is HEADED gives you where it started, which offline is zero,
      and pinning that is how a working engine renders silence. */
+  /* =======================================================================
+     GAIN STAGING, WHICH NOBODY HAD DONE
+
+     Every level in this file was chosen on its own — a drum at 0.4, a
+     lead at 0.19, ambience at 0.038 — and nobody ever added them up.
+     Measured with the master chain bypassed, the whole track came out
+     at an RMS of 0.008, which is forty decibels below where a mix
+     belongs. The renderer then normalised the file up by a factor of
+     fourteen to make it audible, and what that amplified was the
+     loudest CONTINUOUS thing in the graph: the ambience noise bed.
+     Every review file was therefore mostly hiss with a band somewhere
+     underneath it, which is a complete explanation for "I do not feel
+     anything" that has nothing to do with the notes.
+
+     The layers are absolute now and they sum to roughly one. The
+     ambience, which is a background texture and not an instrument, is
+     where it belongs — twenty-five decibels under the drums instead of
+     on top of them.
+     ======================================================================= */
   function levels(e, d) {
     return {
-      ambience: (0.020 + e * 0.020) * d,
-      pulse: Math.max(0, (e - 0.22) / 0.78) * 0.30 * d,
-      hum: Math.max(0, (e - 0.30) / 0.45) * 0.26 * d,
+      /* a texture, not an instrument */
+      ambience: (0.006 + e * 0.008) * d,
+      pulse: Math.max(0, (e - 0.22) / 0.78) * 0.22 * d,
+      hum: Math.max(0, (e - 0.30) / 0.45) * 0.18 * d,
       /* THE BAND STARTS EARLY AND STAYS. A record does not fade its
          drummer in and out with the mood of the crowd; the groove is
          what the crowd's mood is measured AGAINST. It comes up early,
          lifts a little when they are roused, and is otherwise the one
          steady thing in the mix. */
-      band: (0.30 + Math.max(0, (e - 0.20) / 0.80) * 0.32) * d,
+      band: (0.45 + Math.max(0, (e - 0.20) / 0.80) * 0.25) * d,
+      /* THE DRUMS BELONG IN THIS TABLE, and for a long time they did
+         not — mix() ramped L.drums by hand while levels() never
+         mentioned it. The live game was fine because mix() runs there.
+         The OFFLINE RENDERER is not: it places every fader by walking
+         the keys of this object, so a layer missing from it renders at
+         the gain it was created with, which is zero.
+
+         Every .wav produced for review since the drum bus was added
+         therefore had no percussion in it whatsoever, and the music
+         was being judged without its rhythm section. There is no
+         assertion that would have caught this; the only reason it
+         surfaced is that trimming the drum fader changed the measured
+         output by exactly nothing. */
+      /* THE LOUDEST THING IN THE MIX, because in every one of these
+         traditions the drums are the loudest thing in the street. */
+      /* LOUD, BUT NOT INTO THE CEILING. A batucada is forty-five hits
+         a bar; at a fader of 0.7 the sum brick-walled the master flat
+         at a crest factor of 3.4dB, and a percussion track with no
+         transients left in it is not percussion, it is a tone. */
+      drums: (0.26 + Math.max(0, (e - 0.20) / 0.80) * 0.12) * d,
       /* THE SOUNDTRACK IS NOT A CROWD REACTION. The lead and the pad
          are the record, and a record does not fade out because the
          match has gone quiet — it plays, and the crowd comes and goes
          over the top of it. They sit high and move barely at all. */
-      lead: (0.62 + Math.max(0, (e - 0.3) / 0.7) * 0.18) * d,
+      lead: (0.80 + Math.max(0, (e - 0.3) / 0.7) * 0.20) * d,
       /* UNDER, not over. Six detuned saws is a lot of energy and a pad
          that competes with the tune is a fog. */
-      pad: (0.38 + Math.max(0, (e - 0.3) / 0.7) * 0.10) * d,
+      pad: (0.26 + Math.max(0, (e - 0.3) / 0.7) * 0.10) * d,
       /* the full chant is the last thing in and it comes in fast */
-      chant: Math.pow(Math.max(0, (e - 0.55) / 0.45), 0.8) * 0.34 * d,
+      chant: Math.pow(Math.max(0, (e - 0.55) / 0.45), 0.8) * 0.30 * d,
     };
   }
 
@@ -1522,7 +1882,14 @@ window.CupChant = (function () {
     ramp("pulse", L.pulse, v.pulse, 0.8);
     ramp("hum", L.hum, v.hum, 0.9);
     ramp("band", L.band, v.band, 0.7);
-    ramp("drums", L.drums, v.band, 0.7);
+    /* A PERCUSSION SECTION IS FORTY-FIVE HITS A BAR, not four.
+       The levels here were written for a rock kit — a kick, a snare
+       and eight hats — and a batucada puts a surdo, sixteen caixa
+       strokes, six tamborim, three agogô and sixteen shaker hits into
+       the same bar. At the old fader that brick-walled the master for
+       the whole track: crest factor 3.8dB, which is not a mix, it is a
+       wall, and it flattened every section into every other one. */
+    ramp("drums", L.drums, v.drums, 0.7);
     ramp("lead", L.lead, v.lead, 0.6);
     ramp("pad", L.pad, v.pad, 1.1);
     ramp("chant", L.chant, v.chant, 0.5);
@@ -1728,6 +2095,8 @@ window.CupChant = (function () {
       return { bars: n, barSecs: beatSecs() * 4, start: 0.05 };
     },
 
+    __layers: function () { return L; },
+
     debug: function () {
       if (!AC) return null;
       return { energy: E, phase: phase, duck: duck, bar: bar,
@@ -1739,6 +2108,7 @@ window.CupChant = (function () {
                  hum: +L.hum.gain.value.toFixed(4),
                  chant: +L.chant.gain.value.toFixed(4),
                  band: +L.band.gain.value.toFixed(4),
+                 drums: +L.drums.gain.value.toFixed(4),
                  lead: +L.lead.gain.value.toFixed(4),
                  pad: +L.pad.gain.value.toFixed(4),
                } };

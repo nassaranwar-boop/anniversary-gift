@@ -81,8 +81,16 @@ const ok = (msg, cond, extra) => {
   ok('the hum comes in before the chant does',
      mid.layers.hum > 0.02 && mid.layers.chant < 0.01, mid.layers);
   ok('the full chant arrives high up', hi.layers.chant > 0.05, hi.layers);
+  /* AMBIENCE IS A TEXTURE, NOT AN INSTRUMENT, and this used to demand
+     it be louder than 0.03 — which was the level at which a bed of
+     filtered noise was the loudest continuous thing in the graph. With
+     the whole mix forty decibels too quiet and the renderer
+     normalising it back up, that noise was most of what anybody heard.
+     It belongs well under the drums, and this now says so. */
   ok('and everything is up at full', max.layers.chant > 0.2
-     && max.layers.pulse > 0.2 && max.layers.ambience > 0.03, max.layers);
+     && max.layers.pulse > 0.15 && max.layers.ambience > 0.008, max.layers);
+  ok('the drums are the loudest thing in the mix, as they are in the street',
+     max.layers.drums > max.layers.ambience * 8, max.layers);
   ok('every layer only ever goes up with energy',
      max.layers.pulse >= hi.layers.pulse && hi.layers.pulse >= mid.layers.pulse
      && max.layers.chant >= hi.layers.chant, [mid.layers, hi.layers, max.layers]);

@@ -346,44 +346,49 @@ window.CUP_CONFIG = {
        bays     how many gangways cut up through the stand
 
        motif    the old flat figure, kept as a fallback
-     REAL SONGS, OUT OF COPYRIGHT.
+     SIX PLACES FOOTBALL IS PLAYED, AND WHAT THEY SOUND LIKE.
 
-       Two attempts at writing original hooks came back as "a detective
-       film" and then as "the same melody at three speeds", and both
-       notes were right. So these are not original melodies any more.
-       They are six tunes a crowd genuinely sings, every one written by
-       somebody dead for more than a century, which puts the
-       COMPOSITION in the public domain everywhere:
+       Everything before this was European: anthems, terrace hymns, a
+       band with a rock kit, and then a soundtrack with a synth pad. All
+       of it put the listener to sleep, and the reason is that a rock
+       kit is a genre — the genre of stadium rock — and it is not the
+       genre of football. Outside northern Europe football means DRUMS:
+       a section of them, played standing up, with the accents in
+       places a rock drummer never puts them.
 
-         Beethoven   d. 1827     Ode to Joy
-         Handel      d. 1759     Zadok the Priest
-         Bizet       d. 1875     the Toreador Song, from Carmen
-         Grieg       d. 1907     In the Hall of the Mountain King
-         traditional             When the Saints Go Marching In
-         traditional             Battle Hymn — "Glory Glory ..."
+       The single most important of those places: in samba the big drum
+       hits the SECOND beat. That one displacement is why a batucada
+       rolls forward and a rock beat marches, and no amount of
+       production turns one into the other.
 
-       The last two are the ones actual terraces actually sing, and the
-       Battle Hymn is the melody every "Glory Glory <club>" in the
-       world is sung to.
+         BATUCADA      Brazil, the street. Surdo on the two, tamborim
+                       on the teleco-teco, caixa running sixteenths, a
+                       cuíca, and the whistle that starts it
+         OLODUM        Bahia. Same family, half the speed, four times
+                       the size — three surdos answering each other
+                       with a hole in the bar you could drive a bus
+                       through
+         FUNK          Rio, the baile. The tamborzão: one pattern, no
+                       swing, no politeness, audible three streets away
+         HINCHADA      Buenos Aires. A bombo legüero bouncing, its
+                       wooden rim on the offbeats, tuba and trumpets,
+                       and a terrace that jumps rather than claps
+         HIGHLIFE      west africa. A talking drum that bends, a
+                       shekere washing over it, and a bell pattern that
+                       deliberately does not line up with the bar
+         BALKAN        the brass bands that follow clubs round the
+                       Balkans — davul, a stick clattering on the rim,
+                       and a zurna that is meant to be slightly painful
 
-       WHAT IS AND IS NOT SAFE HERE. The composition being out of
-       copyright is what matters, because every note in this chapter is
-       synthesised from scratch — no recording of any of these is used
-       or could be. A modern ARRANGEMENT of a public-domain work is its
-       own copyright, so these are built from the original material and
-       not from anybody's famous version of it. That matters most for
-       Zadok: the Champions League anthem is a 1992 arrangement and is
-       somebody's property; Handel's 1727 rising figure is not.
+       The Moroccan sound is deliberately not here. It is being kept
+       for the chapter's main menu, where it belongs, because that is
+       where she is.
 
-       AND THE OTHER HALF WAS NEVER THE NOTES. Six tunes played by the
-       same band, with the same drum pattern, the same bass figure and
-       the same structure, are one track six times — which is exactly
-       what the last set were. Every ground has its own GROOVE now, and
-       the groove is the bigger half of the difference.
-
-       groove   ceremony | secondline | march | hymn | build | stomp
-       source   who wrote it and when, so the licence question has an
-                answer in the file rather than in somebody's memory
+       style    which of the six above
+       scale    minor | major | dorian | pent | hijaz. A terrace in
+                Belgrade and a terrace in Accra are not playing the
+                same seven notes, and the notes are most of why they do
+                not sound alike
 
        hook     THE TUNE. [beat, degree, length] over eight beats — two
                 bars — where degree 0 is the tonic, 7 the octave above
@@ -418,23 +423,18 @@ window.CUP_CONFIG = {
                  tiers: "tall", roof: "cantilever", banners: "tifo",
                  lights: "roof", bays: 11 },
       /* dark and slow-building: a low held note that leaps */
-      anthem: { key: 146.8, scale: "major", tempo: 76, mood: "anthemic-uplifting",
-                title: "ZADOK", source: "Handel, 1727 \u2014 public domain",
-                groove: "ceremony",
-                /* THE RISING FIGURE, and then the roof comes off.
-                   Handel spends twenty-two bars arpeggiating one chord
-                   upwards while nothing happens, and then the whole
-                   choir lands on a downbeat at once. It is the most
-                   effective build ever written and it is why every
-                   competition that wants to feel important has stolen
-                   the idea. The arpeggio IS the hook; the held notes at
-                   the end are the choir arriving. */
-                hook: [[0, 0, 0.25], [0.25, 2, 0.25], [0.5, 4, 0.25], [0.75, 7, 0.25],
-                       [1, 4, 0.25], [1.25, 2, 0.25], [1.5, 4, 0.25], [1.75, 7, 0.25],
-                       [2, 0, 0.25], [2.25, 2, 0.25], [2.5, 4, 0.25], [2.75, 7, 0.25],
-                       [3, 9, 0.5], [3.5, 7, 0.5],
-                       [4, 11, 2], [6, 9, 1], [7, 7, 1]],
-                motif: [0, 2, 4, 7, 4], stems: null },
+      anthem: { key: 110.0, scale: "minor", tempo: 96, mood: "dark-stormy-epic",
+                title: "SURDO", source: "samba-reggae / Olodum",
+                groove: "olodum",
+                /* Three notes and a lot of space, because the groove
+                   has a hole in it and the tune has to leave the hole
+                   alone. Brass, low, answering the drums rather than
+                   riding over them. */
+                hook: [[0, 0, 0.5], [0.5, 2, 0.5], [1, 4, 1.5],
+                       [3, 2, 1],
+                       [4, 4, 0.5], [4.5, 5, 0.5], [5, 4, 1],
+                       [6, 2, 0.5], [6.5, 0, 1.5]],
+                motif: [0, 2, 4, 2], stems: null },
       squad: ["marina", "anwar", "sage", "thorn"], captain: "anwar",
       formation: "diamond",
     },
@@ -457,17 +457,19 @@ window.CUP_CONFIG = {
                  tiers: "deep", roof: "open", banners: "flags",
                  lights: "pylon", bays: 6 },
       /* stomping, four notes, call and answer */
-      anthem: { key: 196.0, scale: "major", tempo: 122, mood: "defiant-underdog",
-                title: "THE SAINTS", source: "traditional \u2014 public domain",
-                groove: "secondline",
-                /* Four notes up and a long one, twice. The most
-                   singable thing in this file by a distance, which is
-                   why terraces have sung it for eighty years — and a
-                   New Orleans second-line groove under it is where it
-                   came from in the first place. */
-                hook: [[0, 0, 0.5], [0.5, 2, 0.5], [1, 3, 0.5], [1.5, 4, 2.5],
-                       [4, 0, 0.5], [4.5, 2, 0.5], [5, 3, 0.5], [5.5, 4, 2.5]],
-                motif: [0, 2, 3, 4], stems: null },
+      anthem: { key: 174.6, scale: "major", tempo: 104, mood: "anthemic-uplifting",
+                title: "JOGA", source: "batucada / street samba",
+                groove: "batucada",
+                /* ANTICIPATIONS. Almost every note lands a sixteenth
+                   BEFORE the beat it belongs to, which is what samba
+                   phrasing is and what makes a melody sound like it is
+                   being played by somebody dancing. Written on the
+                   beat it would be a nursery rhyme. */
+                hook: [[0, 4, 0.5], [0.75, 4, 0.25], [1, 2, 0.5], [1.75, 0, 0.75],
+                       [2.75, 2, 0.25], [3, 4, 0.5], [3.75, 5, 0.25],
+                       [4, 4, 0.5], [4.75, 7, 0.25], [5, 7, 0.5], [5.75, 5, 0.75],
+                       [6.75, 4, 0.25], [7, 2, 1]],
+                motif: [4, 2, 0, 2], stems: null },
       squad: ["gustav", "ember", "lumi", "atlas"], captain: "lumi",
       formation: "diamond",
     },
@@ -487,17 +489,17 @@ window.CUP_CONFIG = {
                  density: 0.78, backdrop: "hills", lighting: "day",
                  tiers: "double", roof: "gable", banners: "scarves",
                  lights: "none", bays: 13 },
-      anthem: { key: 174.6, scale: "major", tempo: 108, mood: "tense-driving",
-                title: "TOREADOR", source: "Bizet, 1875 \u2014 public domain",
-                groove: "march",
-                /* Swagger. Three notes hammered on one pitch, a step
-                   up, then the whole thing walks down the scale — which
-                   is a man telling a stadium how good he is, and has
-                   been used for exactly that ever since. */
-                hook: [[0, 4, 0.5], [0.5, 4, 0.5], [1, 4, 0.5], [1.5, 5, 0.5],
-                       [2, 4, 0.5], [2.5, 3, 0.5], [3, 2, 0.5], [3.5, 1, 0.5],
-                       [4, 0, 1], [5, 2, 0.5], [5.5, 4, 0.5], [6, 7, 2]],
-                motif: [4, 4, 4, 5, 4], stems: null },
+      anthem: { key: 146.8, scale: "major", tempo: 112, mood: "defiant-underdog",
+                title: "LA HINCHADA", source: "murga / Argentine terrace",
+                groove: "hinchada",
+                /* A trumpet line a drunk man could play and forty
+                   thousand people could shout back, which is precisely
+                   the design brief of every terrace tune in South
+                   America. Nothing clever, nothing fast, all of it on
+                   notes you can hit. */
+                hook: [[0, 0, 0.5], [0.5, 0, 0.5], [1, 2, 1], [2, 4, 1], [3, 2, 1],
+                       [4, 0, 0.5], [4.5, 0, 0.5], [5, 4, 1], [6, 2, 1], [7, 0, 1]],
+                motif: [0, 0, 2, 4], stems: null },
       squad: ["marina", "comet", "sage", "boulder"], captain: "comet",
       formation: "wide",
     },
@@ -533,21 +535,22 @@ window.CUP_CONFIG = {
       /* HERS. A rising five-note figure that soars and lands on the
          fifth — major, mid-fast, and the only anthem here written to be
          sung rather than shouted. */
-      anthem: { key: 155.6, scale: "major", tempo: 96, mood: "anthemic-uplifting",
-                title: "GLORY GLORY", source: "traditional \u2014 public domain",
-                groove: "stomp",
-                /* HERS, and it could not be anything else. This is the
-                   melody every "Glory Glory <club>" on earth is sung
-                   to — the one tune in football a crowd does not need
-                   to be taught, because they already know it. It
-                   hammers the fifth and then walks home, and the walk
-                   home is the bit thirty thousand people do with their
-                   arms in the air. */
-                hook: [[0, 4, 0.5], [0.5, 4, 0.5], [1, 4, 0.5], [1.5, 4, 0.5],
-                       [2, 4, 0.5], [2.5, 3, 0.5], [3, 2, 1],
-                       [4, 2, 0.5], [4.5, 2, 0.5], [5, 1, 0.5], [5.5, 1, 0.5],
-                       [6, 0, 0.5], [6.5, 1, 0.5], [7, 2, 1]],
-                motif: [4, 4, 4, 3, 2], stems: null },
+      anthem: { key: 130.8, scale: "minor", tempo: 130, mood: "tense-driving",
+                title: "BAILE", source: "funk carioca / tamborz\u00e3o",
+                groove: "funk",
+                /* HERS, and the hardest thing in the chapter. Baile
+                   funk has no melody in the sense the rest of this
+                   file uses the word — it has a RIFF, three or four
+                   notes hammered in the gaps the beat leaves, and the
+                   whole effect comes from how little of it there is.
+                   Everything about this is street rather than stadium,
+                   which is the point: she is not in a cathedral, she
+                   is on a pitch. */
+                hook: [[0, 0, 0.5], [0.5, 0, 0.25], [1.5, 3, 0.5], [2, 0, 0.5],
+                       [3, 2, 0.5], [3.5, 0, 0.5],
+                       [4, 0, 0.5], [4.5, 0, 0.25], [5.5, 3, 0.5], [6, 5, 0.5],
+                       [6.5, 4, 0.5], [7, 3, 1]],
+                motif: [0, 3, 0, 2], stems: null },
       squad: ["gustav", "ouissy", "echo", "willow"], captain: "ouissy",
       formation: "wide",
     },
@@ -566,16 +569,19 @@ window.CUP_CONFIG = {
                  density: 0.74, backdrop: "coast", lighting: "day",
                  tiers: "single", roof: "open", banners: "flags",
                  lights: "none", bays: 5 },
-      anthem: { key: 164.8, scale: "major", tempo: 88, mood: "warm-nostalgic",
-                title: "ODE TO JOY", source: "Beethoven, 1824 \u2014 public domain",
-                groove: "hymn",
-                /* Every note is one step from the last except two. That
-                   is the whole reason a stadium can sing it without
-                   being taught it, and the reason it has been the
-                   anthem of roughly everything for two hundred years. */
-                hook: [[0, 2, 1], [1, 2, 1], [2, 3, 1], [3, 4, 1],
-                       [4, 4, 1], [5, 3, 1], [6, 2, 1], [7, 1, 1]],
-                motif: [2, 2, 3, 4], stems: null },
+      anthem: { key: 164.8, scale: "dorian", tempo: 108, mood: "warm-nostalgic",
+                title: "HIGHLIFE", source: "west african highlife",
+                groove: "highlife",
+                /* Dorian, because highlife lives on the major sixth in
+                   a minor key and that one note is the entire mood of
+                   it — warm and slightly sad at the same time, which
+                   no other scale does. The line interlocks with the
+                   guitars rather than sitting on top of them. */
+                hook: [[0, 0, 0.5], [0.5, 2, 0.5], [1.5, 4, 0.5], [2, 5, 1],
+                       [3, 4, 0.5], [3.5, 2, 0.5],
+                       [4, 4, 0.5], [4.5, 5, 0.5], [5.5, 4, 0.5], [6, 2, 1],
+                       [7, 0, 1]],
+                motif: [0, 2, 4, 5], stems: null },
       squad: ["marina", "willow", "lumi", "boulder"], captain: "willow",
       formation: "flat",
     },
@@ -595,19 +601,20 @@ window.CUP_CONFIG = {
                  density: 0.88, backdrop: "campus", lighting: "night",
                  tiers: "double", roof: "gable", banners: "tifo",
                  lights: "roof", bays: 12 },
-      anthem: { key: 123.5, scale: "minor", tempo: 132, mood: "dark-stormy-epic",
-                title: "MOUNTAIN KING", source: "Grieg, 1875 \u2014 public domain",
-                groove: "build",
-                /* The best build ever written and the one that needs no
-                   explaining to anybody: it creeps, it repeats, it
-                   speeds up, and it does not stop. Under floodlights at
-                   a hundred and thirty-two it is the sound of being
-                   pinned in your own half by a better side. */
-                hook: [[0, 0, 0.5], [0.5, 1, 0.5], [1, 2, 0.5], [1.5, 3, 0.5],
-                       [2, 4, 0.5], [2.5, 2, 0.5], [3, 4, 1],
-                       [4, 5, 0.5], [4.5, 3, 0.5], [5, 5, 0.5], [5.5, 4, 0.5],
-                       [6, 2, 0.5], [6.5, 4, 0.5], [7, 0, 1]],
-                motif: [0, 1, 2, 3, 4], stems: null },
+      anthem: { key: 138.6, scale: "hijaz", tempo: 138, mood: "tense-driving",
+                title: "TRUBA", source: "Balkan brass",
+                groove: "balkan",
+                /* HIJAZ — the flat second and the sharp third. It is
+                   one note away from an ordinary minor scale and it
+                   sounds like nowhere in western Europe, which is the
+                   whole reason Balkan brass is instantly identifiable.
+                   Fast, ornamented, and it does not resolve until the
+                   last note of the second bar. */
+                hook: [[0, 0, 0.25], [0.25, 1, 0.25], [0.5, 2, 0.5], [1, 1, 0.5],
+                       [1.5, 0, 0.5], [2, 4, 0.5], [2.5, 3, 0.5], [3, 2, 1],
+                       [4, 4, 0.25], [4.25, 5, 0.25], [4.5, 4, 0.5], [5, 3, 0.5],
+                       [5.5, 2, 0.5], [6, 1, 0.5], [6.5, 2, 0.5], [7, 0, 1]],
+                motif: [0, 1, 2, 1], stems: null },
       squad: ["gustav", "echo", "atlas", "thorn"], captain: "atlas",
       formation: "flat",
     },

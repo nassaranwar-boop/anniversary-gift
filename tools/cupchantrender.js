@@ -53,6 +53,7 @@ function wav(channels, rate) {
   await page.route('**/*', r => r.request().url().startsWith('http://127.0.0.1') ? r.continue() : r.abort());
   await page.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
   await page.waitForTimeout(600);
+  if (process.env.BYPASS) await page.evaluate(() => { window.__BYP = 1; });
 
   const render = (name, seconds) => page.evaluate(async ({ name, seconds }) => {
     const rate = 44100;
@@ -68,6 +69,7 @@ function wav(channels, rate) {
     let notes = 0;
     const realOsc = off.createOscillator.bind(off);
     off.createOscillator = function () { notes++; return realOsc(); };
+    window.__CHANT_BYPASS = !!window.__BYP;
     window.CupChant.init(off, off.destination, { volume: 1 });
     const team = (window.CUP_CONFIG.TEAMS.filter(t => t.id === name)[0]
                   || window.CUP_CONFIG.TEAMS[0]);
