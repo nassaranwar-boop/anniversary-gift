@@ -94,6 +94,7 @@ module.exports = async function (c) {
       return true;
     };
 
+    const CASTIDS = H.castDefs().map((d) => d.id);
     window.__sweep = window.__sweep || 0;
     let seen = { tape: '', say: '', tutor: '', hour: -1 };
     const ring = [];
@@ -202,10 +203,27 @@ module.exports = async function (c) {
          keeper beat, the wound-one lines and the meter cost ever get
          exercised by a playthrough. */
       let wound = false;
+      /* WINDING IS NOT A LUXURY, AND THE LOW-POWER RULE WAS TREATING IT
+         AS ONE.
+
+         Below forty-five per cent the monitor goes down to save meter.
+         But a wind needs the monitor up, so at low power the driver
+         stopped winding entirely -- and night five's own instruction is
+         "Wind all four of them tonight. A key in the back, about a
+         second each." A run that saved meter by not winding blacked out
+         at five with all four of his run down to zero and nothing
+         standing between her and the door.
+
+         So the rule is about IDLE camera time, not about work: when any
+         of his four is empty, the monitor may come up to fix that
+         however low the meter is. */
+      const runDown = CASTIDS.some((id) => cast[id] && cast[id].awake
+                                           && (cast[id].wound || 0) <= 0);
       /* and never with something at a door: a wind is a second and a
          half of both hands, and Jax gives her three and a bit */
       const clear = !at.left && !at.right && !at.hatch;
-      if (G.monitor && clear) {
+      if ((G.monitor || runDown) && clear) {
+        if (!G.monitor) await press('monitor');
         for (const id in cast) { const ch = cast[id];
           if (ch.def && ch.def.door && ch.room === G.cam && !ch.atDoor && (ch.wound || 0) < 1.5) {
             wound = await wind(); break; } }
@@ -216,7 +234,7 @@ module.exports = async function (c) {
           /* hold the camera on her */
           if (!G.monitor) await press('monitor', true);
           else if (G.cam !== hold) await press('next', true);
-        } else if (G.power < 45) {
+        } else if (G.power < 45 && !runDown) {
           /* low: the monitor goes down and stays down */
           if (G.monitor) await press('monitor', true);
         } else {
