@@ -182,6 +182,14 @@ four have each been survived and their cards read, five and six only in
 pieces — but it is no longer answering an open question about the
 chapter, only about the driver. Worth having, not urgent.
 
+The one thing standing in the way of it has been fixed, untested: the
+driver parked the monitor on Marabelle for whole hours, where
+nightbudget's attentive guard spends 68 seconds on it across the
+night, and that is why it kept arriving at five with nothing left. It
+glances now — four ticks on her, eight with the monitor down — which
+still obeys both halves of what the game tells her. Whether that is
+enough to carry it to six on nights five and six has not been run.
+
 ### 2026-09-25 — the night shift, played cold and taken apart
 
 **Asked for:** play the night shift in its branch and analyse everything

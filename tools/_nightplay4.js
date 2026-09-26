@@ -190,9 +190,21 @@ module.exports = async function (c) {
          Below forty-five per cent the monitor stays down and the doors
          do the work, which is what he told her on the first night --
          a shut door holds. */
+      /* AND SHE LOOKS AT HER IN GLANCES, NOT IN A STARE.
+
+         nightbudget plays each night as an attentive guard would and
+         spends 68 seconds on the monitor across six hours. This parked
+         on Marabelle for whole hours at a time, which is why it kept
+         arriving at five o'clock with nothing left: the meter went on
+         watching rather than on doors. Both halves of what the game
+         tells her are still obeyed -- look at her, but not all night --
+         by holding the camera on her for a few ticks and then dropping
+         it for a stretch. Her rule only needs her seen often enough to
+         keep stopping her, not seen continuously. */
       const mara = cast.marabelle;
+      const glance = (window.__glance = (window.__glance || 0) + 1) % 12 < 4;
       const hold = mara && mara.awake && !mara.atDoor && !mara.asleep
-                   && G.power > 45 ? mara.room : null;
+                   && G.power > 45 && glance ? mara.room : null;
 
       /* WIND THE FOUR, WHICH IS WHAT THE NOTE ASKED FOR.
 
@@ -234,8 +246,9 @@ module.exports = async function (c) {
           /* hold the camera on her */
           if (!G.monitor) await press('monitor', true);
           else if (G.cam !== hold) await press('next', true);
-        } else if (G.power < 45 && !runDown) {
-          /* low: the monitor goes down and stays down */
+        } else if ((G.power < 45 || !glance) && !runDown) {
+          /* between glances, and when the meter is low, the monitor is
+             down: it draws the whole time it is up */
           if (G.monitor) await press('monitor', true);
         } else {
           /* nothing to watch: sweep, and put the monitor down again,
