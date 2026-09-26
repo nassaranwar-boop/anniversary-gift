@@ -82,6 +82,28 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
         return !!(c && c.cogsworth && c.chime && c.marabelle && c.jax);
       } catch (e) { return false; }
     }, { timeout: 30000, polling: 200 });
+    /* AND THE VOICES HAVE TO BE WARM, BECAUSE THEY ARE WARM IN PLAY.
+
+       This drives a whole night inside one synchronous evaluate, so
+       no timer fires while it runs. A line whose take has not been
+       decoded yet is deferred by voxSpeak and its caption is HELD
+       until the deferred speak comes back -- which, with no timer
+       turns, is never. The caption then stays up, TAPE.up stays
+       raised, and overTick reads every silence as "he is speaking"
+       and waits the full OVER_HOLD for each line: measured, two of
+       night two's four lines never got out, purely because the page
+       had been open for two seconds rather than twenty.
+
+       That is not the state a player is in. The exchange this
+       measures happens at one or two in the morning, two real
+       minutes into a night, by which time voiceWarm has the chapter
+       in memory. Waiting for that here is not softening the check,
+       it is putting the page in the condition the thing being
+       checked actually happens in. */
+    await p.waitForFunction(() => {
+      try { return OuissysNightShift.__night.voiceState().ready.length > 3; }
+      catch (e) { return false; }
+    }, { timeout: 120000, polling: 500 });
     return p;
   };
   const p = await open();

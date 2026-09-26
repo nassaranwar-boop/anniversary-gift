@@ -9378,13 +9378,25 @@ function voxHold(text) {
   if (TAPE.up && flat(TAPE.line) === want) {
     TAPE.t0 = perf() + VOX_HELD;
     /* ...and it stays on the screen until he gets here: see TAPE.held */
-    TAPE.held = true; TAPE.heldT = VOX_HOLD_MAX;
+    TAPE.held = true;
+    TAPE.heldUntil = perf() + VOX_HOLD_MAX; TAPE.heldLeft = VOX_HOLD_MAX;
   }
   if (CINE.on && said(CINE.plan) === want) CINE.lineT0 = perf() + VOX_HELD;
   if (TERMS.on && said(TERMS.plan) === want) TERMS.t0 = perf() + VOX_HELD;
 }
 
-const VOXALIGN = { calls: 0, hits: 0, last: "" };
+/* WHAT THE SCREEN SAID AT THE INSTANT HE STARTED.
+
+   The only honest place to take this measurement is here, because
+   here is the one moment the sound and the caption are both
+   observable in the same turn. A suite polling from outside cannot
+   do it on a machine like the build container: the page renders at
+   about a frame a second, a setTimeout(20) comes back two seconds
+   late, and the probe then reports "the clock was 2.4s in and every
+   word was lit" -- which is true of the probe's arrival and says
+   nothing about his. */
+const VOXALIGN = { calls: 0, hits: 0, last: "", litAtStart: null,
+                   ofAtStart: null, heldAtStart: null };
 function voxAligned(text) {
   const flat = (a) => String(a == null ? "" : a).replace(/\s+/g, " ").trim();
   const want = flat(text);
@@ -9393,7 +9405,18 @@ function voxAligned(text) {
   const said = (pl) => (pl && pl.words ? flat(pl.words.map((w) => w.text).join(" ")) : "");
   let hit = "";
   if (TAPE.up && flat(TAPE.line) === want) {
-    TAPE.t0 = perf(); TAPE.held = false; TAPE.heldT = 0; hit += "tape ";
+    /* read the screen BEFORE the clock moves: after the re-zero every
+       word is dark by construction, which proves nothing */
+    const tel = EL["ns-tape"];
+    if (tel && !tel.hidden) {
+      const ws = tel.querySelectorAll("i[data-w]");
+      let n = 0;
+      for (let i = 0; i < ws.length; i++) if (ws[i].className === "on") n++;
+      VOXALIGN.litAtStart = n; VOXALIGN.ofAtStart = ws.length;
+    } else { VOXALIGN.litAtStart = -1; VOXALIGN.ofAtStart = -1; }
+    VOXALIGN.heldAtStart = !!TAPE.held;
+    TAPE.t0 = perf(); TAPE.held = false; TAPE.heldUntil = 0; TAPE.heldLeft = 0;
+    hit += "tape ";
   }
   if (CINE.on && said(CINE.plan) === want) { CINE.lineT0 = perf(); hit += "film "; }
   if (TERMS.on && said(TERMS.plan) === want) { TERMS.t0 = perf(); hit += "terms "; }
@@ -14183,11 +14206,27 @@ const TAPE = {
      the 1.1s tail is 2.5 seconds against a 3.5 second wait.
 
      So while a line is in the air, its reading clock stops and it
-     cannot hide. heldT is a dead man's handle on that, in case the
-     deferred speak never comes back at all: the hold expires by
+     cannot hide. heldUntil is a dead man's handle on that, in case
+     the deferred speak never comes back at all: the hold expires by
      itself a little past the longest wait voxSpeak will ever ask
-     for, and the caption goes back to behaving the way it did. */
-  held: false, heldT: 0,
+     for, and the caption goes back to behaving the way it did.
+
+     It trips on WHICHEVER CLOCK IS ACTUALLY MOVING, because the two
+     come apart in both directions. The frame loop clamps dt to a
+     tenth of a second, so on a machine drawing the shop at one frame
+     a second a handle counted only in dt would run seven and a half
+     game-seconds over nearly two real minutes -- exactly backwards,
+     since the slow machine is the one that needs the handle to be
+     honest. And a harness that drives a whole night inside one
+     synchronous turn moves dt by hundreds of seconds while the wall
+     clock barely moves at all, and no timer fires, so the deferred
+     speak that would release the hold can never come back: measured
+     in overcheck, a held caption that stayed held for fifty-six
+     game-seconds, kept TAPE.up raised, and made overTick treat every
+     silence as "he is speaking" -- two of night two's four overheard
+     lines never got out. Either clock reaching the deadline ends the
+     hold. */
+  held: false, heldUntil: 0, heldLeft: 0,
   /* IS A LINE ON SCREEN, HAS A VOICE BEEN HEARD SAYING IT, AND HOW LONG
      DO THE WORDS STAY AFTER IT STOPS.
 
@@ -14229,7 +14268,7 @@ const TAPE_GAP = 2.5;
 /* the words go away, and nothing is left holding them up */
 function tapeHide() {
   TAPE.up = false; TAPE.spoke = false; TAPE.tail = 0; TAPE.speakT = 0;
-  TAPE.held = false; TAPE.heldT = 0;
+  TAPE.held = false; TAPE.heldUntil = 0; TAPE.heldLeft = 0;
   const el = EL["ns-tape"];
   if (el) { el.hidden = true; el.innerHTML = ""; }
 }
@@ -14243,7 +14282,7 @@ function tapeReset() {
   TAPE.plan = null;
   TAPE.pending = null;
   TAPE.opened = false;
-  TAPE.held = false; TAPE.heldT = 0;
+  TAPE.held = false; TAPE.heldUntil = 0; TAPE.heldLeft = 0;
   tapeHide();
 }
 function tapeOff() {
@@ -14398,7 +14437,7 @@ function tapeSay(line, who, through) {
   TAPE.t0 = perf();
   TAPE.speakT = TAPE.plan.dur + 1.1;
   TAPE.up = true; TAPE.spoke = false; TAPE.tail = TAPE_TAIL;
-  TAPE.held = false; TAPE.heldT = 0;
+  TAPE.held = false; TAPE.heldUntil = 0; TAPE.heldLeft = 0;
   /* `forceSynth` used to be here for the four of them, because the only
      recording of any line was Anwar reading it and hearing him play
      all four parts was worse than the synthesiser. They are cast
@@ -15531,7 +15570,10 @@ function tapeTick(dt) {
        And if no voice was ever heard at all, the written line gets its
        own reading time instead -- which is the only thing speakT is
        for now. */
-    if (TAPE.held) { TAPE.heldT -= dt; if (TAPE.heldT <= 0) TAPE.held = false; }
+    if (TAPE.held) {
+      TAPE.heldLeft -= dt;
+      if (perf() >= TAPE.heldUntil || TAPE.heldLeft <= 0) TAPE.held = false;
+    }
     if (voxTalking()) { TAPE.spoke = true; TAPE.tail = TAPE_TAIL; TAPE.held = false; }
     else if (TAPE.spoke) TAPE.tail -= dt;
     else if (!TAPE.held) TAPE.speakT -= dt;

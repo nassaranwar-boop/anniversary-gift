@@ -122,8 +122,20 @@ const t = (n, c, note) => { c ? pass++ : fail++;
       }
       const took = N.said().took;
       const words = N.tapeDebug().planWords;
+      /* WHAT THE SCREEN SAID WHEN HE STARTED, TAKEN FROM INSIDE.
+
+         `into` and `litThen` above are read when this loop NOTICES the
+         voice, which on a starved machine is up to two and a half
+         seconds after it started -- an earlier pass reported "2.4s in,
+         4 of 4 words written" about a four-word line, which is a true
+         description of the probe's arrival and says nothing about his.
+         voxAligned runs in the same turn as voicePlay and writes down
+         what was lit before it moves the clock. That is the number. */
+      const al = N.voxAlign();
       const rec = { line: txt, dropped: id, took, words, held, wentAway,
                     litWhileWaiting, shownThen, lowSpeakT,
+                    litAtStart: al.litAtStart, ofAtStart: al.ofAtStart,
+                    heldAtStart: al.heldAtStart,
                     intoWhenHeSpoke: into, litWhenHeSpoke: litThen };
       tries.push(rec);
       if (took === 'tape') { got = rec; break; }
@@ -155,9 +167,11 @@ const t = (n, c, note) => { c ? pass++ : fail++;
   console.log(`  "${String(r.line).slice(0, 64)}" (${r.words} words)`);
   console.log(`  take ${r.dropped} dropped, so it had to be fetched the way a cold phone fetches it`);
   console.log(`  it went out by the ${r.took} path`);
-  console.log(`  when his voice started the caption thought it was ${r.intoWhenHeSpoke}s into the line`);
-  console.log(`  words already written when he began: ` +
-              (r.litWhenHeSpoke ? r.litWhenHeSpoke.on + ' of ' + r.litWhenHeSpoke.of : 'n/a'));
+  console.log(`  words already written when he began, read from inside: ` +
+              r.litAtStart + ' of ' + r.ofAtStart + ' (still held: ' + r.heldAtStart + ')');
+  console.log(`  ...and when this loop next got a turn, ${r.intoWhenHeSpoke}s later: ` +
+              (r.litWhenHeSpoke ? r.litWhenHeSpoke.on + ' of ' + r.litWhenHeSpoke.of : 'n/a') +
+              ' — the probe\'s arrival, not his');
   console.log(`  the caption was held for the take: ${r.held}`);
   console.log(`  words lit while the take was still loading: ${r.litWhileWaiting}`);
   console.log(`  voxAligned: ${JSON.stringify(res.align)}\n`);
@@ -181,11 +195,10 @@ const t = (n, c, note) => { c ? pass++ : fail++;
      with, and asserting against one measures nothing */
   if (r.took === 'tape') {
     t('he speaks it off the recording, not the synthesiser', true, 'took=tape');
-    t('the caption clock is at the top of the line when he starts',
-      r.intoWhenHeSpoke !== null && r.intoWhenHeSpoke < 0.35, r.intoWhenHeSpoke + 's in');
-    t('and no more than the first word is written before he says it',
-      !!r.litWhenHeSpoke && r.litWhenHeSpoke.on <= 1,
-      r.litWhenHeSpoke ? r.litWhenHeSpoke.on + ' of ' + r.litWhenHeSpoke.of : 'n/a');
+    t('the line was still being held when his voice arrived', r.heldAtStart === true,
+      'held=' + r.heldAtStart);
+    t('and not one word was written before he said it', r.litAtStart === 0,
+      r.litAtStart + ' of ' + r.ofAtStart + ' already lit');
   } else {
     console.log('  NOT ASKED: no dropped take got back inside voiceWait\'s 2.6s on this\n' +
                 '  machine, so every attempt went out by the ' + r.took + ' path. The three\n' +
