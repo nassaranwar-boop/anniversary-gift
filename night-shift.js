@@ -373,6 +373,55 @@ const NS = {
      voice — which is what happened to the twenty-one lines of the
      four asking to be let in, and is a mistake worth only making
      once. */
+  /* =====================================================
+     THE OFFICE, WHICH SHE HAS ONLY EVER LOOKED OUT OF
+
+     Every other room in this building is a picture on a tube. The one
+     she is actually sitting in is the one she cannot look AT: she can
+     swing the view around it with a drag, and there is a desk, a
+     window, a filing cabinet, her own photograph on the corkboard and
+     a brass plate with her name on it screwed to the front edge — and
+     not one of them does anything.
+
+     That is the wrong way round. The office is where she spends all
+     six nights, it is the only room built to be seen from the inside,
+     and putting the monitor DOWN is the one thing the power budget
+     actively rewards. So these are the things in it worth turning to,
+     and they are only offered while the monitor is down: the cameras
+     are for the shop, and this is for where she is.
+
+     AND NOT THE BRASS PLATE, WHICH IS THE INTERESTING ONE.
+
+     The first pass put it at the top of this list, with a nice idea
+     attached: looking at it would not add a fifth line — it already
+     carries the most deliberate beat in the chapter, night one at
+     twenty to five and Cogsworth later saying what he could not —
+     but would bring that existing line FORWARD, so that asking got
+     her the answer early. Written, wired, and then lookcheck said
+     the chair cannot turn to it.
+
+     It is right and the idea was wrong. The plate is screwed to the
+     FRONT EDGE of the desk, "where anyone coming through the door
+     would read it". She sits behind it. She sees it walking in, which
+     is exactly what he meant by putting it there, and from the seat
+     she is looking at the back of a piece of brass. Nothing to fix:
+     the room is telling the truth.
+
+     The same clamp rules out anything lying on the desk. The seat
+     pitches about nine degrees and a desktop is forty degrees down,
+     so the little toy went with it. Widening the arc would have
+     bought both of them and cost the thing that makes this game
+     frightening, which is a poor trade for two sentences.
+
+     What is left is what is at eye level: three on the walls and the
+     grate she keeps hearing things behind. */
+  deskThings: [
+    { id: "photo",   at: [1.44, 1.48, -2.33] },
+    { id: "window",  at: [-1.75, 1.66, -2.40] },
+    { id: "cabinet", at: [-2.85, 0.74, -2.00] },
+    { id: "grate",   at: [1.90, 2.16, -2.42] },
+  ],
+
   oddments: [
     { id: "mug",     room: "workshop", from: 1, kind: "mug" },
     { id: "radio",   room: "hall",     from: 1, kind: "radio" },
@@ -1851,6 +1900,14 @@ const NS = {
 
        Register: he is annotating his own shop, not narrating it. Short,
        specific, dry where it can be. Two of them are allowed to land. */
+    /* --- AND THE FOUR THINGS IN THE OFFICE WITH A LINE OF THEIR OWN.
+       The fifth, the brass plate, has one already and this does not
+       give it another. See NS.deskThings. */
+    "desk-photo":   "Somebody's photograph has been taped to that corkboard since the day the shop opened, and it has never once been the same person. That one is you.",
+    "desk-window":  "That window looks out on the car park and the car park looks out on nothing. I have watched more weather through it than I have through the one at home.",
+    "desk-cabinet": "Four drawers. Receipts, guarantees, a file marked SPARES that has never had a spare in it, and the bottom one does not open. I lost the key in about 2004.",
+    "desk-grate":   "That grate is the only way into this room that I did not put a door on. I have thought about it a great deal this year.",
+
     "odd-mug":     "That is my mug, and that is where it lives. There is tea in it from a Tuesday. I would leave it.",
     "odd-radio":   "That radio gets one station and only after dark. I could have fixed it in an afternoon. I liked being surprised.",
     "odd-tin":     "Ten-pence pieces. The machines have taken real money since nineteen ninety-one and I have never once made them.",
@@ -16314,6 +16371,7 @@ function playStep(dt) {
     stepEgg(dt);
     stepFind(dt);
     stepOdds(dt);
+    stepLooks(dt);
     /* orientation holds the whole night still until she has done the
        thing it asked for: no clock, no drain, nobody walking. It is the
        one place in the chapter where the shop waits for her. */
@@ -16483,7 +16541,7 @@ function buildUI() {
   ["ns-stage", "ns-canvas", "ns-mon", "ns-static", "ns-camname", "ns-mon-lost",
    "ns-map", "ns-hud", "ns-power", "ns-bar-f", "ns-usage", "ns-clock", "ns-nightlab",
    "ns-warn", "ns-edge", "ns-pause-btn", "ns-pad", "ns-overlay", "ns-mon-time",
-   "ns-say", "ns-egg", "ns-find", "ns-odd", "ns-tutor", "ns-cine", "ns-key", "ns-task", "ns-winds",
+   "ns-say", "ns-egg", "ns-find", "ns-odd", "ns-look", "ns-tutor", "ns-cine", "ns-key", "ns-task", "ns-winds",
    "ns-tape"].forEach((id) => {
     EL[id] = el(id);
   });
@@ -16542,6 +16600,9 @@ function buildUI() {
   }
   if (EL["ns-odd"]) {
     EL["ns-odd"].addEventListener("click", (e) => { e.stopPropagation(); takeOdd(); });
+  }
+  if (EL["ns-look"]) {
+    EL["ns-look"].addEventListener("click", (e) => { e.stopPropagation(); takeLook(); });
   }
   /* the key is held rather than clicked — winding something is a thing
      you do for a second and a bit, not a thing you tap */
@@ -17769,6 +17830,7 @@ function uiTick(dt) {
   eggHotspot();
   findHotspot();
   oddHotspot();
+  lookHotspot();
   windHotspot();
   windPips();
 
@@ -18674,6 +18736,119 @@ function buildOddProp(kind) {
    then they are the sort of thing that tells her. Six nights, six
    pages, in her hand by the end whether or not she is any good at
    this. */
+/* TURN THE SEAT TOWARDS SOMETHING, THE WAY A DRAG DOES.
+
+   The view is the chair's resting quaternion with a yaw of panX*0.34
+   and a pitch of panY*0.22 laid over it, both clamped -- about
+   nineteen degrees of yaw either way, which is deliberate and is most
+   of why a thing in her doorway is frightening. So aiming at a point
+   is that composition run backwards: work out the yaw and pitch from
+   the seat to the point, subtract the seat's own, and divide by the
+   gains. Whatever falls outside the clamp simply cannot be looked at
+   from that chair, which is the honest answer rather than a wider
+   clamp.
+
+   It exists for the suites, and for exactly the reason camTo does:
+   a check that pokes panTX by hand is testing its own arithmetic. */
+function panAt(x, y, z) {
+  const base = view.userData.base;
+  if (!base) return null;
+  const fwd = new T.Vector3(0, 0, -1).applyQuaternion(base.quat);
+  const seatYaw = Math.atan2(-fwd.x, -fwd.z);
+  const seatPitch = Math.asin(clamp(fwd.y, -1, 1));
+  const dx = x - base.pos.x, dy = y - base.pos.y, dz = z - base.pos.z;
+  const wantYaw = Math.atan2(-dx, -dz);
+  const wantPitch = Math.asin(clamp(dy / Math.max(1e-4, Math.hypot(dx, dy, dz)), -1, 1));
+  const wrap = (a2) => Math.atan2(Math.sin(a2), Math.cos(a2));
+  panTX = clamp(wrap(wantYaw - seatYaw) / 0.34, -1, 1);
+  panTY = clamp((wantPitch - seatPitch) / 0.22, -0.7, 0.7);
+  return { panTX: +panTX.toFixed(3), panTY: +panTY.toFixed(3) };
+}
+
+/* ---- the office: the things in it she can turn to and look at ---- */
+const LOOK_AT = new T.Vector3();
+let lookNear = null, lookWhy = "", lookGlint = 0, lookLit = false;
+
+/* the line a thing says. There was a second road in here -- a thing
+   could name a line already in the script and bring it forward rather
+   than add one -- and the brass plate was the only user of it and the
+   plate turned out to be unreachable from the chair. Removed rather
+   than left standing: a mechanism with no caller is a thing the next
+   person has to work out the purpose of. */
+function lookLine(d) {
+  return d ? ((NS.tapeWhen || {})["desk-" + d.id] || null) : null;
+}
+
+/* which ones are still worth offering. A thing she has looked at is
+   done; so is the plate once the shop has told her about it by any
+   other road, because the whole point of the plate is that it is said
+   once and lands. */
+function looksOut() {
+  if (G.mode !== "story") return [];
+  const had = foundAll();
+  return (NS.deskThings || []).filter((d) => {
+    if (had["desk-" + d.id]) return false;
+    return !!lookLine(d);
+  });
+}
+
+function stepLooks(dt) {
+  lookGlint -= dt;
+  if (lookGlint > 0) return;
+  lookGlint = lookLit ? range(Math.random, 0.6, 1.0) : range(Math.random, 2.6, 4.4);
+  lookLit = !lookLit;
+}
+
+/* SHOWN ONLY WITH THE MONITOR DOWN.
+
+   The cameras are for the shop and this is for the room she is in,
+   and the two should never be competing for the same tap. It also
+   means the one thing the power budget rewards -- sitting with the
+   tube off -- is the one thing that has never had anything in it. */
+function lookHotspot() {
+  const el = EL["ns-look"];
+  if (!el) { lookWhy = "no #ns-look element"; return; }
+  lookNear = null;
+  lookWhy = G.phase !== "play" ? "phase " + G.phase
+          : G.monitor ? "the monitor is up"
+          : G.blackout ? "the lights are out"
+          : "";
+  if (lookWhy) { el.hidden = true; return; }
+  let best = null, bestD = 1e9, bx = 0, by = 0;
+  looksOut().forEach((d) => {
+    LOOK_AT.set(d.at[0], d.at[1], d.at[2]);
+    _proj.copy(LOOK_AT).project(view);
+    const x = (_proj.x * 0.5 + 0.5) * 100;
+    const y = (-_proj.y * 0.5 + 0.5) * 100;
+    if (_proj.z > 1 || x < 6 || x > 94 || y < 8 || y > 88) return;
+    const dd = (x - 50) * (x - 50) + (y - 50) * (y - 50);
+    if (dd < bestD) { bestD = dd; best = d; bx = x; by = y; }
+  });
+  if (!best) {
+    lookWhy = looksOut().length ? looksOut().length + " left, none of them in view" : "nothing left to look at";
+    el.hidden = true; return;
+  }
+  lookNear = best;
+  el.hidden = false;
+  el.style.left = bx + "%";
+  el.style.top = by + "%";
+  el.classList.toggle("glinting", lookLit);
+}
+
+function takeLook() {
+  if (!lookNear || G.phase !== "play") return;
+  const d = lookNear;
+  const t = lookLine(d);
+  keepFind("desk-" + d.id);
+  G.stats.looks = (G.stats.looks || 0) + 1;
+  lookNear = null;
+  if (EL["ns-look"]) EL["ns-look"].hidden = true;
+  SFX.tick(0.42, 0);
+  /* straight into the same queue every line she causes goes into, so
+     it waits behind whatever he is already saying */
+  if (t && !TAPE.said[t] && !wasTold(t)) TAPE.pending = { t: t };
+}
+
 /* ---- the odds and ends: place them, arm them, let her take them ---- */
 const oddMeshes = {};
 let oddGlint = 0, oddLit = false;
@@ -20971,6 +21146,29 @@ const testHooks = {
      that pokes G.cam leaves the view wherever it was and then reports
      that nothing is ever visible anywhere */
   camTo: (id) => { if (!G.monitor) toggleMonitor(); selectCam(id); return G.cam; },
+  /* the office, and what is left in it to turn to */
+  looks: () => ({
+    defined: (NS.deskThings || []).map((d) => d.id),
+    out: looksOut().map((d) => d.id),
+    near: lookNear ? lookNear.id : null,
+    why: lookWhy,
+    shown: !!(EL["ns-look"] && !EL["ns-look"].hidden),
+    el: !!EL["ns-look"],
+    lines: (NS.deskThings || []).map((d) => ({ id: d.id, at: d.at,
+      fromTape: !!d.tape, t: lookLine(d) })),
+  }),
+  lookTake: () => {
+    if (!lookNear) return null;
+    const want = lookLine(lookNear);
+    takeLook();
+    return TAPE.pending && TAPE.pending.t === want ? want : null;
+  },
+  /* point the view at a thing in the office, the way a drag does */
+  lookAt: (id) => {
+    const d = (NS.deskThings || []).filter((x) => x.id === id)[0];
+    if (!d) return null;
+    return panAt(d.at[0], d.at[1], d.at[2]);
+  },
   oddShot: () => (NS.oddments || []).map((o) => {
     const rec = rooms[o.room], g = oddMeshes[o.id];
     if (!rec || !g || !rec.cams.main) return { id: o.id, room: o.room, in: false, why: "not placed" };

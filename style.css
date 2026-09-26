@@ -8729,6 +8729,34 @@ img{-webkit-user-drag:none; user-select:none;}
 .ns-odd:hover::after, .ns-odd:focus-visible::after{ opacity:1; inset:14%; transition:opacity .2s ease; }
 .ns-odd[hidden]{ display:none !important; }
 
+/* AND THE THINGS IN THE OFFICE, WHICH ARE NOT ON A CAMERA AT ALL.
+
+   These only ever appear with the monitor DOWN, over the room she is
+   sitting in rather than over a feed, so they are allowed to be a
+   little plainer than the ones out in the shop: there is no tube
+   filter over them and nothing else competing for the tap. A ring
+   rather than a glow, because a glint on a thing eighteen inches from
+   her face would read as a fault in the room and not as something
+   worth turning to. */
+.ns-look{
+  position:absolute; z-index:8; transform:translate(-50%,-50%);
+  pointer-events:auto;
+  width:max(4.6cqh, 30px); height:max(4.6cqh, 30px);
+  border:0; padding:0; background:transparent; cursor:pointer;
+  border-radius:50%;
+  -webkit-tap-highlight-color:transparent;
+}
+.ns-look::after{
+  content:""; position:absolute; inset:30%;
+  border-radius:50%;
+  border:1px solid rgba(255,235,190,.5);
+  box-shadow:0 0 10px rgba(255,214,158,.2), inset 0 0 6px rgba(255,214,158,.14);
+  opacity:0; transition:opacity 1.1s ease, inset .3s ease;
+}
+.ns-look.glinting::after{ opacity:.72; }
+.ns-look:hover::after, .ns-look:focus-visible::after{ opacity:1; inset:18%; transition:opacity .2s ease; }
+.ns-look[hidden]{ display:none !important; }
+
 .ns-card-find .ns-paper{ max-width:60cqw; }
 .ns-card-find .ns-from{ color:var(--ns-brass); }
 
