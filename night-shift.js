@@ -1985,8 +1985,23 @@ const NS = {
        later night as though they had never been said -- and "you
        have found the one that works" landing twice is worse than it
        landing never. It doubles as the deadline that makes the beat
-       happen for a player who never holds a camera at all. */
-    seenMarabelle: { after: 2, by: [2, 4], who: "marabelle",
+       happen for a player who never holds a camera at all.
+
+       And `by` is a NIGHT AND AN HOUR, not a range, which is not
+       obvious from reading it: [2, 4] is two o'clock on night two,
+       not nights two to four. The first pass read it as a range and
+       gave Marabelle's the same slot as theyWound, so two of the
+       four were guaranteed to come due in the same hour and one
+       would have talked over the other. storycheck has a check for
+       exactly that and it earned its keep.
+
+       Night two at FIVE, not at two: two o'clock on night two is when
+       the overheard exchange in the party room starts, and a
+       guaranteed line landing on top of it is the thing the whole
+       yielding rule exists to prevent. storycheck knows about slot
+       clashes between these lines and knows nothing about the
+       exchanges, so that one only showed up in overcheck. */
+    seenMarabelle: { after: 2, by: [2, 5], who: "marabelle",
                    t: "You have found the one that works. I cannot move while you are looking at me. Neither can you, and you have not noticed yet." },
     seenJax:     { after: 3, by: [3, 5], who: "jax",
                    t: "Go on then. Nobody has looked at this one for long enough to see what it is. That is not a complaint, it is just the first true thing I have said." },
@@ -17871,7 +17886,21 @@ function uiTick(dt) {
      one who would say something about being looked at. Reset the
      moment she changes camera or it walks out of frame, so it cannot
      be collected by leaving the monitor up and going away. */
-  if (G.phase === "play" && G.monitor && G.monOut <= 0) {
+  /* AND IT DOES NOT TALK OVER A CONVERSATION SHE IS OVERHEARING.
+
+     Two of them gossiping in the arcade is the quietest thing in the
+     building and everything yields to it -- tapeTick has `if (OVER.on)
+     return` for exactly this. The dwell did not, and the two features
+     fight in the one situation that makes them most likely to meet:
+     she parks the camera on the room the exchange is happening in,
+     BECAUSE the exchange is happening in it, which is also the way to
+     hold a camera on one of the four for six seconds. Measured in
+     overcheck: night two went from four lines of its exchange to two.
+
+     So the dwell waits, and watchWant returns nothing while it does,
+     so the ring does not promise a line the shop is not going to let
+     out yet. */
+  if (G.phase === "play" && G.monitor && G.monOut <= 0 && !OVER.on) {
     const seen = CAST.map((d) => cast[d.id])
       .filter((c) => c && c.awake && !c.atDoor && c.room === G.cam)[0];
     if (seen && G.watchCam === G.cam) {
@@ -18849,7 +18878,7 @@ const WATCH_SAYS = {
    that one has said its piece -- a signal that promises nothing is
    worse than no signal. */
 function watchWant() {
-  if (G.phase !== "play" || !G.monitor || G.monOut > 0) return null;
+  if (G.phase !== "play" || !G.monitor || G.monOut > 0 || OVER.on) return null;
   if (!G.watchWho || !(G.watchT > 0)) return null;
   const key = WATCH_SAYS[G.watchWho];
   const it = key && NS.tapeWhen ? NS.tapeWhen[key] : null;
