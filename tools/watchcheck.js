@@ -73,7 +73,7 @@ const t = (n, c, note) => { c ? pass++ : fail++;
            same frame as the fire would otherwise report "ring from
            -60s", which is a reading of the cooldown and not of the
            hold */
-        if (w.ringSeen === row.id && !sawRing) { sawRing = true; ringAt = +w.t.toFixed(2); }
+        if (w.ringSeen === row.id && !sawRing) { sawRing = true; ringAt = w.ringAt; }
         if (w.fired) { fired = w.fired; break; }
         await new Promise((x) => setTimeout(x, 60));
       }

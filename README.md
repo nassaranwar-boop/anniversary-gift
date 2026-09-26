@@ -13,6 +13,121 @@ landed, what is half-done and what the next session should do first.
 **Add a new entry every session.** Anything not written down here is
 lost when the container is reclaimed.
 
+### 2026-09-26c — three things to make it less boring, and what testing them cost
+
+**Asked for:** he asked whether the game needed anything else to be
+less boring, and then picked three of the four suggestions: more to
+find, an office to look at, and a reason to hold a camera rather than
+glance at one. He did not pick the fourth — a verb for answering the
+four when they speak to her — which was the right call and the one I
+was least sure of.
+
+**The reading that produced the suggestions**, because the numbers are
+worth keeping: a night is 336 seconds and carries about fourteen of
+his tape lines, call it two and a half minutes of voice in five and a
+half minutes of shift. The other three minutes have exactly one verb
+in them, winding, and that is only available when something happens to
+need it. There is one findable thing a night, in one fixed room. And
+`nightbudget` says an attentive guard spends 68 seconds on the monitor
+across a whole night, so the most detailed thing in the chapter is
+barely looked at, because looking costs meter and tells her something
+she can mostly get by ear.
+
+**1. Twelve things lying about the shop.** A mug with tea in it from a
+Tuesday, a radio that only gets one station and only after dark, one
+glove — "there has only ever been one glove, I have looked" — a tin of
+ten-pence pieces for machines that stopped taking real money in 1991,
+a drawing a girl did at a party that her mother made her apologise
+for, his boots kept at the shop so he never walked the workshop into
+her hallway, a clock four minutes fast that Cogsworth sets herself by
+so it is now the correct time, a jar of unsorted screws, and the fifth
+one he never finished.
+
+They are deliberately not pages. A page stops the shop, is a decision,
+and the ending is computed out of the six of them. An oddment is one
+sentence, does not stop the night, and touches nothing — the reason
+they exist is to fill the minutes when nothing is happening, and a
+thing that stops the game cannot fill the time in it. Weighted to
+nights one and two and to the hall, arcade and ducts, the three rooms
+no page is ever hidden in.
+
+**2. Four things in the office.** Her photograph on the corkboard,
+which has had somebody's on it since the shop opened and never twice
+the same person. The window onto a car park that looks out on nothing.
+The filing cabinet whose bottom drawer has not opened since the key
+went missing in about 2004. And the duct grate: "the only way into
+this room that I did not put a door on. I have thought about it a
+great deal this year." Offered only while the monitor is DOWN, so that
+sitting with the tube off — the one thing the power budget rewards and
+the one thing that never had anything in it — finally does.
+
+**3. All four of them answer being looked at.** This one turned out
+not to need inventing. Holding a camera on one of the four for six
+seconds is already a trigger and has been for versions; it paid out
+twice in six nights, and which line came back was chosen by the NIGHT
+rather than by who was on the tube, so a player holding the camera on
+Jax could be answered by the soldier in the next room. Each answers
+for itself now, and the two who never had anything to say have it.
+A thin ring fills beside whoever she is holding it on, because six
+seconds is a long time to hold a tube on something for no stated
+reason and nothing ever said that holding did anything at all.
+
+**Three faults came out of testing these, and two of them predate
+today.**
+
+*The dwell was counted in frames, not seconds.* The frame loop clamps
+`dt` to a tenth so a backgrounded tab cannot skip a night, and
+`uiTick` is handed that clamped value — so at sixty frames a second
+six seconds is six seconds, and at one it is sixty. The reward for
+being patient got slower the weaker the device was. The twenty seconds
+of stillness matters more: counted that way it wants two hundred
+frames, closer to five minutes of sitting perfectly still on a
+labouring phone, which made the brass-plate payoff — the answer to the
+best setup in the chapter — the beat a weak device was least likely to
+ever show her. Both are on the wall clock now, and this affected the
+shipped `theySeen` and `theyWatched` exactly as much as the new lines.
+
+*The dwell talked over the overheard conversations.* Everything in
+this building yields to two of them gossiping; `tapeTick` has an
+explicit `if (OVER.on) return`. The dwell did not, and the two meet in
+the least exotic situation there is — she parks the camera on the room
+the exchange is in because the exchange is in it, which is also how
+you hold a camera on one of them for six seconds. Night two lost two
+of its four lines. Caught by `overcheck`, not by reading.
+
+*And a sort three rooms away moved three of the six pages.*
+`findSpot` gained a sort by distance from frame centre, to help the
+clutter spread out. It also reordered the page's candidates: Chime's
+page went from y 1.38 to 1.03, while its card goes on saying it was
+found "on the ledge over the front door". The placement is procedural
+and the prose is not, and they had been quietly agreeing. The sort
+applies only to the clutter now, and the six pages were measured back
+to their original positions to the centimetre.
+
+Worth recording that `by: [2, 4]` is a night and an hour, not a range.
+Reading it as a range put Marabelle's deadline in the same slot as
+`theyWound` — two guaranteed lines in one hour — which `storycheck`
+caught, and then at two o'clock on night two, which is when that
+exchange starts, which only `overcheck` could catch.
+
+**Green:** oddcheck 10, lookcheck 7, watchcheck 6, overcheck 42,
+midcheck 67, saycheck 20, revealcheck 7, geomcheck 12, storycheck 113,
+codecheck 7, castcheck 9, oncecheck 4, linecheck 4. Cache at v323.
+
+`geomcheck` is the one that mattered most in that list — it is the
+ruler the whole "nothing stands inside the furniture" answer rests on,
+and `findSpots` changed the code that puts things on surfaces.
+
+**The eighteen lines have no takes yet**, and `linecheck` and
+`storycheck` both say so. That is the guard working: running the
+**Anwar's voice** workflow in `full` mode renders them with everything
+else. Until then they come out of the browser's own speech engine, in
+the wrong voice, or not at all.
+
+**NEXT:** unchanged — the nine `sidebyside` failures in the other four
+chapters, which are not in the night shift and need his say-so, and
+`scriptcheck`'s playing half, which this container will not finish.
+
 ### 2026-09-26b — playing it wrong on purpose, and the subtitle that left before he arrived
 
 **Asked for:** four things, in his words — stop following the script

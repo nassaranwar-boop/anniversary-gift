@@ -17657,7 +17657,8 @@ function beginNight(n, opts) {
   G.doors.left = G.doors.right = G.doors.hatch = false;
   G.blackout = false; G.blackoutT = 0; G.approaching = null;
   G.dead = null; G.deadT = 0; G.killChar = null; G.cardT = 0;
-  G.watchFired = null; G.watchT0 = 0; G.stillT0 = 0; G.watchRingSeen = null;
+  G.watchFired = null; G.watchT0 = 0; G.stillT0 = 0;
+  G.watchRingSeen = null; G.watchRingAt = 0;
   G.warned = 0; G.shake = 0;
   G.lost = {}; G.lostT = 20;
   /* dark from the start on every night but the one where she watches
@@ -17947,7 +17948,7 @@ function uiTick(dt) {
         G.watchT = fired ? -60 : -8;
         G.watchT0 = perf() + (fired ? 60 : 8);
       }
-    } else { G.watchCam = G.cam; G.watchT = 0; G.watchT0 = 0; G.watchWho = null; G.watchRingSeen = null; }
+    } else { G.watchCam = G.cam; G.watchT = 0; G.watchT0 = 0; G.watchWho = null; G.watchRingSeen = null; G.watchRingAt = 0; }
   } else if (G.watchT > 0) { G.watchT = 0; G.watchT0 = 0; G.watchWho = null; }
 
   /* AND THE TWENTY SECONDS THAT ARE NOT WORK.
@@ -18906,6 +18907,11 @@ function watchRing() {
      working perfectly both times. Same lesson as watchFired: a
      transient belongs to the page that owns it. */
   G.watchRingSeen = who;
+  /* and how far into the hold it first appeared, for the same reason:
+     a suite reading G.watchT when it notices the flag reads whatever
+     the clock says by then, which after the payout is the cooldown --
+     "ring from -60s", which is true of nothing */
+  if (!G.watchRingAt) G.watchRingAt = +(G.watchT || 0).toFixed(2);
   const ch = cast[who];
   if (!ch || !ch.group) { el.hidden = true; return; }
   ch.group.getWorldPosition(WATCH_AT);
@@ -21339,6 +21345,7 @@ const testHooks = {
     return {
       who: G.watchWho || null, t: +(G.watchT || 0).toFixed(2), need: G.watchNeed || 6,
       fired: G.watchFired || null, ringSeen: G.watchRingSeen || null,
+      ringAt: G.watchRingAt || 0,
       wants: who, key,
       line: it ? (typeof it === "string" ? it : it.t) : null,
       ring: !!(EL["ns-watch"] && !EL["ns-watch"].hidden),
