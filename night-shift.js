@@ -9366,10 +9366,19 @@ function voxMark() { return SPEECH.live ? SPEECH.mark : -1; }
    the way a subtitle waiting for its speaker should -- and voxAligned
    brings it back to now the moment there is something to follow. */
 const VOX_HELD = 1e6;
-/* the longest voxSpeak ever waits is 3.5s, and it can wait twice in a
-   row -- once for the manifest and once for the take -- so the handle
-   is set past the pair of them and not a second longer */
-const VOX_HOLD_MAX = 7.5;
+/* A BLINK GUARD, NOT THE GUARANTEE.
+
+   This used to be set past the longest pair of waits voxSpeak can ask
+   for, 7.5s, on the theory that the hold was what kept him from
+   speaking to an empty screen. It is not -- tapeRevive is -- and a
+   long hold has a cost: it keeps TAPE.up raised, overTick reads that
+   as "he is speaking", and night two's overheard exchange has about
+   nine seconds of slack before the three o'clock reveal cuts it off.
+   Measured in overcheck, 7.5s of hold per line took two of its four
+   lines away. So the hold only has to cover the ordinary case where
+   the take is a moment behind, and anything longer is caught by the
+   revive. */
+const VOX_HOLD_MAX = 1.5;
 function voxHold(text) {
   const flat = (a) => String(a == null ? "" : a).replace(/\s+/g, " ").trim();
   const want = flat(text);
@@ -9396,7 +9405,7 @@ function voxHold(text) {
    word was lit" -- which is true of the probe's arrival and says
    nothing about his. */
 const VOXALIGN = { calls: 0, hits: 0, last: "", litAtStart: null,
-                   ofAtStart: null, heldAtStart: null };
+                   ofAtStart: null, heldAtStart: null, revivedAtStart: null };
 function voxAligned(text) {
   const flat = (a) => String(a == null ? "" : a).replace(/\s+/g, " ").trim();
   const want = flat(text);
@@ -9404,7 +9413,14 @@ function voxAligned(text) {
   if (!want) { VOXALIGN.last = "no text"; return; }
   const said = (pl) => (pl && pl.words ? flat(pl.words.map((w) => w.text).join(" ")) : "");
   let hit = "";
+  /* ...and if it has already gone, bring it back before reading it */
+  let revived = false;
+  if (!TAPE.up && flat(TAPE.line) === want) {
+    revived = tapeRevive(TAPE.line);
+    if (revived) hit += "revived ";
+  }
   if (TAPE.up && flat(TAPE.line) === want) {
+    VOXALIGN.revivedAtStart = revived;
     /* read the screen BEFORE the clock moves: after the re-zero every
        word is dark by construction, which proves nothing */
     const tel = EL["ns-tape"];
@@ -14452,16 +14468,60 @@ function tapeSay(line, who, through) {
      VOICE_BED for the whole line instead of dipping for a third of a
      second and handing the score back its full level over the rest of
      what he is saying */
+  tapeDraw();
+  return true;
+}
+
+/* PUT THE CURRENT LINE ON THE SCREEN.
+
+   Split out of tapeSay so that voxAligned can put a line BACK -- see
+   tapeRevive. It reads TAPE.plan, TAPE.who and TAPE.through, which
+   all outlive tapeHide, so drawing again is drawing the same caption
+   rather than a new one. */
+function tapeDraw() {
   const el = EL["ns-tape"];
-  if (el) {
-    el.hidden = false;
-    const d = who ? CAST.filter((c) => c.id === who)[0] : null;
-    el.innerHTML =
-      (d ? '<em class="ns-tape-who" style="--c:' + d.colour + '">' + d.name + '</em>' : "") +
-      TAPE.plan.words.map((w, i) => '<i data-w="' + i + '">' + w.text + "</i>").join(" ");
-    el.classList.toggle("them", !!who);
-    el.classList.toggle("through", !!through);
-  }
+  if (!el || !TAPE.plan) return;
+  const who = TAPE.who;
+  el.hidden = false;
+  const d = who ? CAST.filter((c) => c.id === who)[0] : null;
+  el.innerHTML =
+    (d ? '<em class="ns-tape-who" style="--c:' + d.colour + '">' + d.name + '</em>' : "") +
+    TAPE.plan.words.map((w, i) => '<i data-w="' + i + '">' + w.text + "</i>").join(" ");
+  el.classList.toggle("them", !!who);
+  el.classList.toggle("through", !!TAPE.through);
+}
+
+/* HE IS NEVER ALLOWED TO SPEAK TO AN EMPTY SCREEN.
+
+   The hold stops a caption leaving while its take is in the air, and
+   for the ordinary cold load that is the whole of it. It cannot be
+   the whole of it in general, though, because a hold has to have an
+   end -- a take that takes ten seconds, or a deferred speak that
+   never comes back at all, would outlast any deadline that is short
+   enough not to leave a caption stuck.
+
+   So the guarantee is made here instead, where it costs nothing and
+   cannot be outlasted: if the sound is starting and the line that is
+   starting is the line the tape last had up, the tape gets it back.
+   TAPE.plan, TAPE.who and TAPE.through all survive tapeHide, so this
+   is the same caption returning rather than a new one appearing.
+
+   Doing it this way is also what lets the hold be SHORT. An earlier
+   version leant entirely on the hold and gave it seven and a half
+   seconds, which kept TAPE.up raised for that long whenever a take
+   was slow -- and overTick reads TAPE.up as "he is speaking", so
+   night two's overheard exchange, which finishes about nine seconds
+   before the three o'clock reveal cuts it off, lost two of its four
+   lines. Measured in overcheck: 42 before, 41 after. The hold is now
+   a second and a half, which is a blink guard, and this is the
+   promise. */
+function tapeRevive(line) {
+  if (TAPE.up || !TAPE.plan || !TAPE.line) return false;
+  if (String(TAPE.line).trim() !== String(line).trim()) return false;
+  if (!TAPE.on) return false;
+  TAPE.up = true; TAPE.spoke = false; TAPE.tail = TAPE_TAIL;
+  TAPE.speakT = TAPE.plan.dur + 1.1;
+  tapeDraw();
   return true;
 }
 
@@ -15572,7 +15632,20 @@ function tapeTick(dt) {
        for now. */
     if (TAPE.held) {
       TAPE.heldLeft -= dt;
-      if (perf() >= TAPE.heldUntil || TAPE.heldLeft <= 0) TAPE.held = false;
+      if (perf() >= TAPE.heldUntil || TAPE.heldLeft <= 0) {
+        /* AND GIVE IT ITS CLOCK BACK WHEN THE HOLD RUNS OUT.
+
+           voxHold parks t0 a million seconds in the future so that no
+           word is ever due while the take is in the air. If the hold
+           then expires by deadline rather than by voxAligned, nobody
+           has put that clock back -- and the line would serve its
+           whole reading time with every word dark and then hide,
+           which is worse than the bug the hold was written for. The
+           line reads from here, on its own clock, exactly as it would
+           have if there had never been a take to wait for. */
+        TAPE.held = false;
+        TAPE.t0 = perf();
+      }
     }
     if (voxTalking()) { TAPE.spoke = true; TAPE.tail = TAPE_TAIL; TAPE.held = false; }
     else if (TAPE.spoke) TAPE.tail -= dt;

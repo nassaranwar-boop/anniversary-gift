@@ -117,11 +117,11 @@ const t = (n, c, note) => { c ? pass++ : fail++;
         const d = N.tapeDebug();
         if (d.held) { held = true; if (d.speakT < lowSpeakT) lowSpeakT = d.speakT; }
         if (d.vox) { into = N.tapeInto(); litThen = lit(); shownThen = d.shown; break; }
-        /* AND IT MUST NOT LEAVE WHILE HE IS ON HIS WAY.
-           Not "did it come back": once tapeHide runs the element is
-           emptied and TAPE.up is false, so voxAligned can no longer
-           find the caption to realign, and he says it to nothing. */
-        if (!d.shown) { wentAway = true; break; }
+        /* it may leave while he is on his way -- the hold is only a
+           blink guard now -- but it must be back by the time he
+           speaks, which tapeRevive promises and litAtStart measures.
+           Record the disappearance, do not stop watching for it. */
+        if (!d.shown) wentAway = true;
         const l = lit();
         if (l.on > litWhileWaiting) litWhileWaiting = l.on;
         await sleep(20);
@@ -141,7 +141,7 @@ const t = (n, c, note) => { c ? pass++ : fail++;
       const rec = { line: txt, dropped: id, took, words, held, wentAway,
                     litWhileWaiting, shownThen, lowSpeakT,
                     litAtStart: al.litAtStart, ofAtStart: al.ofAtStart,
-                    heldAtStart: al.heldAtStart,
+                    heldAtStart: al.heldAtStart, revivedAtStart: al.revivedAtStart,
                     intoWhenHeSpoke: into, litWhenHeSpoke: litThen };
       tries.push(rec);
       if (took === 'tape') { got = rec; break; }
@@ -174,7 +174,8 @@ const t = (n, c, note) => { c ? pass++ : fail++;
   console.log(`  take ${r.dropped} dropped, so it had to be fetched the way a cold phone fetches it`);
   console.log(`  it went out by the ${r.took} path`);
   console.log(`  words already written when he began, read from inside: ` +
-              r.litAtStart + ' of ' + r.ofAtStart + ' (still held: ' + r.heldAtStart + ')');
+              r.litAtStart + ' of ' + r.ofAtStart + ' (still held: ' + r.heldAtStart +
+              ', brought back: ' + r.revivedAtStart + ')');
   console.log(`  ...and when this loop next got a turn, ${r.intoWhenHeSpoke}s later: ` +
               (r.litWhenHeSpoke ? r.litWhenHeSpoke.on + ' of ' + r.litWhenHeSpoke.of : 'n/a') +
               ' — the probe\'s arrival, not his');
@@ -191,8 +192,9 @@ const t = (n, c, note) => { c ? pass++ : fail++;
      asserted on whichever line the run ended up with. */
   t('the caption is held while his take is in the air', r.held === true,
     r.held ? 'held' : 'nothing stopped its reading clock');
-  t('it is still on the screen when the wait ends', r.wentAway === false,
-    r.wentAway ? 'it hid itself before anything spoke' : 'still up');
+  t('it is on the screen when the wait ends',
+    r.shownThen !== false,
+    r.wentAway ? 'it went away mid-wait and came back' : 'never left');
   t('and it sits unlit for the whole of that wait', r.litWhileWaiting === 0,
     r.litWhileWaiting + ' word(s) lit against silence');
 
@@ -201,8 +203,12 @@ const t = (n, c, note) => { c ? pass++ : fail++;
      with, and asserting against one measures nothing */
   if (r.took === 'tape') {
     t('he speaks it off the recording, not the synthesiser', true, 'took=tape');
-    t('the line was still being held when his voice arrived', r.heldAtStart === true,
-      'held=' + r.heldAtStart);
+    /* either of the two is a pass, because they are the same promise:
+       the hold keeps it there for the ordinary short wait, and the
+       revive puts it back when the wait outlasts the hold */
+    t('the caption was there for him, held or brought back',
+      r.heldAtStart === true || r.revivedAtStart === true,
+      'held=' + r.heldAtStart + ' revived=' + r.revivedAtStart);
     t('and not one word was written before he said it', r.litAtStart === 0,
       r.litAtStart + ' of ' + r.ofAtStart + ' already lit');
   } else {
