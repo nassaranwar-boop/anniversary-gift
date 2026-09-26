@@ -129,6 +129,25 @@ function wav(channels, rate) {
       rr2 += r.right[i] * r.right[i];
     }
     const corr = lr / Math.max(1e-9, Math.sqrt(ll * rr2));
+
+    /* THE NOISE FLOOR, which is how you catch a constant background
+       bed without being able to hear it.
+       A track made of drums and notes has GAPS — the quarter-second
+       between two hits, the bar where the band stops — and in those
+       gaps it should approach silence. A continuous layer, a looping
+       noise bed left running under everything, cannot get quiet by
+       definition, so the quietest window in the whole piece never
+       drops. Comparing that window to the average is therefore a
+       direct measurement of "is something humming behind this", and it
+       needs no ears at all. Below about a fortieth of the average is
+       clean; a third of it means a bed. */
+    let floorR = 1e9;
+    const win = Math.round(r.rate * 0.25);
+    for (let a = 0; a + win < r.left.length; a += win) {
+      let q = 0;
+      for (let i = a; i < a + win; i++) q += r.left[i] * r.left[i];
+      floorR = Math.min(floorR, Math.sqrt(q / win));
+    }
     /* THE SHAPE OF THE SONG, AS NUMBERS.
        Eight bars with a hole in bar four is the whole design; if the
        drop is not measurably quieter than the bar that follows it, the
@@ -193,7 +212,7 @@ function wav(channels, rate) {
                 groove: r.groove, title: r.title, grows: grows,
                 sections: { intro, chorus, brk, last },
                 crest: 20 * Math.log10(Math.max(1e-6, peak) / Math.max(1e-6, rms)),
-                corr: corr,
+                corr: corr, floor: floorR, floorRatio: floorR / Math.max(1e-9, rms),
                 dropOk: shapeOk,
                 silent: peak < 0.0005, clipping: peak > 0.999 });
     if (!all) {
@@ -213,11 +232,12 @@ function wav(channels, rate) {
      "distant" actually mean when somebody says a mix sounds unfinished.
      No amount of turning it up fixes it \u2014 the peaks hit the ceiling
      while the body of the sound stays down. */
-  console.log('\nground       peak     rms       crest   width  bars  oscillators  verdict');
+  console.log('\nground       peak     rms       crest   width  floor   bars  oscillators  verdict');
   rows.forEach(r => console.log(
     r.name.padEnd(12), String(r.peak).padEnd(8), String(r.rms).padEnd(9),
     (r.crest.toFixed(1) + 'dB').padEnd(7),
     r.corr.toFixed(2).padEnd(6),
+    ((r.floorRatio * 100).toFixed(1) + '%').padEnd(7),
     String(r.bars).padEnd(5), String(r.notes).padEnd(12),
     r.silent ? 'SILENT' : (r.clipping ? 'CLIPPING' : 'ok')));
   console.log('\nthe shape of each song, bar by bar (RMS \u00d7 1000):');
@@ -236,7 +256,11 @@ function wav(channels, rate) {
        : '')));
   if (errs.length) console.log('\npage errors: ' + errs.slice(0, 3).join(' | '));
   await browser.close();
-  process.exit(rows.some(r => r.silent || r.clipping
+  rows.forEach(r => { if (r.floorRatio > 0.12) {
+    console.log('   ' + r.name + ': the quietest quarter-second is '
+      + (100 * r.floorRatio).toFixed(0) + '% of the average \u2014 something is'
+      + ' running continuously behind this'); } });
+  process.exit(rows.some(r => r.silent || r.clipping || r.floorRatio > 0.12
                              || (r.profile.length >= 6 && !r.dropOk))
                || errs.length ? 1 : 0);
 })();

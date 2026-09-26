@@ -51,6 +51,13 @@ const ok = (msg, cond, extra) => {
   /* HOLD the ground at each energy: the match writes the value sixty
      times a second and would simply overwrite anything set here. */
   const at = (e) => p.evaluate((ee) => {
+    /* UN-MUTE BEFORE MEASURING. Intermittently every fader read back as
+       exactly zero — their initial value — which means mix() had never
+       run, which means the engine was muted at the moment the harness
+       asked. Whatever lands it there (a visibility change, a wake that
+       arrived out of order), a test of the MIXER should set up the
+       mixer rather than hope. */
+    if (window.CupChant) window.CupChant.mute(false);
     OuissyCup.__cup.energy(ee);
     return new Promise(r => setTimeout(() => r(window.CupChant.debug()), 1100));
   }, e);
@@ -73,7 +80,7 @@ const ok = (msg, cond, extra) => {
   console.log(row('high', hi)); console.log(row('full', max));
   console.log('');
 
-  ok('ambience is on even at nothing', lo.layers.ambience > 0.005, lo.layers);
+  ok('ambience is on even at nothing', lo.layers.ambience > 0.001, lo.layers);
   ok('the clap is not, at nothing', lo.layers.pulse < 0.01, lo.layers);
   ok('the full chant is not, at nothing', lo.layers.chant < 0.01, lo.layers);
   ok('the clap comes in before the chant does',
@@ -88,9 +95,9 @@ const ok = (msg, cond, extra) => {
      normalising it back up, that noise was most of what anybody heard.
      It belongs well under the drums, and this now says so. */
   ok('and everything is up at full', max.layers.chant > 0.2
-     && max.layers.pulse > 0.15 && max.layers.ambience > 0.008, max.layers);
+     && max.layers.pulse > 0.15 && max.layers.ambience > 0.002, max.layers);
   ok('the drums are the loudest thing in the mix, as they are in the street',
-     max.layers.drums > max.layers.ambience * 8, max.layers);
+     max.layers.drums > max.layers.ambience * 20, max.layers);
   ok('every layer only ever goes up with energy',
      max.layers.pulse >= hi.layers.pulse && hi.layers.pulse >= mid.layers.pulse
      && max.layers.chant >= hi.layers.chant, [mid.layers, hi.layers, max.layers]);

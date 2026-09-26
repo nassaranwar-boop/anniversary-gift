@@ -1832,8 +1832,10 @@ window.CupChant = (function () {
      ======================================================================= */
   function levels(e, d) {
     return {
-      /* a texture, not an instrument */
-      ambience: (0.006 + e * 0.008) * d,
+      /* A TEXTURE, NOT AN INSTRUMENT — and a second one, because cup.js
+         already runs a crowd bed of its own through the same master.
+         This is the thin top of that, not the whole thing. */
+      ambience: (0.002 + e * 0.004) * d,
       pulse: Math.max(0, (e - 0.22) / 0.78) * 0.22 * d,
       hum: Math.max(0, (e - 0.30) / 0.45) * 0.18 * d,
       /* THE BAND STARTS EARLY AND STAYS. A record does not fade its
@@ -2084,6 +2086,19 @@ window.CupChant = (function () {
         L[k].gain.cancelScheduledValues(0);
         L[k].gain.setValueAtTime(v[k], 0);
       });
+      /* NO CROWD BED IN A MUSIC FILE.
+
+         The ambience layer is a loop of band-passed noise — a stadium
+         murmur. In the game that belongs under the match; in a
+         rendered .wav it is a constant hiss behind the music with
+         nothing to justify it, and since the renderer normalises the
+         file it comes up with everything else. It is also a
+         DUPLICATE: cup.js runs its own crowd noise bed through the
+         same master, so the game had two of them. */
+      if (L.ambience) {
+        L.ambience.gain.cancelScheduledValues(0);
+        L.ambience.gain.setValueAtTime(0, 0);
+      }
       bar = 0;
       var t = 0.05, n = 0;
       while (t < seconds) { scheduleBar(t); t += beatSecs() * 4; n++; }
