@@ -1965,6 +1965,25 @@ const NS = {
     theyWatched: { after: 4, by: [4, 4], who: "chime",
                    t: "You can stop looking at me now. I only go round. I have gone round this shop every night for eleven years and I have never once been anywhere." },
 
+    /* AND THE OTHER TWO, WHO NEVER ANSWERED BEING LOOKED AT.
+
+       Holding a camera on one of the four for six seconds is already
+       a trigger in this chapter and it pays out exactly twice in six
+       nights: Cogsworth early and Chime on night four. Worse, which
+       line came back was chosen by the NIGHT and not by who she was
+       actually watching, so a player who held the tube on Jax could
+       be answered by the soldier.
+
+       They each answer for themselves now, and the two who never had
+       anything to say have it. Marabelle is the one who cannot move
+       while she is watched, so being looked at is the whole of her
+       condition and she is the one for whom it is not a neutral
+       thing. Jax is the one who knocks. */
+    seenMarabelle: { after: 2, who: "marabelle",
+                   t: "You have found the one that works. I cannot move while you are looking at me. Neither can you, and you have not noticed yet." },
+    seenJax:     { after: 3, who: "jax",
+                   t: "Go on then. Nobody has looked at this one for long enough to see what it is. That is not a complaint, it is just the first true thing I have said." },
+
     /* NIGHT FIVE. The one that knocks explains why it knocks, on the
        night before it is going to matter. */
     /* AND THE THING HE COULD NOT SAY.
@@ -14730,11 +14749,11 @@ function sayClear2(on) {
    Each is once, ever, and each waits for a quiet moment the same way
    his lines do -- so none of them ever talks over him. */
 function tapeTrigger(key) {
-  if (!TAPE.on || !NS.tapeWhen) return;
+  if (!TAPE.on || !NS.tapeWhen) return false;
   const it = NS.tapeWhen[key];
-  if (!it) return;
+  if (!it) return false;
   const line = typeof it === "string" ? it : it.t;
-  if (!line || TAPE.said[line]) return;
+  if (!line || TAPE.said[line]) return false;
   /* AND NOT AGAIN ON A LATER NIGHT.
 
      This is the other door into the same room: tapeDue picks lines off
@@ -14744,9 +14763,10 @@ function tapeTrigger(key) {
      happens twice -- which is how the line about the brass plate on her
      desk, the single most deliberate thing any of them says to her in
      six nights, arrived on night three and then again on night four. */
-  if (wasTold(line)) return;
-  if (typeof it !== "string" && it.after && G.night < it.after) return;
+  if (wasTold(line)) return false;
+  if (typeof it !== "string" && it.after && G.night < it.after) return false;
   TAPE.pending = typeof it === "string" ? { t: line } : it;
+  return true;
 }
 
 /* WHAT IS WRITTEN TO HAPPEN, HAPPENS.
@@ -16541,7 +16561,7 @@ function buildUI() {
   ["ns-stage", "ns-canvas", "ns-mon", "ns-static", "ns-camname", "ns-mon-lost",
    "ns-map", "ns-hud", "ns-power", "ns-bar-f", "ns-usage", "ns-clock", "ns-nightlab",
    "ns-warn", "ns-edge", "ns-pause-btn", "ns-pad", "ns-overlay", "ns-mon-time",
-   "ns-say", "ns-egg", "ns-find", "ns-odd", "ns-look", "ns-tutor", "ns-cine", "ns-key", "ns-task", "ns-winds",
+   "ns-say", "ns-egg", "ns-find", "ns-odd", "ns-look", "ns-watch", "ns-tutor", "ns-cine", "ns-key", "ns-task", "ns-winds",
    "ns-tape"].forEach((id) => {
     EL[id] = el(id);
   });
@@ -17831,6 +17851,7 @@ function uiTick(dt) {
   findHotspot();
   oddHotspot();
   lookHotspot();
+  watchRing();
   windHotspot();
   windPips();
 
@@ -17847,17 +17868,31 @@ function uiTick(dt) {
       .filter((c) => c && c.awake && !c.atDoor && c.room === G.cam)[0];
     if (seen && G.watchCam === G.cam) {
       G.watchT = (G.watchT || 0) + dt;
+      G.watchWho = seen.def.id;
       /* on the first two nights it is three seconds and it is the
          soldier saying he knows who she is, because the chapter needs
          one of them to be a person before it needs one of them to be
          self-aware. After that it is six, and it is the owl. */
       const early = G.night <= 2;
-      if (G.watchT > (early ? 3 : 6)) {
-        tapeTrigger(early ? "theySeen" : "theyWatched");
-        G.watchT = -60;
+      G.watchNeed = early ? 3 : 6;
+      if (G.watchT > G.watchNeed) {
+        /* THE ONE SHE IS ACTUALLY LOOKING AT ANSWERS.
+
+           This used to pick by the night rather than by who was on
+           the tube, so a player holding the camera on Jax could be
+           answered by the soldier in the next room. Each of them has
+           its own now; the night-based pair are still the fallback,
+           because they carry gates and deadlines of their own and
+           losing those would lose two written beats. */
+        const fired = tapeTrigger(WATCH_SAYS[seen.def.id] || "")
+                   || tapeTrigger(early ? "theySeen" : "theyWatched");
+        /* a real answer rests it; nothing to say rests it briefly, so
+           that holding the tube on a fifth thing is not punished by a
+           minute of the ring refusing to appear */
+        G.watchT = fired ? -60 : -8;
       }
-    } else { G.watchCam = G.cam; G.watchT = 0; }
-  } else if (G.watchT > 0) G.watchT = 0;
+    } else { G.watchCam = G.cam; G.watchT = 0; G.watchWho = null; }
+  } else if (G.watchT > 0) { G.watchT = 0; G.watchWho = null; }
 
   /* AND THE TWENTY SECONDS THAT ARE NOT WORK.
 
@@ -18736,6 +18771,65 @@ function buildOddProp(kind) {
    then they are the sort of thing that tells her. Six nights, six
    pages, in her hand by the end whether or not she is any good at
    this. */
+/* which of them answers being looked at. The two the chapter already
+   had are keyed by the beat they belong to rather than by name, so
+   they are mapped rather than renamed -- renaming them would change
+   their take ids and silence two rendered lines. */
+const WATCH_SAYS = {
+  cogsworth: "theySeen",
+  chime:     "theyWatched",
+  marabelle: "seenMarabelle",
+  jax:       "seenJax",
+};
+
+/* AND SHE HAS TO BE ABLE TO SEE IT WORKING.
+
+   Six seconds is a long time to hold a camera on something for no
+   stated reason, and nothing in the chapter ever said that holding it
+   does anything at all. The mechanic has been in here for versions
+   and pays out twice in six nights, which means most players never
+   learn the verb exists -- they glance, because glancing is what the
+   power budget teaches, and the one thing that rewards not glancing
+   is invisible.
+
+   So while she is holding one, and only while there is actually
+   something to be had, a thin ring fills next to it. It appears a
+   little into the hold rather than instantly, so a sweep does not
+   strobe rings across the shop, and it does not appear at all once
+   that one has said its piece -- a signal that promises nothing is
+   worse than no signal. */
+function watchWant() {
+  if (G.phase !== "play" || !G.monitor || G.monOut > 0) return null;
+  if (!G.watchWho || !(G.watchT > 0)) return null;
+  const key = WATCH_SAYS[G.watchWho];
+  const it = key && NS.tapeWhen ? NS.tapeWhen[key] : null;
+  const line = it ? (typeof it === "string" ? it : it.t) : null;
+  if (!line || TAPE.said[line] || wasTold(line)) return null;
+  if (typeof it !== "string" && it.after && G.night < it.after) return null;
+  return G.watchWho;
+}
+
+const WATCH_AT = new T.Vector3();
+function watchRing() {
+  const el = EL["ns-watch"];
+  if (!el) return;
+  const who = watchWant();
+  const need = G.watchNeed || 6;
+  const p = who ? clamp((G.watchT || 0) / need, 0, 1) : 0;
+  if (!who || p < 0.12) { el.hidden = true; return; }
+  const ch = cast[who];
+  if (!ch || !ch.group) { el.hidden = true; return; }
+  ch.group.getWorldPosition(WATCH_AT);
+  WATCH_AT.y += (ch.group.userData.eyeY || 1.4) * 0.62;
+  _proj.copy(WATCH_AT).project(view);
+  const x = (_proj.x * 0.5 + 0.5) * 100, y = (-_proj.y * 0.5 + 0.5) * 100;
+  if (_proj.z > 1 || x < 3 || x > 97 || y < 3 || y > 97) { el.hidden = true; return; }
+  el.hidden = false;
+  el.style.left = x + "%";
+  el.style.top = y + "%";
+  el.style.setProperty("--p", p.toFixed(3));
+}
+
 /* TURN THE SEAT TOWARDS SOMETHING, THE WAY A DRAG DOES.
 
    The view is the chair's resting quaternion with a yaw of panX*0.34
@@ -21146,6 +21240,25 @@ const testHooks = {
      that pokes G.cam leaves the view wherever it was and then reports
      that nothing is ever visible anywhere */
   camTo: (id) => { if (!G.monitor) toggleMonitor(); selectCam(id); return G.cam; },
+  /* holding a camera on one of them: who is being watched, how far
+     through the hold she is, whether there is anything to be had for
+     it, and what it would say */
+  watching: () => {
+    const who = watchWant();
+    const key = who ? WATCH_SAYS[who] : null;
+    const it = key && NS.tapeWhen ? NS.tapeWhen[key] : null;
+    return {
+      who: G.watchWho || null, t: +(G.watchT || 0).toFixed(2), need: G.watchNeed || 6,
+      wants: who, key,
+      line: it ? (typeof it === "string" ? it : it.t) : null,
+      ring: !!(EL["ns-watch"] && !EL["ns-watch"].hidden),
+      says: Object.keys(WATCH_SAYS).map((id) => {
+        const k2 = WATCH_SAYS[id], i2 = (NS.tapeWhen || {})[k2];
+        return { id, key: k2, who: i2 && i2.who, after: i2 && i2.after,
+                 t: i2 ? (typeof i2 === "string" ? i2 : i2.t) : null };
+      }),
+    };
+  },
   /* the office, and what is left in it to turn to */
   looks: () => ({
     defined: (NS.deskThings || []).map((d) => d.id),

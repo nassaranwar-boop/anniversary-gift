@@ -8757,6 +8757,28 @@ img{-webkit-user-drag:none; user-select:none;}
 .ns-look:hover::after, .ns-look:focus-visible::after{ opacity:1; inset:18%; transition:opacity .2s ease; }
 .ns-look[hidden]{ display:none !important; }
 
+/* IT IS NOTICING THAT SHE IS LOOKING AT IT.
+
+   Not a button -- she is not meant to press this, she is meant to
+   keep doing what she is already doing -- so it takes no pointer
+   events and is not focusable. A ring that closes as the hold fills,
+   drawn with a conic gradient so there is no SVG and no second
+   element to keep in step, and deliberately dim: the point is that
+   the shop is reacting to her, not that a meter is filling. */
+.ns-watch{
+  position:absolute; z-index:7; transform:translate(-50%,-50%);
+  pointer-events:none;
+  width:max(6.4cqh, 40px); height:max(6.4cqh, 40px);
+  border-radius:50%;
+  --p:0;
+  background:conic-gradient(rgba(255,214,158,.55) calc(var(--p) * 360deg),
+                            rgba(255,214,158,.07) 0);
+  -webkit-mask:radial-gradient(circle, transparent 58%, #000 60%, #000 72%, transparent 74%);
+          mask:radial-gradient(circle, transparent 58%, #000 60%, #000 72%, transparent 74%);
+  opacity:.9;
+}
+.ns-watch[hidden]{ display:none !important; }
+
 .ns-card-find .ns-paper{ max-width:60cqw; }
 .ns-card-find .ns-from{ color:var(--ns-brass); }
 

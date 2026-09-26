@@ -93,10 +93,12 @@ const t = (n, c, note) => { c ? pass++ : fail++;
 
   t('every one of them has something to say',
     r.l0.lines.every((d) => d.t && d.t.length > 12),
-    r.l0.lines.filter((d) => !d.t).map((d) => d.id).join(', ') || 'all five');
+    r.l0.lines.filter((d) => !d.t).map((d) => d.id).join(', ') || 'all ' + r.l0.lines.length);
   t('and the chair can turn to every one of them',
     r.reach.every((x) => x.got),
-    r.reach.filter((x) => !x.got).map((x) => x.id).join(', ') || 'all five inside the arc');
+    r.reach.filter((x) => !x.got).map((x) => x.id).join(', ') ||
+      'all ' + r.reach.length + ' inside the arc, ' +
+      r.reach.filter((x) => x.aim && Math.abs(x.aim.panTX) >= 0.999).length + ' of them only at full pan');
 
   if (r.took) {
     console.log('  looked at "' + r.took.id + '": phase ' + r.took.phase + ', ' +
