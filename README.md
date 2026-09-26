@@ -152,9 +152,43 @@ test.**
   `waitForFunction` takes `(fn, arg, options)`, and passing options
   second puts them in the argument slot. A stated 180000 died at 30000.
 
-**Green after all of it:** misbehave 2, overcheck 42, midcheck 67,
-saycheck 20, revealcheck 7, newplayer 5, standcheck 21,086 samples.
-Cache at v322.
+**One more fault came out of measuring the fix.** `synccheck`
+reported `litAtStart: 5 of 5, heldAtStart: false` — the 1.5s hold had
+expired, the line had begun reading on its own clock, and `voxAligned`
+then re-zeroed. On the silent path that costs nothing. On the tape
+path it means a take arriving after the hold darkens words she has
+already read and lights them again — the same objection, in miniature,
+and it is the ordinary case on a slow connection, which is the case
+the hold exists for. So the word test only ever turns a word ON. The
+clock under it may still move backwards, because that re-zero is what
+keeps a recording and its subtitle together; it just may not cost her
+anything to look at. Every line is drawn fresh by `tapeDraw`, so the
+next one starts dark whatever this one ended as.
+
+**And the tape path can now be asked about at all.** Every run of
+`synccheck` waits for a dropped take to come back and none ever does
+inside `voiceWait`'s 2.6 seconds here, so the two assertions that
+matter most about a recording went unasked every time — correctly
+reported as not claimed rather than passed. `voxAlignNow` is the hook
+`voxSpeak` itself calls the instant `voicePlay` starts, so calling it
+by hand is the arrival: same function, same turn, same state. It does
+not prove audio reached the speakers, and the output keeps the two
+apart. Measured: 9 words written before the sound started, 9 after,
+then 9 of 28 to all 28 as the voice carried on.
+
+**Green after all of it:** misbehave 2, synccheck 6, overcheck 42,
+midcheck 67, saycheck 20, revealcheck 7, voicecold 4, newplayer 5,
+standcheck 21,086 samples. Cache at v322.
+
+`voicecold` is worth a note for whoever runs these next. It failed
+twice at "169 of 270 takes in memory" and "179 of 270", which looked
+like a regression and is not one: it waits 60 seconds for all 270
+takes to fetch and decode four at a time on the main thread, and this
+container cannot always do it. Settled the same way as `overcheck` —
+the pre-session chapter against the current harness — and then twice
+more on the current chapter with the machine idle: 4 of 4 every time,
+43 takes in memory, identical either side. The comment above its own
+wait already records this happening once before.
 
 **NEXT:** unchanged and still his call — the nine `sidebyside` failures
 in gate, hub, keepsake and apocalypse at landscape-phone sizes, which
