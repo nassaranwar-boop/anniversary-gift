@@ -13,6 +13,127 @@ landed, what is half-done and what the next session should do first.
 **Add a new entry every session.** Anything not written down here is
 lost when the container is reclaimed.
 
+### 2026-09-26 — the week played through, and three things only playing could find
+
+**Asked for:** the same thing again, in his words — play Ouissy's Night
+Shift in its branch, every button, every placement, every line, every
+sound, as a visitor and not only as code, and fix whatever is wrong.
+
+**What made this session different from the last one** is that the
+nights were actually played. The previous pass analysed the chapter and
+fixed ten things; it never got a shift from midnight to six. Three
+faults came out of doing that, and none of them were findable by
+reading.
+
+**1. The opening film's SKIP could not be seen.** A minute of his
+statement plays before anyone touches anything, and the way out of it
+was invisible. `.ns-cine::after` is the bottom letterbox bar and, being
+an `::after`, it paints after every child of `.ns-cine`; the button sits
+at `bottom:3.4%` and the bar is an opaque 11%. On a laptop the bar is 57
+pixels and the button 44, so it was swallowed whole; on a phone it took
+the bottom half. The button was in the DOM on every beat, faded in on
+cue, and answered a click the entire time. The terms card gave it away:
+same class, plainly visible, because it mounts in the overlay where
+there is no bar. Fixed with `z-index:2`.
+
+`nightskip.js` is the suite that should have caught it and asserted
+nothing at all — it called `elementFromPoint` on the button's middle,
+printed "a finger there lands on: ns-cine", and moved on. Playwright's
+`isVisible()` said true throughout, because to it a box without
+`display:none` is visible. It judges now, at three shapes: 30 checks.
+
+**2. The hour turned through the middle of what Chime was saying.** At
+two o'clock on night one, "HOUR ZERO TWO." printed in its own dark plate
+across the words "and she was sitting". Both captions in the same
+pixels, neither readable. The strip and the tape had fixed offsets,
+which is fine while the tape is one line of his and wrong the moment it
+is three — a name, a line, and THROUGH THE DOOR — which is most of what
+it is once the four of them start talking. The objection was already
+written into the code four lines above, about orientation: two boxes of
+words stacked on each other read as a bug. It had never been applied to
+his tape. `sayClear2()` measures the caption and hands CSS the lift as
+`--ns-say-lift`; a caption that has not changed costs one integer
+compare. Measured after: laptop lifts 50px, the two phone shapes need
+none and get none.
+
+**3. Night one promised something it does not do.** Its line at midnight
+was "Learn where things are. Nothing in here wants to hurt you yet."
+Its roster is `{ cogsworth: 0, marabelle: 2, jax: 4 }` — one of them
+walking from the moment the clock starts, three by four o'clock,
+including the one with the shortest patience at a door. Played cold,
+taking that line at its word, the first night was lost five times.
+Midnight now says one of them is already up, and a new four o'clock line
+says the thing a new player cannot know: that Jax does not wait. His own
+tape at 2:48 still says "Nothing in this shop wants to hurt you. I want
+to say that on the first night, while it is still true" — that one
+stays. The shop's readout tells her the truth and he tells her a
+comforting half-truth, which is better than either alone.
+
+**What the playing said about the game itself.** Nights one to four were
+survived first time each once the driver stopped playing badly. The
+end-of-night card reads the play rather than reporting it — STEADY on
+one and two, RATTLED ("it got close, twice") on three. The keeper card,
+when one of his gets to the door first, is the best writing in the
+chapter and wanted nothing. Two things that looked like faults were the
+game being right, and both are worth keeping in mind: Marabelle's death
+card says "do not take your eyes off me" while night two's tape at 2:10
+says "Do not look at her all night, though. You will lose the meter and
+she will still be there" — obeying either alone loses the night, and
+both halves are written where a player meets them. And night five's
+instruction to wind all four is not decoration: a run that stopped
+winding to save meter blacked out at five.
+
+**Four faults that were the harness, not the shop**, all of which read
+like game bugs until they were chased down, and worth recording so the
+next session does not chase them again:
+
+- The pad debounces every button at 320ms so one tap cannot count
+  twice. The driver's ticks are 94ms apart, so it spent the window on
+  futile repeats and lost the press that mattered. Five night-one
+  deaths. A direct probe cleared the shop first: with the monitor up one
+  pointerdown shuts the door, an immediate second press is swallowed,
+  one 340ms later is honoured.
+- The driver excluded talking toys from "at the door". A toy that speaks
+  while standing at one stopped counting, the driver opened the door on
+  it, and `toggleDoor` gives "a moment, and only a moment" — 1.3
+  seconds, shorter than a tick. Six night-five deaths and four on six.
+  The shop never lied: its edge glow uses `ch.awake && ch.atDoor` with
+  no such exclusion, so the amber stays lit and a watching player holds
+  the door.
+- Parking the camera on Marabelle all night, which is half of what the
+  game tells her, ran the reserve to nothing.
+- `saycheck`'s own new rule failed twice before it was right: it
+  announced once and slept past the strip's `captionT`, and it cleared
+  localStorage so orientation was running, and the annunciator is
+  suppressed during orientation on purpose.
+
+**Also:** `introshot` now asks the second half of its question. Nine
+rays through the middle answer "is the lens buried"; they do not answer
+the foyer beat's large pale slab in the corner, which playing raised. A
+9x9 grid over the whole frame and a 42% ceiling on how much of it may be
+within arm's reach: the foyer is 28% at its worst and the other six are
+11% or less, so the slab is foreground framing and not a wall the camera
+backed into. 14 checks.
+
+**The driver.** This container draws the shop at 0.7 frames a second and
+the frame loop clamps dt to a tenth, so the game's clock runs at a
+fifth to a fourteenth of real time and six nights take most of a day —
+which is why every earlier attempt at a full playthrough was killed.
+`_nightplay4.js` moves the whole tick inside the page, keeps every
+control a real pointer event, and carries only the clock, in
+thirtieth-of-a-second slices of the same playStep the loop runs. A
+chunk of twenty ticks costs about 1.8 seconds. `FROM=n` starts at a
+chosen night for looking at one night's shape.
+
+**Green:** nightskip 30, saycheck 20, introshot 14. Cache at v321.
+
+**NEXT:** the six nights have been played one to four straight through
+and five and six only in pieces; a full week in one sitting is still
+worth having, and the driver can now do it. After that, the nine
+`sidebyside` failures in the other four chapters — gate, hub, keepsake
+and apocalypse at landscape-phone sizes — which are still the oldest
+open thing here and are not in the night shift.
+
 ### 2026-09-25 — the night shift, played cold and taken apart
 
 **Asked for:** play the night shift in its branch and analyse everything
