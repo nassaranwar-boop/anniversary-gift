@@ -18628,9 +18628,23 @@ function findSpots(rec, minY, wide) {
                  d: (px - 50) * (px - 50) + (py - 50) * (py - 50) });
   }
   rec.group.visible = wasVisible;
-  /* nearest the middle of the picture first, so the first one out is
-     the one a page has always had */
-  found.sort((a2, b2) => a2.d - b2.d);
+  /* ONLY THE CLUTTER IS SORTED, AND THIS IS NOT A DETAIL.
+
+     spaceOut wants the candidates nearest the middle of the picture
+     first so that the thing it hands out is the most visible one the
+     room can still afford. A page does not go through spaceOut and
+     never needed it -- and sorting its list moved three of the six.
+
+     Which sounds harmless until you read what the cards say. Chime's
+     is found "on the ledge over the front door, where something
+     roosts": the raster order put it at y 1.38, ledge height, and
+     the sort moved it to 1.03, which is a table. The last page is
+     "under a dust sheet at the back of the stage": 0.89 became 1.45.
+     The placement is procedural and the prose is not, and they had
+     been quietly agreeing with each other. So the pages keep the
+     order they have always had, exactly, and the sort belongs to the
+     things it was added for. */
+  if (wide) found.sort((a2, b2) => a2.d - b2.d);
   return found;
 }
 
