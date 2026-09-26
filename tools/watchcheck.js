@@ -76,7 +76,7 @@ const t = (n, c, note) => { c ? pass++ : fail++;
            hold */
         if (w.ring && w.t > 0 && !sawRing) { sawRing = true; ringAt = +w.t.toFixed(2); }
         if (w.fired) { fired = w.fired; break; }
-        await new Promise((x) => setTimeout(x, 120));
+        await new Promise((x) => setTimeout(x, 60));
       }
       /* AND LET IT ACTUALLY BE SAID.
 
@@ -87,8 +87,16 @@ const t = (n, c, note) => { c ? pass++ : fail++;
          Cogsworth afterwards, correctly, because she had never
          actually been told anything. */
       if (fired) {
-        const byS = Date.now() + 15000;
-        while (Date.now() < byS && N.tape().said < 1) await new Promise((x) => setTimeout(x, 150));
+        /* WAIT FOR THIS LINE, NOT FOR A LINE.
+
+           tape().said counts every line said tonight, and a running
+           night says plenty of its own -- so "said >= 1" was
+           satisfied by whatever the shift happened to be saying and
+           the one just queued had still not been spoken. Wait for it
+           to be on the screen, which is the moment tapeSay marks it
+           told. */
+        const byS = Date.now() + 25000;
+        while (Date.now() < byS && N.tape().line !== row.t) await new Promise((x) => setTimeout(x, 150));
       }
       const w2 = N.watching();
       runs.push({ id: row.id, night, key: row.key, want: row.t,
@@ -97,15 +105,16 @@ const t = (n, c, note) => { c ? pass++ : fail++;
 
       /* the honesty check rides on the first one, here, while it is
          still the same night and the line has just been spoken */
-      if (!honest && fired) {
+      if (!honest && fired && N.tape().line === row.t) {
         G().watchCam = null;
         let ring2 = false;
         const by3 = Date.now() + 12000;
         while (Date.now() < by3) {
           if (N.watching().ring) { ring2 = true; break; }
-          await new Promise((x) => setTimeout(x, 120));
+          await new Promise((x) => setTimeout(x, 60));
         }
-        honest = { id: row.id, ring: ring2, wants: N.watching().wants };
+        honest = { id: row.id, ring: ring2, wants: N.watching().wants,
+                   spoken: true };
       }
     }
 
@@ -134,9 +143,10 @@ const t = (n, c, note) => { c ? pass++ : fail++;
     r.runs.every((x) => x.sawRing),
     r.runs.filter((x) => !x.sawRing).map((x) => x.id).join(', ') || 'every time');
   t('but never once there is nothing left to be had',
-    r.honest && r.honest.ring === false,
+    !!r.honest && r.honest.ring === false,
     r.honest ? (r.honest.ring ? 'it promised ' + r.honest.id + ' again, which has already spoken'
-                               : 'stays dark once ' + r.honest.id + ' has spoken') : 'not tested');
+                               : 'stays dark once ' + r.honest.id + ' has spoken')
+             : 'NOT TESTED — no line reached the screen to test it with');
   t('nothing in any of that threw', errs.length === 0, errs.slice(0, 2).join(' | ') || 'clean');
 
   console.log(`\n${pass} passed, ${fail} failed`);
