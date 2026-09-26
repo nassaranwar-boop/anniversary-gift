@@ -38,11 +38,17 @@ const t = (n, c, note) => { c ? pass++ : fail++;
     showScreen('nightshift');
     return loadChapter('nightshift').then(() => OuissysNightShift.start()); });
   await p.waitForFunction(() => { try { return !!OuissysNightShift.__night.cast().jax; } catch (e) { return false; } },
-                          { timeout: 180000, polling: 500 });
+                          /* the second positional is the ARGUMENT, not the
+                             options: passing options there silently leaves
+                             the 30s default in place, which is how a boot
+                             that takes 40s on a busy container came back as
+                             "Timeout 30000ms exceeded" against a stated
+                             180000 */
+                          null, { timeout: 180000, polling: 500 });
   /* voiceWarm has to have actually warmed, or every take looks absent
      and the drop below finds nothing to drop */
   await p.waitForFunction(() => { try { return OuissysNightShift.__night.voiceState().ready.length > 3; }
-                                  catch (e) { return false; } }, { timeout: 180000, polling: 500 });
+                                  catch (e) { return false; } }, null, { timeout: 180000, polling: 500 });
 
   const res = await p.evaluate(async () => {
     const N = OuissysNightShift.__night;

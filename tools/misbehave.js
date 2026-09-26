@@ -50,7 +50,13 @@ const WAIT = Number(process.env.WAIT || 420);
     showScreen('nightshift');
     return loadChapter('nightshift').then(() => OuissysNightShift.start()); });
   await p.waitForFunction(() => { try { return !!OuissysNightShift.__night.cast().jax; } catch (e) { return false; } },
-                          { timeout: 180000, polling: 500 });
+                          /* the second positional is the ARGUMENT, not the
+                             options: passing options there silently leaves
+                             the 30s default in place, which is how a boot
+                             that takes 40s on a busy container came back as
+                             "Timeout 30000ms exceeded" against a stated
+                             180000 */
+                          null, { timeout: 180000, polling: 500 });
   await p.waitForTimeout(1200);
 
   const out = await p.evaluate(async (WAIT) => {

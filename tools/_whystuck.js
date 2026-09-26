@@ -16,7 +16,13 @@ const { chromium } = require('playwright-core');
   await p.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
   await p.evaluate(() => { try { localStorage.clear(); localStorage.setItem('ns_notutor','1'); } catch(e){}
     showScreen('nightshift'); return loadChapter('nightshift').then(() => OuissysNightShift.start()); });
-  await p.waitForFunction(() => { try { return !!OuissysNightShift.__night.cast().jax; } catch(e){ return false; } }, { timeout: 180000, polling: 500 });
+  await p.waitForFunction(() => { try { return !!OuissysNightShift.__night.cast().jax; } catch(e){ return false; } },
+                          null, { timeout: 180000, polling: 500 });
+  /* warm, the way overcheck now warms: a player at two in the morning
+     has the chapter in memory and no line is deferred or held */
+  await p.waitForFunction(() => { try { return OuissysNightShift.__night.voiceState().ready.length > 3; }
+                                  catch(e){ return false; } },
+                          null, { timeout: 180000, polling: 500 });
   const out = await p.evaluate(() => {
     const N = OuissysNightShift.__night, G = N.state(), cast = N.cast();
     N.begin(2);
