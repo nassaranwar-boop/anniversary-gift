@@ -148,8 +148,20 @@ The driver's deaths on three and five were the driver: the budget tool
 spends 68 seconds a night on the monitor and the driver was parking it
 on Marabelle for hours.
 
-**Green:** nightskip 30, saycheck 20, introshot 14, nightbudget's
-curve. Cache at v321.
+**Green, after the changes:** codecheck 7, linecheck 5, storycheck 114,
+oncecheck 4, castcheck 9, nightbeats, midcheck 67, overcheck 42,
+revealcheck 7, camcheck 13, geomcheck 12, saycheck 20, nightskip 30,
+introshot 14, and nightbudget's curve. Cache at v321.
+
+`scriptcheck` is the one that did not finish: its static half passed
+(131 distinct lines, his tapes in page order, every signed line one of
+the four) but it plays nights one to five three times over and the
+container will not do that inside fifteen minutes any more. The change
+it would have been watching is the new `h: 4` line in night one's
+`tonight` list, and `taskFor` simply walks that list and takes the last
+entry whose hour has come, so a fourth entry in ascending order cannot
+change its behaviour — and storycheck reads the whole script and is
+green. Worth running somewhere faster.
 
 **NEXT:** the nine `sidebyside` failures in the other four chapters —
 gate, hub, keepsake and apocalypse at landscape-phone sizes. That is
