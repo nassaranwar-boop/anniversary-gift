@@ -170,17 +170,41 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
       if (u.indexOf('book-scene.js') >= 0) return r.abort();
       return u.startsWith('http://127.0.0.1') ? r.continue() : r.abort(); });
     await q.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded', timeout: 120000 });
-    await q.evaluate(() => { try { localStorage.clear(); } catch (e) {} showScreen('nightshift');
+    await q.evaluate(() => { try { localStorage.clear(); } catch (e) {}
+      /* ORIENTATION SILENCES THE STRIP ON PURPOSE.
+
+         uiTick only shows it when `!tutorOn()` -- "never during
+         orientation, which has its own box saying its own words". With
+         the tutorial running, the annunciator can never appear and this
+         check can never see the thing it is about. So the tutorial is
+         marked seen, which is what the chapter does to a player after
+         one pass anyway. */
+      localStorage.setItem('ns_notutor', '1');
+      showScreen('nightshift');
       return loadChapter('nightshift').then(() => OuissysNightShift.start()); });
     await q.waitForFunction(() => { try { return !!OuissysNightShift.__night.cast().jax; } catch (e) { return false; } },
                             { timeout: 180000, polling: 500 });
     await q.evaluate(() => { const N = OuissysNightShift.__night; N.begin(1); N.midEnd();
       N.tapeSayRaw('He was never four minutes early in his life, and he told her he would be, every night, for fifteen years.',
-                   'chime', true);
-      N.announce('HOUR ZERO TWO.'); });
-    /* the page's own loop is what moves the strip, and a frame in here
-       costs a second and a half */
-    await q.waitForTimeout(4000);
+                   'chime', true); });
+    /* THE STRIP IS ON A TIMER AND THE PAGE DRAWS AT 0.7fps.
+
+       `annunciate` gives the caption a few seconds of `captionT` and
+       uiTick takes it down when that runs out. Announcing once and then
+       sleeping four seconds read a screen the strip had already left:
+       the first version of this failed three times with say hidden and
+       the tape up, which is the opposite of what it is looking for. So
+       it keeps the strip alive and waits for the frame where both are
+       actually on the glass. */
+    await q.evaluate(async () => {
+      const N = OuissysNightShift.__night;
+      for (let i = 0; i < 40; i++) {
+        N.announce('HOUR ZERO TWO.');
+        const t = document.getElementById('ns-tape'), y = document.getElementById('ns-say');
+        if (t && !t.hidden && y && !y.hidden && y.getBoundingClientRect().height) return;
+        await new Promise((r) => setTimeout(r, 250));
+      }
+    });
     const r = await q.evaluate(() => {
       const t = document.getElementById('ns-tape'), y = document.getElementById('ns-say');
       const st = document.getElementById('ns-stage');
