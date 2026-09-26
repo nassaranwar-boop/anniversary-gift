@@ -181,6 +181,24 @@ heading; waiting for `state().state === 'play'` lets the flash decay.
   widened, because widening them throws away the only thing they are
   for. If it fails on one metric by a couple of points, run it again
   before believing it; if it fails the same one twice, believe it.
+- **`cupfeel2.js`** — *can she actually do the four things?* The pad
+  used to be one button meaning four, told apart by how long she held
+  it: a shot had to be held past 170ms and a pass released inside it,
+  so the two most important things you can do with a football were
+  separated by a stopwatch, and there was no dribble at all. This
+  drives the three new buttons the way a thumb does and asks, of each,
+  whether what it claims to do happened to the ball — a tapped shoot
+  lets it go, a held one charges, a tapped pass reaches a team-mate by
+  name, holding RUN turns close control on and letting go turns it
+  off, a tapped RUN knocks the ball loose and leaves a burst behind,
+  and SHOOT without the ball hands her somebody else. 13 checks.
+  Three failed on the first run and all three were the harness, not
+  the game: `step()` was releasing a button the test was holding, the
+  knock was measured while its own cooldown blocked it, and a shot in
+  an earlier block had put the match into a goal kick — a state in
+  which the input step is not called at all, so a held button reads as
+  a dead one.
+
 - **`cuptouch.js`** — *is the ball actually loose?* A ball welded to the
   foot and a ball being dribbled look identical in a screenshot and
   behave nothing alike, so this counts what tells them apart: the gap
