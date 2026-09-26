@@ -9034,6 +9034,21 @@ img{-webkit-user-drag:none; user-select:none;}
   box-shadow:inset 0 0 0 .2cqw rgba(200,162,96,.45), 0 .4cqh 1.2cqh rgba(0,0,0,.6);
 }
 .ns-pause-btn[hidden]{display:none;}
+
+/* TEMPORARY, FOR TESTING — see the block marked TEMPORARY SKIP in
+   night-shift.js. Deliberately ugly and deliberately labelled: a debug
+   control that looks like part of the game is a debug control that
+   ships. */
+.ns-skip-btn{
+  position:absolute; right:1.6cqw; top:max(8.4cqh, 54px); z-index:12;
+  padding:.5cqh 1.1cqw; cursor:pointer;
+  font-family:var(--ns-face); font-size:max(1.5cqh, 10px);
+  letter-spacing:.14em; color:#0d0f0e; white-space:nowrap;
+  background:#d8a72c; border:2px dashed #7a5f10; border-radius:.4cqh;
+  box-shadow:0 .3cqh .9cqh rgba(0,0,0,.6);
+}
+.ns-skip-btn:active{ transform:translateY(.3cqh); }
+.ns-skip-btn[hidden]{display:none;}
 .ns-pause-btn .gl-pause{
   width:max(2.2cqh, 12px); height:max(2.6cqh, 15px);
   background:linear-gradient(90deg, var(--ns-brass) 0 36%, transparent 36% 64%, var(--ns-brass) 64% 100%);

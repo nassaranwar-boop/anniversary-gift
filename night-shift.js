@@ -16583,7 +16583,7 @@ function buildUI() {
   ["ns-stage", "ns-canvas", "ns-mon", "ns-static", "ns-camname", "ns-mon-lost",
    "ns-map", "ns-hud", "ns-power", "ns-bar-f", "ns-usage", "ns-clock", "ns-nightlab",
    "ns-warn", "ns-edge", "ns-pause-btn", "ns-pad", "ns-overlay", "ns-mon-time",
-   "ns-say", "ns-egg", "ns-find", "ns-odd", "ns-look", "ns-watch", "ns-tutor", "ns-cine", "ns-key", "ns-task", "ns-winds",
+   "ns-say", "ns-egg", "ns-find", "ns-odd", "ns-look", "ns-watch", "ns-skip", "ns-tutor", "ns-cine", "ns-key", "ns-task", "ns-winds",
    "ns-tape"].forEach((id) => {
     EL[id] = el(id);
   });
@@ -16634,6 +16634,13 @@ function buildUI() {
     });
   }
   if (EL["ns-pause-btn"]) EL["ns-pause-btn"].addEventListener("click", () => togglePause());
+  /* TEMPORARY SKIP: the whole of its wiring */
+  if (EL["ns-skip"]) {
+    EL["ns-skip"].addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (G.phase === "play") winNight();
+    });
+  }
   if (EL["ns-egg"]) {
     EL["ns-egg"].addEventListener("click", (e) => { e.stopPropagation(); arcadeOpen(); });
   }
@@ -17787,10 +17794,31 @@ function beginGallery() {
   bumpUI();
 }
 
+/* =====================================================================
+   TEMPORARY SKIP — FOR TESTING, AND MEANT TO BE DELETED
+
+   He asked for a way to jump from one night to the next so the chapter
+   can be tested without playing five and a half minutes of every one
+   of them. This is that, and it is written to be removed in one go:
+   this block, the #ns-skip button in index.html, and the .ns-skip-btn
+   rule in style.css. Nothing else in the chapter refers to any of the
+   three, so deleting them cannot break anything.
+
+   It calls winNight, which is the real end of a night and not a
+   shortcut round it: the night is marked done so the next one unlocks,
+   the shift is rated, badges are awarded, and the card that follows is
+   the card she would have got. That matters for testing — a skip that
+   faked the transition would be testing the skip rather than the game.
+
+   Set TEST_SKIP to false, or delete the three pieces, and the chapter
+   is exactly what it was. */
+const TEST_SKIP = true;
+
 function showHud(on) {
   if (EL["ns-hud"]) EL["ns-hud"].hidden = !on;
   if (EL["ns-pad"]) EL["ns-pad"].hidden = !on;
   if (EL["ns-pause-btn"]) EL["ns-pause-btn"].hidden = !on;
+  if (EL["ns-skip"]) EL["ns-skip"].hidden = !(on && TEST_SKIP);
   if (!on && EL["ns-mon"]) EL["ns-mon"].hidden = true;
 }
 
