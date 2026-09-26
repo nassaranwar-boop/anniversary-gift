@@ -125,14 +125,42 @@ thirtieth-of-a-second slices of the same playStep the loop runs. A
 chunk of twenty ticks costs about 1.8 seconds. `FROM=n` starts at a
 chosen night for looking at one night's shape.
 
-**Green:** nightskip 30, saycheck 20, introshot 14. Cache at v321.
+**And the difficulty curve is right, which is the thing the deaths kept
+raising.** `nightbudget.js` exists for exactly this question — it plays
+each night as an attentive guard would, a door shut only while
+something is at it and the monitor up about a fifth of the time, and
+prints where the meter lands:
 
-**NEXT:** the six nights have been played one to four straight through
-and five and six only in pieces; a full week in one sitting is still
-worth having, and the driver can now do it. After that, the nine
-`sidebyside` failures in the other four chapters — gate, hub, keepsake
-and apocalypse at landscape-phone sizes — which are still the oldest
-open thing here and are not in the night shift.
+```
+night 1   50.6% / 46.7%    comfortable
+night 2   42.5%
+night 3   28%
+night 4   17.9%
+night 5   10.4%            on fumes
+night 6   34.7% / 29%      hands to the finale at hour five
+```
+
+Monotonic from fifty down to ten across one to five, which is what its
+own comment says it must be: "Night one should finish comfortable and
+night six on fumes; if that curve is not monotonic, TUNE.power is
+wrong." It is not wrong. Every night is survivable with a real margin.
+The driver's deaths on three and five were the driver: the budget tool
+spends 68 seconds a night on the monitor and the driver was parking it
+on Marabelle for hours.
+
+**Green:** nightskip 30, saycheck 20, introshot 14, nightbudget's
+curve. Cache at v321.
+
+**NEXT:** the nine `sidebyside` failures in the other four chapters —
+gate, hub, keepsake and apocalypse at landscape-phone sizes. That is
+the oldest open thing here and it is not in the night shift, so it
+needs his say-so first: his last scope correction was "No im only
+talking about the ouissy's night shift game."
+
+A full six nights in one unbroken sitting is still not done — one to
+four have each been survived and their cards read, five and six only in
+pieces — but it is no longer answering an open question about the
+chapter, only about the driver. Worth having, not urgent.
 
 ### 2026-09-25 — the night shift, played cold and taken apart
 
