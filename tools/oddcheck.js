@@ -86,7 +86,15 @@ const t = (n, c, note) => { c ? pass++ : fail++;
     /* ---- and taking one: it says its line and the night carries on ---- */
     let took = null;
     {
-      const first = shot.filter((x) => x.in)[0];
+      /* NIGHT ONE FOR THIS, NOT NIGHT SIX.
+
+         Night six carries signalLoss, hallDark and officeDark, and the
+         last hour takes the cameras away outright -- so a check that
+         waits for a hotspot on night six is waiting behind a dropped
+         feed. Night one has no hazards at all, which is the point of
+         night one. */
+      N.begin(1); N.midEnd();
+      const first = N.oddShot().filter((x) => x.in && (N.odds().out.indexOf(x.id) >= 0))[0];
       if (first) {
         /* through the real control: poking G.cam moves the label and
            leaves the view where it was, and oddHotspot projects
@@ -100,11 +108,13 @@ const t = (n, c, note) => { c ? pass++ : fail++;
            Marabelle. */
         for (let i = 0; i < 60 && !N.odds().near; i++) await sleep(250);
         const before = N.odds();
+        took = { why: before.why, cam: before.cam, monitor: before.monitor,
+                 phase: before.phase, el: before.el };
         const said = before.near ? N.oddTake() : null;
         const after = N.odds();
-        took = { id: before.near, said, phase: G().phase,
+        Object.assign(took, { id: before.near, said, phase: G().phase,
                  wasOut: before.out.length, nowOut: after.out.length,
-                 stillThere: after.out.indexOf(before.near) >= 0 };
+                 stillThere: after.out.indexOf(before.near) >= 0 });
       }
     }
 
@@ -135,7 +145,9 @@ const t = (n, c, note) => { c ? pass++ : fail++;
     console.log('\n  took "' + r.took.id + '": phase ' + r.took.phase +
                 ', ' + r.took.wasOut + ' out -> ' + r.took.nowOut +
                 '\n    it said: ' + JSON.stringify(String(r.took.said || '').slice(0, 62)) + '\n');
-    t('the hotspot offered one to pick up', !!r.took.id, r.took.id || 'never appeared');
+    t('the hotspot offered one to pick up', !!r.took.id,
+      r.took.id || ('never appeared — ' + JSON.stringify({ why: r.took.why, cam: r.took.cam,
+        monitor: r.took.monitor, phase: r.took.phase, el: r.took.el })));
     t('picking one up says its own line', !!r.took.said,
       r.took.said ? JSON.stringify(String(r.took.said).slice(0, 40)) : 'nothing of its own queued');
     t('and does not stop the night', r.took.phase === 'play', r.took.phase);

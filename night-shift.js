@@ -18753,12 +18753,20 @@ function stepOdds(dt) {
 /* the hotspot, and which one it belongs to. Only ever one at a time --
    the nearest to the middle of the picture -- because two buttons on
    one feed is a menu, and this is a room. */
+let oddWhy = "";
 function oddHotspot() {
   const el = EL["ns-odd"];
-  if (!el) return;
+  if (!el) { oddWhy = "no #ns-odd element"; return; }
   oddNear = null;
-  const can = G.phase === "play" && G.monitor && G.monOut <= 0 && !isLost(G.cam);
-  if (!can) { el.hidden = true; return; }
+  /* said out loud, because three separate passes of oddcheck reported
+     "the hotspot never appeared" and every one of them was a
+     different unmet condition */
+  oddWhy = G.phase !== "play" ? "phase " + G.phase
+         : !G.monitor ? "the monitor is down"
+         : G.monOut > 0 ? "the monitor is dropping out"
+         : isLost(G.cam) ? "the " + G.cam + " feed is lost"
+         : "";
+  if (oddWhy) { el.hidden = true; return; }
   let best = null, bestD = 1e9, bx = 0, by = 0;
   oddsOut().forEach((o) => {
     if (o.room !== G.cam) return;
@@ -18772,7 +18780,12 @@ function oddHotspot() {
     const d = (x - 50) * (x - 50) + (y - 50) * (y - 50);
     if (d < bestD) { bestD = d; best = o; bx = x; by = y; }
   });
-  if (!best) { el.hidden = true; return; }
+  if (!best) {
+    const here = oddsOut().filter((o) => o.room === G.cam);
+    oddWhy = here.length ? here.length + " in the " + G.cam + ", none inside the picture"
+                         : "nothing left out in the " + G.cam;
+    el.hidden = true; return;
+  }
   oddNear = best;
   el.hidden = false;
   el.style.left = bx + "%";
@@ -20925,6 +20938,9 @@ const testHooks = {
     out: oddsOut().map((o) => o.id),
     inRoom: oddsOut().filter((o) => o.room === G.cam).map((o) => o.id),
     near: oddNear ? oddNear.id : null,
+    why: oddWhy,
+    cam: G.cam, monitor: !!G.monitor, phase: G.phase,
+    el: !!EL["ns-odd"],
     shown: !!(EL["ns-odd"] && !EL["ns-odd"].hidden),
     found: oddsFound(),
     lines: (NS.oddments || []).map((o) => ({
