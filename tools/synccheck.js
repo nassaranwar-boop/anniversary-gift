@@ -99,20 +99,35 @@ const t = (n, c, note) => { c ? pass++ : fail++;
        recording that was never going to play. So each attempt says
        which path it took, and the run keeps trying lines until one
        of them actually comes back in his voice. */
+    /* AND THE WHOLE THING ON A WALL-CLOCK BUDGET.
+
+       Counting iterations is not a bound on a page like this one.
+       The watch loop below was written as 900 turns of a 20ms sleep
+       -- eighteen seconds by arithmetic, and on a page rendering at
+       about a frame a second a sleep(20) comes back well over a
+       second, so one attempt alone outran a 2400s timeout and the
+       run produced nothing at all. Every loop here is bounded by
+       Date.now() instead, so a slow machine gives fewer samples
+       rather than no answer. */
+    const T0 = Date.now();
+    const BUDGET = 150000;                     /* the whole measurement */
+    const PER_TRY = 40000;                     /* one line's wait */
     const tries = [];
     let got = null;
     for (const txt of rows) {
-      if (tries.length >= 6) break;
+      if (tries.length >= 6 || Date.now() - T0 > BUDGET) break;
       const id = N.voiceDrop(txt);
       if (!id) continue;                       /* not a recorded line */
       N.tapeQuiet();
-      for (let i = 0; i < 80 && N.tapeDebug().vox; i++) await sleep(50);
+      const qBy = Date.now() + 4000;
+      while (N.tapeDebug().vox && Date.now() < qBy) await sleep(50);
       if (!N.tapeSayRaw(txt, null, false)) { tries.push({ line: txt, why: 'would not go up' }); continue; }
       if (N.tape().line !== txt) { tries.push({ line: txt, why: 'a different line is showing' }); continue; }
 
       let litWhileWaiting = 0, wentAway = false, held = false, lowSpeakT = 99;
       let into = null, litThen = null, shownThen = null;
-      for (let i = 0; i < 900; i++) {
+      const by = Date.now() + PER_TRY;
+      while (Date.now() < by) {
         N.tapeTick(1 / 60);
         const d = N.tapeDebug();
         if (d.held) { held = true; if (d.speakT < lowSpeakT) lowSpeakT = d.speakT; }
@@ -145,10 +160,6 @@ const t = (n, c, note) => { c ? pass++ : fail++;
                     intoWhenHeSpoke: into, litWhenHeSpoke: litThen };
       tries.push(rec);
       if (took === 'tape') { got = rec; break; }
-      /* the silent path still has to obey the hold while it is on:
-         a line nobody will ever speak may read and go, but it may not
-         hide itself DURING the wait, before voxAligned has released
-         it */
       await sleep(200);
     }
     return { tries, got, align: N.voxAlign() };

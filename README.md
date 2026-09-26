@@ -13,6 +13,154 @@ landed, what is half-done and what the next session should do first.
 **Add a new entry every session.** Anything not written down here is
 lost when the container is reclaimed.
 
+### 2026-09-26b — playing it wrong on purpose, and the subtitle that left before he arrived
+
+**Asked for:** four things, in his words — stop following the script
+and open the door when something is there, play as somebody who has
+never seen it; delete cozy mode, "cuz i find it dumb"; find any lag or
+glitch between a line being read and the same line being written under
+it; and find out whether the toys ever merge with the furniture while
+they move.
+
+**Cozy mode is gone.** `TUNE.cozy`, `NS.sys.cozy`, `G.cozy`, `cozyK()`
+and its eleven call sites, `COZY_KEY`/`loadCozy`/`saveCozy`, the title
+button, the `route("cozy")` branch, and the CSS. Two of the collapses
+were not mechanical: the alarm spacing lost a `cozyK("alarms")` divisor
+that could only ever be 1 once the dial was gone, and `scare()` lost
+its soft branch entirely, so there is now one scare and it is the loud
+one. `nightplay` and `proportion` lost their references too.
+
+**1. Hammering the pad blew straight past the death card.** `onKey`
+maps Enter and space to "press the card's main button" whenever the
+phase is not `play`. That is the only way through this chapter without
+a mouse and it has to stay. Space is also the monitor key. So a player
+doing the most ordinary thing there is — flicking the cameras up and
+down with the space bar because something is coming — is still
+mid-flick when it reaches her, and the press already on its way
+dismisses the card that says WHO reached her, and cuts off his line
+about it with the card.
+
+A card is deaf for its first 1.2 seconds now. The number is not a feel:
+`screenOver` schedules that line 950ms after the card appears, and
+`route()` takes the voice with it, so a card dismissible before then
+costs her the line as well as the name. The pointer is not guarded — a
+click has to land on the button, and the buttons are nowhere near the
+pad.
+
+**2. A short caption could leave before its recording arrived.**
+`speakT` is the written line's own reading time, `plan.dur + 1.1`, and
+it starts running the moment the caption goes up. `voxSpeak` on a cold
+load does not start the sound then: it holds the line for up to three
+and a half seconds while it finds out whether there is a take, which is
+the whole reason his voice survives a first visit. Nothing connected
+the two. Four words is about 1.4s of reading plus 1.1s of tail against
+a 3.5s wait — so the caption served its whole reading time during the
+wait, hid itself, and the take landed on an empty screen. Most of the
+four's lines are short.
+
+**3. And the opening film defeated the fix it was given.** `cineSpeak`
+set `CINE.lineT0 = perf()` on the line *after* `voxSpeak`, so the hold
+was overwritten the instant it was applied. Worse, `lineDone` advances
+the film 0.35s after `lineT0` when a speech engine exists, so on a cold
+load the caption could be a whole line ahead of the voice. The tape and
+the terms both set their clock before the call; this was the one that
+did not.
+
+**What the fix for 2 and 3 turned into, which is the part worth
+reading.** The first shape was a long hold: freeze the caption's
+reading clock while the take is in the air, for up to 7.5 seconds.
+That broke something 200 lines away. `overcheck` went from 42 to 41 —
+"night 2, never on that camera: she still hears all of it, 2 of 4".
+
+It was settled with an A/B rather than another guess: the pre-session
+chapter run against the *current* harness, so the chapter was the only
+variable, gives 42. `tools/_whystuck.js` printed the state per
+game-second and found `held=true` for fifty-six of them, never
+released. `overTick` reads `TAPE.up` as "he is speaking", night two's
+exchange starts 24 seconds into the two o'clock hour and finishes about
+nine seconds before the three o'clock reveal cuts it off, and 7.5
+seconds of hold on each of four lines took two of them away.
+
+So the hold was the wrong shape. What has to be true is that *he is
+never heard over an empty screen*, and a hold cannot promise that,
+because a hold has to end: any deadline short enough not to leave a
+caption stuck is one a slow take can outlast. `tapeRevive` promises it
+instead, at the one moment where it costs nothing — if the sound is
+starting and the line starting is the line the tape last had up, the
+tape gets it back. `TAPE.plan`, `TAPE.who` and `TAPE.through` all
+survive `tapeHide`, so that is the same caption returning rather than a
+new one appearing. Which lets the hold be 1.5s, a blink guard, and
+`overcheck` is 42 again.
+
+One bug was written and caught on the way: `voxHold` parks `t0` a
+million seconds ahead so no word is ever due while the take is in the
+air, and when the hold expired by *deadline* rather than by
+`voxAligned`, nothing put that clock back — the line would have served
+its whole reading time with every word dark and then hidden. Worse than
+the fault the hold was for. The clock is handed back when the handle
+trips.
+
+**The toys do not merge with the furniture, and that is a measured
+answer rather than a shrug.** `tools/standcheck.js` samples every awake
+figure twice an in-game second across all six nights, doors held and
+power pinned so nothing ends early, measured against geomcheck's own
+ruler — the torso band from `y+0.20` to `y+0.90`, a 0.34 by 0.34
+footprint, and `DEEP = 0.12` to tell a graze from standing inside
+something. 21,086 samples, no failures.
+
+It is worth writing down WHY, because the answer is structural and it
+means this cannot regress by accident: movement in this chapter is
+discrete. `stepCast` advances `ch.step` and `syncChar` snaps the group
+to that step's anchor through `putChar`. Nothing interpolates between
+two anchors, so there is no moment at which a figure is between the
+table and the doorway — it is at one hand-placed spot or the next. The
+only way into furniture is a bad anchor, and every anchor in the shop
+is already covered by geomcheck.
+
+Two candidate faults were chased and both were mine. `freeSpotIn` hands
+a crowded arrival a spare `s[0-9]` anchor with no furniture test, and
+in the office `s0`/`s1`/`s2` sit on the two doors and the hatch — but
+`isDoorSpot` matches those by coordinate before `freeSpotIn` is ever
+consulted, so the path is unreachable. The "fix" for it filtered spare
+spots to `y < 0.5`, which would have banned the stage's display plinths
+(`s0` at 1.44, `s1` at 0.88) and broken placements that are correct
+today. Reverted, and recorded in the commit message so nobody tries it
+again. The second was an apparent 8cm float on `stage.s1`; rendered,
+and the soldier's boots are on the deck.
+
+The one placement standcheck does not cover is the scare pose, which is
+deliberately off-anchor: `kill()` puts the figure 0.92m straight down
+the lens with its eyes at camera height. It is not sampled because it
+is not a position the walk can produce.
+
+**Three harness faults cost more time than any of the bugs, and all
+three are the same fault: this container is slow enough to lie to a
+test.**
+
+- *A press "the instant the card appears" was a second late.* At 0.7
+  frames a second a `setTimeout(200)` comes back a second and a half
+  later, so `misbehave` pressed long after `CARD_DEAF` had expired and
+  reported the guard doing nothing. It presses from a `MutationObserver`
+  on the overlay now, which runs as a microtask off the same
+  `innerHTML` write — the real shape of the fault, a hand already in
+  motion. Measured: 24 keys 0.014s after the card, phase still `over`.
+- *"2.4s into the line, 4 of 4 words written"* was a true description
+  of when the probe next got a turn and said nothing about when he
+  started. `voxAligned` writes down what the screen said before it
+  moves the clock; that is the only honest place to take it.
+- *Every boot wait was silently capped at 30 seconds.* Playwright's
+  `waitForFunction` takes `(fn, arg, options)`, and passing options
+  second puts them in the argument slot. A stated 180000 died at 30000.
+
+**Green after all of it:** misbehave 2, overcheck 42, midcheck 67,
+saycheck 20, revealcheck 7, newplayer 5, standcheck 21,086 samples.
+Cache at v322.
+
+**NEXT:** unchanged and still his call — the nine `sidebyside` failures
+in gate, hub, keepsake and apocalypse at landscape-phone sizes, which
+are not in the night shift, and `scriptcheck`'s playing half, which
+this container will not finish.
+
 ### 2026-09-26 — the week played through, and three things only playing could find
 
 **Asked for:** the same thing again, in his words — play Ouissy's Night
