@@ -46,7 +46,17 @@ const t = (n, c, note) => { c ? pass++ : fail++;
 
   const r = await p.evaluate(async () => {
     const N = OuissysNightShift.__night;
+    /* THE NIGHT MUST NOT TALK OVER THE MEASUREMENT.
+
+       begin() starts a shift, and a running shift has its own tape:
+       tapeDue fires his next line whenever it is due, overwriting the
+       caption this is timing. That is how an earlier pass reported
+       fifteen words lit on a thirteen-word line -- it was counting a
+       different line that had replaced ours mid-count. Pausing stops
+       playStep, so nothing new comes due, while tapeTick called by
+       hand still drives the caption. */
     N.begin(2); N.midEnd();
+    if (N.state().phase === 'play') N.pauseNow();
     const lit = () => {
       const el = document.getElementById('ns-tape');
       if (!el || el.hidden) return { on: -1, of: -1 };
@@ -58,16 +68,28 @@ const t = (n, c, note) => { c ? pass++ : fail++;
        line it has already said, and measuring whatever caption
        happened to be on screen instead is how the first version of
        this reported six words of a seven-word line. */
+    /* AND THE SHORTEST ONE, ON PURPOSE.
+
+       The written line has its own reading time -- plan.dur plus a
+       1.1s tail -- and on a cold load that clock was running during
+       the wait for the take. A long line outlasts the wait and never
+       shows it. A four-word line does not: 1.4s of reading plus 1.1s
+       of tail is 2.5 seconds against a 3.5 second wait, so the
+       caption hid itself and the take landed on an empty screen.
+       Sorting by length makes the check meet the case that breaks
+       rather than the case that happens to survive. */
     const script = N.words();
+    const rows = [];
+    for (const n of [1, 2, 3, 4, 5, 6])
+      for (const row of (script.tapes[n] || [])) rows.push(row.t);
+    rows.sort((x, y) => String(x).split(/\s+/).length - String(y).split(/\s+/).length);
     let line = null, dropped = null;
-    outer: for (const n of [2, 3, 1, 4, 5, 6]) {
-      for (const row of (script.tapes[n] || [])) {
-        /* voiceDrop hands back the take's id for a line that has one,
-           and null for a line that does not -- which is also exactly
-           the "is this line recorded" question */
-        const id = N.voiceDrop(row.t);
-        if (id) { line = row.t; dropped = id; break outer; }
-      }
+    for (const txt of rows) {
+      /* voiceDrop hands back the take's id for a line that has one,
+         and null for a line that does not -- which is also exactly
+         the "is this line recorded" question */
+      const id = N.voiceDrop(txt);
+      if (id) { line = txt; dropped = id; break; }
     }
     if (!line) return { err: 'no recorded line anywhere in the tapes' };
     N.tapeQuiet();                         /* nothing else sounding */
@@ -80,23 +102,25 @@ const t = (n, c, note) => { c ? pass++ : fail++;
     /* while the take is still in the air the line must be ON SCREEN and
        UNLIT -- a subtitle waiting for its speaker, not one running
        ahead of him and then rubbing itself out */
-    let litWhileWaiting = 0;
-    for (let i = 0; i < 12; i++) {
-      N.tapeTick(1 / 60);
-      const l = lit();
-      if (l.on > litWhileWaiting) litWhileWaiting = l.on;
-      if (N.tapeDebug().vox) break;
-      await new Promise((r2) => setTimeout(r2, 15));
-    }
-
-    let into = null, litThen = null;
+    let litWhileWaiting = 0, wentAway = false, held = false;
+    let into = null, litThen = null, shownThen = null;
     for (let i = 0; i < 900; i++) {
       N.tapeTick(1 / 60);
-      if (N.tapeDebug().vox) { into = N.tapeInto(); litThen = lit(); break; }
+      const d = N.tapeDebug();
+      if (d.held) held = true;
+      if (d.vox) { into = N.tapeInto(); litThen = lit(); shownThen = d.shown; break; }
+      /* AND IT MUST NOT LEAVE WHILE HE IS ON HIS WAY.
+         Not "did it come back": once tapeHide runs the element is
+         emptied and TAPE.up is false, so voxAligned can no longer
+         find the caption to realign, and he says the line to nothing. */
+      if (!d.shown) { wentAway = true; break; }
+      const l = lit();
+      if (l.on > litWhileWaiting) litWhileWaiting = l.on;
       await new Promise((r2) => setTimeout(r2, 20));
     }
     return { line, dropped, intoWhenHeSpoke: into, litWhenHeSpoke: litThen,
-             litWhileWaiting, took: N.said().took, align: N.voxAlign() };
+             litWhileWaiting, wentAway, held, shownThen, words: N.tapeDebug().planWords,
+             took: N.said().took, align: N.voxAlign() };
   });
 
   if (r.err) {
@@ -105,7 +129,7 @@ const t = (n, c, note) => { c ? pass++ : fail++;
     await b.close(); process.exit(1);
   }
 
-  console.log(`  "${String(r.line).slice(0, 64)}"`);
+  console.log(`  "${String(r.line).slice(0, 64)}" (${r.words} words)`);
   console.log(`  take ${r.dropped} dropped, so it had to be fetched the way a cold phone fetches it`);
   console.log(`  when his voice started the caption thought it was ${r.intoWhenHeSpoke}s into the line`);
   console.log(`  words already written when he began: ` +
@@ -113,7 +137,10 @@ const t = (n, c, note) => { c ? pass++ : fail++;
 
   console.log('  voxAligned: ' + JSON.stringify(r.align) + '\n');
   console.log('  words lit while the take was still loading: ' + r.litWhileWaiting + '\n');
+  console.log('  the caption was held for the take: ' + r.held + '\n');
   t('he speaks it off the recording, not the synthesiser', r.took === 'tape', 'took=' + r.took);
+  t('the caption is still on the screen when his voice arrives', r.wentAway === false && r.shownThen !== false,
+    r.wentAway ? 'it hid itself before he got there' : 'still up');
   t('the line sits unlit while his take is still loading', r.litWhileWaiting === 0,
     r.litWhileWaiting + ' word(s) lit against silence');
   t('the caption clock is at the top of the line when he starts',

@@ -9366,12 +9366,20 @@ function voxMark() { return SPEECH.live ? SPEECH.mark : -1; }
    the way a subtitle waiting for its speaker should -- and voxAligned
    brings it back to now the moment there is something to follow. */
 const VOX_HELD = 1e6;
+/* the longest voxSpeak ever waits is 3.5s, and it can wait twice in a
+   row -- once for the manifest and once for the take -- so the handle
+   is set past the pair of them and not a second longer */
+const VOX_HOLD_MAX = 7.5;
 function voxHold(text) {
   const flat = (a) => String(a == null ? "" : a).replace(/\s+/g, " ").trim();
   const want = flat(text);
   if (!want) return;
   const said = (pl) => (pl && pl.words ? flat(pl.words.map((w) => w.text).join(" ")) : "");
-  if (TAPE.up && flat(TAPE.line) === want) TAPE.t0 = perf() + VOX_HELD;
+  if (TAPE.up && flat(TAPE.line) === want) {
+    TAPE.t0 = perf() + VOX_HELD;
+    /* ...and it stays on the screen until he gets here: see TAPE.held */
+    TAPE.held = true; TAPE.heldT = VOX_HOLD_MAX;
+  }
   if (CINE.on && said(CINE.plan) === want) CINE.lineT0 = perf() + VOX_HELD;
   if (TERMS.on && said(TERMS.plan) === want) TERMS.t0 = perf() + VOX_HELD;
 }
@@ -9384,7 +9392,9 @@ function voxAligned(text) {
   if (!want) { VOXALIGN.last = "no text"; return; }
   const said = (pl) => (pl && pl.words ? flat(pl.words.map((w) => w.text).join(" ")) : "");
   let hit = "";
-  if (TAPE.up && flat(TAPE.line) === want) { TAPE.t0 = perf(); hit += "tape "; }
+  if (TAPE.up && flat(TAPE.line) === want) {
+    TAPE.t0 = perf(); TAPE.held = false; TAPE.heldT = 0; hit += "tape ";
+  }
   if (CINE.on && said(CINE.plan) === want) { CINE.lineT0 = perf(); hit += "film "; }
   if (TERMS.on && said(TERMS.plan) === want) { TERMS.t0 = perf(); hit += "terms "; }
   if (hit) VOXALIGN.hits++;
@@ -14159,6 +14169,25 @@ function stepDesk(dt) {
 const TAPE = {
   on: false, said: {}, wait: 0, speakT: 0, line: "", plan: null, t0: 0,
   pending: null, opened: false,
+  /* AND IT IS NOT ALLOWED TO LEAVE BEFORE HE ARRIVES.
+
+     speakT is the written line's own reading time, and it starts
+     running the moment the caption goes up. voxSpeak, on a cold load,
+     does not start the sound then: it holds the line for up to three
+     and a half seconds waiting to find out whether there is a
+     recording, which is the whole reason his voice survives a first
+     visit at all. Nothing connected the two, so a SHORT line -- and
+     most of the four's lines are short -- served its entire reading
+     time during the wait and hid itself, and then the take landed and
+     he said it to an empty screen. Four words at plan.dur 1.4s plus
+     the 1.1s tail is 2.5 seconds against a 3.5 second wait.
+
+     So while a line is in the air, its reading clock stops and it
+     cannot hide. heldT is a dead man's handle on that, in case the
+     deferred speak never comes back at all: the hold expires by
+     itself a little past the longest wait voxSpeak will ever ask
+     for, and the caption goes back to behaving the way it did. */
+  held: false, heldT: 0,
   /* IS A LINE ON SCREEN, HAS A VOICE BEEN HEARD SAYING IT, AND HOW LONG
      DO THE WORDS STAY AFTER IT STOPS.
 
@@ -14200,6 +14229,7 @@ const TAPE_GAP = 2.5;
 /* the words go away, and nothing is left holding them up */
 function tapeHide() {
   TAPE.up = false; TAPE.spoke = false; TAPE.tail = 0; TAPE.speakT = 0;
+  TAPE.held = false; TAPE.heldT = 0;
   const el = EL["ns-tape"];
   if (el) { el.hidden = true; el.innerHTML = ""; }
 }
@@ -14213,6 +14243,7 @@ function tapeReset() {
   TAPE.plan = null;
   TAPE.pending = null;
   TAPE.opened = false;
+  TAPE.held = false; TAPE.heldT = 0;
   tapeHide();
 }
 function tapeOff() {
@@ -14367,6 +14398,7 @@ function tapeSay(line, who, through) {
   TAPE.t0 = perf();
   TAPE.speakT = TAPE.plan.dur + 1.1;
   TAPE.up = true; TAPE.spoke = false; TAPE.tail = TAPE_TAIL;
+  TAPE.held = false; TAPE.heldT = 0;
   /* `forceSynth` used to be here for the four of them, because the only
      recording of any line was Anwar reading it and hearing him play
      all four parts was worse than the synthesiser. They are cast
@@ -15499,9 +15531,10 @@ function tapeTick(dt) {
        And if no voice was ever heard at all, the written line gets its
        own reading time instead -- which is the only thing speakT is
        for now. */
-    if (voxTalking()) { TAPE.spoke = true; TAPE.tail = TAPE_TAIL; }
+    if (TAPE.held) { TAPE.heldT -= dt; if (TAPE.heldT <= 0) TAPE.held = false; }
+    if (voxTalking()) { TAPE.spoke = true; TAPE.tail = TAPE_TAIL; TAPE.held = false; }
     else if (TAPE.spoke) TAPE.tail -= dt;
-    else TAPE.speakT -= dt;
+    else if (!TAPE.held) TAPE.speakT -= dt;
     if (el && TAPE.plan) {
       /* THE FIRST CHILD IS NOT ALWAYS A WORD.
 
@@ -15532,7 +15565,7 @@ function tapeTick(dt) {
         words[i].className = (mark >= 0 ? i <= mark : (w && t >= w.at)) ? "on" : "";
       }
     }
-    if (!voxTalking() && (TAPE.spoke ? TAPE.tail <= 0 : TAPE.speakT <= 0)) tapeHide();
+    if (!voxTalking() && !TAPE.held && (TAPE.spoke ? TAPE.tail <= 0 : TAPE.speakT <= 0)) tapeHide();
     return;
   }
   if (el && !el.hidden) tapeHide();
@@ -16337,9 +16370,30 @@ function windPips() {
 }
 
 /* --- the overlay cards -------------------------------------------- */
+/* A CARD DOES NOT TAKE AN ANSWER IT WAS NOT ASKED FOR.
+
+   Enter and space press a card's main button, which is the only way
+   through this chapter without a mouse and has to stay. Space is also
+   the monitor key. So a player doing the most ordinary thing there is
+   -- flicking the cameras up and down with the space bar, fast,
+   because something is coming -- is still mid-flick when it reaches
+   her, and the press already on its way dismisses the card that says
+   WHO reached her. Measured by tools/misbehave.js: sixty presses
+   against the caught card and the card was gone, phase back to play,
+   the scare unread.
+
+   The card is deaf for the first three quarters of a second it is on
+   the screen. That is longer than the gap between two hammered keys
+   and shorter than the time it takes to decide to press one, so it
+   costs a deliberate player nothing and costs a panicking one the
+   press she did not mean. The pointer is not guarded: a click has to
+   land on the button, and the buttons are nowhere near the pad. */
+const CARD_DEAF = 0.75;
+let cardUpAt = -1e9;
 function overlay(html, cls) {
   const o = EL["ns-overlay"];
   if (!o) return;
+  cardUpAt = perf();
   o.className = "ns-overlay on " + (cls || "");
   o.innerHTML = html;
   o.setAttribute("aria-hidden", "false");
@@ -17931,8 +17985,19 @@ function cineSpeak() {
   const text = b.lines[CINE.line];
   if (text === undefined) { CINE.plan = null; return; }
   CINE.plan = voxPlan(text);
-  voxSpeak(CINE.plan, { gain: 1 });
+  /* THE CLOCK IS SET BEFORE HE IS ASKED TO SPEAK, NOT AFTER.
+
+     voxHold reaches into whichever caption is showing the line it is
+     about to defer and puts that caption's clock out of reach, so the
+     words sit unlit while the take is in the air. It cannot work on a
+     clock that is written afterwards: this set lineT0 = perf() on the
+     line following voxSpeak, which overwrote the hold the instant it
+     was applied, and the opening film went back to writing the
+     sentence out against silence, rubbing it out when the take landed
+     and writing it again. The tape and the terms both already set
+     their clock first; this was the one that did not. */
   CINE.lineT0 = perf();
+  voxSpeak(CINE.plan, { gain: 1 });
 }
 
 function cineTick(dt) {
@@ -18659,7 +18724,9 @@ function onKey(e) {
   if (G.phase !== "play") {
     if (k === "Enter" || k === " ") {
       const b = EL["ns-overlay"] && EL["ns-overlay"].querySelector("[data-go].ns-btn-go");
-      if (b) { e.preventDefault(); b.click(); }
+      /* ...but not in the first moment it is up: see CARD_DEAF */
+      if (b && perf() - cardUpAt >= CARD_DEAF) { e.preventDefault(); b.click(); }
+      else if (b) e.preventDefault();
     }
     return;
   }
@@ -20329,6 +20396,7 @@ const testHooks = {
                       through: !!TAPE.through, line: TAPE.line, who: TAPE.who || null,
                       planWords: TAPE.plan ? TAPE.plan.words.length : null,
                       mark: voxMark(), since: +(perf() - TAPE.t0).toFixed(2),
+                      held: !!TAPE.held, speakT: +TAPE.speakT.toFixed(2),
                       firstAt: TAPE.plan && TAPE.plan.words[0] ? +TAPE.plan.words[0].at.toFixed(2) : null,
                       shown: !!(EL["ns-tape"] && !EL["ns-tape"].hidden) }),
   /* the first minute of a night, for a probe that wants to watch it */
