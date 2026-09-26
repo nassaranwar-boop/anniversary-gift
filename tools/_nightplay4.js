@@ -126,10 +126,29 @@ module.exports = async function (c) {
       }
 
       /* doors: shut whatever is at one, open again the moment it is gone */
+      /* AND IT READS THE SIGNAL THE PLAYER IS GIVEN, NOT A DIFFERENT ONE.
+
+         This carried `&& !ch.talking` down from the first driver, so a
+         toy that started speaking while it stood at a door stopped
+         counting as being at one. The rule below then saw at=false,
+         doors=true, and OPENED the door on it -- and `toggleDoor` is
+         explicit about what that buys you: "opening a door on something
+         standing behind it gives you a moment, and only a moment",
+         1.3 seconds, which is shorter than a tick. Night five died that
+         way six times and night six four, always the same shape:
+         `doors=-R- at=-R-` held for three ticks, then `at=L--` while
+         she was still behind it, then dead.
+
+         The shop never lied about it. The edge of the screen warms from
+         `ch.awake && ch.atDoor` with no such exclusion, so the amber
+         stays lit the whole time one of them is talking at a door and a
+         player watching the screen keeps it shut. The driver was
+         reading a different signal from the one the game shows. Now it
+         reads the same one. */
       const cast = H.cast();
       const at = { left: false, right: false, hatch: false };
       for (const id in cast) { const ch = cast[id];
-        if (ch.awake && ch.atDoor && !ch.talking) at[ch.def.door] = true; }
+        if (ch.awake && ch.atDoor) at[ch.def.door] = true; }
       note(G, at);
       for (const side of ['left', 'right', 'hatch'])
         if (at[side] !== G.doors[side]) {
@@ -243,7 +262,16 @@ module.exports = async function (c) {
              last: (killed ? killed + ' — ' : '') + ring.join(' | ') };
   }, [warp, ticks]);
 
-  for (let night = 1; night <= NIGHTS; night++) {
+  /* FROM=5 starts the week at night five. The story state a real
+     player would be carrying is not there, so this is for looking at
+     one night's shape after a change, never for judging the week. */
+  const FROM = Number(process.env.FROM || 1);
+  if (FROM > 1) {
+    say(`\n(starting at night ${FROM}, so the four before it are not played)`);
+    await p.evaluate((n) => OuissysNightShift.__night.begin(n), FROM);
+    await T(1500);
+  }
+  for (let night = FROM; night <= NIGHTS; night++) {
     say(`\n############################## NIGHT ${night}`);
     let shots = 0, lastHour = -1, guard = 0;
     const start = Date.now();
