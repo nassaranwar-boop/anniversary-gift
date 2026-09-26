@@ -17657,7 +17657,7 @@ function beginNight(n, opts) {
   G.doors.left = G.doors.right = G.doors.hatch = false;
   G.blackout = false; G.blackoutT = 0; G.approaching = null;
   G.dead = null; G.deadT = 0; G.killChar = null; G.cardT = 0;
-  G.watchFired = null; G.watchT0 = 0; G.stillT0 = 0;
+  G.watchFired = null; G.watchT0 = 0; G.stillT0 = 0; G.watchRingSeen = null;
   G.warned = 0; G.shake = 0;
   G.lost = {}; G.lostT = 20;
   /* dark from the start on every night but the one where she watches
@@ -17947,7 +17947,7 @@ function uiTick(dt) {
         G.watchT = fired ? -60 : -8;
         G.watchT0 = perf() + (fired ? 60 : 8);
       }
-    } else { G.watchCam = G.cam; G.watchT = 0; G.watchT0 = 0; G.watchWho = null; }
+    } else { G.watchCam = G.cam; G.watchT = 0; G.watchT0 = 0; G.watchWho = null; G.watchRingSeen = null; }
   } else if (G.watchT > 0) { G.watchT = 0; G.watchT0 = 0; G.watchWho = null; }
 
   /* AND THE TWENTY SECONDS THAT ARE NOT WORK.
@@ -18896,6 +18896,16 @@ function watchRing() {
   const need = G.watchNeed || 6;
   const p = who ? clamp((G.watchT || 0) / need, 0, 1) : 0;
   if (!who || p < 0.12) { el.hidden = true; return; }
+  /* WRITTEN DOWN, NOT LEFT TO BE CAUGHT.
+
+     The ring is up for about two and a half seconds of a three second
+     hold, and uiTick -- which is what puts it up -- runs under once a
+     second on a machine like the build container. So whether a check
+     polling from outside ever sees it is luck, and watchcheck missed
+     it on Marabelle one run and Cogsworth the next while the ring was
+     working perfectly both times. Same lesson as watchFired: a
+     transient belongs to the page that owns it. */
+  G.watchRingSeen = who;
   const ch = cast[who];
   if (!ch || !ch.group) { el.hidden = true; return; }
   ch.group.getWorldPosition(WATCH_AT);
@@ -21328,7 +21338,7 @@ const testHooks = {
     const it = key && NS.tapeWhen ? NS.tapeWhen[key] : null;
     return {
       who: G.watchWho || null, t: +(G.watchT || 0).toFixed(2), need: G.watchNeed || 6,
-      fired: G.watchFired || null,
+      fired: G.watchFired || null, ringSeen: G.watchRingSeen || null,
       wants: who, key,
       line: it ? (typeof it === "string" ? it : it.t) : null,
       ring: !!(EL["ns-watch"] && !EL["ns-watch"].hidden),
