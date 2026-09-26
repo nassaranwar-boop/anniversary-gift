@@ -76,6 +76,8 @@ function wav(channels, rate) {
     const buf = await off.startRendering();
     return { notes, bars: r0.bars, barSecs: r0.barSecs, start: r0.start,
              rate, bpm: team.anthem.tempo,
+             groove: team.anthem.groove || 'stomp',
+             title: team.anthem.title || team.id,
              left: Array.from(buf.getChannelData(0)),
              right: Array.from(buf.getChannelData(1)) };
   }, { name, seconds });
@@ -122,10 +124,23 @@ function wav(channels, rate) {
       }
       bars.push(Math.sqrt(s2 / Math.max(1, n2)));
     }
+    /* EACH ARRANGEMENT AGAINST ITS OWN DESIGN.
+       Four of the six are built round a hole in bar four. The other
+       two are not: Handel's whole trick is twenty-two bars of nothing
+       turning into everything at once, and Grieg's is a thing that
+       starts small and never stops growing. Asking those two for a
+       drop is asking them to be the other four — which is the mistake
+       that produced six tracks that sounded the same in the first
+       place. A build is checked for BUILDING. */
+    const grows = r.groove === 'build' || r.groove === 'ceremony';
     const drop = bars[4], back = bars[5];
+    const shapeOk = grows
+      ? (bars[7] !== undefined && bars[0] > 0 && bars[7] > bars[0] * 1.3)
+      : (drop !== undefined && back !== undefined && drop < back * 0.8);
     rows.push({ name, peak: +peak.toFixed(4), rms: +rms.toFixed(5),
                 notes: r.notes, bars: r.bars, profile: bars,
-                dropOk: drop !== undefined && back !== undefined && drop < back * 0.8,
+                groove: r.groove, title: r.title, grows: grows,
+                dropOk: shapeOk,
                 silent: peak < 0.0005, clipping: peak > 0.999 });
     if (!all) {
       /* Normalised for listening only. In the chapter it sits under the
@@ -143,11 +158,14 @@ function wav(channels, rate) {
     String(r.bars).padEnd(5), String(r.notes).padEnd(12),
     r.silent ? 'SILENT' : (r.clipping ? 'CLIPPING' : 'ok')));
   console.log('\nthe shape of each song, bar by bar (RMS \u00d7 1000):');
-  console.log('   bar          0    1    2    3   [4]   5    6    7');
-  console.log('                bed  bed  hook hook DROP full full lift');
-  rows.forEach(r => console.log('   ' + r.name.padEnd(9)
+  console.log('   ' + 'ground'.padEnd(9) + 'groove'.padEnd(12)
+              + '    0    1    2    3    4    5    6    7');
+  rows.forEach(r => console.log('   ' + r.name.padEnd(9) + (r.groove || '').padEnd(12)
     + r.profile.slice(0, 8).map(v => String(Math.round(v * 1000)).padStart(5)).join('')
-    + (r.profile.length >= 6 ? (r.dropOk ? '   drop ok' : '   DROP DID NOT DROP') : '')));
+    + (r.profile.length >= 6
+       ? (r.dropOk ? (r.grows ? '   builds' : '   drops')
+                   : (r.grows ? '   DOES NOT BUILD' : '   DOES NOT DROP'))
+       : '')));
   if (errs.length) console.log('\npage errors: ' + errs.slice(0, 3).join(' | '));
   await browser.close();
   process.exit(rows.some(r => r.silent || r.clipping

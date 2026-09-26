@@ -555,112 +555,273 @@ window.CupChant = (function () {
   }
 
   /* =======================================================================
-     THE ARRANGEMENT
+     SIX ARRANGEMENTS, BECAUSE SIX TUNES IS NOT SIX TRACKS
 
-     Eight bars, and what changes across them is not the volume — it is
-     WHO IS PLAYING. That is how a record builds and it is the thing a
-     fader cannot fake:
+     The last set were six different melodies played by exactly the same
+     band: the same kick pattern, the same root-root-fifth-octave bass,
+     stabs on the same four offbeats, the same eight-bar structure and
+     the same lead sound. Played back to back they were reported, quite
+     correctly, as "the same melody at three speeds" — because the
+     ARRANGEMENT is what you recognise a track by, and there was only
+     one of it.
 
-       0-1  drums and bass. The groove, on its own, so the ear has
-            something to lock onto before anything melodic happens
-       2-3  the stabs come in, and the lead plays the hook
-       4    THE DROP: the band stops dead. One bar of hats and a clap.
-       5-7  everything, the crowd singing the hook over the lead, and
-            the last two bars with the octave underneath
+     A groove is: what the drums do, what the bass does, who plays the
+     tune, and when the whole thing stops. Change those four and the
+     same eight notes are a different record. These six share nothing
+     but the fact that a crowd sings over them.
 
-     The crowd is a DOUBLING now, not the tune. It sits behind the lead
-     in the room while the band plays dry in front of it, which is what
-     a stadium PA with thirty thousand people singing over it actually
-     sounds like — and is the opposite of a choir alone in a church,
-     which is what this was.
+       ceremony    no drums at all until the choir lands. A sixteenth
+                   arpeggio turning over under one held chord, a timpani
+                   on the downbeat, and then everything at once
+       secondline  swung, with the kick syncopated off the second beat
+                   and the snare answering it. Brass carries the tune
+       march       oom-pah: kick on one and three, snare on two and
+                   four, and a chord on EVERY beat. Nothing syncopated
+                   anywhere — that is what makes it a march
+       hymn        almost no drums. A soft heartbeat, hands on two and
+                   four, and the tune sung in unison over sustained
+                   chords. The only groove here with no hats in it
+       build       the tune IS the ostinato. It starts alone, the bass
+                   joins it, then the kick, then everything, and the
+                   crowd only comes in at the very end
+       stomp       the terrace: boots on one and three, hands on two
+                   and four, no hats, no stabs, and the bass doubling
+                   the boots. The loudest and the simplest
      ======================================================================= */
+  var CYCLE = 8;
+
+  function hookNotes() {
+    if (anthem && anthem.hook && anthem.hook.length) return anthem.hook;
+    var m = (anthem && anthem.motif) || [0, 2, 4, 2, 0];
+    var step = 8 / m.length;
+    return m.map(function (d, i) { return [i * step, d, step * 0.95]; });
+  }
+
+  /* -------------------------------------------------------------- DRUMS */
+  function drums(g, t, b, pos, drop, e) {
+    if (drop) {
+      /* every groove drops the same way, because a hole is a hole */
+      if (g !== "hymn" && g !== "ceremony") {
+        for (var hd = 0; hd < 8; hd++) hat(t + b * hd * 0.5, hd % 2 ? 0.07 : 0.035);
+      }
+      clap(t + b, 0.30, -0.5);
+      clap(t + b * 3, 0.30, 0.5);
+      snare(t + b * 3.75, 0.34);
+      return;
+    }
+    if (g === "ceremony") {
+      /* NOTHING until the choir arrives, and then a timpani rather than
+         a drum kit. Silence is the instrument for the first half. */
+      if (pos >= 5) {
+        kick(t, 0.66);
+        kick(t + b * 2, 0.46);
+        if (pos >= 6) kick(t + b * 3, 0.34);
+      } else if (pos === 4) {
+        kick(t, 0.5);
+      }
+      return;
+    }
+    if (g === "hymn") {
+      /* a heartbeat and two pairs of hands. No hats at all — which is
+         what makes it sound like people rather than a record. */
+      kick(t, 0.44);
+      kick(t + b * 2, 0.36);
+      clap(t + b, 0.30, -0.5);
+      clap(t + b * 3, 0.30, 0.5);
+      if (e > 0.6) { clap(t + b * 1.5, 0.12, 0.4); clap(t + b * 3.5, 0.12, -0.4); }
+      return;
+    }
+    if (g === "stomp") {
+      /* BOOTS AND HANDS. Nothing else. The oldest sound in football and
+         the only groove here with no cymbal in it anywhere. */
+      kick(t, 0.78);
+      kick(t + b * 2, 0.70);
+      snare(t + b, 0.44);
+      snare(t + b * 3, 0.46);
+      clap(t + b, 0.34, -0.6);
+      clap(t + b * 3, 0.34, 0.6);
+      if (pos >= 5) { clap(t + b * 1.5, 0.16, 0.5); clap(t + b * 3.5, 0.16, -0.5); }
+      return;
+    }
+    if (g === "march") {
+      /* OOM-PAH. On the beat, every beat, and never between them. */
+      kick(t, 0.66);
+      kick(t + b * 2, 0.60);
+      snare(t + b, 0.40);
+      snare(t + b * 3, 0.42);
+      if (pos >= 2) { snare(t + b * 3.5, 0.18); snare(t + b * 3.75, 0.22); }
+      for (var hm = 0; hm < 4; hm++) hat(t + b * hm, 0.05);
+      return;
+    }
+    if (g === "secondline") {
+      /* SWUNG, and the kick answers itself off the beat. The second and
+         fourth hats are late, which is the swing. */
+      kick(t, 0.60);
+      kick(t + b * 1.66, 0.42);
+      kick(t + b * 2.66, 0.34);
+      snare(t + b, 0.34);
+      snare(t + b * 2.33, 0.16);
+      snare(t + b * 3, 0.38);
+      snare(t + b * 3.66, 0.22);
+      for (var hs = 0; hs < 4; hs++) {
+        hat(t + b * hs, 0.05);
+        hat(t + b * (hs + 0.66), 0.075);     // the swung offbeat
+      }
+      return;
+    }
+    /* build: the drums arrive in stages, which is the whole idea */
+    if (pos >= 2) { kick(t, 0.58); kick(t + b * 2, 0.48); }
+    if (pos >= 3) { snare(t + b, 0.30); snare(t + b * 3, 0.34); }
+    if (pos >= 5) { kick(t + b * 2.5, 0.40); snare(t + b * 3.75, 0.26); }
+    if (pos >= 2) for (var hb = 0; hb < 8; hb++) hat(t + b * hb * 0.5, hb % 2 ? 0.07 : 0.04);
+  }
+
+  /* --------------------------------------------------------------- BASS */
+  function bassLine(g, t, b, croot, fifth, pos) {
+    var lo = croot / 2, hi5 = fifth / 2;
+    if (g === "ceremony") {
+      /* a pedal. One note, held under the whole thing, which is what
+         makes twenty-two bars of arpeggio bearable */
+      bassHit(t, lo, b * 3.6, 0.26);
+      return;
+    }
+    if (g === "hymn") {
+      bassHit(t, lo, b * 1.6, 0.26);
+      bassHit(t + b * 2, hi5, b * 1.6, 0.22);
+      return;
+    }
+    if (g === "stomp") {
+      /* doubling the boots exactly. A stomp with a busy bass under it
+         is not a stomp any more. */
+      bassHit(t, lo, b * 0.8, 0.34);
+      bassHit(t + b * 2, lo, b * 0.8, 0.30);
+      return;
+    }
+    if (g === "march") {
+      /* the oom to the pah: root on one and three, fifth on two and
+         four, dead square */
+      bassHit(t, lo, b * 0.7, 0.30);
+      bassHit(t + b, hi5, b * 0.5, 0.20);
+      bassHit(t + b * 2, lo, b * 0.7, 0.28);
+      bassHit(t + b * 3, hi5, b * 0.5, 0.20);
+      return;
+    }
+    if (g === "secondline") {
+      /* a walk, with the syncopation the kick leaves room for */
+      bassHit(t, lo, b * 0.5, 0.30);
+      bassHit(t + b * 0.66, lo, b * 0.3, 0.18);
+      bassHit(t + b * 1.66, hi5, b * 0.4, 0.24);
+      bassHit(t + b * 2.33, lo * 2, b * 0.3, 0.18);
+      bassHit(t + b * 3, hi5, b * 0.4, 0.22);
+      bassHit(t + b * 3.66, lo, b * 0.3, 0.18);
+      return;
+    }
+    /* build: eighths on the root, relentless, from bar one */
+    for (var i = 0; i < 8; i++) {
+      bassHit(t + b * i * 0.5, i % 4 === 2 ? hi5 : lo, b * 0.30,
+              pos >= 4 ? 0.28 : 0.20);
+    }
+  }
+
+  /* -------------------------------------------------------------- CHORDS */
+  function chords(g, t, b, voiced, pos, full) {
+    if (g === "march") {
+      /* one on every beat, short. The pah. */
+      for (var i = 0; i < 4; i++) stab(t + b * i + b * 0.5, voiced, b * 0.26, 0.15, true);
+      return;
+    }
+    if (g === "secondline") {
+      for (var j = 0; j < 4; j++) stab(t + b * (j + 0.66), voiced, b * 0.24, 0.13, true);
+      return;
+    }
+    if (g === "hymn" || g === "ceremony") {
+      /* HELD, not struck. The one place a sustained chord is right is
+         under a hymn, and under Handel. */
+      stab(t, voiced, b * 3.7, full ? 0.13 : 0.09, false);
+      return;
+    }
+    if (g === "stomp") {
+      /* on the stomps only, so the chord is part of the boot */
+      stab(t, voiced, b * 0.5, 0.13, true);
+      stab(t + b * 2, voiced, b * 0.5, 0.12, true);
+      return;
+    }
+    /* build: nothing until it is well under way, then offbeats */
+    if (pos >= 4) {
+      for (var k = 0; k < 4; k++) stab(t + b * (k + 0.5), voiced, b * 0.22, 0.11, true);
+    }
+  }
+
   function scheduleBar(t) {
     if (!anthem) return;
     var b = beatSecs();
     var root = anthem.key || 196;
     var scale = anthem.scale || "minor";
+    var g = anthem.groove || "stomp";
     var prog = PROGS[anthem.mood] || PROGS["anthemic-uplifting"];
     var pos = bar % CYCLE;
     var chord = prog[bar % prog.length];
     var croot = hz(root, scale, chord, 0);
+    var fifth = hz(root, scale, chord + 4, 0);
 
-    var drop = pos === 4 && E > 0.3;
-    var band = !drop;                      // is the rhythm section in
-    var stabsIn = pos >= 2 && !drop;
-    var sung = pos >= 5 || (pos >= 2 && pos <= 3 && E > 0.62);
-    var full = pos >= 5;
-    var lifted = pos >= 6;
+    /* CEREMONY HOLDS ONE CHORD. Handel's build works because nothing
+       moves underneath it; a chord change every bar turns it into a
+       progression and throws the whole effect away. */
+    if (g === "ceremony") { chord = prog[0]; croot = hz(root, scale, chord, 0);
+                            fifth = hz(root, scale, chord + 4, 0); }
 
-    /* ------------------------------------------------------------ DRUMS
-       A pop pattern, not a march: kick on one and on the and-of-three,
-       snare on two and four, hats in eighths with the offbeats louder.
-       The kick landing off the beat is what makes it lean forward. */
-    if (band) {
-      kick(t, 0.62);
-      kick(t + b * 2.5, 0.50);
-      if (pos >= 2) kick(t + b * 3.75, 0.26);
-      snare(t + b, 0.34);
-      snare(t + b * 3, 0.36);
-      /* the extra one before the turnaround, which is the fill */
-      if (pos === 7) { snare(t + b * 3.5, 0.26); snare(t + b * 3.75, 0.32); }
-      for (var h = 0; h < 8; h++) {
-        hat(t + b * h * 0.5, h % 2 ? 0.075 : 0.045, h === 7);
-      }
-    } else {
-      /* THE DROP. Hats and one clap, and the hole between them. */
-      for (var hd = 0; hd < 8; hd++) hat(t + b * hd * 0.5, hd % 2 ? 0.08 : 0.04);
-      clap(t + b, 0.30, -0.5);
-      clap(t + b * 3, 0.30, 0.5);
-      /* ONE HIT, not a roll. A fill that fills the bar is not a drop,
-         it is a drum solo — measured, the 116bpm ground had no hole at
-         all because two snares and eight hats in a short bar add up to
-         the same energy as the bar of singing they are supposed to be
-         a hole in. The last sixteenth is enough to say "here it
-         comes". */
-      snare(t + b * 3.75, 0.36);
-    }
+    /* THE HYMN DOES NOT DROP, IT GOES A CAPPELLA.
 
-    /* ------------------------------------------------------------- BASS
-       Root, root, fifth, octave, syncopated — and short, because the
-       gaps are as much of the line as the notes are. */
-    if (band) {
-      var lo = croot / 2;
-      var fifth = hz(root, scale, chord + 4, 0) / 2;
-      bassHit(t, lo, b * 0.42, 0.30);
-      bassHit(t + b * 0.75, lo, b * 0.30, 0.20);
-      bassHit(t + b * 1.5, lo, b * 0.40, 0.26);
-      bassHit(t + b * 2.5, fifth, b * 0.40, 0.26);
-      bassHit(t + b * 3.5, lo * 2, b * 0.36, 0.22);
-    }
+       A hole with hats ticking through it is a dance-record device and
+       it is wrong over Beethoven. What a hymn does instead is stop the
+       band dead and leave the PEOPLE — one bar of thirty thousand
+       voices with nothing under them at all. Same position in the bar,
+       same length, completely different thing to hear, which is the
+       whole argument of this file in one flag. */
+    var acap = pos === 4 && E > 0.3 && g === "hymn";
+    var drop = pos === 4 && E > 0.3
+               && g !== "ceremony" && g !== "build" && g !== "hymn";
+    var band = !drop && !acap;
 
-    /* ------------------------------------------------------------ STABS
-       On the offbeats, which is where a band puts them and where a
-       string section never would. */
-    if (stabsIn) {
-      var voiced = [0, 2, 4].map(function (add) {
-        return hz(root, scale, chord + add, 1);
-      });
-      [0.5, 1.5, 2.5, 3.25].forEach(function (beat, i) {
-        stab(t + b * beat, voiced, b * 0.30, i === 0 ? 0.16 : 0.12, full);
-      });
-    }
+    if (!acap) drums(g, t, b, pos, drop, E);
+    if (band) bassLine(g, t, b, croot, fifth, pos);
 
-    /* the terrace clap stays on top of all of it, because that is the
-       crowd rather than the band */
-    if (E > 0.4 && band) {
-      clap(t + b, 0.20, -0.55);
-      clap(t + b * 3, 0.20, 0.55);
-    }
+    var voiced = [0, 2, 4].map(function (add) { return hz(root, scale, chord + add, 1); });
+    var stabsIn = band && (g === "build" || g === "ceremony" ? true : pos >= 2);
+    if (stabsIn) chords(g, t, b, voiced, pos, pos >= 5);
+
+    /* WHO SINGS, AND WHEN. Not the same answer for all six: the build
+       keeps the crowd back until the last two bars, the ceremony hands
+       them the whole thing the moment the choir lands, and the stomp
+       has them in from the start because that is what a stomp is. */
+    var sung, full, lifted;
+    if (g === "build") { sung = pos >= 2; full = pos >= 5; lifted = pos >= 6; }
+    else if (g === "ceremony") { sung = true; full = pos >= 4; lifted = pos >= 5; }
+    else if (g === "stomp") { sung = true; full = pos >= 3; lifted = pos >= 5; }
+    else { sung = pos >= 2 || E > 0.62; full = pos >= 5; lifted = pos >= 6; }
+    if (drop) sung = false;
+    /* and the a cappella bar is the one bar they are guaranteed to be
+       singing, because they are all that is left */
+    if (acap) { sung = true; full = true; lifted = true; }
 
     if (!sung) { bar++; return; }
 
-    /* ------------------------------------------------- THE HOOK, TWICE OVER
-       Once on the lead — bright, dry, in front — and once by the crowd
-       behind it. */
+    /* the terrace clap over the top of everything except the grooves
+       that already are a clap */
+    if (E > 0.45 && band && g !== "stomp" && g !== "hymn") {
+      clap(t + b, 0.16, -0.55);
+      clap(t + b * 3, 0.16, 0.55);
+    }
+
+    /* -------------------------------------------------- THE TUNE, TWICE
+       Once on an instrument, once by the crowd — and WHICH instrument
+       is part of the arrangement. A march is brass. A ceremony is the
+       organ. A build is a pluck that turns into a lead. */
     var notes = hookNotes();
     var half = (pos % 2) ? 4 : 0;
     var side = (pos % 2) ? 0.5 : -0.5;
-    var drive = (full ? 0.7 : 0.4) + E * 0.3;
+    var drive = (full ? 0.72 : 0.42) + E * 0.28;
+    var leadUp = g === "ceremony" || g === "hymn" ? 1 : 2;   // which octave
 
     for (var i = 0; i < notes.length; i++) {
       var nb = notes[i][0];
@@ -668,8 +829,9 @@ window.CupChant = (function () {
       var f = hz(root, scale, notes[i][1] + chord, 1);
       var tt = t + (nb - half) * b;
       var dur = notes[i][2] * b;
-      lead(tt, f * 2, dur * 0.92, full ? 0.16 : 0.11);
-      voices(f, tt, dur * 0.95, full ? 0.17 : 0.11, side, drive, full ? 9 : 5);
+      /* no instrument in the a cappella bar. That is what makes it one. */
+      if (!acap) lead(tt, f * leadUp, dur * 0.92, full ? 0.17 : 0.11);
+      voices(f, tt, dur * 0.95, full ? 0.18 : 0.11, side, drive, full ? 9 : 5);
       if (full) hummed(f, tt, dur * 0.9, 0.08);
       if (lifted) voices(f / 2, tt, dur * 0.95, 0.10, -side, drive * 0.7, 5);
     }

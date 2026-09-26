@@ -346,17 +346,44 @@ window.CUP_CONFIG = {
        bays     how many gangways cut up through the stand
 
        motif    the old flat figure, kept as a fallback
-       THE HOOKS ARE WRITTEN LIKE POP RECORDS, NOT LIKE HYMNS, which is
-       a correction. The first set were long held notes over a slow
-       four — which, sung by a choir over a sustained pad through a
-       two-second reverb, is the standard recipe for scoring a thriller
-       and sounded exactly like one. What the records these stand next
-       to actually have in common is the opposite: SHORT notes, most of
-       them eighths, landing off the beat, repeating a two-bar cell
-       with one small change the second time, in a register a person
-       can shout. Nothing here is held for two beats except the last
-       note of a phrase, and that is the only place a held note earns
-       its keep.
+     REAL SONGS, OUT OF COPYRIGHT.
+
+       Two attempts at writing original hooks came back as "a detective
+       film" and then as "the same melody at three speeds", and both
+       notes were right. So these are not original melodies any more.
+       They are six tunes a crowd genuinely sings, every one written by
+       somebody dead for more than a century, which puts the
+       COMPOSITION in the public domain everywhere:
+
+         Beethoven   d. 1827     Ode to Joy
+         Handel      d. 1759     Zadok the Priest
+         Bizet       d. 1875     the Toreador Song, from Carmen
+         Grieg       d. 1907     In the Hall of the Mountain King
+         traditional             When the Saints Go Marching In
+         traditional             Battle Hymn — "Glory Glory ..."
+
+       The last two are the ones actual terraces actually sing, and the
+       Battle Hymn is the melody every "Glory Glory <club>" in the
+       world is sung to.
+
+       WHAT IS AND IS NOT SAFE HERE. The composition being out of
+       copyright is what matters, because every note in this chapter is
+       synthesised from scratch — no recording of any of these is used
+       or could be. A modern ARRANGEMENT of a public-domain work is its
+       own copyright, so these are built from the original material and
+       not from anybody's famous version of it. That matters most for
+       Zadok: the Champions League anthem is a 1992 arrangement and is
+       somebody's property; Handel's 1727 rising figure is not.
+
+       AND THE OTHER HALF WAS NEVER THE NOTES. Six tunes played by the
+       same band, with the same drum pattern, the same bass figure and
+       the same structure, are one track six times — which is exactly
+       what the last set were. Every ground has its own GROOVE now, and
+       the groove is the bigger half of the difference.
+
+       groove   ceremony | secondline | march | hymn | build | stomp
+       source   who wrote it and when, so the licence question has an
+                answer in the file rather than in somebody's memory
 
        hook     THE TUNE. [beat, degree, length] over eight beats — two
                 bars — where degree 0 is the tonic, 7 the octave above
@@ -391,18 +418,23 @@ window.CUP_CONFIG = {
                  tiers: "tall", roof: "cantilever", banners: "tifo",
                  lights: "roof", bays: 11 },
       /* dark and slow-building: a low held note that leaps */
-      anthem: { key: 174.6, scale: "minor", tempo: 100, mood: "dark-stormy-epic",
-                title: "TIDELINE",
-                /* A stomp in a minor key with a blues fall in it: two
-                   short notes on the fifth, down through the third to
-                   the tonic, and the second time round it drops BELOW
-                   the tonic before climbing back. Slow enough to swing
-                   and fast enough to be a record. */
-                hook: [[0, 4, 0.5], [0.5, 4, 0.5], [1, 2, 0.5], [1.5, 0, 1],
-                       [3, 2, 0.5], [3.5, 4, 0.5],
-                       [4, 4, 0.5], [4.5, 4, 0.5], [5, 2, 0.5], [5.5, 0, 0.5],
-                       [6, -2, 1], [7, 0, 1]],
-                motif: [0, 0, 4, 3, 0], stems: null },
+      anthem: { key: 146.8, scale: "major", tempo: 76, mood: "anthemic-uplifting",
+                title: "ZADOK", source: "Handel, 1727 \u2014 public domain",
+                groove: "ceremony",
+                /* THE RISING FIGURE, and then the roof comes off.
+                   Handel spends twenty-two bars arpeggiating one chord
+                   upwards while nothing happens, and then the whole
+                   choir lands on a downbeat at once. It is the most
+                   effective build ever written and it is why every
+                   competition that wants to feel important has stolen
+                   the idea. The arpeggio IS the hook; the held notes at
+                   the end are the choir arriving. */
+                hook: [[0, 0, 0.25], [0.25, 2, 0.25], [0.5, 4, 0.25], [0.75, 7, 0.25],
+                       [1, 4, 0.25], [1.25, 2, 0.25], [1.5, 4, 0.25], [1.75, 7, 0.25],
+                       [2, 0, 0.25], [2.25, 2, 0.25], [2.5, 4, 0.25], [2.75, 7, 0.25],
+                       [3, 9, 0.5], [3.5, 7, 0.5],
+                       [4, 11, 2], [6, 9, 1], [7, 7, 1]],
+                motif: [0, 2, 4, 7, 4], stems: null },
       squad: ["marina", "anwar", "sage", "thorn"], captain: "anwar",
       formation: "diamond",
     },
@@ -425,18 +457,17 @@ window.CUP_CONFIG = {
                  tiers: "deep", roof: "open", banners: "flags",
                  lights: "pylon", bays: 6 },
       /* stomping, four notes, call and answer */
-      anthem: { key: 196.0, scale: "major", tempo: 116, mood: "defiant-underdog",
-                title: "SOUK FIRE",
-                /* Brass-stab funk. Everything is a sixteenth or an
-                   eighth, nothing lasts, and the phrase answers itself
-                   a fourth higher — the horn-section trick, which is
-                   the most physically exciting thing you can do with
-                   four notes. */
-                hook: [[0, 0, 0.25], [0.5, 0, 0.25], [1, 2, 0.5],
-                       [1.75, 4, 0.25], [2, 4, 0.5], [3, 2, 0.5], [3.5, 0, 0.5],
-                       [4, 3, 0.25], [4.5, 3, 0.25], [5, 5, 0.5],
-                       [5.75, 7, 0.25], [6, 7, 0.5], [7, 4, 1]],
-                motif: [0, 3, 2, 0], stems: null },
+      anthem: { key: 196.0, scale: "major", tempo: 122, mood: "defiant-underdog",
+                title: "THE SAINTS", source: "traditional \u2014 public domain",
+                groove: "secondline",
+                /* Four notes up and a long one, twice. The most
+                   singable thing in this file by a distance, which is
+                   why terraces have sung it for eighty years — and a
+                   New Orleans second-line groove under it is where it
+                   came from in the first place. */
+                hook: [[0, 0, 0.5], [0.5, 2, 0.5], [1, 3, 0.5], [1.5, 4, 2.5],
+                       [4, 0, 0.5], [4.5, 2, 0.5], [5, 3, 0.5], [5.5, 4, 2.5]],
+                motif: [0, 2, 3, 4], stems: null },
       squad: ["gustav", "ember", "lumi", "atlas"], captain: "lumi",
       formation: "diamond",
     },
@@ -456,18 +487,17 @@ window.CUP_CONFIG = {
                  density: 0.78, backdrop: "hills", lighting: "day",
                  tiers: "double", roof: "gable", banners: "scarves",
                  lights: "none", bays: 13 },
-      anthem: { key: 220.0, scale: "major", tempo: 124, mood: "tense-driving",
-                title: "BLUE HOUR",
-                /* Four on the floor and a riff that climbs the chord —
-                   the euphoric-festival shape. It goes up to the octave
-                   in the first bar and past it in the second, which is
-                   the cheapest way to make a room put its hands up and
-                   works every single time. */
-                hook: [[0, 0, 0.5], [0.5, 2, 0.5], [1, 4, 0.5], [1.5, 7, 1],
-                       [2.5, 4, 0.5], [3, 5, 1],
-                       [4, 0, 0.5], [4.5, 2, 0.5], [5, 4, 0.5], [5.5, 9, 1],
-                       [6.5, 7, 0.5], [7, 4, 1]],
-                motif: [4, 4, 2, 4, 5], stems: null },
+      anthem: { key: 174.6, scale: "major", tempo: 108, mood: "tense-driving",
+                title: "TOREADOR", source: "Bizet, 1875 \u2014 public domain",
+                groove: "march",
+                /* Swagger. Three notes hammered on one pitch, a step
+                   up, then the whole thing walks down the scale — which
+                   is a man telling a stadium how good he is, and has
+                   been used for exactly that ever since. */
+                hook: [[0, 4, 0.5], [0.5, 4, 0.5], [1, 4, 0.5], [1.5, 5, 0.5],
+                       [2, 4, 0.5], [2.5, 3, 0.5], [3, 2, 0.5], [3.5, 1, 0.5],
+                       [4, 0, 1], [5, 2, 0.5], [5.5, 4, 0.5], [6, 7, 2]],
+                motif: [4, 4, 4, 5, 4], stems: null },
       squad: ["marina", "comet", "sage", "boulder"], captain: "comet",
       formation: "wide",
     },
@@ -503,21 +533,21 @@ window.CUP_CONFIG = {
       /* HERS. A rising five-note figure that soars and lands on the
          fifth — major, mid-fast, and the only anthem here written to be
          sung rather than shouted. */
-      anthem: { key: 207.7, scale: "major", tempo: 110, mood: "anthemic-uplifting",
-                title: "THE LONG WAY HOME",
-                /* HERS, and the biggest. The first bar is a short
-                   rising figure that lands on the fifth and bounces;
-                   the second bar does the same thing but goes a THIRD
-                   HIGHER and holds, which is the one moment in the
-                   chapter where the tune stops moving. Everything
-                   before it is short and quick, which is exactly what
-                   makes that one long note land — a held note only
-                   works if the notes around it do not. */
-                hook: [[0, 4, 0.5], [0.5, 5, 0.5], [1, 7, 1], [2, 7, 0.5],
-                       [2.5, 5, 0.5], [3, 4, 1],
-                       [4, 4, 0.5], [4.5, 5, 0.5], [5, 9, 1.5],
-                       [6.5, 7, 0.5], [7, 5, 1]],
-                motif: [0, 2, 4, 5, 4], stems: null },
+      anthem: { key: 155.6, scale: "major", tempo: 96, mood: "anthemic-uplifting",
+                title: "GLORY GLORY", source: "traditional \u2014 public domain",
+                groove: "stomp",
+                /* HERS, and it could not be anything else. This is the
+                   melody every "Glory Glory <club>" on earth is sung
+                   to — the one tune in football a crowd does not need
+                   to be taught, because they already know it. It
+                   hammers the fifth and then walks home, and the walk
+                   home is the bit thirty thousand people do with their
+                   arms in the air. */
+                hook: [[0, 4, 0.5], [0.5, 4, 0.5], [1, 4, 0.5], [1.5, 4, 0.5],
+                       [2, 4, 0.5], [2.5, 3, 0.5], [3, 2, 1],
+                       [4, 2, 0.5], [4.5, 2, 0.5], [5, 1, 0.5], [5.5, 1, 0.5],
+                       [6, 0, 0.5], [6.5, 1, 0.5], [7, 2, 1]],
+                motif: [4, 4, 4, 3, 2], stems: null },
       squad: ["gustav", "ouissy", "echo", "willow"], captain: "ouissy",
       formation: "wide",
     },
@@ -536,18 +566,16 @@ window.CUP_CONFIG = {
                  density: 0.74, backdrop: "coast", lighting: "day",
                  tiers: "single", roof: "open", banners: "flags",
                  lights: "none", bays: 5 },
-      anthem: { key: 185.0, scale: "major", tempo: 96, mood: "warm-nostalgic",
-                title: "SALT AIR",
-                /* Mid-tempo and syncopated: the same note three times,
-                   pushed a sixteenth late each time so it drags against
-                   the beat. Repetition with a lazy feel rather than a
-                   melody that goes anywhere — the hook is the RHYTHM
-                   here, not the pitches. */
-                hook: [[0, 2, 0.5], [0.75, 2, 0.25], [1, 2, 0.5], [1.5, 4, 0.5],
-                       [2, 2, 1], [3, 0, 1],
-                       [4, 2, 0.5], [4.75, 2, 0.25], [5, 2, 0.5], [5.5, 4, 0.5],
-                       [6, 5, 2]],
-                motif: [2, 1, 0, 2, 4], stems: null },
+      anthem: { key: 164.8, scale: "major", tempo: 88, mood: "warm-nostalgic",
+                title: "ODE TO JOY", source: "Beethoven, 1824 \u2014 public domain",
+                groove: "hymn",
+                /* Every note is one step from the last except two. That
+                   is the whole reason a stadium can sing it without
+                   being taught it, and the reason it has been the
+                   anthem of roughly everything for two hundred years. */
+                hook: [[0, 2, 1], [1, 2, 1], [2, 3, 1], [3, 4, 1],
+                       [4, 4, 1], [5, 3, 1], [6, 2, 1], [7, 1, 1]],
+                motif: [2, 2, 3, 4], stems: null },
       squad: ["marina", "willow", "lumi", "boulder"], captain: "willow",
       formation: "flat",
     },
@@ -567,19 +595,19 @@ window.CUP_CONFIG = {
                  density: 0.88, backdrop: "campus", lighting: "night",
                  tiers: "double", roof: "gable", banners: "tifo",
                  lights: "roof", bays: 12 },
-      anthem: { key: 164.8, scale: "minor", tempo: 128, mood: "tense-driving",
-                title: "NIGHT SHIFT",
-                /* The fastest, and every note is an eighth until the
-                   last one. It alternates tonic and third like a
-                   sequencer and then jumps the octave at the end of the
-                   second bar, so it never settles — which at a hundred
-                   and twenty-eight is the feeling of being pinned in
-                   your own half. */
-                hook: [[0, 0, 0.5], [0.5, 3, 0.5], [1, 0, 0.5], [1.5, 4, 0.5],
-                       [2, 3, 0.5], [2.5, 0, 0.5], [3, 3, 1],
-                       [4, 0, 0.5], [4.5, 3, 0.5], [5, 0, 0.5], [5.5, 4, 0.5],
-                       [6, 7, 2]],
-                motif: [0, 4, 3, 4, 6], stems: null },
+      anthem: { key: 123.5, scale: "minor", tempo: 132, mood: "dark-stormy-epic",
+                title: "MOUNTAIN KING", source: "Grieg, 1875 \u2014 public domain",
+                groove: "build",
+                /* The best build ever written and the one that needs no
+                   explaining to anybody: it creeps, it repeats, it
+                   speeds up, and it does not stop. Under floodlights at
+                   a hundred and thirty-two it is the sound of being
+                   pinned in your own half by a better side. */
+                hook: [[0, 0, 0.5], [0.5, 1, 0.5], [1, 2, 0.5], [1.5, 3, 0.5],
+                       [2, 4, 0.5], [2.5, 2, 0.5], [3, 4, 1],
+                       [4, 5, 0.5], [4.5, 3, 0.5], [5, 5, 0.5], [5.5, 4, 0.5],
+                       [6, 2, 0.5], [6.5, 4, 0.5], [7, 0, 1]],
+                motif: [0, 1, 2, 3, 4], stems: null },
       squad: ["gustav", "echo", "atlas", "thorn"], captain: "atlas",
       formation: "flat",
     },

@@ -329,6 +329,14 @@ moving.
   it during startRendering(). The same six songs measured differently
   on every run, and the shape of the record moved around the table.
   Nothing about the music was wrong; the tape was being recorded over.
+
+  It also judges each arrangement against ITS OWN design rather than
+  against one template. Four of the six grounds are built round a hole
+  in bar four; the other two are not — Handel's whole trick is twenty-
+  two bars of nothing turning into everything at once, and Grieg's is a
+  thing that starts small and never stops growing. Asking those two for
+  a drop is asking them to be the other four, which is precisely the
+  thinking that produced six tracks that sounded like one.
 - **`cupshape.js`** — do they keep a shape, or do they all go and stand
   by the goal? "Sometimes all of them are next to the goal" is a
   complaint about a thing that happens SOMETIMES, which is exactly what
