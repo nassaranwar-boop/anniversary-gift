@@ -8703,6 +8703,32 @@ img{-webkit-user-drag:none; user-select:none;}
 .ns-find:hover::after, .ns-find:focus-visible::after{ opacity:1; inset:12%; }
 .ns-find[hidden]{ display:none !important; }
 
+/* THE ODDS AND ENDS, WHICH ARE NOT PAGES AND MUST NOT LOOK LIKE THEM.
+
+   Same shape as .ns-find and deliberately quieter: smaller, dimmer,
+   and its glint fades over a second and a half rather than half of
+   one. A page is the thing the night is for and is allowed to ask for
+   her attention; a mug on a bench is something she notices or does
+   not. If these read as loud as the page does, the page stops being
+   an event -- and there are twelve of them against its one. */
+.ns-odd{
+  position:absolute; z-index:8; transform:translate(-50%,-50%);
+  pointer-events:auto;
+  width:max(4.2cqh, 26px); height:max(4.2cqh, 26px);
+  border:0; padding:0; background:transparent; cursor:pointer;
+  border-radius:50%;
+  -webkit-tap-highlight-color:transparent;
+}
+.ns-odd::after{
+  content:""; position:absolute; inset:26%;
+  border-radius:50%;
+  background:radial-gradient(circle, rgba(255,243,208,.62), rgba(255,235,180,.12) 58%, transparent 74%);
+  opacity:0; transition:opacity 1.5s ease;
+}
+.ns-odd.glinting::after{ opacity:.62; }
+.ns-odd:hover::after, .ns-odd:focus-visible::after{ opacity:1; inset:14%; transition:opacity .2s ease; }
+.ns-odd[hidden]{ display:none !important; }
+
 .ns-card-find .ns-paper{ max-width:60cqw; }
 .ns-card-find .ns-from{ color:var(--ns-brass); }
 

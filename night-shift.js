@@ -335,6 +335,59 @@ const NS = {
     },
   ],
 
+  /* =====================================================
+     THE ODDS AND ENDS
+
+     The six finds above are the spine: one a night, the shop stops,
+     she keeps it or burns it, and the ending is computed out of what
+     she did with them. They are deliberately heavy and there are
+     deliberately six.
+
+     Which leaves the rest of a night. A night is 336 seconds and
+     carries about fourteen of his tape lines — call it two and a half
+     minutes of voice in five and a half minutes of shift — and the
+     other three minutes have exactly one verb in them, winding, and
+     that one is only available when something happens to need it. The
+     monitor is the most detailed thing in the chapter and an
+     attentive guard spends sixty-eight seconds on it in a whole
+     night, because looking costs meter and tells her something she
+     can mostly get by ear.
+
+     So: things to see. None of them is a page, none of them stops the
+     shift, none of them is a decision, and not one of them matters to
+     the ending. They are a mug and a radio and a glove — the residue
+     of a man who worked here — and each one is worth a sentence from
+     him. They exist so that sweeping the cameras is rewarded on the
+     ordinary minutes and not only on the one minute a night when
+     there is a page out.
+
+     Deliberately weighted to nights one and two, which are the
+     emptiest and the first she plays, and to the hall, the arcade and
+     the ducts, which are the three rooms no page is ever hidden in.
+
+     The LINES are not here. They live in tapeWhen as `odd-<id>`,
+     because that table is the one the voice sheet already walks, so
+     they get takes rendered with everything else and linecheck holds
+     them to it. A line written anywhere the sheet does not look is a
+     line the browser's own speech engine reads in somebody else's
+     voice — which is what happened to the twenty-one lines of the
+     four asking to be let in, and is a mistake worth only making
+     once. */
+  oddments: [
+    { id: "mug",     room: "workshop", from: 1, kind: "mug" },
+    { id: "radio",   room: "hall",     from: 1, kind: "radio" },
+    { id: "tin",     room: "arcade",   from: 1, kind: "tin" },
+    { id: "glove",   room: "ducts",    from: 1, kind: "glove" },
+    { id: "spool",   room: "workshop", from: 2, kind: "spool" },
+    { id: "drawing", room: "party",    from: 2, kind: "drawing" },
+    { id: "boots",   room: "foyer",    from: 2, kind: "boots" },
+    { id: "clock",   room: "stage",    from: 3, kind: "clock" },
+    { id: "tickets", room: "arcade",   from: 3, kind: "tickets" },
+    { id: "jar",     room: "closet",   from: 4, kind: "jar" },
+    { id: "fifth",   room: "workshop", from: 4, kind: "fifth" },
+    { id: "chalk",   room: "hall",     from: 5, kind: "chalk" },
+  ],
+
   /* The first time one of his gets there before something else does.
      She is shown this once, and after that it is simply how the shop
      works. Nothing in the how-to mentions it and nothing before it
@@ -1782,6 +1835,30 @@ const NS = {
     firstWind:   "There. That is all it is. A key and about a second.",
     firstParcel: "That is not one of mine coming down the hall. Shut the door.",
     firstHeld:   "I told you. Let them.",
+
+    /* --- AND THE ODDS AND ENDS ------------------------------------
+       One sentence each, for the twelve things lying about the shop
+       that are not pages and do not matter to the ending. See
+       NS.oddments for where they are and which night they come out.
+
+       They are keyed odd-<id> and they live in this table on purpose:
+       the voice sheet walks tapeWhen, so these get rendered with
+       every other line instead of going out in a stranger's voice.
+
+       Register: he is annotating his own shop, not narrating it. Short,
+       specific, dry where it can be. Two of them are allowed to land. */
+    "odd-mug":     "That is my mug, and that is where it lives. There is tea in it from a Tuesday. I would leave it.",
+    "odd-radio":   "That radio gets one station and only after dark. I could have fixed it in an afternoon. I liked being surprised.",
+    "odd-tin":     "Ten-pence pieces. The machines have taken real money since nineteen ninety-one and I have never once made them.",
+    "odd-glove":   "One glove. There has only ever been one glove. I have looked.",
+    "odd-spool":   "Brass wire, eighteen gauge. Everything in this building that turns is holding hands with a bit of that.",
+    "odd-drawing": "A girl drew that at a party here and her mother made her apologise for the wall. I had it framed the next morning.",
+    "odd-boots":   "My boots. I kept a pair at the shop so I never walked the workshop into your hallway. You noticed. You never said.",
+    "odd-clock":   "That clock is four minutes fast and has been since I hung it. Cogsworth sets herself by it, so now it is the correct time.",
+    "odd-tickets": "Nobody ever redeemed the big prize. It is still in the cabinet. It is a bear, and it is not very good.",
+    "odd-jar":     "Screws. Not sorted. Twenty-two years of meaning to.",
+    "odd-fifth":   "Do not mind that one. It is not finished and it is not going to be, and you will see why on the last night.",
+    "odd-chalk":   "I did the sums for this place on that wall because paper goes missing. So does chalk. So do the sums.",
 
     /* --- AND FOUR THINGS THEY SAY TO HER, ACROSS FOUR NIGHTS ------
        Everything above this is him. These are the only times any of
@@ -7899,6 +7976,7 @@ function buildWorld(cvs) {
   buildShifties();
   findEgg();
   buildFinds();
+  buildOddments();
 
   officeHands = buildHands();
   rooms.office.live.add(officeHands.group);
@@ -16231,6 +16309,7 @@ function playStep(dt) {
 
     stepEgg(dt);
     stepFind(dt);
+    stepOdds(dt);
     /* orientation holds the whole night still until she has done the
        thing it asked for: no clock, no drain, nobody walking. It is the
        one place in the chapter where the shop waits for her. */
@@ -16400,7 +16479,7 @@ function buildUI() {
   ["ns-stage", "ns-canvas", "ns-mon", "ns-static", "ns-camname", "ns-mon-lost",
    "ns-map", "ns-hud", "ns-power", "ns-bar-f", "ns-usage", "ns-clock", "ns-nightlab",
    "ns-warn", "ns-edge", "ns-pause-btn", "ns-pad", "ns-overlay", "ns-mon-time",
-   "ns-say", "ns-egg", "ns-find", "ns-tutor", "ns-cine", "ns-key", "ns-task", "ns-winds",
+   "ns-say", "ns-egg", "ns-find", "ns-odd", "ns-tutor", "ns-cine", "ns-key", "ns-task", "ns-winds",
    "ns-tape"].forEach((id) => {
     EL[id] = el(id);
   });
@@ -16456,6 +16535,9 @@ function buildUI() {
   }
   if (EL["ns-find"]) {
     EL["ns-find"].addEventListener("click", (e) => { e.stopPropagation(); takeFind(); });
+  }
+  if (EL["ns-odd"]) {
+    EL["ns-odd"].addEventListener("click", (e) => { e.stopPropagation(); takeOdd(); });
   }
   /* the key is held rather than clicked — winding something is a thing
      you do for a second and a bit, not a thing you tap */
@@ -17495,6 +17577,7 @@ function beginNight(n, opts) {
   G.winding = null; G.windTarget = null; G.windT = 0;
   resetShifties();
   armFind();
+  armOdds();
   syncTrophies();
   /* orientation: only on night one, only in the story, and only while
      night one is still unfinished */
@@ -17681,6 +17764,7 @@ function uiTick(dt) {
   if (EL["ns-mon-time"]) EL["ns-mon-time"].textContent = clockLabel();
   eggHotspot();
   findHotspot();
+  oddHotspot();
   windHotspot();
   windPips();
 
@@ -18311,7 +18395,7 @@ const _down = new T.Vector3(0, -1, 0);
 const _cp = new T.Vector3(), _lk = new T.Vector3(), _pt = new T.Vector3(), _sd = new T.Vector3();
 const FIND_WHY = [];
 
-function findSpot(rec) {
+function findSpot(rec, want) {
   const cam = rec.cams.main;
   if (!cam) return null;
   const ox = rec.index * SPACING;
@@ -18333,8 +18417,17 @@ function findSpot(rec) {
      all found empty air and not one page was ever placed. */
   const wasVisible = rec.group.visible;
   rec.group.visible = true;
+  /* ALL of them, not the first one.
+
+     It used to stop at the first candidate that worked, which is all a
+     page needs -- there is one page in a room. The odds and ends put
+     up to three things in the same room, and three things on the same
+     saucer is not clutter, it is a bug. So every candidate is
+     collected and `want` picks between them, spaced out along the
+     list rather than taken in order, because FIND_TRY walks the room
+     in a raster and neighbouring entries are a few centimetres apart. */
   const found = [];
-  for (let i = 0; i < FIND_TRY.length && !found.length; i++) {
+  for (let i = 0; i < FIND_TRY.length; i++) {
     const c = FIND_TRY[i];
     _pt.lerpVectors(_cp, _lk, c.t).addScaledVector(_sd, c.side);
     /* Cast from above the tallest thing in any room and then pick the
@@ -18360,7 +18453,11 @@ function findSpot(rec) {
                  ry: Math.atan2(_sd.x, _sd.z) + 0.4 });
   }
   rec.group.visible = wasVisible;
-  return found[0] || null;
+  if (!found.length) return null;
+  const w = want || 0;
+  /* nought is still the first one, so every page is exactly where it
+     was before this took an argument */
+  return found[(w * Math.max(1, Math.floor(found.length / 4))) % found.length];
 }
 
 function buildFinds() {
@@ -18383,6 +18480,103 @@ function buildFinds() {
   });
 }
 
+/* THE TWELVE THINGS LYING ABOUT THE SHOP.
+
+   Same trick as buildFindProp and deliberately a size down from it: a
+   page is the size of a page and reads as one at camera distance,
+   whereas these have to read as clutter that happens to catch the
+   light. Nothing here is more than a handful of boxes and cylinders,
+   because the camera is eight to twelve metres away through a tube
+   filter and the silhouette is all that survives the trip.
+
+   The glint plate at the end is the same one the pages get, at two
+   thirds the size and two thirds the brightness: enough to catch an
+   eye that is sweeping past, not enough to look like a collectible. */
+function buildOddProp(kind) {
+  const g = new T.Group();
+  if (kind === "mug") {
+    g.add(at(new T.Mesh(new T.CylinderGeometry(0.041, 0.036, 0.095, 12), mat("porcelain", 1, 1, "#dcd6c8")), 0, 0.047, 0));
+    g.add(at(new T.Mesh(new T.TorusGeometry(0.028, 0.006, 5, 9, Math.PI * 1.15), flat("#d2ccbd")), 0.046, 0.05, 0, 0, 0, Math.PI / 2));
+    /* the tea from a Tuesday */
+    g.add(at(new T.Mesh(new T.CircleGeometry(0.034, 12), flat("#4a3524")), 0, 0.082, 0, -Math.PI / 2));
+  } else if (kind === "radio") {
+    g.add(at(new T.Mesh(new T.BoxGeometry(0.19, 0.11, 0.07), mat("wood", 1, 1, "#6b4a2f")), 0, 0.055, 0));
+    g.add(at(new T.Mesh(new T.CircleGeometry(0.032, 10), flat("#3a2a1c")), -0.04, 0.058, 0.036));
+    g.add(at(new T.Mesh(new T.CylinderGeometry(0.014, 0.014, 0.012, 9), flat("#c9a227")), 0.055, 0.058, 0.036, Math.PI / 2));
+    g.add(at(new T.Mesh(new T.CylinderGeometry(0.0035, 0.0035, 0.2, 5), flat("#b9b0a0")), 0.08, 0.16, -0.02, 0, 0, 0.18));
+  } else if (kind === "tin") {
+    g.add(at(new T.Mesh(new T.CylinderGeometry(0.052, 0.052, 0.05, 14), mat("metal", 1, 1, "#9aa0a2")), 0, 0.025, 0));
+    g.add(at(new T.Mesh(new T.CircleGeometry(0.05, 14), flat("#b6bcbe")), 0, 0.051, 0, -Math.PI / 2));
+    /* the coins, three of them proud of the rim */
+    for (let i = 0; i < 3; i++)
+      g.add(at(new T.Mesh(new T.CylinderGeometry(0.011, 0.011, 0.002, 8), flat("#8d7a4a")),
+               -0.02 + i * 0.02, 0.053, -0.008 + i * 0.01, 0, i * 0.6, 0));
+  } else if (kind === "glove") {
+    g.add(at(new T.Mesh(new T.BoxGeometry(0.1, 0.028, 0.065), mat("wood", 1, 1, "#7a6248")), 0, 0.014, 0, 0, 0.3, 0));
+    for (let i = 0; i < 4; i++)
+      g.add(at(new T.Mesh(new T.BoxGeometry(0.038, 0.017, 0.012), mat("wood", 1, 1, "#71593f")),
+               0.062, 0.012, -0.022 + i * 0.015, 0, 0.3 + (i - 1.5) * 0.09, 0));
+    g.add(at(new T.Mesh(new T.BoxGeometry(0.03, 0.02, 0.05), mat("wood", 1, 1, "#6a533b")), -0.056, 0.012, 0.012, 0, 0.3, 0));
+  } else if (kind === "spool") {
+    g.add(at(new T.Mesh(new T.CylinderGeometry(0.043, 0.043, 0.055, 14), mat("brass", 1, 1, "#b08d3a")), 0, 0.043, 0, 0, 0, Math.PI / 2));
+    g.add(at(new T.Mesh(new T.CylinderGeometry(0.052, 0.052, 0.006, 14), flat("#6b5a2e")), -0.028, 0.043, 0, 0, 0, Math.PI / 2));
+    g.add(at(new T.Mesh(new T.CylinderGeometry(0.052, 0.052, 0.006, 14), flat("#6b5a2e")), 0.028, 0.043, 0, 0, 0, Math.PI / 2));
+    /* the loose end, because a spool nobody has used looks like a wheel */
+    g.add(at(new T.Mesh(new T.BoxGeometry(0.07, 0.0022, 0.0022), flat("#c9a227")), 0.036, 0.004, 0.02, 0, 0.4, 0));
+  } else if (kind === "drawing") {
+    g.add(at(new T.Mesh(new T.BoxGeometry(0.13, 0.0022, 0.1), mat("paper", 1, 1, "#f4eedd")), 0, 0, 0, 0, 0.12, 0));
+    /* a house, a sun, and four figures, in the only three colours a shop
+       like this has ever had crayons in */
+    g.add(at(new T.Mesh(new T.BoxGeometry(0.042, 0.0014, 0.032), flat("#c4553f")), -0.022, 0.0022, 0.012, 0, 0.12, 0));
+    g.add(at(new T.Mesh(new T.CircleGeometry(0.014, 8), flat("#d8a72c")), 0.04, 0.0024, -0.03, -Math.PI / 2));
+    for (let i = 0; i < 4; i++)
+      g.add(at(new T.Mesh(new T.BoxGeometry(0.006, 0.0014, 0.028), flat("#3f6a86")),
+               -0.04 + i * 0.022, 0.0022, -0.028, 0, 0.12, 0));
+  } else if (kind === "boots") {
+    for (let i = 0; i < 2; i++) {
+      const x = -0.035 + i * 0.07;
+      g.add(at(new T.Mesh(new T.BoxGeometry(0.058, 0.035, 0.145), mat("wood", 1, 1, "#4a3a2c")), x, 0.017, 0, 0, (i - 0.5) * 0.14, 0));
+      g.add(at(new T.Mesh(new T.BoxGeometry(0.056, 0.06, 0.055), mat("wood", 1, 1, "#54432f")), x, 0.05, -0.04, 0, (i - 0.5) * 0.14, 0));
+      g.add(at(new T.Mesh(new T.BoxGeometry(0.062, 0.012, 0.15), flat("#2a221a")), x, 0.006, 0, 0, (i - 0.5) * 0.14, 0));
+    }
+  } else if (kind === "clock") {
+    g.add(at(new T.Mesh(new T.CylinderGeometry(0.075, 0.075, 0.026, 18), mat("wood", 1, 1, "#6a4f34")), 0, 0.075, 0, Math.PI / 2));
+    g.add(at(new T.Mesh(new T.CircleGeometry(0.062, 18), flat("#e8e0cc")), 0, 0.075, 0.014));
+    /* four minutes fast, and the hands say so: ten past twelve */
+    g.add(at(new T.Mesh(new T.BoxGeometry(0.006, 0.042, 0.0016), flat("#2a2420")), 0, 0.092, 0.016));
+    g.add(at(new T.Mesh(new T.BoxGeometry(0.05, 0.005, 0.0016), flat("#2a2420")), 0.02, 0.075, 0.016, 0, 0, -0.5));
+  } else if (kind === "tickets") {
+    g.add(at(new T.Mesh(new T.CylinderGeometry(0.048, 0.048, 0.042, 14), mat("paper", 1, 1, "#e0c98a")), 0, 0.048, 0, 0, 0, Math.PI / 2));
+    g.add(at(new T.Mesh(new T.CylinderGeometry(0.012, 0.012, 0.045, 8), flat("#8a7a62")), 0, 0.048, 0, 0, 0, Math.PI / 2));
+    /* the tail of it, unrolled across whatever it is sitting on */
+    g.add(at(new T.Mesh(new T.BoxGeometry(0.115, 0.0016, 0.04), mat("paper", 1, 1, "#e6d4a0")), 0.08, 0.001, 0.008, 0, 0.22, 0));
+  } else if (kind === "jar") {
+    g.add(at(new T.Mesh(new T.CylinderGeometry(0.046, 0.042, 0.105, 14), mat("enamel", 1, 1, "#cfd8d4")), 0, 0.052, 0));
+    g.add(at(new T.Mesh(new T.CylinderGeometry(0.044, 0.044, 0.016, 14), flat("#8d7a4a")), 0, 0.108, 0));
+    /* twenty-two years of meaning to */
+    g.add(at(new T.Mesh(new T.CylinderGeometry(0.036, 0.036, 0.05, 12), flat("#7a6a52")), 0, 0.027, 0));
+  } else if (kind === "fifth") {
+    /* the one that is not finished: a body, a head, one arm, and the
+       socket where the other one is not */
+    g.add(at(new T.Mesh(new T.BoxGeometry(0.062, 0.088, 0.045), mat("wood", 1, 1, "#9a7444")), 0, 0.044, 0));
+    g.add(at(new T.Mesh(new T.SphereGeometry(0.036, 12, 10), mat("porcelain", 1, 1, "#e4d8c4")), 0, 0.118, 0));
+    g.add(at(new T.Mesh(new T.BoxGeometry(0.018, 0.07, 0.018), mat("wood", 1, 1, "#8f6b3e")), -0.04, 0.05, 0, 0, 0, 0.22));
+    g.add(at(new T.Mesh(new T.CylinderGeometry(0.014, 0.014, 0.01, 9), flat("#3a2c1c")), 0.033, 0.072, 0, 0, 0, Math.PI / 2));
+    /* the tag on the wrist, the one with no number on it */
+    g.add(at(new T.Mesh(new T.BoxGeometry(0.028, 0.0016, 0.018), mat("brass", 1, 1, "#c9a227")), -0.052, 0.018, 0.012, 0, 0.3, 0.2));
+  } else {
+    /* chalk: three stubs and the dust they have left */
+    for (let i = 0; i < 3; i++)
+      g.add(at(new T.Mesh(new T.CylinderGeometry(0.008, 0.008, 0.03 + i * 0.012, 7), flat(i === 1 ? "#d8d2c4" : "#e6e2d6")),
+               -0.022 + i * 0.022, 0.008, i * 0.006, 0, 0, Math.PI / 2));
+    g.add(at(new T.Mesh(new T.CircleGeometry(0.052, 12), flat("#cdc7b8")), 0, 0.0012, 0, -Math.PI / 2));
+  }
+  const gl = at(new T.Mesh(new T.PlaneGeometry(0.115, 0.08), glow("#fff3d0", 0.0)), 0, 0.012, 0, -Math.PI / 2);
+  gl.userData.glint = true;
+  g.add(gl);
+  return g;
+}
+
 /* WHAT IS WRITTEN TO HAPPEN, HAPPENS — the second half of it.
 
    These six things are the whole reason the chapter is a story and not
@@ -18398,6 +18592,132 @@ function buildFinds() {
    then they are the sort of thing that tells her. Six nights, six
    pages, in her hand by the end whether or not she is any good at
    this. */
+/* ---- the odds and ends: place them, arm them, let her take them ---- */
+const oddMeshes = {};
+let oddGlint = 0, oddLit = false;
+const ODD_AT = new T.Vector3();
+let oddNear = null;                    /* the one under the cursor, if any */
+
+function buildOddments() {
+  /* grouped by room so each one in a room asks findSpot for a
+     different spot, and so none of them lands on the page's */
+  const perRoom = {};
+  (NS.oddments || []).forEach((o) => {
+    const rec = rooms[o.room];
+    if (!rec) return;
+    perRoom[o.room] = (perRoom[o.room] || 0) + 1;
+    const spot = findSpot(rec, perRoom[o.room]);
+    if (!spot) { console.warn("night shift: nowhere to put " + o.id + " in " + o.room); return; }
+    const g = buildOddProp(o.kind);
+    g.position.copy(spot.at);
+    g.rotation.y = spot.ry;
+    g.visible = false;
+    rec.live.add(g);
+    g.updateMatrixWorld(true);
+    const sh = contactShadow(g, { y: 0, opacity: 0.26, spread: 1.2 });
+    if (sh) { sh.position.set(0, -0.0025, 0); g.add(sh); }
+    oddMeshes[o.id] = g;
+  });
+}
+
+/* which ones are out tonight: every one whose night has come that she
+   has not already picked up, all at once and all night. They are not
+   rationed the way the pages are -- the point of them is that there is
+   usually SOMETHING out there, so that looking is worth it on an
+   ordinary minute rather than on the one minute a night when the shop
+   has put a page out for her. */
+function oddsOut() {
+  if (G.mode !== "story") return [];
+  const had = foundAll();
+  return (NS.oddments || []).filter((o) => G.night >= o.from && !had["odd-" + o.id]);
+}
+
+function armOdds() {
+  oddNear = null;
+  (NS.oddments || []).forEach((o) => { if (oddMeshes[o.id]) oddMeshes[o.id].visible = false; });
+  oddsOut().forEach((o) => { if (oddMeshes[o.id]) oddMeshes[o.id].visible = true; });
+}
+
+function stepOdds(dt) {
+  oddGlint -= dt;
+  if (oddGlint > 0) return;
+  /* slower and shyer than the page's glint: a page is meant to be
+     found, these are meant to be noticed */
+  oddGlint = oddLit ? range(Math.random, 0.5, 0.9) : range(Math.random, 2.2, 4.0);
+  oddLit = !oddLit;
+  for (const id in oddMeshes) {
+    const g = oddMeshes[id];
+    if (!g.visible) continue;
+    g.traverse((o) => {
+      if (o.userData && o.userData.glint && o.material) {
+        o.material = glow("#fff3d0", oddLit ? 0.5 : 0.0);
+      }
+    });
+  }
+}
+
+/* the hotspot, and which one it belongs to. Only ever one at a time --
+   the nearest to the middle of the picture -- because two buttons on
+   one feed is a menu, and this is a room. */
+function oddHotspot() {
+  const el = EL["ns-odd"];
+  if (!el) return;
+  oddNear = null;
+  const can = G.phase === "play" && G.monitor && G.monOut <= 0 && !isLost(G.cam);
+  if (!can) { el.hidden = true; return; }
+  let best = null, bestD = 1e9, bx = 0, by = 0;
+  oddsOut().forEach((o) => {
+    if (o.room !== G.cam) return;
+    const g = oddMeshes[o.id];
+    if (!g || !g.visible) return;
+    g.getWorldPosition(ODD_AT);
+    _proj.copy(ODD_AT).project(view);
+    const x = (_proj.x * 0.5 + 0.5) * 100;
+    const y = (-_proj.y * 0.5 + 0.5) * 100;
+    if (_proj.z > 1 || x < 4 || x > 96 || y < 4 || y > 96) return;
+    const d = (x - 50) * (x - 50) + (y - 50) * (y - 50);
+    if (d < bestD) { bestD = d; best = o; bx = x; by = y; }
+  });
+  if (!best) { el.hidden = true; return; }
+  oddNear = best;
+  el.hidden = false;
+  el.style.left = bx + "%";
+  el.style.top = by + "%";
+  el.classList.toggle("glinting", oddLit);
+}
+
+/* AND PICKING ONE UP DOES NOT STOP THE SHIFT.
+
+   This is the whole difference between an oddment and a page. A page
+   is a card, a decision and a held breath: the shop stops, she reads
+   it, she keeps it or burns it, and six o'clock is computed out of
+   what she chose. An oddment is a sentence. She taps it, he says the
+   thing, and the night carries on around her -- which is the only way
+   it can work, because the reason these exist is to fill the minutes
+   when nothing is happening, and a thing that stops the game cannot
+   fill the time in it.
+
+   The line goes out through tapeTrigger like every other line she
+   causes, so it waits its turn behind whatever he is already saying
+   rather than talking over him, and it is subject to the same
+   once-ever rule as the rest. */
+function takeOdd() {
+  if (!oddNear || G.phase !== "play") return;
+  const o = oddNear;
+  keepFind("odd-" + o.id);
+  G.stats.odds = (G.stats.odds || 0) + 1;
+  if (oddMeshes[o.id]) oddMeshes[o.id].visible = false;
+  oddNear = null;
+  if (EL["ns-odd"]) EL["ns-odd"].hidden = true;
+  SFX.tick(0.5, 0);
+  tapeTrigger("odd-" + o.id);
+}
+
+function oddsFound() {
+  const had = foundAll();
+  return (NS.oddments || []).filter((o) => had["odd-" + o.id]).length;
+}
+
 function armFind() {
   findMesh = null; findRec = null; findLit = false;
   NS.finds.forEach((f) => { if (findMeshes[f.id]) findMeshes[f.id].visible = false; });
@@ -20503,6 +20823,29 @@ const testHooks = {
   },
   /* the pause menu, through the same toggle the button calls */
   pauseNow: () => { togglePause(); return G.phase; },
+  /* the odds and ends: what is out, what is placed, what the hotspot
+     is currently offering, and taking one through the real function */
+  odds: () => ({
+    defined: (NS.oddments || []).map((o) => o.id),
+    placed: Object.keys(oddMeshes),
+    out: oddsOut().map((o) => o.id),
+    inRoom: oddsOut().filter((o) => o.room === G.cam).map((o) => o.id),
+    near: oddNear ? oddNear.id : null,
+    shown: !!(EL["ns-odd"] && !EL["ns-odd"].hidden),
+    found: oddsFound(),
+    lines: (NS.oddments || []).map((o) => ({
+      id: o.id, room: o.room, from: o.from,
+      t: (NS.tapeWhen || {})["odd-" + o.id] || null,
+    })),
+  }),
+  oddTake: () => { takeOdd(); return TAPE.pending ? TAPE.pending.t : null; },
+  oddAt: (id) => {
+    const g = oddMeshes[id];
+    if (!g) return null;
+    const v = new T.Vector3();
+    g.getWorldPosition(v);
+    return v.toArray().map((n) => +n.toFixed(3));
+  },
   /* how long the card that is up has been up, for a suite that has to
      know whether a press landed inside CARD_DEAF or outside it. In
      this container a setTimeout(200) can resolve a second and a half
