@@ -171,7 +171,54 @@ const t = (n, c, note) => { c ? pass++ : fail++;
       if (took === 'tape') { got = rec; break; }
       await sleep(200);
     }
-    return { tries, got, align: N.voxAlign() };
+    /* ---- AND THE ARRIVAL ITSELF, WHICH THE NETWORK WILL NOT STAGE ----
+
+       Everything above waits for a dropped take to come back, and on
+       this machine it never does inside voiceWait's 2.6 seconds, so
+       the two assertions that matter most about a RECORDING -- that
+       the caption is there for it and in step with it -- go unasked
+       every run.
+
+       voxAlignNow is the hook voxSpeak itself calls at the instant
+       voicePlay starts. Calling it by hand is the arrival, exactly:
+       same function, same turn, same state. It does not prove audio
+       came out of the speakers -- the run above is what speaks to
+       that -- but it does prove the thing that was broken: that when
+       the sound starts, the caption is on the screen for it, and
+       that coming into sync does not rub out words she has already
+       been given. */
+    let arrive = null;
+    if (rows.length) {
+      const txt = rows[rows.length - 1];        /* a long one: time to read */
+      N.tapeQuiet();
+      const qBy2 = Date.now() + 4000;
+      while (N.tapeDebug().vox && Date.now() < qBy2) await sleep(50);
+      if (N.tapeSayRaw(txt, null, false) && N.tape().line === txt) {
+        /* let it read itself most of the way, the way it would while a
+           slow take is still coming */
+        const readBy = Date.now() + 20000;
+        let litBefore = 0;
+        while (Date.now() < readBy) {
+          N.tapeTick(1 / 60);
+          const l = lit();
+          if (l.on > 0) { litBefore = l.on; if (l.on >= 2) break; }
+          if (!N.tapeDebug().shown) break;
+          await sleep(20);
+        }
+        const goneFirst = !N.tapeDebug().shown;
+        /* THE SOUND STARTS NOW */
+        N.voxAlignNow(txt);
+        const after = lit(), d2 = N.tapeDebug();
+        arrive = { line: txt, litBefore, goneFirst,
+                   backUp: !!d2.shown && !!d2.up, litAfter: after.on, of: after.of };
+        /* and it carries on from there rather than starting again */
+        for (let i = 0; i < 20; i++) { N.tapeTick(1 / 60); await sleep(20); }
+        const l3 = lit();
+        arrive.litLater = l3.on;
+      }
+    }
+
+    return { tries, got, arrive, align: N.voxAlign() };
   });
 
   const best = res.got || res.tries[res.tries.length - 1] || {};
@@ -236,6 +283,26 @@ const t = (n, c, note) => { c ? pass++ : fail++;
                 '  machine, so every attempt went out by the ' + r.took + ' path. The three\n' +
                 '  assertions above still hold; the two about being in step with a\n' +
                 '  recording were not exercised and are not claimed.\n');
+  }
+
+  const a = res.arrive;
+  if (a) {
+    console.log('\n  the arrival, staged through voxAlignNow (the same call voxSpeak\n' +
+                '  makes the instant voicePlay starts):');
+    console.log(`    "${String(a.line).slice(0, 52)}"`);
+    console.log(`    ${a.litBefore} word(s) already written, caption ` +
+                (a.goneFirst ? 'had gone' : 'still up') + ' when the sound started');
+    console.log(`    after it: on screen ${a.backUp}, ${a.litAfter} of ${a.of} lit, ` +
+                `${a.litLater} a moment later\n`);
+    t('when the sound starts the caption is on the screen for it', a.backUp === true,
+      a.goneFirst ? 'it had gone and was brought back' : 'it never left');
+    t('and coming into sync rubs out nothing she has already read',
+      a.litAfter >= a.litBefore,
+      a.litBefore + ' written before, ' + a.litAfter + ' after');
+    t('and it carries on from there rather than starting again',
+      a.litLater >= a.litAfter, a.litAfter + ' -> ' + a.litLater);
+  } else {
+    t('the arrival could be staged', false, 'no line to stage it with');
   }
 
   console.log(`\n${pass} passed, ${fail} failed`);
