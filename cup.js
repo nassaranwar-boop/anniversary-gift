@@ -5244,7 +5244,12 @@ window.OuissyCup = (function () {
        not taste. */
     if (camMode.kind === "hero" && camMode.at) {
       var hp = camMode.at;
-      camTo(hp.x, hp.y + 4, snap ? 1 : Math.min(1, 3.2 * dt), 3);
+      /* ZOOM TWO, NOT THREE. At the closest level the captain filled
+         the frame from the floor to above the top edge of it, so the
+         screen's own heading was printed across his forehead and his
+         boots were behind the button row. One level back frames a
+         person: head clear of the title, feet on the grass. */
+      camTo(hp.x, hp.y + 4, snap ? 1 : Math.min(1, 3.2 * dt), 2);
       /* WHERE ACROSS THE FRAME THEY STAND is a screen measurement, not
          a world one, so it is taken from the lens at their own depth
          rather than from a fraction of the pitch. Guessed as a fraction
@@ -7740,6 +7745,32 @@ window.OuissyCup = (function () {
       h = clamp(Math.round(h / 1.4), 140, 300);
       w = Math.max(2, Math.round(h * aspect));
     }
+    /* =====================================================================
+       THE MENUS GET THE ROOM THEY WERE DRAWN FOR
+
+       Measured across thirteen window shapes, this canvas came out
+       anywhere between 342x192 and 510x288 -- because it follows the
+       renderer's pixel grid, and that grid is chosen to keep the PITCH
+       crisp, which is a completely different question from how much
+       room a menu needs. Every screen in this chapter is laid out in
+       absolute pixels against roughly 480x270, so at 192 tall the squad
+       builder's name field was underneath its own buttons and the team
+       card's last line was off the bottom of the card. That is the
+       clipping in both of the screenshots he sent.
+
+       So there is a floor. Below it the canvas is scaled up on its own
+       terms -- the same aspect, more logical pixels, each one a little
+       smaller on screen -- and every layout has its room back. Above it
+       nothing changes, because a bigger grid was never the problem.
+
+       The cost is that on a short screen the menu text is not the same
+       size as the pitch's pixels. The alternative is text that is the
+       right size and cut in half, which is not a trade. */
+    var MIN_W = 440, MIN_H = 268;
+    if (h < MIN_H || w < MIN_W) {
+      var k = Math.max(MIN_H / h, MIN_W / w);
+      w = Math.round(w * k); h = Math.round(h * k);
+    }
     if (w === UIW && h === UIH) return;
     UIW = uiCvs.width = w;
     UIH = uiCvs.height = h;
@@ -8058,6 +8089,51 @@ window.OuissyCup = (function () {
      denser towards the edges, which is exactly how the machines that
      invented this look faked a gradient out of two colours. */
   var vigCanvas = null, vigKey = "";
+  /* =======================================================================
+     A MENU NEEDS SOMETHING TO BE PRINTED ON
+
+     The vignette darkens the EDGES and leaves the middle of the picture
+     at full strength, which is right for a match and wrong for a menu:
+     every screen in this chapter was laid over a live stadium with
+     hoardings, bunting and advertising text in it, and the result is
+     the screenshot he sent -- "THE TEAMS" sitting on top of the word
+     LONGCHAMP, with a roof, a crowd and a ball all running through the
+     letters.
+
+     This is the wash that goes under a menu. It is flat, it covers
+     everything, and it exists so that what is behind a screen reads as
+     a PLACE rather than as competition. The stadium is still there; it
+     is just behind the glass now instead of in front of it.
+     ======================================================================= */
+  function wash(strength) {
+    var a = strength === undefined ? 0.62 : strength;
+    UIX.fillStyle = "rgba(8,14,18," + a.toFixed(2) + ")";
+    UIX.fillRect(0, 0, UIW, UIH);
+  }
+
+  /* THE TITLE GOES IN A BAND, NOT ON THE WEATHER.
+
+     A heading drawn straight onto the picture is at the mercy of
+     whatever happens to be behind it, and behind it is a stadium with
+     writing on it. A band is two rules and a darker strip: it costs
+     eleven pixels of height and it means a title is legible on every
+     ground in the tournament rather than on the ones that happen to be
+     quiet at the top. */
+  function titleBand(text, y, opts) {
+    var o = opts || {};
+    var h = o.h || 26;
+    UIX.fillStyle = "rgba(6,12,16,0.82)";
+    UIX.fillRect(0, y, UIW, h);
+    line(0, y, UIW, 1, o.trim || "#e8b23c");
+    line(0, y + h - 1, UIW, 1, "rgba(13,20,18,1)");
+    drawText(Math.round(UIW / 2), text, y + Math.round((h - 9) / 2),
+             { align: "center", scale: o.scale || 1, track: o.track || 3,
+               colour: o.colour || "#ffffff",
+               outline: "#0d1412", outlineW: 2,
+               shadow: o.shadow, shadowX: 0, shadowY: 2 });
+    return y + h;
+  }
+
   function vignette(strength) {
     var key = UIW + "x" + UIH + ":" + (strength || 1);
     if (vigKey !== key) {
@@ -8664,18 +8740,19 @@ window.OuissyCup = (function () {
       var dt = 1 / 60;
 
       heartsStep(dt);
+      /* THE GROUND GOES BEHIND GLASS. Without this the heading was
+         printed straight onto a stadium with advertising boards in it,
+         and "THE TEAMS" came out on top of the word LONGCHAMP. */
+      wash(0.66);
       vignette(0.95);
       bunting(0, cols, UI.t);
 
-      /* ---- the title, as a logo rather than as a heading ---- */
+      /* ---- the title, in a band of its own ---- */
       var tp = slideIn(age, 0, -26);
       var head = mode === "quick" ? "YOUR FACULTY"
                : mode === "opp" ? "WHO ARE YOU PLAYING?" : "THE TEAMS";
-      drawText(Math.round(UIW / 2), head, 14 + tp.off,
-               { align: "center", scale: 2, colour: "#ffffff",
-                 outline: "#0d1412", outlineW: 2,
-                 shadow: accent, shadowX: 0, shadowY: 4 });
-      drawText(Math.round(UIW / 2), (carAt + 1) + " / " + list.length, 32 + tp.off,
+      titleBand(head, 10 + tp.off, { scale: 2, h: 28, trim: trim, shadow: accent });
+      drawText(Math.round(UIW / 2), (carAt + 1) + " / " + list.length, 40 + tp.off,
                { align: "center", colour: trim, outline: "#0d1412" });
 
       /* ---- the panel: who they are, what they are, who plays ---- */
@@ -8915,6 +8992,7 @@ window.OuissyCup = (function () {
       var full = chosen.length === 4;
       var accent = build.kit.shirt || "#c1272d";
       heartsStep(1 / 60);
+      wash(0.7);
       vignette(0.7);
 
       /* TWO SURFACES TO WORK ON.
@@ -8933,17 +9011,31 @@ window.OuissyCup = (function () {
       /* the pool's deck hugs the pool: thirteen chips in two columns
          and nothing under them, so a deck the height of the screen is
          eighty pixels of empty board */
-      deck(4, 24, 206, 148);
-      deck(212, 24, UIW - 216, 216);
+      /* THE DECKS RUN TO THE ACTION ROW, whatever height this screen
+         turns out to be. They used to be 148 and 216 tall regardless,
+         which on a short canvas put the name field underneath its own
+         buttons and on a tall one left a band of bare pitch under the
+         board. */
+      var deckTop = 30, deckBot = UIH - 32;
+      /* ONE BOARD, NOT TWO ISLANDS. Two decks floating on a live pitch
+         left strips of mown grass between and below them with a
+         substitute walking through -- which is the "ugly background"
+         in the screenshot. The working area is a surface now, and the
+         ground is something you can see at the edges of it. */
+      box(0, deckTop - 4, UIW, UIH - deckTop + 4, "#0a1015");
+      line(0, deckTop - 4, UIW, 1, "#2b3d46");
+      deck(4, deckTop, 206, deckBot - deckTop);
+      deck(212, deckTop, UIW - 216, deckBot - deckTop);
 
       var sl = slideIn(age, 0, -30);
-      drawText(8 + sl.off, "BUILD YOUR SQUAD", 6,
-               { scale: 2, colour: "#ffffff", outline: "#0d1412", outlineW: 2,
-                 shadow: accent, shadowX: 0, shadowY: 2 });
+      /* IN A BAND, NOT ON THE GRASS. At double size over a stadium, the
+         heading was competing with a roof, a crowd and the hoardings. */
+      titleBand("BUILD YOUR SQUAD", 0 + sl.off,
+                { scale: 2, h: 26, trim: accent, shadow: accent });
       uiSay("Build your squad");
 
       /* ---- LEFT: who there is ------------------------------------- */
-      var lx = 8, ly = 30, lw = 196;
+      var lx = 8, ly = deckTop + 6, lw = 196;
       var chip = function (r, cx2, cy2, cw) {
         var on = build.squad.indexOf(r.id) >= 0;
         var isGk = r.role === "gk";
@@ -8982,7 +9074,7 @@ window.OuissyCup = (function () {
       });
 
       /* ---- RIGHT: who she has picked ------------------------------ */
-      var rx = 214, rw = UIW - rx - 8, ry = 30;
+      var rx = 214, rw = UIW - rx - 8, ry = deckTop + 6;
       drawText(rx, "YOUR SIDE", ry, { colour: "#7f9a92", track: 2 });
       ry += 10;
       for (var i3 = 0; i3 < 4; i3++) {
@@ -9032,7 +9124,10 @@ window.OuissyCup = (function () {
                   b2[1] / 100, accent);
         });
       }
-      ry += 23;
+      /* NO GAP FOR A BLOCK THAT IS NOT THERE. The stat bars only exist
+         once she has four players, and the space they take was being
+         reserved either way. */
+      ry += full ? 20 : 6;
 
       /* ---- the kit ------------------------------------------------ */
       var swatchRow = function (label, cur, set) {

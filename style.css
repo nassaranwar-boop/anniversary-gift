@@ -7550,8 +7550,12 @@ img{-webkit-user-drag:none; user-select:none;}
    held sideways without a media query per element.
    ========================================================================= */
 .cup-frame{
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  width:100%; height:100%; gap:1.4vh;
+  /* EDGE TO EDGE. This was a centred flex column holding a 16:9 box,
+     which meant the chapter only ever used a 16:9 slice of whatever it
+     was given: on a laptop window that is a band of dead page under the
+     pitch, and on a phone held upright it was 219 pixels of football in
+     the middle of an 844-pixel screen. The stage takes the room now. */
+  display:block; width:100%; height:100%;
 }
 .cup-titlebar{
   display:none; margin:0; text-align:center; line-height:1.4;
@@ -7564,15 +7568,56 @@ img{-webkit-user-drag:none; user-select:none;}
 .cup-stage{
   position:relative; overflow:hidden;
   container-type:size; container-name:cupstage;
-  width:min(100%, calc(var(--app-h) * 1.7778));
-  aspect-ratio:16/9;
-  border-radius:8px;
+  /* NO LETTERBOX. The renderer works out its own pixel grid from
+     whatever size this ends up (see setViewport in cup.pitch2d.js), so
+     there is nothing here that needs a fixed shape -- the 16/9 was
+     habit copied from the other chapters, and it cost this one between
+     a fifth and three quarters of the screen depending on the window.
+     A wider frame shows more pitch and a taller one shows more of the
+     ground, which are both improvements. */
+  width:100%; height:100%;
   background:#2b5f2f;
-  box-shadow:
-    0 0 0 .5cqw rgba(245,208,32,.42),
-    0 0 0 1cqw rgba(14,44,20,.92),
-    0 1.2cqw 4cqw rgba(0,0,0,.5);
 }
+/* THE ONE SHAPE THAT IS NOT AN IMPROVEMENT is a phone held upright,
+   where filling the screen would mean a pitch two and a half times
+   taller than it is wide -- a keyhole with a match going on somewhere
+   behind it. Upright gets the widest picture that is still shaped like
+   a football match, centred, which is still more than twice what the
+   16/9 box gave it. */
+@media (orientation:portrait) and (max-aspect-ratio: 5/6){
+  .cup-frame{ display:flex; align-items:center; }
+  .cup-stage{ height:auto; aspect-ratio:5/6; }
+}
+/* ---------- turn your phone ---------- */
+.cup-turn{ display:none; }
+@media (orientation:portrait) and (max-width:620px){
+  .cup-turn{
+    display:flex; position:absolute; inset:0; z-index:40;
+    flex-direction:column; align-items:center; justify-content:center; gap:2.4vh;
+    text-align:center; padding:6vw;
+    background:radial-gradient(circle at 50% 42%, #14331c 0%, #071009 72%);
+    font-family:'Silkscreen',monospace;
+  }
+  .cup-turn b{ font-weight:400; font-size:clamp(15px,5.4vw,26px); color:#f6faf0;
+               letter-spacing:.08em; text-shadow:0 3px 0 rgba(6,32,14,.9); }
+  .cup-turn i{ font-style:normal; font-size:clamp(10px,3.2vw,15px); color:#8fbf96;
+               letter-spacing:.04em; }
+  /* the phone itself, drawn with two boxes and turned over and over */
+  .cup-turn-phone{
+    width:clamp(44px,14vw,70px); height:clamp(74px,23vw,116px);
+    border:.5vw solid #f5d020; border-radius:1.6vw;
+    box-shadow:inset 0 0 0 .5vw rgba(10,24,14,.9);
+    animation:cupTurn 2.6s ease-in-out infinite;
+  }
+  @keyframes cupTurn{
+    0%,28%   { transform:rotate(0deg); }
+    52%,78%  { transform:rotate(-90deg); }
+    100%     { transform:rotate(0deg); }
+  }
+  /* nothing behind it needs to be reachable while it is up */
+  #cup-ui, #cup-pad, .cup-hud{ pointer-events:none; }
+}
+@media (prefers-reduced-motion: reduce){ .cup-turn-phone{ animation:none; } }
 /* The canvas is rendered small and stretched hard, the same way the
    other five chapters put a 320x180 buffer on a phone — see
    sizeRenderer() in cup.js. `.px` is added by the game when the retro
