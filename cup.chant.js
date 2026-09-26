@@ -36,7 +36,10 @@
 window.CupChant = (function () {
   "use strict";
 
-  var AC = null, out = null, bus = null, verb = null;
+  var AC = null, out = null, bus = null, verb = null, preMaster = null;
+  /* the two sidechain gains — see duckForKick */
+  var sc = { inst: null, vox: null };
+  var delayL = null, delayR = null, delaySend = null;
   var L = {};                       // the five layers' gain nodes
   var on = false, muted = false;
   var E = 0.25, phase = "idle";
@@ -120,7 +123,154 @@ window.CupChant = (function () {
     SHORTNOISE = null;          // a buffer belongs to the context it was made in
     out = AC.createGain();
     out.gain.value = (opts && opts.volume) || 0.9;
+
+    /* =====================================================================
+       THE MASTER CHAIN, WHICH IS MOST OF WHAT "PRODUCED" MEANS
+
+       Measured, before any of this existed: a crest factor of 17 to 21
+       decibels. A finished pop record runs 8 to 12. Crest factor is
+       how far the loudest moment sits above the average one, and at
+       twenty decibels what you have is a track whose transients hit
+       the ceiling while the BODY of it — the part anyone actually
+       listens to — sits twenty decibels down. Turning it up does not
+       help; the peaks just clip sooner. That gap is exactly what
+       people mean when they say a mix sounds thin, or distant, or
+       unfinished, and no amount of rewriting the notes touches it.
+
+       Three stages, in the order every mastering chain on earth uses
+       them, and each one does a different job:
+
+         SATURATION rounds the peaks off by bending the waveform. It is
+         the oldest loudness trick there is — it is what tape did by
+         accident — and it adds harmonics on the way, which is where
+         "warm" comes from. A clean digital oscillator has no harmonics
+         it was not given; this gives it some.
+
+         GLUE COMPRESSION pulls the whole mix together so the drums and
+         the crowd breathe as one thing rather than as separate things
+         happening at the same time. Slow attack so the transients
+         survive, quick release so it pumps a little.
+
+         THE LIMITER is the ceiling. Fast, hard, and only catching what
+         gets past the other two.
+       ===================================================================== */
+    var sat = AC.createWaveShaper();
+    var curve = new Float32Array(2048);
+    for (var ci = 0; ci < 2048; ci++) {
+      var x = (ci / 1024) - 1;
+      /* tanh, gently driven. Hard enough to round the peaks, soft
+         enough that it is not distortion */
+      curve[ci] = Math.tanh(x * 1.9) / Math.tanh(1.9);
+    }
+    sat.curve = curve;
+    sat.oversample = "2x";
+
+    var comp = AC.createDynamicsCompressor();
+    comp.threshold.value = -20;
+    comp.knee.value = 8;
+    comp.ratio.value = 3.5;
+    comp.attack.value = 0.008;     // slow enough to let the kick click through
+    comp.release.value = 0.14;     // quick enough to breathe
+
+    var lim = AC.createDynamicsCompressor();
+    lim.threshold.value = -3;
+    lim.knee.value = 0;
+    lim.ratio.value = 20;
+    lim.attack.value = 0.001;
+    lim.release.value = 0.05;
+
+    /* make up what the chain takes off, or it is quieter and no denser */
+    var makeup = AC.createGain(); makeup.gain.value = 2.15;
+
+    /* THE CEILING, FOR REAL.
+
+       A DynamicsCompressor is not a brickwall limiter — it has no
+       lookahead, so a fast transient is already past before the gain
+       reduction arrives, and with the chain above pushing hard every
+       one of these six came out over full scale. Measured: peaks of
+       1.03 to 1.08, which is clipping, which on a phone is a crackle.
+
+       A clipper after the limiter is how every master ever made
+       finishes, and it is one waveshaper: a curve that is straight
+       through the middle and bends hard at the top, so quiet material
+       passes untouched and only the last decibel gets rounded off.
+       Nothing after this can exceed full scale, by construction. */
+    var ceil = AC.createWaveShaper();
+    var cc = new Float32Array(4096);
+    for (var k2 = 0; k2 < 4096; k2++) {
+      var v2 = (k2 / 2048) - 1;
+      var a2 = Math.abs(v2), sgn = v2 < 0 ? -1 : 1;
+      cc[k2] = a2 < 0.72 ? v2
+        : sgn * (0.72 + (1 - 0.72) * Math.tanh((a2 - 0.72) / (1 - 0.72) * 1.6)
+                 / Math.tanh(1.6) * 0.96);
+    }
+    ceil.curve = cc;
+    ceil.oversample = "4x";
+
+    preMaster = AC.createGain(); preMaster.gain.value = 1;
+    preMaster.connect(sat);
+    sat.connect(comp);
+    comp.connect(makeup);
+    makeup.connect(lim);
+    lim.connect(ceil);
+    ceil.connect(out);
     out.connect(destination || AC.destination);
+
+    /* =====================================================================
+       THE PUMP
+
+       On every modern pop and dance record, the bass and the pads DUCK
+       on each kick and swell back before the next one. It is done with
+       a compressor keyed off the kick channel, and the breathing it
+       produces is the most identifiable single feature of contemporary
+       production — the thing that makes a track sound like now. There
+       was none of it here at all.
+
+       Two depths rather than one, because they are not the same
+       instrument. The band ducks hard: a bass note and a kick drum are
+       fighting for the same forty hertz, and getting out of its way is
+       why the kick sounds big rather than why the bass sounds small.
+       The crowd ducks gently — enough to breathe with the track,
+       not enough to sound like somebody is riding a fader on them.
+
+       Nothing keys off an analyser: the kick is SCHEDULED, so the duck
+       is scheduled with it, sample-accurate and free. */
+    sc.inst = AC.createGain(); sc.inst.gain.value = 1;
+    sc.vox = AC.createGain(); sc.vox.gain.value = 1;
+    sc.inst.connect(preMaster);
+    sc.vox.connect(preMaster);
+
+    /* =====================================================================
+       THE ECHO ON THE HOOK
+
+       Almost every hook on almost every pop record has a delay on it,
+       set to a dotted eighth so the repeats fall between the beats
+       rather than on them. It is the difference between a line that
+       was played and a line that was PRODUCED: the repeats fill the
+       gaps the melody leaves, which is why a sparse hook still sounds
+       full, and the cross-rhythm against the drums is most of what
+       people hear as "groove" without being able to name it.
+
+       On a send, not inserted, so the dry note stays where it is and
+       only a copy of it bounces. */
+    delayL = AC.createDelay(2.0);
+    delayR = AC.createDelay(2.0);
+    var dfb = AC.createGain(); dfb.gain.value = 0.34;
+    var dtone = AC.createBiquadFilter();
+    dtone.type = "lowpass"; dtone.frequency.value = 2600;
+    delaySend = AC.createGain(); delaySend.gain.value = 0.0;
+    var dpanL = AC.createStereoPanner ? AC.createStereoPanner() : null;
+    var dpanR = AC.createStereoPanner ? AC.createStereoPanner() : null;
+    delaySend.connect(delayL);
+    delayL.connect(dtone); dtone.connect(dfb); dfb.connect(delayR);
+    delayR.connect(delayL);              // ping-pong
+    if (dpanL && dpanR) {
+      dpanL.pan.value = -0.7; dpanR.pan.value = 0.7;
+      delayL.connect(dpanL); dpanL.connect(sc.inst);
+      delayR.connect(dpanR); dpanR.connect(sc.inst);
+    } else {
+      delayL.connect(sc.inst); delayR.connect(sc.inst);
+    }
 
     /* the crowd bus: everything the ground makes goes through one
        reverb, because two reverbs is two rooms */
@@ -134,8 +284,8 @@ window.CupChant = (function () {
     verb.buffer = impulse(1.3, 2.2);
     var wet = AC.createGain(); wet.gain.value = 0.22;
     var dry = AC.createGain(); dry.gain.value = 0.92;
-    bus.connect(dry); dry.connect(out);
-    bus.connect(verb); verb.connect(wet); wet.connect(out);
+    bus.connect(dry); dry.connect(sc.vox);
+    bus.connect(verb); verb.connect(wet); wet.connect(sc.vox);
 
     /* AND A RUMBLE UNDER IT ALL. A roar you feel is a roar with
        something under eighty hertz in it; without that it is a hiss. */
@@ -155,9 +305,16 @@ window.CupChant = (function () {
        separation is most of the difference between a stadium with a
        band playing in it and a cathedral. */
     L.band = AC.createGain(); L.band.gain.value = 0.0;
+    /* percussion: its own gain, following the band's fader but routed
+       around the duck — see drumsOut */
+    L.drums = AC.createGain(); L.drums.gain.value = 0.0;
+    var drumDry = AC.createGain(); drumDry.gain.value = 1.0;
+    var drumWet = AC.createGain(); drumWet.gain.value = 0.07;
+    L.drums.connect(drumDry); drumDry.connect(preMaster);
+    L.drums.connect(drumWet); drumWet.connect(verb);
     var bandDry = AC.createGain(); bandDry.gain.value = 1.0;
     var bandWet = AC.createGain(); bandWet.gain.value = 0.10;
-    L.band.connect(bandDry); bandDry.connect(out);
+    L.band.connect(bandDry); bandDry.connect(sc.inst);
     L.band.connect(bandWet); bandWet.connect(verb);
 
     startAmbience();
@@ -376,16 +533,54 @@ window.CupChant = (function () {
        section, and a string section is a different genre.
      ======================================================================= */
 
+  /* DUCK EVERYTHING THAT IS NOT THE KICK, at the moment the kick
+     lands. The shape matters more than the depth: down instantly,
+     back up over about three-quarters of a beat, on a curve rather
+     than a straight line, because a linear return sounds like a fader
+     and an exponential one sounds like a compressor letting go. */
+  /* where percussion goes: past the duck, into the master chain */
+  function drumsOut() { return L.drums || L.band; }
+
+  function duckForKick(t, weight) {
+    if (!sc.inst) return;
+    var w = weight === undefined ? 1 : weight;
+    var hold = 0.012;
+    [[sc.inst, 1 - 0.62 * w], [sc.vox, 1 - 0.26 * w]].forEach(function (pair) {
+      var g = pair[0], floor = Math.max(0.05, pair[1]);
+      g.gain.cancelScheduledValues(t);
+      g.gain.setValueAtTime(1, t);
+      g.gain.linearRampToValueAtTime(floor, t + hold);
+      g.gain.setTargetAtTime(1, t + hold, 0.075);
+    });
+  }
+
   /* the kick: a sine dropping fast, with a click on the front so it
      cuts through on a phone speaker that cannot reproduce the sine */
   function kick(t, vol) {
+    duckForKick(t, Math.min(1, vol / 0.6));
+    /* THREE LAYERS, WHICH IS WHAT A KICK DRUM IS.
+       A sub you feel, a body you hear, and a click that survives a
+       phone speaker with no bottom end at all. One sine was the body
+       only, which is why it disappeared on anything small. */
+    var sb = AC.createOscillator(); sb.type = "sine";
+    sb.frequency.setValueAtTime(58, t);
+    sb.frequency.exponentialRampToValueAtTime(36, t + 0.09);
+    var sbg = AC.createGain();
+    sbg.gain.setValueAtTime(vol * 0.85, t);
+    sbg.gain.exponentialRampToValueAtTime(0.0001, t + 0.26);
+    sb.connect(sbg); sbg.connect(drumsOut());
+    sb.start(t); sb.stop(t + 0.3);
     var o = AC.createOscillator(); o.type = "sine";
     o.frequency.setValueAtTime(150, t);
     o.frequency.exponentialRampToValueAtTime(44, t + 0.055);
     var g = AC.createGain();
     g.gain.setValueAtTime(vol, t);
     g.gain.exponentialRampToValueAtTime(0.0001, t + 0.20);
-    o.connect(g); g.connect(L.band);
+    /* THE DRUMS DO NOT GO THROUGH THE DUCK. A kick that ducks itself
+       is a kick with a hole in the middle of it, and a snare landing
+       inside its own gain dip is a snare that sounds like it is in the
+       next room. Percussion goes straight to the master. */
+    o.connect(g); g.connect(drumsOut());
     o.start(t); o.stop(t + 0.24);
     var c = AC.createBufferSource(); c.buffer = shortNoise();
     var cf = AC.createBiquadFilter();
@@ -393,7 +588,7 @@ window.CupChant = (function () {
     var cg = AC.createGain();
     cg.gain.setValueAtTime(vol * 0.18, t);
     cg.gain.exponentialRampToValueAtTime(0.0001, t + 0.012);
-    c.connect(cf); cf.connect(cg); cg.connect(L.band);
+    c.connect(cf); cf.connect(cg); cg.connect(drumsOut());
     c.start(t); c.stop(t + 0.03);
   }
 
@@ -409,7 +604,7 @@ window.CupChant = (function () {
     var g = AC.createGain();
     g.gain.setValueAtTime(vol, t);
     g.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
-    n.connect(hp); hp.connect(bp); bp.connect(g); g.connect(L.band);
+    n.connect(hp); hp.connect(bp); bp.connect(g); g.connect(drumsOut());
     n.start(t); n.stop(t + 0.16);
     var o = AC.createOscillator(); o.type = "triangle";
     o.frequency.setValueAtTime(220, t);
@@ -417,8 +612,18 @@ window.CupChant = (function () {
     var og = AC.createGain();
     og.gain.setValueAtTime(vol * 0.5, t);
     og.gain.exponentialRampToValueAtTime(0.0001, t + 0.07);
-    o.connect(og); og.connect(L.band);
+    o.connect(og); og.connect(drumsOut());
     o.start(t); o.stop(t + 0.09);
+    /* and the crack on top — a third layer, short and very bright,
+       which is the part that carries across a room */
+    var cr = AC.createBufferSource(); cr.buffer = shortNoise();
+    var ch = AC.createBiquadFilter();
+    ch.type = "highpass"; ch.frequency.value = 3800;
+    var cg2 = AC.createGain();
+    cg2.gain.setValueAtTime(vol * 0.55, t);
+    cg2.gain.exponentialRampToValueAtTime(0.0001, t + 0.045);
+    cr.connect(ch); ch.connect(cg2); cg2.connect(drumsOut());
+    cr.start(t); cr.stop(t + 0.06);
   }
 
   /* the hat. Twelve milliseconds of bright noise, and the offbeat one
@@ -430,7 +635,13 @@ window.CupChant = (function () {
     var g = AC.createGain();
     g.gain.setValueAtTime(vol, t);
     g.gain.exponentialRampToValueAtTime(0.0001, t + (open ? 0.11 : 0.026));
-    n.connect(hp); hp.connect(g); g.connect(L.band);
+    /* hats sit slightly off centre and alternate, which is what stops
+       a straight eighth-note pattern sounding like a machine */
+    var hpan = AC.createStereoPanner ? AC.createStereoPanner() : null;
+    n.connect(hp); hp.connect(g);
+    if (hpan) { hpan.pan.value = (Math.round(t * 1000) % 2) ? 0.22 : -0.22;
+                g.connect(hpan); hpan.connect(drumsOut()); }
+    else g.connect(drumsOut());
     n.start(t); n.stop(t + (open ? 0.14 : 0.05));
   }
 
@@ -448,6 +659,23 @@ window.CupChant = (function () {
     g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
     g.gain.exponentialRampToValueAtTime(vol * 0.45, t + dur * 0.5);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    /* THE SUB, UNDER EVERYTHING AND THROUGH NOTHING.
+
+       There was nothing at all below eighty hertz in this file, which
+       is the entire bottom octave of a record — the part you feel
+       rather than hear, and the reason a real mix has weight. A clean
+       sine an octave under the bass note, bypassing the filter that
+       shapes the pluck, because a sub that gets filtered is a sub that
+       is not there. */
+    var sub = AC.createOscillator();
+    sub.type = "sine"; sub.frequency.value = f / 2;
+    var sg = AC.createGain();
+    sg.gain.setValueAtTime(0.0001, t);
+    sg.gain.exponentialRampToValueAtTime(vol * 0.9, t + 0.012);
+    sg.gain.exponentialRampToValueAtTime(0.0001, t + dur * 1.3);
+    sub.connect(sg); sg.connect(L.band);
+    sub.start(t); sub.stop(t + dur * 1.4 + 0.05);
+
     [["sawtooth", f, 1], ["square", f / 2, 0.55]].forEach(function (v) {
       var o = AC.createOscillator();
       o.type = v[0]; o.frequency.value = v[1];
@@ -471,14 +699,21 @@ window.CupChant = (function () {
     g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
     g.gain.exponentialRampToValueAtTime(vol * 0.2, t + dur * 0.4);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    /* THE CHORD IS SPREAD ACROSS THE STEREO FIELD, one note per side
+       and one up the middle — which is how a guitarist is recorded and
+       why three notes played at once sound like three players rather
+       than like one chord. */
     freqs.forEach(function (f, i) {
       var o = AC.createOscillator();
       o.type = bright ? "sawtooth" : "triangle";
       o.frequency.value = f;
-      o.detune.value = (i - 1) * 6;
+      o.detune.value = (i - 1) * 8;
       var og = AC.createGain(); og.gain.value = 1 / freqs.length;
+      var pan = AC.createStereoPanner ? AC.createStereoPanner() : null;
       var at = t + i * 0.012;
-      o.connect(og); og.connect(bp);
+      o.connect(og);
+      if (pan) { pan.pan.value = (i - 1) * 0.66; og.connect(pan); pan.connect(bp); }
+      else og.connect(bp);
       o.start(at); o.stop(t + dur + 0.06);
     });
     bp.connect(g); g.connect(L.band);
@@ -489,24 +724,124 @@ window.CupChant = (function () {
      saws a few cents apart through a resonant lowpass that opens on
      the attack: bright, present, and completely unlike a choir. */
   function lead(t, f, dur, vol) {
-    var lp = AC.createBiquadFilter();
-    lp.type = "lowpass"; lp.Q.value = 6;
-    lp.frequency.setValueAtTime(f * 2.2, t);
-    lp.frequency.exponentialRampToValueAtTime(Math.min(9000, f * 7), t + 0.05);
-    lp.frequency.exponentialRampToValueAtTime(Math.max(600, f * 2.6), t + dur);
     var g = AC.createGain();
     g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(vol, t + 0.014);
     g.gain.setValueAtTime(vol, t + Math.max(0.02, dur * 0.62));
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    [-7, 7].forEach(function (d) {
+
+    /* WIDE, AND WIDE MEANS TWO DIFFERENT THINGS IN TWO PLACES.
+
+       A single oscillator panned centre is a mono line and mono is
+       what every one of these was. Two saws detuned against each other
+       and sent HARD to opposite sides is the oldest trick in record
+       production: the ear cannot place it, so it stops sounding like a
+       point and starts sounding like a space. The detune has to be
+       real — seven cents is a chorus effect, eighteen is a section. */
+    [[-18, -0.75], [18, 0.75]].forEach(function (v) {
+      var lp = AC.createBiquadFilter();
+      lp.type = "lowpass"; lp.Q.value = 6;
+      lp.frequency.setValueAtTime(f * 2.2, t);
+      lp.frequency.exponentialRampToValueAtTime(Math.min(9000, f * 7), t + 0.05);
+      lp.frequency.exponentialRampToValueAtTime(Math.max(600, f * 2.6), t + dur);
       var o = AC.createOscillator();
-      o.type = "sawtooth"; o.frequency.value = f; o.detune.value = d;
+      o.type = "sawtooth"; o.frequency.value = f; o.detune.value = v[0];
+      var pan = AC.createStereoPanner ? AC.createStereoPanner() : null;
       var og = AC.createGain(); og.gain.value = 0.5;
-      o.connect(og); og.connect(lp);
+      o.connect(lp); lp.connect(og);
+      if (pan) { pan.pan.value = v[1]; og.connect(pan); pan.connect(g); }
+      else og.connect(g);
       o.start(t); o.stop(t + dur + 0.05);
     });
-    lp.connect(g); g.connect(L.band);
+    /* and a square an octave down through the middle, which is what
+       stops a wide sound being a hole where the tune should be */
+    var mid = AC.createOscillator();
+    mid.type = "square"; mid.frequency.value = f / 2;
+    var ml = AC.createBiquadFilter();
+    ml.type = "lowpass"; ml.frequency.value = f * 1.6;
+    var mg = AC.createGain(); mg.gain.value = 0.3;
+    mid.connect(ml); ml.connect(mg); mg.connect(g);
+    mid.start(t); mid.stop(t + dur + 0.05);
+
+    g.connect(L.band);
+    if (delaySend) { var sd = AC.createGain(); sd.gain.value = 1;
+                     g.connect(sd); sd.connect(delaySend); }
+  }
+
+  /* =======================================================================
+     TRANSITIONS, WHICH ARE WHAT A RECORD HAS BETWEEN ITS SECTIONS
+
+     This looped eight bars and then looped them again, with nothing at
+     the joins. Records never do that. Every section boundary on every
+     produced track has something across it — a riser into it, an
+     impact on it, a cymbal decaying out of it — and those three
+     things are most of why a record feels like it is GOING somewhere
+     rather than repeating. They are also almost free: noise through a
+     moving filter, and a low sine.
+     ======================================================================= */
+
+  /* the sweep up into a drop. Noise through a bandpass climbing two
+     octaves, getting louder as it goes — the sound of something about
+     to happen, which is worth more than the thing that happens. */
+  function riser(t, dur, vol) {
+    var n = AC.createBufferSource(); n.buffer = noise(2); n.loop = true;
+    var bp = AC.createBiquadFilter();
+    bp.type = "bandpass"; bp.Q.value = 2.2;
+    bp.frequency.setValueAtTime(400, t);
+    bp.frequency.exponentialRampToValueAtTime(6500, t + dur);
+    var g = AC.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + dur * 0.92);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur + 0.05);
+    n.connect(bp); bp.connect(g); g.connect(drumsOut());
+    n.start(t); n.stop(t + dur + 0.1);
+  }
+
+  /* and the thing it lands on. A boom you feel and a crash you hear,
+     which between them are what makes a downbeat an EVENT. */
+  function impact(t, vol) {
+    var o = AC.createOscillator(); o.type = "sine";
+    o.frequency.setValueAtTime(88, t);
+    o.frequency.exponentialRampToValueAtTime(30, t + 0.5);
+    var g = AC.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+    o.connect(g); g.connect(drumsOut());
+    o.start(t); o.stop(t + 1.0);
+
+    var n = AC.createBufferSource(); n.buffer = noise(2);
+    var hp = AC.createBiquadFilter();
+    hp.type = "highpass"; hp.frequency.value = 2600;
+    var ng = AC.createGain();
+    ng.gain.setValueAtTime(vol * 0.5, t);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 1.2);
+    n.connect(hp); hp.connect(ng); ng.connect(drumsOut());
+    n.start(t); n.stop(t + 1.3);
+  }
+
+  /* THE COUNTER-MELODY, second time round.
+
+     Two operators of FM with the modulator an octave and a half up,
+     which is a bell — and a bell sitting above the tune, playing only
+     its long notes, is the oldest way there is of making a repeat
+     sound like a development rather than a repeat. */
+  function bell(t, f, dur, vol) {
+    var car = AC.createOscillator(); car.type = "sine"; car.frequency.value = f;
+    var mod = AC.createOscillator(); mod.type = "sine"; mod.frequency.value = f * 3.01;
+    var mg = AC.createGain();
+    mg.gain.setValueAtTime(f * 2.4, t);
+    mg.gain.exponentialRampToValueAtTime(f * 0.05, t + 0.35);
+    mod.connect(mg); mg.connect(car.frequency);
+    var g = AC.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + Math.max(0.5, dur * 1.3));
+    var pan = AC.createStereoPanner ? AC.createStereoPanner() : null;
+    car.connect(g);
+    if (pan) { pan.pan.value = 0.55; g.connect(pan); pan.connect(L.band); }
+    else g.connect(L.band);
+    car.start(t); mod.start(t);
+    car.stop(t + dur * 1.4 + 0.1); mod.stop(t + dur * 1.4 + 0.1);
   }
 
   /* ---------------------------------------------------------- the scheduler
@@ -681,8 +1016,12 @@ window.CupChant = (function () {
     var lo = croot / 2, hi5 = fifth / 2;
     if (g === "ceremony") {
       /* a pedal. One note, held under the whole thing, which is what
-         makes twenty-two bars of arpeggio bearable */
-      bassHit(t, lo, b * 3.6, 0.26);
+         makes twenty-two bars of arpeggio bearable — but it does not
+         arrive until the second pair of bars, because a build made
+         only of VOLUME does not survive a compressor. Once the master
+         chain is pulling quiet passages up by twelve decibels, the
+         only build that still reads is one made of things ARRIVING. */
+      if (pos >= 2) bassHit(t, lo, b * 3.6, pos >= 4 ? 0.30 : 0.20);
       return;
     }
     if (g === "hymn") {
@@ -737,7 +1076,9 @@ window.CupChant = (function () {
     if (g === "hymn" || g === "ceremony") {
       /* HELD, not struck. The one place a sustained chord is right is
          under a hymn, and under Handel. */
-      stab(t, voiced, b * 3.7, full ? 0.13 : 0.09, false);
+      if (g === "ceremony" && pos < 1) return;
+      stab(t, voiced, b * 3.7,
+           full ? 0.13 : (g === "ceremony" && pos < 4 ? 0.05 : 0.09), false);
       return;
     }
     if (g === "stomp") {
@@ -760,6 +1101,7 @@ window.CupChant = (function () {
     var g = anthem.groove || "stomp";
     var prog = PROGS[anthem.mood] || PROGS["anthemic-uplifting"];
     var pos = bar % CYCLE;
+    var cycle = Math.floor(bar / CYCLE);
     var chord = prog[bar % prog.length];
     var croot = hz(root, scale, chord, 0);
     var fifth = hz(root, scale, chord + 4, 0);
@@ -786,6 +1128,20 @@ window.CupChant = (function () {
     if (!acap) drums(g, t, b, pos, drop, E);
     if (band) bassLine(g, t, b, croot, fifth, pos);
 
+    /* WHAT HAPPENS AT THE JOINS. The bar before the hole gets a sweep
+       into it; the bar the band comes back on gets hit. A build has no
+       hole, so it gets its riser at the top of the cycle instead,
+       where it is turning over into the next climb. */
+    var hasHole = (pos === 4) && (drop || acap);
+    if (E > 0.4) {
+      if (pos === 3 && (g !== "build" && g !== "ceremony")) riser(t + b * 2, b * 2, 0.14);
+      if (pos === 3 && g === "ceremony") riser(t, b * 4, 0.10);
+      if (pos === 7 && g === "build") riser(t + b * 2, b * 2, 0.12);
+      if (pos === 5 && hasHole) impact(t, 0.34);
+      if (pos === 4 && g === "ceremony") impact(t, 0.30);
+      if (pos === 5 && g === "build") impact(t, 0.26);
+    }
+
     var voiced = [0, 2, 4].map(function (add) { return hz(root, scale, chord + add, 1); });
     var stabsIn = band && (g === "build" || g === "ceremony" ? true : pos >= 2);
     if (stabsIn) chords(g, t, b, voiced, pos, pos >= 5);
@@ -796,7 +1152,13 @@ window.CupChant = (function () {
        has them in from the start because that is what a stomp is. */
     var sung, full, lifted;
     if (g === "build") { sung = pos >= 2; full = pos >= 5; lifted = pos >= 6; }
-    else if (g === "ceremony") { sung = true; full = pos >= 4; lifted = pos >= 5; }
+    else if (g === "ceremony") {
+      /* Handel's trick is that NOBODY sings for twenty-two bars. The
+         arpeggio turns over alone, the bass joins it, and the voices
+         do not appear at all until the downbeat everything lands on —
+         which is the only reason that downbeat is worth anything. */
+      sung = pos >= 3; full = pos >= 4; lifted = pos >= 5;
+    }
     else if (g === "stomp") { sung = true; full = pos >= 3; lifted = pos >= 5; }
     else { sung = pos >= 2 || E > 0.62; full = pos >= 5; lifted = pos >= 6; }
     if (drop) sung = false;
@@ -830,7 +1192,20 @@ window.CupChant = (function () {
       var tt = t + (nb - half) * b;
       var dur = notes[i][2] * b;
       /* no instrument in the a cappella bar. That is what makes it one. */
-      if (!acap) lead(tt, f * leadUp, dur * 0.92, full ? 0.17 : 0.11);
+      var lv = full ? 0.17 : 0.11;
+      /* and the arpeggio comes UP as the piece does, rather than
+         sitting at one level while everything else arrives round it */
+      if (g === "ceremony") lv = pos < 2 ? 0.07 : (pos < 4 ? 0.11 : 0.19);
+      if (!acap) lead(tt, f * leadUp, dur * 0.92, lv);
+      /* A SECOND PASS THAT IS NOT THE FIRST. From the second cycle on a
+         bell rides above the LONG notes of the tune — only the long
+         ones, because a counter-line that doubles everything is not a
+         counter-line, it is a thicker lead. Nothing in a record repeats
+         a section identically, and this looped eight bars for ninety
+         minutes. */
+      if (cycle > 0 && full && notes[i][2] >= 1) {
+        bell(tt + b * 0.5, f * 2, dur * 0.7, 0.10);
+      }
       voices(f, tt, dur * 0.95, full ? 0.18 : 0.11, side, drive, full ? 9 : 5);
       if (full) hummed(f, tt, dur * 0.9, 0.08);
       if (lifted) voices(f / 2, tt, dur * 0.95, 0.10, -side, drive * 0.7, 5);
@@ -904,6 +1279,7 @@ window.CupChant = (function () {
     ramp("pulse", L.pulse, v.pulse, 0.8);
     ramp("hum", L.hum, v.hum, 0.9);
     ramp("band", L.band, v.band, 0.7);
+    ramp("drums", L.drums, v.band, 0.7);
     ramp("chant", L.chant, v.chant, 0.5);
   }
 
@@ -1023,6 +1399,15 @@ window.CupChant = (function () {
        progression, and a motif in scale degrees. `stems` is honoured
        if it is ever filled in; nothing here needs it. */
     setTeam: function (a) {
+      /* the delay is a DOTTED EIGHTH of this ground's tempo, set when
+         the team changes — the repeats then fall between the beats
+         instead of on them, which is the whole point of it */
+      if (delayL && a && a.tempo) {
+        var bl = 60 / a.tempo;
+        delayL.delayTime.value = bl * 0.75;
+        delayR.delayTime.value = bl * 0.75;
+        if (delaySend) delaySend.gain.value = 0.26;
+      }
       anthem = a || null;
       bar = 0;
       nextBar = AC ? AC.currentTime + 0.1 : 0;

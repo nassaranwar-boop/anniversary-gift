@@ -337,6 +337,18 @@ moving.
   thing that starts small and never stops growing. Asking those two for
   a drop is asking them to be the other four, which is precisely the
   thinking that produced six tracks that sounded like one.
+
+  It prints two production numbers as well, and they are the ones that
+  answer "why does this sound like a demo". CREST FACTOR is how far the
+  peaks sit above the average, in decibels: a finished pop record runs
+  8-12, and these ran 17-21 before there was any dynamics processing in
+  the file at all. At twenty decibels the transients hit the ceiling
+  while the body of the sound sits twenty down, so turning it up only
+  clips it sooner — that gap IS what "thin" and "distant" mean, and no
+  amount of rewriting the notes touches it. WIDTH is the correlation
+  between the two channels: 1.00 is mono however many speakers you own,
+  which is what these were. A record sits near 0.4-0.8, and the low end
+  staying centred is why it does not go lower.
 - **`cupshape.js`** — do they keep a shape, or do they all go and stand
   by the goal? "Sometimes all of them are next to the goal" is a
   complaint about a thing that happens SOMETIMES, which is exactly what

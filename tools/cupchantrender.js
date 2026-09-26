@@ -101,6 +101,20 @@ function wav(channels, rate) {
       sum += r.left[i] * r.left[i];
     }
     const rms = Math.sqrt(sum / r.left.length);
+    /* HOW WIDE IT IS. The correlation between the two channels: 1.00
+       means they are identical, which is mono however many speakers
+       you play it through, and is what this was. A produced record
+       sits somewhere around 0.4 to 0.8 — wide, but with the bass and
+       the kick still down the middle where they belong, because a
+       stereo bass is a bass that disappears on half the systems in the
+       world. */
+    let lr = 0, ll = 0, rr2 = 0;
+    for (let i = 0; i < r.left.length; i++) {
+      lr += r.left[i] * r.right[i];
+      ll += r.left[i] * r.left[i];
+      rr2 += r.right[i] * r.right[i];
+    }
+    const corr = lr / Math.max(1e-9, Math.sqrt(ll * rr2));
     /* THE SHAPE OF THE SONG, AS NUMBERS.
        Eight bars with a hole in bar four is the whole design; if the
        drop is not measurably quieter than the bar that follows it, the
@@ -140,6 +154,8 @@ function wav(channels, rate) {
     rows.push({ name, peak: +peak.toFixed(4), rms: +rms.toFixed(5),
                 notes: r.notes, bars: r.bars, profile: bars,
                 groove: r.groove, title: r.title, grows: grows,
+                crest: 20 * Math.log10(Math.max(1e-6, peak) / Math.max(1e-6, rms)),
+                corr: corr,
                 dropOk: shapeOk,
                 silent: peak < 0.0005, clipping: peak > 0.999 });
     if (!all) {
@@ -152,9 +168,18 @@ function wav(channels, rate) {
     }
   }
 
-  console.log('\nground       peak     rms       bars  oscillators  verdict');
+  /* CREST FACTOR: how far the peaks sit above the average level, in
+     decibels. It is the single number that separates a demo from a
+     record. A produced pop track runs 8-12dB; anything above about 16
+     is peaky and quiet at the same time, which is what "thin" and
+     "distant" actually mean when somebody says a mix sounds unfinished.
+     No amount of turning it up fixes it \u2014 the peaks hit the ceiling
+     while the body of the sound stays down. */
+  console.log('\nground       peak     rms       crest   width  bars  oscillators  verdict');
   rows.forEach(r => console.log(
     r.name.padEnd(12), String(r.peak).padEnd(8), String(r.rms).padEnd(9),
+    (r.crest.toFixed(1) + 'dB').padEnd(7),
+    r.corr.toFixed(2).padEnd(6),
     String(r.bars).padEnd(5), String(r.notes).padEnd(12),
     r.silent ? 'SILENT' : (r.clipping ? 'CLIPPING' : 'ok')));
   console.log('\nthe shape of each song, bar by bar (RMS \u00d7 1000):');
