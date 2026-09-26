@@ -151,7 +151,10 @@ on Marabelle for hours.
 **Green, after the changes:** codecheck 7, linecheck 5, storycheck 114,
 oncecheck 4, castcheck 9, nightbeats, midcheck 67, overcheck 42,
 revealcheck 7, camcheck 13, geomcheck 12, saycheck 20, nightskip 30,
-introshot 14, and nightbudget's curve. Cache at v321.
+introshot 14, cardshots 22, and nightbudget's curve. Cache at v321.
+cardshots is the one that matters for the stylesheet change: every card
+the chapter can put up still fits its screen and every button on it is
+still reachable.
 
 `scriptcheck` is the one that did not finish: its static half passed
 (131 distinct lines, his tapes in page order, every signed line one of
