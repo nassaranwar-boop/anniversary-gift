@@ -9324,6 +9324,74 @@ function speechSay(text, plan, opts) {
    or -1 when nothing is being spoken aloud and the caller should fall
    back to voxPlan's timings */
 function voxMark() { return SPEECH.live ? SPEECH.mark : -1; }
+
+/* THE CAPTION'S CLOCK STARTS WHEN THE VOICE DOES, NOT WHEN THE LINE IS
+   QUEUED.
+
+   Every caption that lights word by word -- his tape, the opening
+   film, the terms -- does it off `perf() - <its own t0>`, and every
+   one of those t0s is set beside the `voxSpeak` call that is supposed
+   to be making the sound. While the take is already in memory that is
+   right to the millisecond, which it is for all but the first seconds
+   of a visit.
+
+   It is wrong for exactly the case a new visitor gets. voxSpeak holds
+   a line for up to three and a half seconds waiting for its recording
+   to land -- on purpose, because a line that starts a beat late is
+   still his voice and a line that does not wait is a machine reading
+   his last words to her. But the caption was started when the line was
+   QUEUED, so through that wait the words light against silence, and by
+   the time he actually speaks the sentence is already part written.
+   The words then sit still while he catches up to them.
+
+   voxMark hides this wherever the browser's own synthesiser is doing
+   the talking, because that reports real word boundaries. A recording
+   reports nothing, and recordings are the whole point of this chapter:
+   278 of them.
+
+   So the clock is re-zeroed the moment the audio actually begins. It
+   is guarded by the text because the wait is asynchronous: by the time
+   a late take lands the screen may be on a different line, and
+   re-zeroing that one would break the line that is actually up. */
+/* AND WHILE IT IS STILL COMING, THE CAPTION SAYS NOTHING YET.
+
+   Re-zeroing at the moment the sound starts fixes the drift but leaves
+   a worse-looking thing behind: through the wait the words light one
+   by one against silence, and then the clock goes back to the top and
+   they all go dark again before he says the first one. The sentence
+   writes itself, rubs itself out, and writes itself again.
+
+   So the clock is put just out of reach while the take is in the air.
+   `t` comes out negative, no word is due, the line sits there unlit
+   the way a subtitle waiting for its speaker should -- and voxAligned
+   brings it back to now the moment there is something to follow. */
+const VOX_HELD = 1e6;
+function voxHold(text) {
+  const flat = (a) => String(a == null ? "" : a).replace(/\s+/g, " ").trim();
+  const want = flat(text);
+  if (!want) return;
+  const said = (pl) => (pl && pl.words ? flat(pl.words.map((w) => w.text).join(" ")) : "");
+  if (TAPE.up && flat(TAPE.line) === want) TAPE.t0 = perf() + VOX_HELD;
+  if (CINE.on && said(CINE.plan) === want) CINE.lineT0 = perf() + VOX_HELD;
+  if (TERMS.on && said(TERMS.plan) === want) TERMS.t0 = perf() + VOX_HELD;
+}
+
+const VOXALIGN = { calls: 0, hits: 0, last: "" };
+function voxAligned(text) {
+  const flat = (a) => String(a == null ? "" : a).replace(/\s+/g, " ").trim();
+  const want = flat(text);
+  VOXALIGN.calls++;
+  if (!want) { VOXALIGN.last = "no text"; return; }
+  const said = (pl) => (pl && pl.words ? flat(pl.words.map((w) => w.text).join(" ")) : "");
+  let hit = "";
+  if (TAPE.up && flat(TAPE.line) === want) { TAPE.t0 = perf(); hit += "tape "; }
+  if (CINE.on && said(CINE.plan) === want) { CINE.lineT0 = perf(); hit += "film "; }
+  if (TERMS.on && said(TERMS.plan) === want) { TERMS.t0 = perf(); hit += "terms "; }
+  if (hit) VOXALIGN.hits++;
+  VOXALIGN.last = hit || ("no caption for it (tape.up=" + TAPE.up +
+                          " tape.line=" + JSON.stringify(flat(TAPE.line).slice(0, 28)) +
+                          " want=" + JSON.stringify(want.slice(0, 28)) + ")");
+}
 function voxTalking() { return voiceBusy(); }
 
 /* and say it. `plan` comes from voxPlan so the caller already knows the
@@ -9841,6 +9909,7 @@ function voxSpeak(plan, opts) {
     for (const k in opts) again[k] = opts[k];
     again.waited = true;
     VOX_FILE.late++;
+    voxHold(text);
     voiceWait(text, 3500, () => voxSpeak(plan, again));
     return total;
   }
@@ -9861,6 +9930,8 @@ function voxSpeak(plan, opts) {
          synthesiser: the hiss was covering for the voice, and a voice
          that does not need covering for should not be buried */
       voxTape(total, (opts.gain === undefined ? 1 : opts.gain) * 0.34);
+      /* the sound is starting NOW, whatever the caption thinks */
+      voxAligned(text);
       VOX_FILE.took = "tape"; VOX_FILE.plays.tape++;
       return total;
     }
@@ -9886,11 +9957,15 @@ function voxSpeak(plan, opts) {
       const again = {};
       for (const k in opts) again[k] = opts[k];
       again.waited = true;
+      voxHold(text);
       voiceWait(text, 2600, () => voxSpeak(plan, again));
       return total;
     }
   }
   if (!muted && MIX.voice > 0.02 && speechSay(text, plan, opts)) {
+    /* speech instead of a take: the clock starts now either way, and a
+       line that was held must never be left held */
+    voxAligned(text);
     voxTape(total, opts.gain === undefined ? 1 : opts.gain);
     /* the same held bed whichever voice is doing the talking, so the
        shop does not behave differently on a device that has no
@@ -9900,7 +9975,7 @@ function voxSpeak(plan, opts) {
     if (!opts.sys) { VOX_FILE.took = "speech"; VOX_FILE.plays.speech++; }
     return total;
   }
-  if (!ac() || muted) return 0;
+  if (!ac() || muted) { voxAligned(text); return 0; }
 
   /* And if there is no voice on this device, he does not fall back to
      the formant synth. It says nothing you can understand, and a man
@@ -9919,8 +9994,14 @@ function voxSpeak(plan, opts) {
        with the one number that mattered. A silent line is not a
        neutral outcome. */
     VOX_FILE.took = "caption"; VOX_FILE.plays.speech++;
+    /* nobody is going to say it, so the written line reads on its own
+       clock rather than sitting dark for ever */
+    voxAligned(text);
     return total;
   }
+  /* the formant synth, on a device with no recordings and no speech
+     engine. It makes its noise straight away, so the clock starts. */
+  voxAligned(text);
   const t0 = now() + CUE_LEAD + (opts.at || 0);
   const gain = opts.gain === undefined ? 1 : opts.gain;
   const bus = voxBus(1);
@@ -19885,6 +19966,20 @@ const testHooks = {
     failed: Object.keys(VOX_FILE.buf).filter((k) => VOX_FILE.buf[k] === false),
   }),
   voiceWant: (text) => { voiceHas(text); return voiceBuf(text) ? true : false; },
+  /* PUT A TAKE BACK IN THE STATE A VISITOR'S FIRST LINE IS IN.
+
+     voiceWarm has the whole chapter in memory within seconds of the
+     manifest landing, so by the time any suite runs, the wait that
+     voxSpeak does for a take that has not arrived can never fire --
+     and that wait is the whole subject of synccheck. Dropping one
+     buffer makes the next attempt at that line take the slow path a
+     cold phone takes. Nothing in the game calls this. */
+  voiceDrop: (text) => {
+    const id = VOX_FILE.map && VOX_FILE.map[String(text).trim()];
+    if (!id) return null;
+    delete VOX_FILE.buf[id];
+    return id;
+  },
   /* what the shop is doing while he talks: the level the score is
      actually sitting at, whether he is still going, and whether the
      building is being made to wait */
@@ -20220,6 +20315,16 @@ const testHooks = {
      before it was finished */
   tapeOwed: () => (TAPE.up ? +(TAPE.spoke ? TAPE.tail : TAPE.speakT).toFixed(2) : 0),
   tapeDur: () => (TAPE.plan ? +TAPE.plan.dur.toFixed(2) : 0),
+  /* how far into the line the CAPTION believes it is. With a recording
+     there are no word boundaries to go on, so this clock is the
+     subtitle: if it is already seconds in when the sound starts, the
+     words are ahead of him. */
+  tapeInto: () => (TAPE.up ? +(perf() - TAPE.t0).toFixed(2) : null),
+  /* stop everything sounding and take the caption down, so a check can
+     start from silence rather than from the middle of a line */
+  tapeQuiet: () => { oracleQuiet(); },
+  voxAlign: () => ({ calls: VOXALIGN.calls, hits: VOXALIGN.hits, last: VOXALIGN.last }),
+  voxAlignNow: (t) => { voxAligned(t); return VOXALIGN.last; },
   tapeDebug: () => ({ up: TAPE.up, vox: voxTalking(), spoke: TAPE.spoke,
                       through: !!TAPE.through, line: TAPE.line, who: TAPE.who || null,
                       planWords: TAPE.plan ? TAPE.plan.words.length : null,
