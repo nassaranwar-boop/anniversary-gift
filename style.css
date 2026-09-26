@@ -9745,7 +9745,6 @@ img{-webkit-user-drag:none; user-select:none;}
   .ns-roster-lab{ margin-bottom:.7cqh; }
   .ns-roster-sub{ margin-top:.7cqh; }
   .ns-btns-foot{ margin-top:1.4cqh; }
-  .ns-cozy{ margin-top:1.6cqh; }
 }
 
 .ns-btn{
@@ -9916,7 +9915,7 @@ img{-webkit-user-drag:none; user-select:none;}
 /* =========================================================
    OUISSY'S NIGHT SHIFT — the second pass
 
-   The annunciator caption, the cozy switch, the custom night's dials,
+   The annunciator caption, the custom night's dials,
    the record, the daylight gallery, the rating card and the cabinet
    nobody switched off.
    ========================================================= */
@@ -9963,31 +9962,6 @@ img{-webkit-user-drag:none; user-select:none;}
 }
 @keyframes nsEgg{ 50%{ opacity:.25; transform:scale(.7); } }
 
-/* ---------- the cozy switch ---------- */
-.ns-cozy{
-  display:flex; align-items:center; gap:1.2cqw; cursor:pointer;
-  /* a nineteen pixel tall toggle is a line of text you are meant to hit */
-  margin:2.4cqh auto 0; padding:max(9px, 1cqh) max(12px, 2cqw); min-height:40px;
-  border:none; border-radius:.7cqw;
-  font-family:var(--ns-face); color:rgba(232,223,200,.7);
-  background:linear-gradient(180deg, rgba(30,34,32,.9), rgba(15,17,16,.92));
-  box-shadow:inset 0 0 0 .18cqw rgba(200,162,96,.32);
-}
-.ns-cozy i{
-  width:max(3.2cqh, 18px); height:max(1.8cqh, 10px); border-radius:1cqh;
-  background:#2a2e2c; box-shadow:inset 0 0 0 .14cqw rgba(200,162,96,.4);
-  position:relative; flex:0 0 auto; transition:background .16s linear;
-}
-.ns-cozy i::after{
-  content:""; position:absolute; top:12%; left:6%;
-  width:44%; height:76%; border-radius:50%;
-  background:var(--ns-brass); transition:transform .16s ease-out;
-}
-.ns-cozy.on i{ background:#3d5c48; }
-.ns-cozy.on i::after{ transform:translateX(105%); background:#9fd8b0; }
-.ns-cozy b{ font-size:max(1.6cqh, 10px); letter-spacing:.2em; color:var(--ns-brass); }
-.ns-cozy.on b{ color:#9fd8b0; }
-.ns-cozy span{ font-size:max(1.4cqh, 9px); letter-spacing:.1em; opacity:.62; }
 
 .ns-where{ margin:0 0 .6cqh; font-size:max(1.6cqh, 10px); letter-spacing:.36em; color:var(--ns-brass); }
 .ns-btns-extra{ margin-top:1.2cqh; }

@@ -609,7 +609,6 @@ function ok(name, cond, extra) {
   await page.waitForTimeout(350);
   ok('custom night is offered', await page.locator('[data-go="custom"]').count() === 1);
   ok('the gallery is offered', await page.locator('[data-go="gallery"]').count() === 1);
-  ok('cozy mode is on the title', await page.locator('[data-go="cozy"]').count() === 1);
   await page.evaluate(() => OuissysNightShift.__night.route('custom'));
   await page.waitForTimeout(300);
   ok('a dial for each of them', await page.locator('.ns-dial').count() === 4);
@@ -646,24 +645,6 @@ function ok(name, cond, extra) {
   ok('the gallery walks the shop in daylight',
      await page.evaluate(() => OuissysNightShift.__night.state().phase) === 'gallery');
   await shot('gallery');
-
-  console.log('\n— cozy mode is gentler, not shorter —');
-  const cozy = await page.evaluate(() => {
-    const w = OuissysNightShift.__night, s = w.state();
-    const budget = () => {
-      w.route('night:6'); w.route('go');
-      s.power = 100; s.doors.left = true; s.doors.right = true;
-      const a = s.power; w.pump(20); return a - s.power;
-    };
-    w.route('title');
-    const hard = budget();
-    s.cozy = true;
-    const soft = budget();
-    s.cozy = false;
-    return { hard, soft };
-  });
-  ok('cozy mode drains slower', cozy.soft < cozy.hard * 0.85,
-     cozy.soft.toFixed(1) + ' vs ' + cozy.hard.toFixed(1) + ' over 20s');
 
   console.log('\n— the cabinet nobody switched off —');
   await page.evaluate(() => {

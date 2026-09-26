@@ -2205,7 +2205,6 @@ const NS = {
     wound:      "$1: WOUND.",
     slack:      "$1: RUN DOWN.",
     six:       "SIX HUNDRED HOURS. SHIFT ENDS.",
-    cozy:      "SAFETY LIMITS ENGAGED.",
   },
 
   ratings: [
@@ -2372,19 +2371,6 @@ const TUNE = {
     static:    0.055,     // added camera noise
   },
 
-  /* Cozy mode. The same shop and the same story with the edges taken
-     off: they move slower, they wait longer at the door, the meter is
-     kinder and a jumpscare is a short soft thing rather than a hard one.
-     It is not easy mode for people who are bad at it — it is for a night
-     she wants the place without the fright. */
-  cozy: {
-    aggression: 0.62,
-    doorGrace:  1.65,
-    power:      0.68,
-    alarms:     0.35,
-    decay:      0.4,
-    scare:      0.42,
-  },
 };
 
 /* =========================================================
@@ -6923,14 +6909,14 @@ function stepSold(ch, dt) {
      between looks */
   ch.cool -= dt;
   if (ch.cool > 0) return;
-  const agg = ramp() * cozyK("aggression");
+  const agg = ramp();
   ch.cool = SOLD_TUNE.step / Math.max(0.35, agg);
   if (Math.random() > SOLD_TUNE.chance * agg) return;
   ch.step = clamp(ch.step + 1, 0, ch.def.route.length - 1);
   syncChar(ch);
   G.stats.moves++;
   if (ch.atDoor) {
-    ch.doorT = SOLD_TUNE.doorGrace * cozyK("doorGrace");
+    ch.doorT = SOLD_TUNE.doorGrace;
     ch.holdT = SOLD_TUNE.holdFor;
     ch.knockT = 0.6;
     G.stats.arrivals++;
@@ -8601,21 +8587,8 @@ const SFX = {
 
   /* the four ways it ends. Sharp, loud, short — and different enough
      that you know which one got you before the screen tells you. */
-  scare(id, soft) {
-    const k = soft === undefined ? 1 : soft;
-    audioDuck(0.25 + (1 - k) * 0.5, 40);
-    /* cozy mode still has a scare — it is just a short soft one, a thud
-       and the thing's own voice once, instead of the full stack */
-    if (k < 0.6) {
-      burst({ f0: 400, f1: 110, dur: 0.5, gain: 0.3, q: 0.6, filter: "lowpass" });
-      tone({ type: "sine", f0: 180, f1: 70, dur: 0.7, gain: 0.14 });
-      if (id === "cogsworth") SFX.step(0.6);
-      else if (id === "chime") SFX.hoot(0.55);
-      else if (id === "marabelle") SFX.boxNote(246.9, 0.6, 0, 1.2);
-      else SFX.bells(0.6);
-      setTimeout(() => audioDuck(1, 700), 900);
-      return;
-    }
+  scare(id) {
+    audioDuck(0.25, 40);
     if (id === "cogsworth") {
       burst({ f0: 2600, f1: 300, dur: 0.9, gain: 0.85, q: 0.6, filter: "bandpass" });
       for (let i = 0; i < 5; i++) tone({ type: "square", f0: 180 + i * 37, f1: 60, dur: 0.7, gain: 0.14, at: i * 0.012, filter: "lowpass", ff: 2200 });
@@ -11735,7 +11708,6 @@ const G = {
   mode:  "story",       // story | custom | gallery
   night: 1,
   cfg: NIGHTS[0],
-  cozy: false,
   hour: 0,              // 0 = 12 AM ... 6 = out
   hourT: 0,
   power: 100,
@@ -11841,11 +11813,10 @@ function dialOf(id) {
   return d ? clamp(d[id] / 10, 0, 2) : 1;
 }
 
-function cozyK(k) { return G.cozy ? TUNE.cozy[k] : 1; }
 
 function ramp() {
   const r = G.cfg.ramp;
-  return r[clamp(G.hour, 0, r.length - 1)] * cozyK("aggression");
+  return r[clamp(G.hour, 0, r.length - 1)];
 }
 function hazard(name) { return G.cfg.hazards.indexOf(name) >= 0; }
 
@@ -12005,7 +11976,7 @@ function stepCast(ch, dt) {
           ch.knockT = 2.0;
           ch.knocks++;
           G.stats.knocks++;
-          spendPower(TUNE.power.knock * cozyK("power"));
+          spendPower(TUNE.power.knock);
           SFX.knock();
           G.shake = Math.max(G.shake, 0.5);
           if (ch.def.id === "jax") tapeTrigger("theyKnock");
@@ -12075,7 +12046,7 @@ function stepCast(ch, dt) {
   ch.pose = "walk";
   G.stats.moves++;
   if (ch.atDoor) {
-    ch.doorT = (tune.doorGrace * cozyK("doorGrace")) / Math.max(0.8, agg * 0.85);
+    ch.doorT = tune.doorGrace / Math.max(0.8, agg * 0.85);
     ch.arrivals++;
     G.stats.arrivals++;
     ch.knocks = 0;
@@ -12138,7 +12109,7 @@ function powerRate() {
      late nights are hard because four of them are awake and the doors
      are shut a third of the night, not because the meter was quietly
      shrunk underneath you. */
-  return r * (0.94 + ramp() * 0.05) * cozyK("power");
+  return r * (0.94 + ramp() * 0.05);
 }
 
 function startBlackout() {
@@ -12833,7 +12804,7 @@ function kill(ch) {
   G.dead = ch.def.id;
   G.deadT = 0;
   G.cardT = 0;
-  G.shake = G.cozy ? 0.4 : 1;
+  G.shake = 1;
   ch.pose = "scare";
   ch.awake = true;
   /* right in the lens, and lit by nothing but the office */
@@ -12848,7 +12819,7 @@ function kill(ch) {
   ch.group.visible = true;
   ch.group.updateMatrix();
   G.killChar = ch;
-  SFX.scare(ch.def.id, cozyK("scare"));
+  SFX.scare(ch.def.id);
   bedStop();
   showHud(false);
   noOverlay();
@@ -15567,9 +15538,7 @@ function stepAlarms(dt) {
      one, with one of them awake and barely moving — is exactly where
      the gaps used to be longest. */
   const lull = 1 - clamp(dreadTarget(), 0, 1);
-  G.alarmT = nextIn(TUNE.alarm.every, shorten * lerp(1, 0.5, lull) /
-                    Math.max(0.2, cozyK("alarms") > 0.9 ? 1 : 1 / cozyK("alarms")));
-  if (G.cozy && Math.random() > TUNE.cozy.alarms) return;
+  G.alarmT = nextIn(TUNE.alarm.every, shorten * lerp(1, 0.5, lull));
   G.stats.alarms++;
   /* a side to come from, so it reads as a place rather than a noise */
   const pan = pick(Math.random, [-0.8, -0.5, 0, 0.5, 0.8]);
@@ -15617,7 +15586,7 @@ function stepHazards(dt) {
     if (G.surgeT <= 0) {
       G.surgeT = range(Math.random, 70, 130);
       if (!G.blackout) {
-        spendPower(TUNE.power.surge * cozyK("power"));
+        spendPower(TUNE.power.surge);
         G.stats.surges++;
         SFX.surge();
         G.shake = Math.max(G.shake, 0.3);
@@ -15655,7 +15624,7 @@ function stepHazards(dt) {
 }
 
 /* --- how the shop itself gets worse as the clock runs -------------- */
-function decayK() { return G.hour * cozyK("decay"); }
+function decayK() { return G.hour; }
 
 /* =========================================================
    18c. HOW THE NIGHT IS SCORED
@@ -16389,11 +16358,6 @@ function loadNoTutor() {
 }
 function saveNoTutor(v) { try { localStorage.setItem(NOTUTOR_KEY, v ? "1" : "0"); } catch (e) {} }
 
-const COZY_KEY = "ns_cozy";
-function loadCozy() {
-  try { return localStorage.getItem(COZY_KEY) === "1"; } catch (e) { return false; }
-}
-function saveCozy(v) { try { localStorage.setItem(COZY_KEY, v ? "1" : "0"); } catch (e) {} }
 
 /* THE DOOR, NOT A SETTINGS PAGE.
 
@@ -16475,9 +16439,6 @@ function screenTitle() {
            : got ? got + " of " + NIGHTS.length + " behind you"
                  : "six nights, and then everything") + '</p>' +
       '</div>' +
-
-      '<button class="ns-cozy' + (G.cozy ? " on" : "") + '" data-go="cozy">' +
-        '<i></i><b>COZY MODE</b><span>' + (G.cozy ? "on — softer everything" : "off — the shop as it is") + '</span></button>' +
 
       '<div class="ns-btns ns-btns-foot">' +
         '<button class="ns-btn ns-btn-quiet" data-go="sound">SOUND</button>' +
@@ -17152,7 +17113,6 @@ function route(cmd) {
   else if (cmd === "restart") { beginNight(G.night, { mode: G.mode }); }
   else if (cmd === "next") { beginNight(Math.min(NIGHTS.length, G.night + 1)); }
   else if (cmd === "quit") { if (window.leaveNightShift) window.leaveNightShift(); }
-  else if (cmd === "cozy") { G.cozy = !G.cozy; saveCozy(G.cozy); SFX.beep(!G.cozy); screenTitle(); }
   else if (cmd === "custom") { G.phase = "custom"; screenCustom(); }
   else if (cmd === "customGo") { beginNight(0, { mode: "custom" }); }
   else if (cmd === "gallery" || cmd === "galleryOffer") { beginGallery(); }
@@ -17307,7 +17267,6 @@ function beginNight(n, opts) {
   deskReset();
   revealReset();
   say(NS.sys.boot);
-  if (G.cozy) say(NS.sys.cozy);
   if (hazard("stickyDoor") && !(G.mode === "story" && midCovers(G.night, "stickyDoor")))
     say(NS.sys.doorFault);
   bumpUI();
@@ -17655,7 +17614,7 @@ function stepWind(dt) {
        a wall clock but the charge was on frame time, so a browser
        running at a third of the rate paid a third of the price. A wind
        costs a wind. */
-    spendPower(WIND.cost * cozyK("power"));
+    spendPower(WIND.cost);
     ch.wound = WIND.hours;
     G.stats.winds++;
     /* the first one is his, explaining the control. The second is the
@@ -18742,7 +18701,6 @@ function finishStart(cvs) {
   sizeRenderer();
   useView.__last = null;
   running = true;
-  G.cozy = loadCozy();
   G.mode = "story";
   G.phase = "title";
   G.night = maxUnlocked();
