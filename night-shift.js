@@ -18390,6 +18390,22 @@ for (let ti = 0; ti < 7; ti++) {
     FIND_TRY.push({ t: 0.34 + ti * 0.075, side: (si - 3) * 0.28 });
   }
 }
+/* AND A FINER ONE FOR THE CLUTTER.
+
+   Forty-nine points along the middle of a room is plenty to find the
+   one surface a page needs. It is not enough to find three, and the
+   rooms where it is not enough are the small ones: the workshop is a
+   bench, and the coarse grid landed exactly one usable spot on it, so
+   the mug, the spool and the unfinished toy all went to the same
+   place -- which is how a fix for things being on top of each other
+   produced three things on top of each other. 231 points, reaching
+   further up the room and further to each side. */
+const ODD_TRY = [];
+for (let ti = 0; ti < 11; ti++) {
+  for (let si = 0; si < 11; si++) {
+    ODD_TRY.push({ t: 0.20 + ti * 0.075, side: (si - 5) * 0.26 });
+  }
+}
 const _ray = new T.Raycaster();
 const _down = new T.Vector3(0, -1, 0);
 const _cp = new T.Vector3(), _lk = new T.Vector3(), _pt = new T.Vector3(), _sd = new T.Vector3();
@@ -18406,7 +18422,7 @@ const FIND_WHY = [];
    between 0.30 and 1.62, those three rooms have no such surface in
    shot, and so the three rooms a page is never in are simply the
    three rooms this function could not serve. */
-function findSpots(rec, minY) {
+function findSpots(rec, minY, wide) {
   const cam = rec.cams.main;
   if (!cam) return null;
   const ox = rec.index * SPACING;
@@ -18438,8 +18454,9 @@ function findSpots(rec, minY) {
      list rather than taken in order, because FIND_TRY walks the room
      in a raster and neighbouring entries are a few centimetres apart. */
   const found = [];
-  for (let i = 0; i < FIND_TRY.length; i++) {
-    const c = FIND_TRY[i];
+  const TRY = wide ? ODD_TRY : FIND_TRY;
+  for (let i = 0; i < TRY.length; i++) {
+    const c = TRY[i];
     _pt.lerpVectors(_cp, _lk, c.t).addScaledVector(_sd, c.side);
     /* Cast from above the tallest thing in any room and then pick the
        first hit that is at a height something could sit on. Taking the
@@ -18455,7 +18472,16 @@ function findSpots(rec, minY) {
     const at = new T.Vector3(_pt.x, y + 0.004, _pt.z);
     const pr = at.clone().project(probe);
     const px = (pr.x * 0.5 + 0.5) * 100, py = (-pr.y * 0.5 + 0.5) * 100;
-    if (pr.z > 1 || px < 20 || px > 80 || py < 20 || py > 78) continue;
+    /* A PAGE HAS TO BE IN THE MIDDLE OF THE PICTURE. CLUTTER DOES NOT.
+
+       20-to-80 across and 20-to-78 down is a page's window, and it is
+       right for a page: the one thing a night hangs on should not be
+       tucked against the edge of a feed on a phone. An oddment is
+       something she notices at the side of a shot, and holding it to
+       the same window is what left the arcade with nothing in it at
+       all. */
+    const wx = wide ? 8 : 20, wy0 = wide ? 10 : 20, wy1 = wide ? 90 : 78;
+    if (pr.z > 1 || px < wx || px > (100 - wx) || py < wy0 || py > wy1) continue;
     /* handed back in the room's own space, not the world's: it is about
        to be parented under a group that is already parked sixty metres
        out, and adding the offset twice put every page in the next room
@@ -18487,14 +18513,28 @@ function findSpot(rec) {
    real separation, against everything already placed in that room,
    the page included. */
 function spaceOut(all, taken, gap) {
-  for (let i = 0; i < all.length; i++) {
-    const c = all[i];
-    let ok = true;
-    for (let k = 0; k < taken.length; k++) {
-      if (Math.hypot(c.at.x - taken[k].x, c.at.z - taken[k].z) < gap) { ok = false; break; }
+  /* AND IT GIVES GROUND RATHER THAN GIVING UP.
+
+     A single gap is wrong for a building whose rooms are nothing like
+     each other. The workshop is one bench: every spot on it is within
+     half a metre of every other, so a flat 42cm rejected all three of
+     its things and left them in nowhere at all -- which is strictly
+     worse than two of them being a bit close. So the gap comes down
+     until the room can afford it, and only a room with no candidate
+     spots at all comes back empty. */
+  for (let g = gap; g >= 0.12; g -= 0.1) {
+    for (let i = 0; i < all.length; i++) {
+      const c = all[i];
+      let ok = true;
+      for (let k = 0; k < taken.length; k++) {
+        if (Math.hypot(c.at.x - taken[k].x, c.at.z - taken[k].z) < g) { ok = false; break; }
+      }
+      if (ok) return c;
     }
-    if (ok) return c;
   }
+  /* and if the room genuinely cannot hold another one, say so rather
+     than stacking it: a thing in nowhere is a bug oddcheck will name,
+     a thing inside another thing is one it has to measure to find */
   return null;
 }
 
@@ -18653,7 +18693,7 @@ function buildOddments() {
     /* 0.02 rather than 0.30: a mug belongs on a bench and a glove
        belongs on the floor, and the floor is what the three rooms with
        no page in them have instead of shelves */
-    if (!spots[o.room]) spots[o.room] = findSpots(rec, 0.02);
+    if (!spots[o.room]) spots[o.room] = findSpots(rec, 0.02, true);
     taken[o.room] = taken[o.room] || [];
     const spot = spaceOut(spots[o.room], taken[o.room], 0.42);
     if (!spot) { console.warn("night shift: nowhere to put " + o.id + " in " + o.room); return; }
@@ -20888,7 +20928,15 @@ const testHooks = {
       t: (NS.tapeWhen || {})["odd-" + o.id] || null,
     })),
   }),
-  oddTake: () => { takeOdd(); return TAPE.pending ? TAPE.pending.t : null; },
+  /* the line it queued, or null if there was nothing under the
+     cursor to take -- reading TAPE.pending blind reports whatever the
+     night happened to have queued and calls it the oddment's */
+  oddTake: () => {
+    if (!oddNear) return null;
+    const want = (NS.tapeWhen || {})["odd-" + oddNear.id] || null;
+    takeOdd();
+    return TAPE.pending && TAPE.pending.t === want ? want : null;
+  },
   /* IS IT IN SHOT, ASKED OF THE ROOM'S OWN CAMERA.
 
      Not of the live view: oddHotspot runs in the UI tick, which the

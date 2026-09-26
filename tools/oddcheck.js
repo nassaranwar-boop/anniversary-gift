@@ -90,10 +90,14 @@ const t = (n, c, note) => { c ? pass++ : fail++;
       if (first) {
         G().monitor = true; G().cam = first.room; G().monOut = 0; G().lost = {};
         /* the hotspot lives in the UI tick, which pumpFrame does not
-           turn, so reach it the way the button does */
-        for (let i = 0; i < 40 && !N.odds().near; i++) { N.pumpFrame(1 / 30); await sleep(50); }
+           turn -- it needs REAL frames, so give it real time rather
+           than pumped time. An earlier pass gave up waiting, took
+           nothing, and read the night's own queued line back as the
+           oddment's: "You can stop looking at me now", which is
+           Marabelle. */
+        for (let i = 0; i < 60 && !N.odds().near; i++) await sleep(250);
         const before = N.odds();
-        const said = N.oddTake();
+        const said = before.near ? N.oddTake() : null;
         const after = N.odds();
         took = { id: before.near, said, phase: G().phase,
                  wasOut: before.out.length, nowOut: after.out.length,
@@ -128,7 +132,9 @@ const t = (n, c, note) => { c ? pass++ : fail++;
     console.log('\n  took "' + r.took.id + '": phase ' + r.took.phase +
                 ', ' + r.took.wasOut + ' out -> ' + r.took.nowOut +
                 '\n    it said: ' + JSON.stringify(String(r.took.said || '').slice(0, 62)) + '\n');
-    t('picking one up says its line', !!r.took.said, r.took.said ? 'queued' : 'nothing queued');
+    t('the hotspot offered one to pick up', !!r.took.id, r.took.id || 'never appeared');
+    t('picking one up says its own line', !!r.took.said,
+      r.took.said ? JSON.stringify(String(r.took.said).slice(0, 40)) : 'nothing of its own queued');
     t('and does not stop the night', r.took.phase === 'play', r.took.phase);
     t('and it is gone once she has it', r.took.stillThere === false,
       r.took.stillThere ? 'still out' : 'off the list');
