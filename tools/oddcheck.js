@@ -88,7 +88,10 @@ const t = (n, c, note) => { c ? pass++ : fail++;
     {
       const first = shot.filter((x) => x.in)[0];
       if (first) {
-        G().monitor = true; G().cam = first.room; G().monOut = 0; G().lost = {};
+        /* through the real control: poking G.cam moves the label and
+           leaves the view where it was, and oddHotspot projects
+           through the view */
+        N.camTo(first.room); G().monOut = 0; G().lost = {};
         /* the hotspot lives in the UI tick, which pumpFrame does not
            turn -- it needs REAL frames, so give it real time rather
            than pumped time. An earlier pass gave up waiting, took

@@ -382,7 +382,11 @@ const NS = {
     { id: "drawing", room: "party",    from: 2, kind: "drawing" },
     { id: "boots",   room: "foyer",    from: 2, kind: "boots" },
     { id: "clock",   room: "stage",    from: 3, kind: "clock" },
-    { id: "tickets", room: "arcade",   from: 3, kind: "tickets" },
+    /* the roll is by the front door rather than in Arcade Row: the
+       row has exactly one place anything can sit, the tin is already
+       on it, and a prize cabinet belongs where people leave from
+       anyway */
+    { id: "tickets", room: "foyer",    from: 3, kind: "tickets" },
     { id: "jar",     room: "closet",   from: 4, kind: "jar" },
     { id: "fifth",   room: "workshop", from: 4, kind: "fifth" },
     { id: "chalk",   room: "hall",     from: 5, kind: "chalk" },
@@ -20946,6 +20950,11 @@ const testHooks = {
      is whether the thing lands inside the picture the camera that
      looks at that room takes, and that can be answered from the room
      definition without a frame at all. */
+  /* change camera the way the button does, so the VIEW moves and not
+     just the label: oddHotspot projects through `view`, and a suite
+     that pokes G.cam leaves the view wherever it was and then reports
+     that nothing is ever visible anywhere */
+  camTo: (id) => { if (!G.monitor) toggleMonitor(); selectCam(id); return G.cam; },
   oddShot: () => (NS.oddments || []).map((o) => {
     const rec = rooms[o.room], g = oddMeshes[o.id];
     if (!rec || !g || !rec.cams.main) return { id: o.id, room: o.room, in: false, why: "not placed" };
