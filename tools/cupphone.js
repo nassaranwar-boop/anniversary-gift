@@ -99,7 +99,8 @@ const SIZES = [
        thumb-sized target can be checked rather than eyeballed. */
     const geo = await p.evaluate(() => {
       const out = { view: [innerWidth, innerHeight], els: {} };
-      ['cup-pad', 'cup-stick', 'cup-btn', 'cup-heart', 'cup-canvas', 'cup-ui'].forEach(id => {
+      ['cup-pad', 'cup-stick', 'cup-b-pass', 'cup-b-drib', 'cup-b-shot',
+       'cup-sup-btn', 'cup-heart', 'cup-canvas', 'cup-ui'].forEach(id => {
         const el = document.getElementById(id);
         if (!el) { out.els[id] = null; return; }
         const r = el.getBoundingClientRect();
@@ -134,17 +135,49 @@ const SIZES = [
       const sx = c.width / hud.radar.ui[0], sy = c.height / hud.radar.ui[1];
       const R = { x: c.x + hud.radar.x * sx, y: c.y + hud.radar.y * sy,
                   w: hud.radar.w * sx, h: hud.radar.h * sy };
-      const b = document.getElementById('cup-btn').getBoundingClientRect();
-      const over = !(R.x + R.w <= b.x || b.x + b.width <= R.x ||
-                     R.y + R.h <= b.y || b.y + b.height <= R.y);
-      return { touch: hud.touch, coarse: hud.coarse, over: over,
-               radar: [Math.round(R.x), Math.round(R.y), Math.round(R.w), Math.round(R.h)],
-               btn: [Math.round(b.x), Math.round(b.y), Math.round(b.width), Math.round(b.height)] };
+      /* THREE BUTTONS NOW, so the question is whether the radar is
+         clear of ANY of them, and whether every one of them is still
+         big enough for a thumb. */
+      const ids = ['cup-b-pass', 'cup-b-drib', 'cup-b-shot', 'cup-sup-btn'];
+      const hits = [], sizes = [];
+      ids.forEach(id => {
+        const e = document.getElementById(id);
+        if (!e) return;
+        const b = e.getBoundingClientRect();
+        if (!b.width) return;
+        sizes.push([id, Math.round(b.width), Math.round(b.height)]);
+        if (!(R.x + R.w <= b.x || b.x + b.width <= R.x ||
+              R.y + R.h <= b.y || b.y + b.height <= R.y)) hits.push(id);
+      });
+      /* and whether any two of them are on top of each other, which is
+         a question a single button could not raise */
+      const rects = ids.map(id => {
+        const e = document.getElementById(id);
+        const b = e && e.getBoundingClientRect();
+        return b && b.width ? { id: id, x: b.x, y: b.y, w: b.width, h: b.height } : null;
+      }).filter(Boolean);
+      const pairs = [];
+      for (let i = 0; i < rects.length; i++) {
+        for (let j = i + 1; j < rects.length; j++) {
+          const a = rects[i], c2 = rects[j];
+          /* discs, not squares: they clash when their centres are
+             closer than the sum of their radii */
+          const dx = (a.x + a.w / 2) - (c2.x + c2.w / 2);
+          const dy = (a.y + a.h / 2) - (c2.y + c2.h / 2);
+          if (Math.hypot(dx, dy) < (a.w + c2.w) / 2 - 2) pairs.push(a.id + '/' + c2.id);
+        }
+      }
+      return { touch: hud.touch, coarse: hud.coarse, over: hits.length > 0,
+               hits: hits, sizes: sizes, pairs: pairs,
+               radar: [Math.round(R.x), Math.round(R.y), Math.round(R.w), Math.round(R.h)] };
     });
     ok(name + ': the game knows it is a thumb before she touches it', clash.touch === true, clash);
-    ok(name + ': the radar is clear of the thumb button', clash.over === false, clash);
-    ok(name + ': the button is a thumb-sized target',
-       Math.min(clash.btn[2], clash.btn[3]) >= 44, clash.btn);
+    ok(name + ': the radar is clear of every button', clash.over === false, clash.hits);
+    ok(name + ': no two buttons sit on top of each other',
+       clash.pairs.length === 0, clash.pairs);
+    ok(name + ': all four are thumb-sized targets',
+       clash.sizes.length === 4 &&
+       clash.sizes.every(s2 => Math.min(s2[1], s2[2]) >= 44), clash.sizes);
     if (errs.length) console.log('  PAGE ERRORS: ' + JSON.stringify(errs.slice(0, 3)));
     await ctx.close();
   }

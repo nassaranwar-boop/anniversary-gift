@@ -234,6 +234,17 @@ window.OuissyCup = (function () {
                             //   shielding, and without it being crowded
                             //   loses you the ball for nothing
     dribblePush: 26,        // (kept for the set-piece placement code)
+    /* --- the knock, which is the dribble button ---
+       A push past the man and a burst to get there first. It has to go
+       further than the longest ordinary touch or it is not beating
+       anybody, and not so far that it is a pass to nobody. An ordinary
+       touch peaks near 18 units; this puts it out around 30. */
+    knockAhead: 128,        // the speed the ball is pushed at
+    knockBurst: 0.55,       // seconds of extra pace, to get there first
+    knockBurstMul: 1.42,    // and how much extra
+    knockTap: 0.18,         // let go inside this and it is a knock
+    knockCool: 0.55,        // the least time between two of them
+    knockCost: 0.16,        // stamina, so it is a decision and not a habit
     /* --- the touch ---
        A dribble is a series of impulses, and these are its shape. */
     touchNear: 6.5,         // units ahead at a standstill
@@ -241,6 +252,8 @@ window.OuissyCup = (function () {
     touchGap: 0.13,         // the least time between two touches
     touchErr: 0.30,         // radians of wander at mid skill, before the
                             //   touch stat divides into it
+    closeMul: 0.88,         // pace while holding the ball close
+    closeTouch: 0.46,       // and how much shorter every touch becomes
     touchLoose: 0.032,      // how often a touch is half again too long —
                             //   the one that gets away, and where most
                             //   turnovers in a real match come from
@@ -1375,7 +1388,11 @@ window.OuissyCup = (function () {
       var gap = len(b.x - o.x, b.y - o.y);
       /* where this player likes to keep it: under the foot standing,
          a stride and a half ahead at a sprint */
-      var ideal = (TUNE.touchNear + osp * TUNE.touchPace) * mulT;
+      /* CLOSE CONTROL. Holding the dribble button keeps the ball under
+         her instead of a stride and a half in front, which is the
+         difference between running WITH a ball and running AFTER one. */
+      var closeK = o.close ? TUNE.closeTouch : 1;
+      var ideal = (TUNE.touchNear + osp * TUNE.touchPace) * mulT * closeK;
       o.touchT = (o.touchT || 0) - dt;
       /* A PLAYER STANDING STILL DOES NOT TAP THE BALL BACK AND FORTH.
          Without this a stationary carrier touches it, it rolls seven
@@ -1402,7 +1419,11 @@ window.OuissyCup = (function () {
       var reachable = gap < TUNE.keepReach * 0.72;
       if (moving && o.touchT <= 0 &&
           (gap < ideal * 0.78 || (reachable && offLine > 1.0))) {
-        var heavy = Math.random() < TUNE.touchLoose * mulT ? 1.55 : 1;
+        /* and a player concentrating on the ball does not knock it
+           away from herself -- the loose touch is most of the way out
+           of the picture while she is holding it */
+        var heavy = Math.random() < TUNE.touchLoose * mulT * (o.close ? 0.25 : 1)
+                    ? 1.55 : 1;
         var target = ideal * heavy;
         var err = (Math.random() - 0.5) * TUNE.touchErr * mulT;
         /* the speed that carries it out to `target` and no further. It
@@ -4345,19 +4366,50 @@ window.OuissyCup = (function () {
   /* =======================================================================
      15. THE THUMB
 
-     One stick and one button, and the button means four things:
+     WHAT WAS HERE, AND WHY IT PLAYED BADLY
 
-        no ball, tap      tackle
-        no ball, hold     sprint
-        ball, tap         pass
-        ball, hold        wind up a shot, release to hit it
+     One stick and ONE button, and the button meant four different
+     things depending on whether she had the ball and how long she held
+     it down: tap to tackle, hold to sprint, tap to pass, hold to
+     shoot. It reads well in a list. It is horrible to play, for three
+     reasons that are all the same reason.
 
-     Nobody reads a control list on a phone, so the button also SHOWS
-     which of the four it is about to do — the ring around it fills while
-     a shot charges and goes hard-edged when a tackle is available.
+       A PASS AND A SHOT WERE THE SAME BUTTON, separated by a hundred
+       and seventy milliseconds. Every shot had to be held for longer
+       than that, so there was no such thing as hitting one early; and
+       every pass had to be released inside it, so a pass held a beat
+       too long came out as a weak shot. The difference between the two
+       most important things you can do with a football was a stopwatch.
+
+       SPRINTING AND TACKLING WERE THE SAME BUTTON TOO, so she could
+       not run at somebody and then go in.
+
+       AND THERE WAS NO DRIBBLE AT ALL. Nothing to beat a man with. The
+       only way past anybody was to run at them and hope.
+
+     So: a stick and THREE buttons, each of which does one thing with
+     the ball and one thing without it, and neither of them is timed.
+
+       PASS      finds the best team-mate; held, it goes through the
+                 line instead of to feet.      Without the ball: tackle.
+       DRIBBLE   close control -- the ball stays under her, she turns
+                 tighter, and tapping it knocks the ball past a man and
+                 goes after it.                Without the ball: sprint.
+       SHOOT     hit it. A tap is a placed shot, holding it winds up the
+                 power.                        Without the ball: change
+                                               to whoever is nearest.
+
+     On a keyboard those are J, K and L, which is where the right hand
+     already is when the left is on the arrows, with space and shift
+     doubling for the first two because that is what everybody tries.
      ======================================================================= */
-  var IN = { ux: 0, uy: 0, held: false, heldT: 0, tapT: 0, keys: {},
-             stickId: null, stickX: 0, stickY: 0, curX: 0, curY: 0, btnId: null };
+  var IN = { ux: 0, uy: 0, keys: {},
+             /* one of these per button: down, and for how long */
+             pass: false, passT: 0,
+             drib: false, dribT: 0,
+             shot: false, shotT: 0,
+             stickId: null, stickX: 0, stickY: 0, curX: 0, curY: 0,
+             padIds: {} };
 
   function inputVector() {
     var kx = 0, ky = 0;
@@ -4376,22 +4428,110 @@ window.OuissyCup = (function () {
     return { x: 0, y: 0 };
   }
 
-  function pressButton() {
-    if (G.state !== "play") { skipState(); return; }
-    IN.held = true; IN.heldT = 0;
+  /* ---- PASS, and the tackle it becomes when she has not got it ---- */
+  function pressPass() {
+    if (!G || G.state !== "play") { skipState(); return; }
+    IN.pass = true; IN.passT = 0;
+  }
+  function releasePass() {
+    if (!IN.pass) return;
+    IN.pass = false;
+    var p = G.controlled;
+    if (!p || G.state !== "play") { IN.passT = 0; return; }
+    if (G.ball.owner === p) {
+      /* HELD MEANS THROUGH THE LINE. A short press finds feet, which is
+         the safe ball; holding it looks for the pass BEHIND the defence
+         instead, which is the one that wins a match and loses it. */
+      var through = IN.passT > 0.26;
+      var opt = bestPass(p);
+      if (opt && opt.mate) {
+        if (opt.through || through) passInto(p, opt.mate, opt.tx, opt.ty);
+        else passTo(p, opt.mate);
+      } else {
+        /* nobody on: knock it up the pitch rather than doing nothing */
+        var d = attackDir(p.team);
+        kickBall(p, Math.atan2(d, (Math.random() - 0.5) * 0.7),
+                 TUNE.passSpeed * 1.15, 30, p);
+        setAnim(p, "kick", 0.3);
+        SFX.kick();
+      }
+    } else if (p.coolT <= 0 && p.tackleT <= 0) {
+      startTackle(p);
+    }
+    IN.passT = 0;
   }
 
-  /* THE SECOND BUTTON.
+  /* ---- DRIBBLE, and the sprint it becomes when she has not got it ----
 
-     The super gets one of its own rather than being another meaning
-     hung off the first. The first button already means four things
-     depending on context, and a fifth that only exists sometimes is how
-     you end up firing the thing she saved for two minutes by accident
-     while trying to pass.
+     HOLDING IT IS CLOSE CONTROL and that starts the instant she
+     presses, because it is a state and a state has to be immediate.
+     THE KNOCK comes off the release, and only if she let go quickly.
 
-     It only appears when the meter is full, and it only fires when the
-     captain actually has the ball — which the label says, so a tap on a
-     lit button that does nothing has already explained itself. */
+     That is a timing distinction, which is the exact thing that made
+     the old one-button pad unplayable -- so it is worth saying why it
+     is all right here and was not there. A pass and a shot are
+     opposite intentions: getting the other one is a turnover or a
+     wasted chance. Close control and a knock past a man are the same
+     intention at two speeds, and getting the other one costs you half
+     a second of a dribble you were already having. One of those is a
+     coin toss with the match on it; the other is a touch you would
+     not have chosen. */
+  function pressDribble() {
+    if (!G || G.state !== "play") { skipState(); return; }
+    IN.drib = true; IN.dribT = 0;
+  }
+  function releaseDribble() {
+    if (!IN.drib) { IN.dribT = 0; return; }
+    var quick = IN.dribT < TUNE.knockTap;
+    IN.drib = false; IN.dribT = 0;
+    var p = G.controlled;
+    if (!quick || !p || G.state !== "play" || G.ball.owner !== p) return;
+    if (p.stamina <= 0.18 || (p.knockT || 0) > 0) return;
+    /* THE KNOCK. The push goes where she is already pointing, it is
+       longer than any ordinary touch, and it comes with a burst of
+       pace to get there first -- which is the whole of what beating
+       somebody for pace is. It costs stamina, so it is a thing she
+       chooses rather than a thing she leans on. */
+    var b = G.ball;
+    b.owner = null; b.lastTouch = p; b.lock = TUNE.controlLock * 0.5;
+    b.vx = Math.cos(p.dir) * TUNE.knockAhead;
+    b.vy = Math.sin(p.dir) * TUNE.knockAhead;
+    b.struck = Math.max(b.struck || 0, 0.45);
+    p.touchT = TUNE.touchGap;
+    p.knockT = TUNE.knockCool;
+    p.burstT = TUNE.knockBurst;
+    p.stamina = Math.max(0, p.stamina - TUNE.knockCost);
+    G.stat.touches[p.team] = (G.stat.touches[p.team] || 0) + 1;
+    SFX.touch();
+    turfBurst(p.x, p.y, 4, p.dir + Math.PI);
+  }
+
+  /* ---- SHOOT, and the player swap it becomes when she has not got it ---- */
+  function pressShoot() {
+    if (!G || G.state !== "play") { skipState(); return; }
+    IN.shot = true; IN.shotT = 0;
+    var p = G.controlled;
+    /* WITHOUT THE BALL THIS IS THE ONE CONTROL EVERY FOOTBALL GAME HAS
+       AND THIS ONE DID NOT: give me the other one. The game picks a
+       player for her constantly and its pick is sometimes not the one
+       she wants. */
+    if (!p || G.ball.owner !== p) { switchPlayer(); IN.shot = false; }
+  }
+  function releaseShoot() {
+    if (!IN.shot) return;
+    IN.shot = false;
+    var p = G.controlled;
+    if (!p || G.state !== "play" || G.ball.owner !== p) { IN.shotT = 0; return; }
+    /* A TAP IS A SHOT, not a pass and not a half-hit one. Placed rather
+       than smashed -- less power, more accuracy, which is what a first
+       time finish from six yards is -- and it rises to a full-blooded
+       one the longer she holds it. */
+    shoot(p, clamp(0.42 + (IN.shotT / TUNE.chargeTime) * 0.58, 0.42, 1));
+    IN.shotT = 0;
+  }
+
+  /* THE SUPER, on a button of its own rather than a fifth meaning hung
+     off one of the three. */
   function pressSuper() {
     if (!G || G.state !== "play") { skipState(); return; }
     if (!superArmed(0)) {
@@ -4404,52 +4544,87 @@ window.OuissyCup = (function () {
     }
     unleash(captainOf(0));
   }
-  function releaseButton() {
-    if (!IN.held) return;
-    IN.held = false;
-    var p = G.controlled;
-    if (!p || G.state !== "play") return;
-    var carrying = G.ball.owner === p;
-    if (carrying) {
-      if (IN.heldT < 0.17) {
-        /* bestPass RETURNS AN OPTION, NOT A PLAYER.
 
-           It used to return the team-mate itself, and when it was
-           rewritten to return { mate, score, through, tx, ty } every
-           call site was updated except this one — the only one a human
-           ever reaches. So her tap-to-pass has been handing passTo an
-           object with no x and no vx, which arrives at Math.atan2(NaN)
-           and sends the ball nowhere at all. The AI's passing was fine
-           and hers was silently broken, which is exactly the shape of
-           bug an AI-only harness cannot see. */
-        var opt = bestPass(p);
-        if (opt && opt.mate) {
-          if (opt.through) passInto(p, opt.mate, opt.tx, opt.ty);
-          else passTo(p, opt.mate);
-        } else shoot(p, 0.4);
-      } else {
-        shoot(p, clamp(IN.heldT / TUNE.chargeTime, 0.25, 1));
-      }
-    } else if (IN.heldT < 0.22 && p.coolT <= 0 && p.tackleT <= 0) {
-      startTackle(p);
-    }
-    IN.heldT = 0;
+  /* everything down, for a pause, a whistle or a lost window */
+  function releaseAll() {
+    IN.pass = IN.drib = IN.shot = false;
+    IN.passT = IN.dribT = IN.shotT = 0;
+    IN.keys = {};
+  }
+
+  /* GIVE ME THE OTHER ONE.
+
+     pickControlled(true) re-picks the player NEAREST the ball, which
+     is almost always the one she already has -- so as a "change
+     player" button it did nothing at all. What she means by pressing
+     it is "not this one": the side is sorted by how far each is from
+     the ball and control moves to the NEXT one along, wrapping at the
+     end. Two presses from the far man and she is back where she
+     started, which is how every football game on earth behaves. */
+  function switchPlayer() {
+    if (!G || AUTOPLAY) return null;
+    var mine = G.players.filter(function (p) {
+      return p.team === 0 && !p.gk && !p.sentOff;
+    });
+    if (mine.length < 2) return null;
+    mine.sort(function (a, b) { return dist(a, G.ball) - dist(b, G.ball); });
+    var at = mine.indexOf(G.controlled);
+    var next = mine[(at + 1) % mine.length];
+    if (!next || next === G.controlled) return null;
+    G.controlled = next;
+    switchT = 0;
+    /* a flick of the marker so she can see who she has become */
+    next.switchT = 0.45;
+    SFX.move();
+    return next;
   }
 
   function controlStep(dt) {
     if (AUTOPLAY) return;
     var p = G.controlled;
     if (!p) return;
-    if (IN.held) IN.heldT += dt;
+    if (IN.pass) IN.passT += dt;
+    if (IN.drib) IN.dribT += dt;
+    if (IN.shot) IN.shotT += dt;
+    /* the two timers the knock leaves behind */
+    p.knockT = Math.max(0, (p.knockT || 0) - dt);
+    p.burstT = Math.max(0, (p.burstT || 0) - dt);
     if (p.tackleT > 0) return;
     var v = inputVector();
     var carrying = G.ball.owner === p;
-    var sprinting = IN.held && !carrying && p.stamina > 0.02;
-    if (sprinting) p.stamina = Math.max(0, p.stamina - TUNE.sprintDrain * dt);
-    else p.stamina = Math.min(1, p.stamina + TUNE.sprintFill * dt);
-    var mul = sprinting ? TUNE.sprintMul : 1;
-    /* winding a shot up roots you a little, which is the cost of power */
-    if (carrying && IN.held) mul *= 0.55;
+
+    /* ---- what the legs are doing -------------------------------------
+       Three things can change her pace and they stack in one number, so
+       there is never an argument about which one wins. */
+    var mul = 1;
+    /* SPRINT is the dribble button with no ball under her. */
+    var sprinting = IN.drib && !carrying && p.stamina > 0.02;
+    if (sprinting) mul *= TUNE.sprintMul;
+    /* THE BURST after a knock, which is what makes the knock work. */
+    if (p.burstT > 0) mul *= TUNE.knockBurstMul;
+    /* CLOSE CONTROL costs a little pace, which is the trade: the ball
+       stays under her and she cannot run away from anybody while it
+       does. */
+    if (carrying && IN.drib) mul *= TUNE.closeMul;
+    /* AND WINDING UP A SHOT roots her a little, which is the cost of
+       power -- but not as hard as it used to, because at 0.55 she was
+       nailed to the floor and every shot had to be taken standing. */
+    if (carrying && IN.shot) mul *= 0.78;
+
+    /* stamina: the sprint and the close-control burst spend it, standing
+       still and jogging put it back */
+    if (sprinting || p.burstT > 0) {
+      p.stamina = Math.max(0, p.stamina - TUNE.sprintDrain * dt);
+    } else {
+      p.stamina = Math.min(1, p.stamina + TUNE.sprintFill * dt);
+    }
+
+    /* CLOSE CONTROL, for the ball rather than the player. The touch
+       system keeps the ball a stride and a half ahead at pace; holding
+       dribble halves that and takes the wildness out of it, which is
+       what "under her spell" means when you watch somebody do it. */
+    p.close = (carrying && IN.drib) ? 1 : 0;
+
     /* The thumb pushes towards a place on the SCREEN, and the screen is
        the camera's, not the pitch's. When they change ends the camera
        crosses to the other touchline, and without this line every
@@ -5906,8 +6081,9 @@ window.OuissyCup = (function () {
      "cup-h-score", "cup-a-score", "cup-h-flag", "cup-a-flag",
      "cup-h-name", "cup-a-name", "cup-stam", "cup-stam-f",
      "cup-banner", "cup-overlay", "cup-pause-btn", "cup-pad", "cup-half",
-     "cup-stick", "cup-stick-k", "cup-btn", "cup-btn-ring", "cup-btn-lab",
-     "cup-btn-ico", "cup-poss-h", "cup-poss-a", "cup-poss-lab",
+     "cup-stick", "cup-stick-k", "cup-acts",
+     "cup-b-pass", "cup-b-drib", "cup-b-shot", "cup-shot-ring",
+     "cup-poss-h", "cup-poss-a", "cup-poss-lab",
      "cup-shot-h", "cup-shot-a", "cup-keys", "cup-stats",
      "cup-heart", "cup-heart-f", "cup-heart-n", "cup-heart-a",
      "cup-sup-btn", "cup-sup-lab", "cup-super-card", "cup-flash", "cup-ui",
@@ -6121,26 +6297,6 @@ window.OuissyCup = (function () {
                        team.kit ? team.kit.trim : "#ffffff", w, h);
   }
 
-  /* The three icons the button wears. Drawn rather than lettered,
-     because at the size a thumb covers it the word is gone and the
-     shape is not. */
-  var BTN_ICON = {
-    pass:   "M4 12h11M11 7l5 5-5 5M18 6v12",
-    shoot:  "M3 17c4-1 6-4 7-7M10 10l7-4 4 6-7 4z M13 18l6-2",
-    tackle: "M3 19l7-4M8 16l5-7 6 2-4 6zM15 6a2 2 0 104 0 2 2 0 10-4 0",
-  };
-  var btnMode = "";
-  function setBtn(mode) {
-    if (mode === btnMode) return;
-    btnMode = mode;
-    if (EL["cup-btn-lab"]) EL["cup-btn-lab"].textContent = mode.toUpperCase();
-    var ico = EL["cup-btn-ico"];
-    if (ico) {
-      ico.innerHTML = '<path d="' + BTN_ICON[mode] + '" fill="none" stroke="#08334a" ' +
-                      'stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>';
-    }
-  }
-
   function syncHud() {
     if (!G || !EL["cup-clock"]) return;
     var mins;
@@ -6174,13 +6330,16 @@ window.OuissyCup = (function () {
       EL["cup-stam-f"].style.width = Math.round(G.controlled ? G.controlled.stamina * 100 : 100) + "%";
     }
     syncHeart();
+    /* THE SHOT RING is the one piece of the pad that is still a DOM
+       node rather than a painted rectangle, because a conic gradient
+       filling round a circle is one line of CSS and forty of canvas.
+       Everything else about the three buttons is drawn in drawHud. */
     var p = G.controlled;
     var carrying = p && G.ball.owner === p;
-    setBtn(carrying ? (IN.held ? "shoot" : "pass") : "tackle");
-    if (EL["cup-btn-ring"]) {
-      var f = (carrying && IN.held) ? clamp(IN.heldT / TUNE.chargeTime, 0, 1) : 0;
-      EL["cup-btn-ring"].style.setProperty("--f", f.toFixed(3));
-      EL["cup-btn"].dataset.f = f > 0.92 ? "1" : "0";
+    if (EL["cup-shot-ring"]) {
+      var f = (carrying && IN.shot) ? clamp(IN.shotT / TUNE.chargeTime, 0, 1) : 0;
+      EL["cup-shot-ring"].style.setProperty("--f", f.toFixed(3));
+      if (EL["cup-b-shot"]) EL["cup-b-shot"].dataset.f = f > 0.92 ? "1" : "0";
     }
   }
 
@@ -6268,8 +6427,35 @@ window.OuissyCup = (function () {
       }
     }
     if (icon) icon(cx2, cy2 - 4);
-    drawText(cx2, fitText(label, rad * 2 - 2, 1), cy2 + 3,
-             { align: "center", colour: ink || "#f4f4e8" });
+    /* TWO LINES RATHER THAN AN ELLIPSIS.
+
+       A disc is a bad shape for a word: the widest line you can fit
+       across one is its diameter, and "DRIBBLE" at the size a thumb
+       covers came out as "DRIB..." -- which is not a label, it is a
+       truncation of one. Anything too long for the width is broken
+       across the middle instead, which is how every button on every
+       control pad with words on it has always done it. */
+    if (!label) return;
+    var wide = rad * 2 - 4;
+    var lines = textWidth(label, 1) <= wide ? [label] : splitTwo(label, wide);
+    var ly = cy2 + 3 - (lines.length - 1) * 4;
+    lines.forEach(function (ln) {
+      drawText(cx2, fitText(ln, wide, 1), ly,
+               { align: "center", colour: ink || "#f4f4e8" });
+      ly += 8;
+    });
+  }
+
+  /* break one word or two into two lines that each fit */
+  function splitTwo(txt, wide) {
+    var sp = txt.indexOf(" ");
+    if (sp > 0) return [txt.slice(0, sp), txt.slice(sp + 1)];
+    /* one long word: cut where the first half stops fitting */
+    var cut = Math.ceil(txt.length / 2);
+    for (var i = cut; i > 1; i--) {
+      if (textWidth(txt.slice(0, i), 1) <= wide) { cut = i; break; }
+    }
+    return [txt.slice(0, cut), txt.slice(cut)];
   }
 
   /* ONE HEART, AT WHATEVER SIZE AND HOWEVER FULL.
@@ -6573,7 +6759,16 @@ window.OuissyCup = (function () {
        button — the bottom of the frame is the emptiest part of a
        side-on shot, and a radar an inch to the left is still a radar
        where she is already looking. */
-    var rx = UIW - rw - 6 - (hudTouch() ? Math.round(UIW * 0.15) : 0);
+    /* MEASURED OFF THE BUTTONS THEMSELVES, rather than guessed at.
+       There are three of them in that corner now and they are there
+       whether or not anybody has touched the glass, so the old
+       "shift it left a bit on a phone" no longer covers it. The
+       leftmost of the three is the pass button; the radar sits to the
+       left of wherever that actually is. */
+    var padL = uiRectOf(EL["cup-b-pass"]);
+    var rx = UIW - rw - 6;
+    if (padL && padL.w > 0) rx = Math.min(rx, Math.round(padL.x) - rw - 8);
+    rx = Math.max(6, rx);
     var ry = UIH - rh - 6;
     /* kept where a harness can read it: the radar is painted on a
        canvas and the thumb button is a DOM element, so "do these two
@@ -6713,18 +6908,45 @@ window.OuissyCup = (function () {
       UIX.restore();
     }
 
-    /* ---- THE CONTROLS, measured off the real ones ---------------- */
+    /* ---- THE THREE CONTROLS, measured off the real ones ----------
+       Each one says what IT will do if she presses it now, which is
+       the whole reason they are drawn here rather than labelled once
+       in CSS: with the ball they are pass, dribble and shoot, and
+       without it they are tackle, sprint and swap. Nobody reads a
+       control list on a phone; they read the button. */
     var pl = G.controlled;
     var carrying = pl && G.ball.owner === pl;
-    var held = carrying && IN.held;
-    var charge = held ? clamp(IN.heldT / TUNE.chargeTime, 0, 1) : 0;
-    var lbl = carrying ? (held ? "SHOOT" : "PASS") : "TACKLE";
-    hudRound(uiRectOf(EL["cup-btn"]), lbl,
-             charge > 0.92 ? "#e8b23c" : "#2f6d8a",
+    var charge = (carrying && IN.shot)
+      ? clamp(IN.shotT / TUNE.chargeTime, 0, 1) : 0;
+
+    /* FIVE LETTERS IS THE WHOLE BUDGET. The widest line that fits
+       across one of these discs at the size a thumb covers is about
+       thirty pixels, which is five characters of this font -- so the
+       words are chosen to fit rather than cut to fit. "DRIBBLE" came
+       out as "DRIB..." and then, once it wrapped, as "DRIB / BLE",
+       which is worse. RUN is true of that button in both of its
+       states and is three letters long. */
+    hudRound(uiRectOf(EL["cup-b-pass"]),
+             carrying ? "PASS" : "PRESS",
+             IN.pass ? "#3f8fb0" : "#2f6d8a", "#f4f4e8", 0);
+    /* it goes green while it is held, because close control is a state
+       she is IN rather than a thing she just did */
+    hudRound(uiRectOf(EL["cup-b-drib"]), "RUN",
+             IN.drib ? "#3d9c6b" : "#2b6b4c", "#f4f4e8", 0);
+    hudRound(uiRectOf(EL["cup-b-shot"]),
+             carrying ? "SHOOT" : "SWAP",
+             charge > 0.92 ? "#e8b23c" : carrying ? "#a8443f" : "#4a5a66",
              charge > 0.92 ? "#2a1c08" : "#f4f4e8", charge);
     if (EL["cup-sup-btn"] && !EL["cup-sup-btn"].hidden) {
-      hudRound(uiRectOf(EL["cup-sup-btn"]),
-               fitText((sup && sup.name) || "SUPER", 34, 1), hc, "#2a1010", 0,
+      /* THE WORD IS "SUPER", not the first four letters of whatever the
+         super happens to be called. "HEARTBEAT STRIKE" fitted to the
+         width of a thumb button is "HEAR", which is not a label. The
+         name belongs on the nameplate, which is where it already is. */
+      /* NO WORD ON THIS ONE. It is the smallest disc on the screen and
+         even "SUPER" breaks across two lines in it -- and it does not
+         need one, because it carries a heart and the nameplate beside
+         it is already saying what the heart does. */
+      hudRound(uiRectOf(EL["cup-sup-btn"]), "", hc, "#2a1010", 0,
                function (ix2, iy2) {
                  box(ix2 - 3, iy2 - 2, 2, 2, "#ffffff");
                  box(ix2 + 2, iy2 - 2, 2, 2, "#ffffff");
@@ -6774,10 +6996,14 @@ window.OuissyCup = (function () {
          low enough to be on grass and high enough to clear the
          possession strip. */
       /* clear of the heart meter, which now lives in this corner */
-      var kz = UIH - 74;
+      /* five rows now, not three -- so it starts higher, or the last
+         of them is printed across the super's nameplate */
+      var kz = UIH - 112;
       [["W A S D", "run"],
-       ["SPACE", "tap to pass \u00b7 hold to shoot"],
-       ["SHIFT", "super, when the heart is full"]].forEach(function (k2) {
+       ["J", "pass \u00b7 tackle"],
+       ["K", "dribble \u00b7 sprint"],
+       ["L", "shoot \u00b7 change player"],
+       ["E", "super, when the heart is full"]].forEach(function (k2) {
         var kw = textWidth(k2[0]) + 8;
         var tw2 = textWidth(k2[1]);
         var tot = kw + tw2 + 12;
@@ -8521,7 +8747,7 @@ window.OuissyCup = (function () {
     });
     rows.push({ id: "teams", name: "THE TEAMS",
                 note: "pick a faculty, or build your own squad" });
-    rows.push({ id: "help", name: "HOW TO PLAY", note: "one stick, two buttons" });
+    rows.push({ id: "help", name: "HOW TO PLAY", note: "a stick and three buttons" });
     rows.push({ id: "quit", name: "BACK TO THE BOOK", note: "" });
 
     var act = {
@@ -9305,12 +9531,15 @@ window.OuissyCup = (function () {
     var touch = hudTouch();
     var keys = touch
       ? [["MOVE", "slide anywhere on the left"],
-         ["TAP", "pass — or tackle, when they have it"],
-         ["HOLD", "wind up a shot — or sprint, without the ball"],
+         ["PASS", "to a team-mate — hold it for the ball in behind"],
+         ["DRIB", "knock it past him — hold to keep it close"],
+         ["SHOT", "hit it — hold it for more"],
          ["♥", "when the hearts are full" + (sup ? " — " + sup.name : "")]]
       : [["W A S D", "run"],
-         ["SPACE", "tap to pass — hold to shoot"],
-         ["SHIFT", "your super, when the hearts are full"]];
+         ["J", "pass — hold for the ball in behind"],
+         ["K", "dribble — tap to knock it past him"],
+         ["L", "shoot — hold for more"],
+         ["E", "your super, when the hearts are full"]];
     keys.forEach(function (k) {
       var kw = Math.max(34, textWidth(k[0]) + 12);
       box(bx, by, kw, 13, "#0d1412");
@@ -9330,13 +9559,20 @@ window.OuissyCup = (function () {
     var sup = superOf(0);
     var keys = [
       ["MOVE", "slide anywhere on the left, or W A S D"],
-      ["TAP", "pass \u2014 or tackle, when they have it"],
-      ["HOLD", "wind up a shot \u2014 or sprint, without the ball"],
-      ["\u2665", "when the meter is full" + (sup ? " \u2014 " + sup.name : "")],
+      ["PASS", "to a team-mate \u2014 hold it for the ball in behind. " +
+               "Without it, that is your tackle.  (J)"],
+      ["DRIB", "tap to knock it past him, hold to keep it close. " +
+               "Without it, that is your sprint.  (K)"],
+      ["SHOT", "hit it \u2014 hold it for more. Without the ball it " +
+               "changes who you are.  (L)"],
+      ["\u2665", "when the meter is full" + (sup ? " \u2014 " + sup.name : "") + "  (E)"],
     ];
     var notes = [
-      "You are whoever is nearest the ball. The game swaps for you, and " +
-      "it never takes a player away while you are carrying it.",
+      "Three buttons, and each one does one thing with the ball and " +
+      "one thing without it. Nothing is decided by how fast you let go.",
+      "You are whoever is nearest the ball. The game swaps for you, " +
+      "the shoot button swaps when you want somebody else, and it " +
+      "never takes a player away while you are carrying it.",
       "The meter under the score fills as you play \u2014 a pass that finds " +
       "someone, a tackle won, a shot had. Fill it and your captain gets " +
       "one shot that is not a shot.",
@@ -9345,7 +9581,7 @@ window.OuissyCup = (function () {
     ];
     cardScreen({
       name: "help", wide: true, top: 12,
-      kicker: first ? "ONE STICK, TWO BUTTONS" : "CONTROLS",
+      kicker: first ? "A STICK AND THREE BUTTONS" : "CONTROLS",
       title: first ? "BEFORE YOU START" : "HOW TO PLAY",
       accent: "#2f5d72",
       action: first ? "LET\u2019S GO" : "GOT IT",
@@ -9950,15 +10186,20 @@ window.OuissyCup = (function () {
         if (uiKey(k)) { e.preventDefault(); return; }
         return;
       }
+      /* THE RIGHT HAND SITS ON J, K AND L while the left is on the
+         arrows, which is where every keyboard game has put three
+         actions since before any of us was born. Space and shift
+         double for the first two because they are what a person tries
+         first, and E keeps the super off all of them. */
+      if (e.repeat) { e.preventDefault(); return; }
       if (k === "ArrowLeft" || k === "a" || k === "A") IN.keys.left = true;
       else if (k === "ArrowRight" || k === "d" || k === "D") IN.keys.right = true;
       else if (k === "ArrowUp" || k === "w" || k === "W") IN.keys.up = true;
       else if (k === "ArrowDown" || k === "s" || k === "S") IN.keys.down = true;
-      else if (k === " " || k === "Spacebar" || k === "Enter") { pressButton(); }
-      /* the super, on its own key. Shift because it is under the little
-         finger of the hand that is not on the arrows, and E because
-         somebody playing WASD has no little finger to spare. */
-      else if (k === "Shift" || k === "e" || k === "E") { pressSuper(); }
+      else if (k === "j" || k === "J" || k === " " || k === "Spacebar") pressPass();
+      else if (k === "k" || k === "K" || k === "Shift") pressDribble();
+      else if (k === "l" || k === "L" || k === "Enter") pressShoot();
+      else if (k === "e" || k === "E") pressSuper();
       else if (k === "Escape") { quit(); return; }
       else return;
       e.preventDefault();
@@ -9970,7 +10211,9 @@ window.OuissyCup = (function () {
       else if (k === "ArrowRight" || k === "d" || k === "D") IN.keys.right = false;
       else if (k === "ArrowUp" || k === "w" || k === "W") IN.keys.up = false;
       else if (k === "ArrowDown" || k === "s" || k === "S") IN.keys.down = false;
-      else if (k === " " || k === "Spacebar" || k === "Enter") releaseButton();
+      else if (k === "j" || k === "J" || k === " " || k === "Spacebar") releasePass();
+      else if (k === "k" || k === "K" || k === "Shift") releaseDribble();
+      else if (k === "l" || k === "L" || k === "Enter") releaseShoot();
     });
 
     /* The stick appears wherever a thumb lands on the left of the
@@ -10006,25 +10249,30 @@ window.OuissyCup = (function () {
       st.addEventListener("pointerleave", letGo);
     }
 
-    var bt = EL["cup-btn"];
-    if (bt) {
-      bt.addEventListener("pointerdown", function (e) {
+    /* THE THREE, WIRED THE SAME WAY. Each takes its own pointer, so
+       two of them can be down at once -- holding dribble while
+       stabbing pass is a real thing to want to do and the old single
+       button could not express it at all. */
+    [["cup-b-pass", pressPass, releasePass],
+     ["cup-b-drib", pressDribble, releaseDribble],
+     ["cup-b-shot", pressShoot, releaseShoot]].forEach(function (row) {
+      var el = EL[row[0]];
+      if (!el) return;
+      el.addEventListener("pointerdown", function (e) {
         if (EL["cup-pad"]) EL["cup-pad"].classList.add("touch");
-        IN.btnId = e.pointerId;
-        bt.setPointerCapture(e.pointerId);
-        bt.classList.add("on");
-        pressButton();
+        IN.padIds[row[0]] = e.pointerId;
+        try { el.setPointerCapture(e.pointerId); } catch (e2) {}
+        row[1]();
         e.preventDefault();
       });
       var up = function (e) {
-        if (IN.btnId !== null && e.pointerId !== IN.btnId) return;
-        IN.btnId = null;
-        bt.classList.remove("on");
-        releaseButton();
+        if (IN.padIds[row[0]] !== undefined && e.pointerId !== IN.padIds[row[0]]) return;
+        delete IN.padIds[row[0]];
+        row[2]();
       };
-      bt.addEventListener("pointerup", up);
-      bt.addEventListener("pointercancel", up);
-    }
+      el.addEventListener("pointerup", up);
+      el.addEventListener("pointercancel", up);
+    });
 
     var sb = EL["cup-sup-btn"];
     if (sb) {
@@ -10046,8 +10294,8 @@ window.OuissyCup = (function () {
 
     /* losing the window means losing every finger */
     window.addEventListener("blur", function () {
-      IN.keys = {}; IN.stickId = null; IN.btnId = null;
-      IN.held = false; IN.heldT = 0;
+      releaseAll();
+      IN.stickId = null; IN.padIds = {};
       showStick(false);
     });
   }
@@ -10143,7 +10391,8 @@ window.OuissyCup = (function () {
     clearSuperBanner();
     hideOverlay();
     clearBanner();
-    IN.keys = {}; IN.stickId = null; IN.btnId = null; IN.held = false;
+    releaseAll();
+    IN.stickId = null; IN.padIds = {};
   }
 
   /* The way back. The site hands every chapter a door rather than
@@ -10164,6 +10413,7 @@ window.OuissyCup = (function () {
      does — a test that cannot press the button cannot test what the
      button does, and the button is four different things.
      ======================================================================= */
+  var stepHeld = null;
   var hooks = {
     state: function () {
       if (!G) return null;
@@ -10175,17 +10425,54 @@ window.OuissyCup = (function () {
                ballZ: +G.ball.z.toFixed(1), cam: +G.cam.y.toFixed(1),
                players: G.players.length };
     },
-    step: function (n, ux, uy, held) {
+    /* `held` was the single button; it drives the SHOOT one now, which
+       is the meaning it had whenever a harness held it down with the
+       ball. `btn` names one of the three for anything that wants to be
+       explicit about which. */
+    step: function (n, ux, uy, held, btn) {
       IN.keys = {};
       if (ux || uy) { IN.stickId = 0; IN.stickX = 0; IN.stickY = 0;
                       IN.curX = ux * 40; IN.curY = uy * 40; }
       else IN.stickId = null;
-      IN.held = !!held;
+      /* AND IT MUST ONLY LET GO OF WHAT IT PRESSED ITSELF.
+
+         The first version released `which` on any call with held
+         false, which meant a harness that pressed a button with
+         hold() and then advanced the clock with step() had the button
+         taken off it on the very next frame -- so nothing could ever
+         be held for longer than one tick and three of the four things
+         the pad does measured as broken. */
+      var which = btn || "shot";
+      if (held) { if (!stepHeld) { hooks.hold(which, true); stepHeld = which; } }
+      else if (stepHeld) { hooks.hold(stepHeld, false); stepHeld = null; }
       for (var i = 0; i < (n || 1); i++) step(FIXED);
       return hooks.state();
     },
-    press: pressButton,
-    release: releaseButton,
+    /* press and let go of one of the three, by name */
+    hold: function (which, down) {
+      var press = { pass: pressPass, drib: pressDribble, shot: pressShoot }[which];
+      var let_ = { pass: releasePass, drib: releaseDribble, shot: releaseShoot }[which];
+      if (!press) return null;
+      if (down) press(); else let_();
+      return { pass: IN.pass, drib: IN.drib, shot: IN.shot };
+    },
+    tap: function (which) { hooks.hold(which, true); hooks.hold(which, false); },
+    buttons: function () {
+      var pl = G && G.controlled, car = pl && G.ball.owner === pl;
+      return { carrying: !!car,
+               pass: car ? "PASS" : "PRESS",
+               drib: "RUN",
+               shot: car ? "SHOOT" : "SWAP",
+               down: { pass: IN.pass, drib: IN.drib, shot: IN.shot },
+               charge: (car && IN.shot) ? +clamp(IN.shotT / TUNE.chargeTime, 0, 1).toFixed(3) : 0,
+               /* how long each has been down, which is the thing a
+                  harness needs when the ball has been nicked off her
+                  mid-measurement and `charge` has gone to nought */
+               held: { pass: +IN.passT.toFixed(2), drib: +IN.dribT.toFixed(2),
+                       shot: +IN.shotT.toFixed(2) },
+               close: !!(pl && pl.close), burst: +((pl && pl.burstT) || 0).toFixed(2) };
+    },
+    super: pressSuper,
     /* EVERYTHING A HARNESS NEEDS TO JUDGE THE FOOTBALL.
 
        `state` says what the scoreboard says, which tells you nothing
@@ -10630,7 +10917,7 @@ window.OuissyCup = (function () {
        steers her at ninety degrees to where it meant to. */
     camSide: function () { return camSide(); },
     goalY: function () { return goalY(0); },
-    charged: function () { return IN.held ? clamp(IN.heldT / TUNE.chargeTime, 0, 1) : 0; },
+    charged: function () { return IN.shot ? clamp(IN.shotT / TUNE.chargeTime, 0, 1) : 0; },
     shots: function () { return G.stat.shots[0] + G.stat.shots[1]; },
     shotsBy: function () { return G.stat.shots.slice(); },
     possBy: function () { return [+G.stat.poss[0].toFixed(1), +G.stat.poss[1].toFixed(1)]; },

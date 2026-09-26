@@ -7076,41 +7076,51 @@ img{-webkit-user-drag:none; user-select:none;}
   box-shadow:0 .5cqh 1.4cqh rgba(0,0,0,.45), inset 0 -.5cqh .8cqh rgba(160,90,10,.45);
   transform:translate(var(--kx,0), var(--ky,0));
 }
-.cup-btn{
-  position:absolute; right:3.6cqw; bottom:4.4cqh;
-  width:17cqh; height:17cqh; border-radius:50%;
-  /* A THUMB NEEDS FORTY-FOUR PIXELS. Sized off the container's height
-     alone, this comes out at 33 on a phone held upright and 30 on a
-     small one — under the floor every platform's guidance puts on a
-     touch target, and it is the only control on the screen. */
+/* =========================================================================
+   THE THREE ACTIONS
+
+   Arranged the way a hand actually sits on a phone: the one she uses
+   most under the thumb at rest, the other two up and across from it at
+   the distance a thumb rolls rather than stretches. SHOOT is the
+   biggest and lowest because it is the one that has to be hit without
+   looking.
+
+   None of them has any appearance here. Everything visible is painted
+   into the canvas by drawHud() off these rectangles, exactly as the old
+   single button was -- see the rule further down that strips them.
+   ========================================================================= */
+.cup-acts{
+  position:absolute; right:3cqw; bottom:3.5cqh;
+  width:38cqh; height:33cqh; pointer-events:none;
+}
+.cup-ab{
+  position:absolute; border:0; padding:0; margin:0;
+  border-radius:50%; cursor:pointer; touch-action:none;
+  pointer-events:auto; background:none;
+  /* A THUMB NEEDS FORTY-FOUR PIXELS, whatever the stage is doing. */
   min-width:44px; min-height:44px;
-  border:0; padding:0; cursor:pointer; touch-action:none;
-  background:radial-gradient(circle at 36% 28%, #b8f0ff, #46b6e4 58%, #2481ad);
-  box-shadow:0 1.1cqh 0 #1a5f80, 0 2cqh 3.4cqh rgba(0,0,0,.45),
-             inset 0 -1cqh 1.6cqh rgba(10,60,90,.45);
-  transition:transform .06s ease, box-shadow .06s ease;
 }
-.cup-btn.on{transform:translateY(.85cqh);
-  box-shadow:0 .25cqh 0 #1a5f80, 0 .8cqh 1.6cqh rgba(0,0,0,.4);}
-.cup-btn-face{
-  position:absolute; inset:0; display:flex; flex-direction:column;
-  align-items:center; justify-content:center; gap:.3cqh; pointer-events:none;
+.cup-ab-shot{ right:0;    bottom:1cqh; width:17cqh; height:17cqh; }
+.cup-ab-pass{ left:0;    bottom:0;    width:14cqh; height:14cqh; }
+.cup-ab-drib{ right:2.5cqh; top:0;    width:14cqh; height:14cqh; }
+.cup-ab-face{
+  position:absolute; inset:0; display:flex;
+  align-items:center; justify-content:center; pointer-events:none;
 }
-.cup-btn-ico{width:6cqh; height:6cqh; fill:#08334a;}
-.cup-btn b{
-  font-family:'Silkscreen',monospace; font-size:2.1cqh; font-weight:400;
+.cup-ab b{
+  font-family:'Silkscreen',monospace; font-size:2cqh; font-weight:400;
   color:#08334a; letter-spacing:.05em;
 }
 /* the ring fills while a shot winds up, so the power is on the button
    she is already looking at and not in a corner she is not */
-.cup-btn-ring{
+.cup-ab-ring{
   position:absolute; inset:-1.4cqh; border-radius:50%;
   background:conic-gradient(from -90deg, #ffe066 calc(var(--f,0) * 360deg), rgba(255,255,255,.12) 0);
   -webkit-mask:radial-gradient(farthest-side, transparent calc(100% - 1.3cqh), #000 calc(100% - 1.2cqh));
   mask:radial-gradient(farthest-side, transparent calc(100% - 1.3cqh), #000 calc(100% - 1.2cqh));
   pointer-events:none;
 }
-.cup-btn[data-f="1"] .cup-btn-ring{filter:drop-shadow(0 0 1.4cqh rgba(255,120,80,.8));}
+.cup-ab[data-f="1"] .cup-ab-ring{filter:drop-shadow(0 0 1.4cqh rgba(255,120,80,.8));}
 
 /* the keyboard, for anyone on a desktop; hidden the moment a finger
    touches the glass */
@@ -7119,7 +7129,7 @@ img{-webkit-user-drag:none; user-select:none;}
    one moment the game most wants her attention, the button came up on
    top of the text explaining it. They are clear of both buttons now. */
 .cup-keys{
-  position:absolute; right:22cqw; bottom:9.5cqh; margin:0; text-align:right;
+  position:absolute; right:40cqh; bottom:7cqh; margin:0; text-align:right;
   display:flex; flex-direction:column; gap:.5cqh;
   font-family:'Poppins',sans-serif; font-size:1.6cqh; color:rgba(255,255,255,.55);
   text-shadow:0 .2cqh .4cqh rgba(0,0,0,.7);
@@ -7672,12 +7682,12 @@ img{-webkit-user-drag:none; user-select:none;}
    canvas to win a rectangle would be a bad trade. So the control stays
    and its skin goes, and drawHud measures the rectangle back and paints
    the art exactly on top of it. */
-.cup-btn, .cup-sup-btn, .cup-pause-btn{
+.cup-ab, .cup-sup-btn, .cup-pause-btn{
   background:none !important; box-shadow:none !important;
   border:0 !important; filter:none !important;
 }
-.cup-btn > *, .cup-sup-btn > *, .cup-pause-btn > *{ visibility:hidden; }
-.cup-btn:focus-visible, .cup-sup-btn:focus-visible, .cup-pause-btn:focus-visible{
+.cup-ab > *, .cup-sup-btn > *, .cup-pause-btn > *{ visibility:hidden; }
+.cup-ab:focus-visible, .cup-sup-btn:focus-visible, .cup-pause-btn:focus-visible{
   outline:2px solid #ffe9a8; outline-offset:2px;
 }
 /* the stick's own ring is drawn too; the pad keeps the touch surface */
@@ -7991,7 +8001,12 @@ img{-webkit-user-drag:none; user-select:none;}
    fire, or where to put the ball when he has not. A lit button that
    silently does nothing is the worst control in any game. */
 .cup-sup-btn{
-  position:absolute; right:4.4cqw; bottom:21cqh;
+  /* CLEAR OF THE CLUSTER. It used to sit at bottom:21cqh, which is
+     exactly where the dribble button is now -- so the heart would have
+     come up on top of a control she is holding down. It goes to the
+     left of the three instead, still on the right-hand side of the
+     picture and still under the same thumb. */
+  position:absolute; right:33cqh; bottom:19cqh;
   width:11cqh; height:11cqh; border-radius:50%;
   /* the other thumb target, and the smaller of the two — see the note
      on .cup-btn. At 11% of a 390-tall stage it was 24 pixels across. */
