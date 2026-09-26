@@ -46,6 +46,7 @@ const t = (n, c, note) => { c ? pass++ : fail++;
 
     /* ---- hold the camera on each of the four in turn ---- */
     const runs = [];
+    let honest = null;
     for (const row of says) {
       /* a night late enough for this one's line to be allowed */
       const night = Math.max(1, row.after || 1);
@@ -77,38 +78,35 @@ const t = (n, c, note) => { c ? pass++ : fail++;
         if (w.fired) { fired = w.fired; break; }
         await new Promise((x) => setTimeout(x, 120));
       }
+      /* AND LET IT ACTUALLY BE SAID.
+
+         tapeTrigger only QUEUES; the line is marked told when the
+         tape tick gets round to speaking it. Restarting the night on
+         the next pass of this loop threw the queue away, so nothing
+         was ever told -- which is why the ring was still offering
+         Cogsworth afterwards, correctly, because she had never
+         actually been told anything. */
+      if (fired) {
+        const byS = Date.now() + 15000;
+        while (Date.now() < byS && N.tape().said < 1) await new Promise((x) => setTimeout(x, 150));
+      }
       const w2 = N.watching();
       runs.push({ id: row.id, night, key: row.key, want: row.t,
                   fired, ok: fired === row.t, sawRing, ringAt,
-                  who: w2.who, held: w2.t });
-    }
+                  said: N.tape().said, who: w2.who, held: w2.t });
 
-    /* ---- AND THE RING MUST NEVER PROMISE WHAT IT CANNOT PAY ----
-
-       The straightforward way to set this up -- say the line by hand
-       and then hold the camera -- depends on tapeSayRaw actually
-       having put it up, and if it quietly declines the check passes
-       for the wrong reason or fails for one. The runs above have
-       already had every one of the four say its piece, so simply
-       holding on one of them again IS the state being asked about,
-       with nothing staged at all. */
-    let honest = null;
-    {
-      const row = says[0];
-      N.begin(Math.max(1, row.after || 1)); N.midEnd();
-      const cast = N.cast();
-      N.only(row.id, 1);
-      cast[row.id].awake = true; cast[row.id].atDoor = false;
-      N.camTo(cast[row.id].room);
-      G().monOut = 0; G().lost = {};
-      let ring = false;
-      const by2 = Date.now() + 14000;
-      while (Date.now() < by2) {
-        const w = N.watching();
-        if (w.ring) { ring = true; break; }
-        await new Promise((x) => setTimeout(x, 120));
+      /* the honesty check rides on the first one, here, while it is
+         still the same night and the line has just been spoken */
+      if (!honest && fired) {
+        G().watchCam = null;
+        let ring2 = false;
+        const by3 = Date.now() + 12000;
+        while (Date.now() < by3) {
+          if (N.watching().ring) { ring2 = true; break; }
+          await new Promise((x) => setTimeout(x, 120));
+        }
+        honest = { id: row.id, ring: ring2, wants: N.watching().wants };
       }
-      honest = { id: row.id, ring, wants: N.watching().wants };
     }
 
     return { says, runs, honest };

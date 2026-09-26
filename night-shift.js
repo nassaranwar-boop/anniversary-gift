@@ -1979,9 +1979,16 @@ const NS = {
        while she is watched, so being looked at is the whole of her
        condition and she is the one for whom it is not a neutral
        thing. Jax is the one who knocks. */
-    seenMarabelle: { after: 2, who: "marabelle",
+    /* `by` is not decoration: onceEver marks a line said-once-ever if
+       it is gated with one, and the two of these that the chapter
+       already had are. Without it these two would come back on a
+       later night as though they had never been said -- and "you
+       have found the one that works" landing twice is worse than it
+       landing never. It doubles as the deadline that makes the beat
+       happen for a player who never holds a camera at all. */
+    seenMarabelle: { after: 2, by: [2, 4], who: "marabelle",
                    t: "You have found the one that works. I cannot move while you are looking at me. Neither can you, and you have not noticed yet." },
-    seenJax:     { after: 3, who: "jax",
+    seenJax:     { after: 3, by: [3, 5], who: "jax",
                    t: "Go on then. Nobody has looked at this one for long enough to see what it is. That is not a complaint, it is just the first true thing I have said." },
 
     /* NIGHT FIVE. The one that knocks explains why it knocks, on the
