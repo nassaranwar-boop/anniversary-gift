@@ -17635,6 +17635,7 @@ function beginNight(n, opts) {
   G.doors.left = G.doors.right = G.doors.hatch = false;
   G.blackout = false; G.blackoutT = 0; G.approaching = null;
   G.dead = null; G.deadT = 0; G.killChar = null; G.cardT = 0;
+  G.watchFired = null; G.watchT0 = 0; G.stillT0 = 0;
   G.warned = 0; G.shake = 0;
   G.lost = {}; G.lostT = 20;
   /* dark from the start on every night but the one where she watches
@@ -17867,7 +17868,20 @@ function uiTick(dt) {
     const seen = CAST.map((d) => cast[d.id])
       .filter((c) => c && c.awake && !c.atDoor && c.room === G.cam)[0];
     if (seen && G.watchCam === G.cam) {
-      G.watchT = (G.watchT || 0) + dt;
+      /* WALL CLOCK, NOT ACCUMULATED dt.
+
+         The frame loop clamps dt to a tenth of a second so that a tab
+         coming back cannot skip a night, and uiTick is handed that
+         clamped value. Which means this counted FRAMES and called
+         them seconds: at sixty frames a second six seconds is six
+         seconds, and on a phone managing ten it is still six, but on
+         anything struggling below ten it stretches -- at one frame a
+         second, six seconds of holding becomes sixty of waiting. The
+         reward for being patient got slower the weaker the device
+         was, which is precisely backwards, and the same mistake the
+         caption hold made earlier in this session. */
+      if (!G.watchT0) G.watchT0 = perf();
+      G.watchT = perf() - G.watchT0;
       G.watchWho = seen.def.id;
       /* on the first two nights it is three seconds and it is the
          soldier saying he knows who she is, because the chapter needs
@@ -17884,15 +17898,21 @@ function uiTick(dt) {
            its own now; the night-based pair are still the fallback,
            because they carry gates and deadlines of their own and
            losing those would lose two written beats. */
-        const fired = tapeTrigger(WATCH_SAYS[seen.def.id] || "")
-                   || tapeTrigger(early ? "theySeen" : "theyWatched");
+        const key = WATCH_SAYS[seen.def.id] || "";
+        const fired = tapeTrigger(key) || tapeTrigger(early ? "theySeen" : "theyWatched");
+        /* written down rather than left to be caught in flight:
+           TAPE.pending is drained by the next tape tick, so a suite
+           polling for it every tenth of a second misses it more often
+           than not and reports that nothing ever fires */
+        if (fired) G.watchFired = (TAPE.pending && TAPE.pending.t) || null;
         /* a real answer rests it; nothing to say rests it briefly, so
            that holding the tube on a fifth thing is not punished by a
            minute of the ring refusing to appear */
         G.watchT = fired ? -60 : -8;
+        G.watchT0 = perf() + (fired ? 60 : 8);
       }
-    } else { G.watchCam = G.cam; G.watchT = 0; G.watchWho = null; }
-  } else if (G.watchT > 0) { G.watchT = 0; G.watchWho = null; }
+    } else { G.watchCam = G.cam; G.watchT = 0; G.watchT0 = 0; G.watchWho = null; }
+  } else if (G.watchT > 0) { G.watchT = 0; G.watchT0 = 0; G.watchWho = null; }
 
   /* AND THE TWENTY SECONDS THAT ARE NOT WORK.
 
@@ -17907,10 +17927,19 @@ function uiTick(dt) {
   if (G.phase === "play" && !G.monitor && !G.doors.left && !G.doors.right && !G.doors.hatch) {
     const anyAtDoor = CAST.some((d) => cast[d.id] && cast[d.id].awake && cast[d.id].atDoor);
     if (!anyAtDoor) {
-      G.stillT = (G.stillT || 0) + dt;
-      if (G.stillT > 20) { tapeTrigger("theyPlate"); G.stillT = -120; }
-    } else G.stillT = 0;
-  } else if (G.stillT > 0) G.stillT = 0;
+      /* and the same for the twenty seconds of stillness, which
+         matters more than the watching does: this is the one that
+         pays off the brass plate, the most deliberate setup in the
+         chapter. Counted in clamped dt it wanted two hundred frames,
+         which on a labouring phone is closer to five minutes of
+         sitting perfectly still -- so the single warmest thing in
+         six nights was the one a weak device was most likely to
+         never show her. */
+      if (!G.stillT0) G.stillT0 = perf();
+      G.stillT = perf() - G.stillT0;
+      if (G.stillT > 20) { tapeTrigger("theyPlate"); G.stillT = -120; G.stillT0 = perf() + 120; }
+    } else { G.stillT = 0; G.stillT0 = 0; }
+  } else if (G.stillT > 0) { G.stillT = 0; G.stillT0 = 0; }
 
   /* the annunciator's caption. A vocoder cannot be understood and is not
      meant to be — the words are here. */
@@ -21249,6 +21278,7 @@ const testHooks = {
     const it = key && NS.tapeWhen ? NS.tapeWhen[key] : null;
     return {
       who: G.watchWho || null, t: +(G.watchT || 0).toFixed(2), need: G.watchNeed || 6,
+      fired: G.watchFired || null,
       wants: who, key,
       line: it ? (typeof it === "string" ? it : it.t) : null,
       ring: !!(EL["ns-watch"] && !EL["ns-watch"].hidden),

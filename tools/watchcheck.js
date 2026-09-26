@@ -57,13 +57,20 @@ const t = (n, c, note) => { c ? pass++ : fail++;
       ch.awake = true; ch.atDoor = false;
       N.camTo(ch.room);
       G().monOut = 0; G().lost = {};
+      /* REAL TIME, NOT PUMPED TIME.
+
+         The dwell lives in uiTick, which only the real frame loop
+         turns, and it is measured on the wall clock -- so this waits
+         the way a player waits. An earlier pass pumped four hundred
+         frames by hand, advanced nothing at all, and reported that
+         none of the four ever answers being looked at. */
       let sawRing = false, ringAt = null, fired = null;
-      for (let k = 0; k < 400; k++) {
-        N.pumpFrame(1 / 30);
+      const by = Date.now() + 22000;
+      while (Date.now() < by) {
         const w = N.watching();
         if (w.ring && !sawRing) { sawRing = true; ringAt = w.t; }
-        const pend = N.tape().pending;
-        if (pend && pend.t) { fired = pend.t; break; }
+        if (w.fired) { fired = w.fired; break; }
+        await new Promise((x) => setTimeout(x, 120));
       }
       const w2 = N.watching();
       runs.push({ id: row.id, night, key: row.key, want: row.t,
@@ -85,7 +92,11 @@ const t = (n, c, note) => { c ? pass++ : fail++;
       /* say its line first, so there is nothing left to be had */
       N.tapeSayRaw(row.t, row.who, false);
       let ring = false;
-      for (let k = 0; k < 400; k++) { N.pumpFrame(1 / 30); if (N.watching().ring) { ring = true; break; } }
+      const by2 = Date.now() + 14000;
+      while (Date.now() < by2) {
+        if (N.watching().ring) { ring = true; break; }
+        await new Promise((x) => setTimeout(x, 120));
+      }
       honest = { id: row.id, ring };
     }
 
