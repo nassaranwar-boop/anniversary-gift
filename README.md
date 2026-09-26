@@ -151,10 +151,15 @@ on Marabelle for hours.
 **Green, after the changes:** codecheck 7, linecheck 5, storycheck 114,
 oncecheck 4, castcheck 9, nightbeats, midcheck 67, overcheck 42,
 revealcheck 7, camcheck 13, geomcheck 12, saycheck 20, nightskip 30,
-introshot 14, cardshots 22, and nightbudget's curve. Cache at v321.
-cardshots is the one that matters for the stylesheet change: every card
-the chapter can put up still fits its screen and every button on it is
-still reachable.
+introshot 14, cardshots 22, endcheck 47, and nightbudget's curve.
+Cache at v321. cardshots is the one that matters for the stylesheet
+change — every card the chapter can put up still fits its screen and
+every button on it is still reachable — and endcheck is the one that
+matters most of all, because the last hour is the ending of the whole
+gift: all eighty-nine shots played, each given the time it was written
+for, the camera moving in every one, whoever is speaking in frame and
+near enough to be the subject of their own shot, and nothing standing
+between the lens and them.
 
 `scriptcheck` is the one that did not finish: its static half passed
 (131 distinct lines, his tapes in page order, every signed line one of
