@@ -16382,13 +16382,17 @@ function windPips() {
    against the caught card and the card was gone, phase back to play,
    the scare unread.
 
-   The card is deaf for the first three quarters of a second it is on
-   the screen. That is longer than the gap between two hammered keys
-   and shorter than the time it takes to decide to press one, so it
-   costs a deliberate player nothing and costs a panicking one the
-   press she did not mean. The pointer is not guarded: a click has to
-   land on the button, and the buttons are nowhere near the pad. */
-const CARD_DEAF = 0.75;
+   The card is deaf for its first second and a bit. The number is not
+   a feel: screenOver schedules his line about what just reached her
+   950ms after the card goes up, so a card that could be dismissed
+   before then is a card that costs her the line as well as the name
+   -- route() takes the voice with it. 1.2s puts the earliest possible
+   dismissal after he has started talking, and it is still shorter
+   than the time it takes to read the card and decide to leave it, so
+   a deliberate player pays nothing and a panicking one pays the press
+   she did not mean. The pointer is not guarded: a click has to land
+   on the button, and the buttons are nowhere near the pad. */
+const CARD_DEAF = 1.2;
 let cardUpAt = -1e9;
 function overlay(html, cls) {
   const o = EL["ns-overlay"];
@@ -20364,6 +20368,11 @@ const testHooks = {
   },
   /* the pause menu, through the same toggle the button calls */
   pauseNow: () => { togglePause(); return G.phase; },
+  /* how long the card that is up has been up, for a suite that has to
+     know whether a press landed inside CARD_DEAF or outside it. In
+     this container a setTimeout(200) can resolve a second and a half
+     late, so wall-clock polling cannot tell the two apart. */
+  cardAge: () => +(perf() - cardUpAt).toFixed(3),
   /* the conversation she is not part of: which one, how far through it
      is, and whether she is getting it clear or through a wall */
   overState: () => ({ armed: OVER.armed, on: OVER.on, done: OVER.done,

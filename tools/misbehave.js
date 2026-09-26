@@ -239,40 +239,75 @@ const WAIT = Number(process.env.WAIT || 420);
       if (G().phase !== 'play') flag('it will not come back from pause', G().phase);
     }
 
-    /* ---- 5. PRESS THINGS WHILE A CARD IS UP ---- */
+    /* ---- 5. PRESS THINGS THE INSTANT A CARD ARRIVES ---- */
     N.begin(5); N.midEnd();
     {
+      /* THE PRESS THAT WAS ALREADY ON ITS WAY.
+
+         The fault is not "a player presses a button on a card". It is
+         that space is the monitor key during play AND the card's OK
+         key the moment play stops, so the flick she started before
+         anything happened lands on the card that has just replaced
+         what she was looking at.
+
+         Reproducing that needs the press to arrive in the same
+         instant the card does, and wall-clock waiting cannot do it
+         here: this container renders at about one frame a second and
+         a setTimeout(200) comes back a second and a half late, which
+         is how an earlier pass "hammered immediately" a full second
+         after the card and concluded the guard did nothing. A
+         MutationObserver on the overlay runs as a microtask off the
+         same innerHTML write, so the keys go in with the card's ink
+         still wet -- which is exactly the hand already in motion. */
+      let ageAtPress = null, phaseAfter = null, fired = false;
+      const obs = new MutationObserver(() => {
+        if (fired) return;
+        if (!document.querySelector('#ns-overlay [data-go]')) return;
+        fired = true;
+        ageAtPress = N.cardAge();
+        for (let i = 0; i < 12; i++) { key(' '); key('Enter'); }
+        phaseAfter = G().phase;
+      });
+      obs.observe(document.getElementById('ns-overlay'), { childList: true, subtree: true });
       N.catchNow('jax');
       await p_waitCard();
+      obs.disconnect();
+      note('the caught card was ' + ageAtPress + 's old when twenty-four keys hit it: phase ' +
+           phaseAfter + (fired ? '' : ' (the observer never fired)'));
+      if (!fired) flag('the check could not press the card as it arrived', 'no mutation seen');
+      else if (phaseAfter !== 'over')
+        flag('a key already in flight dismisses the card that says who reached her',
+             'over -> ' + phaseAfter + ' at ' + ageAtPress + 's old');
+
+      /* and now the slower, deliberate hammering: it may well get out,
+         but the card must still be there to get out OF */
       const ph = G().phase;
       for (let i = 0; i < 60; i++) {
         press(['left', 'right', 'hatch', 'monitor', 'next'][i % 5]);
         key([' ', 'a', 'd', 'w'][i % 4]);
       }
-      note('sixty presses against the ' + ph + ' card: phase is now ' + G().phase);
-      if (G().phase !== ph)
-        flag('hammering the pad moves the game on behind a card', ph + ' -> ' + G().phase);
-      const bs = cardButtons();
-      if (!bs.length) flag('the card has no way out after hammering', 'phase ' + ph);
-      else {
-        const go = bs.filter((x) => x.classList.contains('ns-btn-go'))[0] || bs[0];
-        const label = go.innerText.trim();
-        /* and the keyboard must still WORK, a moment later, deliberately:
-           the guard is a moment's deafness, not a deaf card */
-        await sleep(1200);
-        key('Enter');
-        await sleep(1200);
-        const byKey = G().phase !== ph;
-        note('a deliberate Enter a second later: phase ' + G().phase +
-             (byKey ? ' — the keyboard still gets her out' : ''));
-        if (!byKey) {
-          flag('the card cannot be answered from the keyboard at all',
-               'Enter did nothing to ' + ph + ' a second after it came up');
-          go.click();
-          await sleep(2000);
-          note('pressed "' + label + '" instead: phase ' + G().phase);
-          if (G().phase === ph)
-            flag('the only button on the card does nothing', label + ' left it in ' + ph);
+      note('and sixty more presses after that: phase ' + G().phase +
+           ' (card ' + N.cardAge() + 's old)');
+
+      if (G().phase === ph) {
+        const bs = cardButtons();
+        if (!bs.length) flag('the card has no way out', 'phase ' + ph);
+        else {
+          /* the keyboard must still WORK, deliberately, a moment later:
+             the guard is a moment's deafness, not a deaf card */
+          await sleep(1200);
+          key('Enter');
+          await sleep(1200);
+          note('a deliberate Enter afterwards: phase ' + G().phase);
+          if (G().phase === ph) {
+            flag('the card cannot be answered from the keyboard at all',
+                 'Enter did nothing to ' + ph + ' seconds after it came up');
+            const go = bs.filter((x) => x.classList.contains('ns-btn-go'))[0] || bs[0];
+            go.click();
+            await sleep(2000);
+            note('pressed "' + go.innerText.trim() + '" instead: phase ' + G().phase);
+            if (G().phase === ph) flag('the only button on the card does nothing', ph);
+          }
         }
       }
     }
