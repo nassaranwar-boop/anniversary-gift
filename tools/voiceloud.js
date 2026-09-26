@@ -28,7 +28,16 @@ const { execFileSync } = require('child_process');
   await p.route('**/*', (r) => r.request().url().startsWith('http://127.0.0.1') ? r.continue() : r.abort());
   await p.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
 
-  const rows = await p.evaluate(async (ids) => {
+  /* IN BATCHES, BECAUSE ONE CALL WAS TOO LONG A CALL.
+
+     Decoding all 278 inside a single page.evaluate ran past the
+     harness timeout and came back "Target page, context or browser
+     has been closed", which says nothing about the audio. Thirty at
+     a time returns often enough to stay alive and to show progress. */
+  const rows = [];
+  const CHUNK = 30;
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const part = await p.evaluate(async (ids) => {
     const AC = new (window.AudioContext || window.webkitAudioContext)();
     const out = [];
     for (const id of ids) {
@@ -50,7 +59,10 @@ const { execFileSync } = require('child_process');
       } catch (e) { out.push({ id, err: String(e).slice(0, 40) }); }
     }
     return out;
-  }, ids);
+    }, ids.slice(i, i + CHUNK));
+    part.forEach((r) => rows.push(r));
+    process.stderr.write('  ' + rows.length + '/' + ids.length + '\r');
+  }
   await b.close();
 
   const db = (x) => (20 * Math.log10(Math.max(1e-6, x))).toFixed(1);
