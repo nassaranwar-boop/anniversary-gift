@@ -68,7 +68,12 @@ const t = (n, c, note) => { c ? pass++ : fail++;
       const by = Date.now() + 22000;
       while (Date.now() < by) {
         const w = N.watching();
-        if (w.ring && !sawRing) { sawRing = true; ringAt = w.t; }
+        /* only a sighting with the clock still running counts as one:
+           the fire sets watchT to -60, and a poll that lands on the
+           same frame as the fire would otherwise report "ring from
+           -60s", which is a reading of the cooldown and not of the
+           hold */
+        if (w.ring && w.t > 0 && !sawRing) { sawRing = true; ringAt = +w.t.toFixed(2); }
         if (w.fired) { fired = w.fired; break; }
         await new Promise((x) => setTimeout(x, 120));
       }
@@ -78,8 +83,15 @@ const t = (n, c, note) => { c ? pass++ : fail++;
                   who: w2.who, held: w2.t });
     }
 
-    /* ---- and the ring must never promise what it cannot pay ---- */
-    /* hold on one that has already said its piece: no ring */
+    /* ---- AND THE RING MUST NEVER PROMISE WHAT IT CANNOT PAY ----
+
+       The straightforward way to set this up -- say the line by hand
+       and then hold the camera -- depends on tapeSayRaw actually
+       having put it up, and if it quietly declines the check passes
+       for the wrong reason or fails for one. The runs above have
+       already had every one of the four say its piece, so simply
+       holding on one of them again IS the state being asked about,
+       with nothing staged at all. */
     let honest = null;
     {
       const row = says[0];
@@ -89,15 +101,14 @@ const t = (n, c, note) => { c ? pass++ : fail++;
       cast[row.id].awake = true; cast[row.id].atDoor = false;
       N.camTo(cast[row.id].room);
       G().monOut = 0; G().lost = {};
-      /* say its line first, so there is nothing left to be had */
-      N.tapeSayRaw(row.t, row.who, false);
       let ring = false;
       const by2 = Date.now() + 14000;
       while (Date.now() < by2) {
-        if (N.watching().ring) { ring = true; break; }
+        const w = N.watching();
+        if (w.ring) { ring = true; break; }
         await new Promise((x) => setTimeout(x, 120));
       }
-      honest = { id: row.id, ring };
+      honest = { id: row.id, ring, wants: N.watching().wants };
     }
 
     return { says, runs, honest };
@@ -126,7 +137,8 @@ const t = (n, c, note) => { c ? pass++ : fail++;
     r.runs.filter((x) => !x.sawRing).map((x) => x.id).join(', ') || 'every time');
   t('but never once there is nothing left to be had',
     r.honest && r.honest.ring === false,
-    r.honest ? (r.honest.ring ? 'it promised a line that was already said' : 'stays dark') : 'not tested');
+    r.honest ? (r.honest.ring ? 'it promised ' + r.honest.id + ' again, which has already spoken'
+                               : 'stays dark once ' + r.honest.id + ' has spoken') : 'not tested');
   t('nothing in any of that threw', errs.length === 0, errs.slice(0, 2).join(' | ') || 'clean');
 
   console.log(`\n${pass} passed, ${fail} failed`);
