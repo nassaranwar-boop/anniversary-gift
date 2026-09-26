@@ -20514,7 +20514,13 @@ const testHooks = {
   /* stop everything sounding and take the caption down, so a check can
      start from silence rather than from the middle of a line */
   tapeQuiet: () => { oracleQuiet(); },
-  voxAlign: () => ({ calls: VOXALIGN.calls, hits: VOXALIGN.hits, last: VOXALIGN.last }),
+  voxAlign: () => ({ calls: VOXALIGN.calls, hits: VOXALIGN.hits, last: VOXALIGN.last,
+                     /* what the screen said at the instant the sound
+                        started, which is the only place it can be
+                        read honestly: see VOXALIGN */
+                     litAtStart: VOXALIGN.litAtStart, ofAtStart: VOXALIGN.ofAtStart,
+                     heldAtStart: VOXALIGN.heldAtStart,
+                     revivedAtStart: VOXALIGN.revivedAtStart }),
   voxAlignNow: (t) => { voxAligned(t); return VOXALIGN.last; },
   tapeDebug: () => ({ up: TAPE.up, vox: voxTalking(), spoke: TAPE.spoke,
                       through: !!TAPE.through, line: TAPE.line, who: TAPE.who || null,

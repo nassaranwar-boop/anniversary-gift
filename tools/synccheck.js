@@ -137,8 +137,17 @@ const t = (n, c, note) => { c ? pass++ : fail++;
            speaks, which tapeRevive promises and litAtStart measures.
            Record the disappearance, do not stop watching for it. */
         if (!d.shown) wentAway = true;
-        const l = lit();
-        if (l.on > litWhileWaiting) litWhileWaiting = l.on;
+        /* ONLY WHILE IT IS ACTUALLY WAITING.
+
+           Once voxAligned has released the hold the line is reading,
+           and on the silent caption path -- where nothing will ever
+           speak it -- reading is exactly what it should be doing. An
+           earlier pass counted the whole forty-second window and
+           reported "5 words lit against silence" about a five-word
+           line that had correctly finished reading itself. The
+           question is whether a word lights while the line is still
+           held for a take that has not arrived. */
+        if (d.held) { const l = lit(); if (l.on > litWhileWaiting) litWhileWaiting = l.on; }
         await sleep(20);
       }
       const took = N.said().took;
@@ -206,7 +215,7 @@ const t = (n, c, note) => { c ? pass++ : fail++;
   t('it is on the screen when the wait ends',
     r.shownThen !== false,
     r.wentAway ? 'it went away mid-wait and came back' : 'never left');
-  t('and it sits unlit for the whole of that wait', r.litWhileWaiting === 0,
+  t('and not one word lights while it is still waiting', r.litWhileWaiting === 0,
     r.litWhileWaiting + ' word(s) lit against silence');
 
   /* and these only mean anything about a line that really played off a
