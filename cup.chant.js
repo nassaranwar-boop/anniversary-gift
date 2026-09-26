@@ -281,7 +281,30 @@ window.CupChant = (function () {
        is scheduled with it, sample-accurate and free. */
     sc.inst = AC.createGain(); sc.inst.gain.value = 1;
     sc.vox = AC.createGain(); sc.vox.gain.value = 1;
-    sc.inst.connect(preMaster);
+
+    /* =====================================================================
+       AND ONE MORE FADER, FOR WHEN THE GROUND SHOUTS
+
+       The pump above is the kick ducking the band, and it happens four
+       times a bar for ever. This is a different thing entirely: a
+       roar, a groan, a whistle for a foul -- a REACTION -- and a
+       reaction laid on top of a full band at the same level is not a
+       reaction, it is a wall. Every one of them leans the tune back
+       for a moment and lets it come forward again, which is exactly
+       what a television mixer does with a fader when a stadium goes
+       up, and it is the reason you can hear both the crowd and the
+       music instead of one smear where they used to be.
+
+       It is its own node rather than the kick's, because the kick
+       cancels its own automation twice a second and would wipe a
+       two-second lean on the way past. The drums do not go through it:
+       a crowd roars OVER a rhythm section, never instead of one, and
+       keeping the pulse under the noise is what stops a goal sounding
+       like the music stopped.
+       ===================================================================== */
+    sc.music = AC.createGain(); sc.music.gain.value = 1;
+    sc.music.connect(preMaster);
+    sc.inst.connect(sc.music);
     sc.vox.connect(preMaster);
 
     /* =====================================================================
@@ -522,12 +545,15 @@ window.CupChant = (function () {
     s2.start(t); s2.stop(t + 0.16);
   }
 
-  /* the old name, kept because the rest of the file and the harnesses
-     call it. `bright` was a boolean; it is a continuous drive now, so a
-     crowd can be halfway to shouting rather than one or the other. */
-  function sing(f, t, dur, vol, pan, bright) {
-    voices(f, t, dur, vol, pan, typeof bright === "number" ? bright : (bright ? 0.8 : 0.3));
-  }
+  /* THERE WAS A SECOND `sing` HERE and it had never once run. It was
+     a wrapper round voices(), kept "because the rest of the file and
+     the harnesses call it" -- but the arrangement declares its own
+     sing() eight hundred lines further down, and a function
+     declaration later in the same scope wins for the whole of it. So
+     this one was shadowed from the moment the second was written, and
+     every call in the file was going to the other one. Nothing called
+     it, nothing missed it, and leaving a decoy of a function that
+     cannot execute is how the next person loses an afternoon. */
 
   function hummed(f, t, dur, vol) {
     var o = AC.createOscillator(); o.type = "sine";
@@ -1638,6 +1664,7 @@ window.CupChant = (function () {
      these traditions is built on a section arriving.
      ======================================================================= */
   var CYCLE = 32;
+  var SEC_AT = { intro: 0, build: 8, chorus: 16, "break": 24, last: 28 };
 
   function sectionOf(pos) {
     if (pos < 8) return "intro";
@@ -1645,6 +1672,99 @@ window.CupChant = (function () {
     if (pos < 24) return "chorus";
     if (pos < 28) return "break";
     return "last";
+  }
+
+  /* =======================================================================
+     THE FORM IS NOT A LOOP ANY MORE
+
+     What was here: thirty-two bars, played in order, for ever. The
+     match handed this file a phase on every frame -- kickoff, play,
+     goal, break -- and the file stored it in a variable and never read
+     it again. So a song could be three bars into its quietest section
+     when she scored, and it stayed there; the chorus arrived when the
+     bar counter said so, which on average is sixteen bars after
+     anything interesting happened.
+
+     A record has sections. A MATCH has sections. Nothing was joining
+     them up.
+
+     Two things join them now.
+
+     THE MATCH CAN CALL FOR A SECTION. A goal asks for the chorus, an
+     away goal and half-time ask for the break, the final whistle of a
+     win asks for the last eight bars with the key lifted. The request
+     is queued, never applied where it is made: it lands on the next
+     BAR LINE, because a band changing section mid-bar is not a band
+     changing section, it is a mistake. Worst case she waits two
+     seconds and the drop is in time; best case it is instant. Either
+     way it is musical, which a hard cut never is.
+
+     AND THE SECTION THAT FOLLOWS IS CHOSEN, NOT COUNTED. When eight
+     bars are up, where it goes next is a question about the ground:
+     quiet, and it drops back to the intro and builds again; roused,
+     and it takes the chorus; roaring in the last minute of a tie, and
+     it goes to the section a tone higher and stays there. The same
+     six songs, arranged live by the game she is playing.
+     ======================================================================= */
+  var pos = 0;              // where in the 32-bar form the next bar is
+  /* AND WHERE THE LAST ONE WENT. `pos` is the bar about to be written,
+     which is not the bar anybody is listening to -- the scheduler
+     posts a third of a second ahead, so by the time a bar sounds pos
+     has already moved on. Everything that reports what section the
+     music is IN reads this one, or it reads the future and is off by
+     a bar for ever. */
+  var atPos = 0;
+  /* THE OFFLINE RENDERER PLAYS THE SONG AS WRITTEN. A .wav of a track
+     is the track, start to finish, not one arrangement of it that
+     happened to depend on where an imaginary crowd was -- and every
+     harness that measures those files was calibrated against the
+     straight thirty-two bars. */
+  var renderLinear = false;
+  var jumpTo = null;        // a section the match has asked for
+  var holdSec = null;       // a section to sit in until told otherwise
+  var sameSec = 0;          // how many times this section has repeated
+
+  /* the shortest gap, in seconds, between two of the same reaction.
+     A goal, a card and a whistle are not in here: those are never too
+     soon, and a second one means a second thing actually happened. */
+  var REACT_GAP = {
+    shot: 1.1, nearMiss: 1.6, miss: 1.4, missTheirs: 1.4,
+    save: 1.2, saveTheirs: 1.2, tackle: 0.8, tackleLost: 1.0,
+    post: 1.5, foul: 1.2,
+  };
+  var reactAt = {};
+
+  function goTo(name) {
+    if (SEC_AT[name] === undefined) return;
+    jumpTo = SEC_AT[name];
+  }
+
+  /* WHERE IT GOES WHEN A SECTION ENDS. Only ever called on a section
+     boundary, so it never interrupts anything. */
+  function chooseNext(sec) {
+    if (holdSec) return holdSec;
+    if (sec === "intro")  return E >= 0.62 ? "chorus" : "build";
+    if (sec === "build")  return E >= 0.42 ? "chorus" : "intro";
+    if (sec === "chorus") {
+      if (E >= 0.72) return "last";
+      /* A CHORUS TWICE IS A BIG MOMENT. A chorus four times is a loop,
+         which is the thing this replaced, so a sustained attack gets
+         two and then the place has to breathe. */
+      if (E >= 0.40 && sameSec < 2) return "chorus";
+      return "break";
+    }
+    if (sec === "break")  return E >= 0.55 ? "chorus" : "intro";
+    /* the last eight, a tone up: only a roaring ground holds it */
+    return E >= 0.68 && sameSec < 2 ? "last" : "break";
+  }
+
+  function advance(p) {
+    var sec = sectionOf(p);
+    var next = p + 1;
+    if (next < CYCLE && sectionOf(next) === sec) return next;   // still inside
+    var want = chooseNext(sec);
+    sameSec = want === sec ? sameSec + 1 : 0;
+    return SEC_AT[want];
   }
 
   function hookNotes() {
@@ -1686,7 +1806,9 @@ window.CupChant = (function () {
     var scale = anthem.scale || "minor";
     var g = anthem.groove || "batucada";
     var prog = PROGS[anthem.mood] || PROGS["anthemic-uplifting"];
-    var pos = bar % CYCLE;
+    /* THE ONE PLACE A SECTION CHANGE IS ALLOWED TO HAPPEN: the top of
+       a bar, before a single note of it has been written. */
+    if (jumpTo !== null) { pos = jumpTo; jumpTo = null; sameSec = 0; }
     var sec = sectionOf(pos);
     var inSec = pos < 8 ? pos : (pos < 16 ? pos - 8 : (pos < 24 ? pos - 16
                 : (pos < 28 ? pos - 24 : pos - 28)));
@@ -1766,6 +1888,8 @@ window.CupChant = (function () {
     }
 
     bar++;
+    atPos = pos;
+    pos = renderLinear ? (pos + 1) % CYCLE : advance(pos);
   }
 
   function schedule() {
@@ -1898,10 +2022,218 @@ window.CupChant = (function () {
   }
 
   /* ----------------------------------------------------------- the one-shots */
+
+  /* THREE SECONDS OF RANDOM NUMBERS, MADE ONCE. Every one-shot below
+     wants a bed of noise, and building a fresh one each time is a
+     hundred and forty thousand calls to Math.random at the exact
+     moment the game is already busy drawing a goal. They read from
+     one buffer at a random offset instead, which is a different
+     stretch of noise every time and costs nothing. */
+  var LONGNOISE = null;
+  function longNoise() {
+    if (!LONGNOISE) LONGNOISE = noise(3);
+    return LONGNOISE;
+  }
+  function noiseFrom() {
+    var s = AC.createBufferSource();
+    s.buffer = longNoise();
+    s.loop = true;
+    s.loopStart = 0; s.loopEnd = 3;
+    return s;
+  }
+
+  /* THE GROUND GOES UP AND THE TUNE STEPS BACK -- see sc.music. Down
+     fast, because a reaction is sudden, and back on a curve, because
+     a mixer does not snap a fader home. */
+  function leanBack(depth, secs) {
+    if (!sc.music || !AC) return;
+    var t = AC.currentTime, g = sc.music.gain;
+    var floor = Math.max(0.12, 1 - (depth === undefined ? 0.3 : depth));
+    /* FOUR BOUNDED EVENTS AND NOTHING OPEN-ENDED.
+
+       The obvious way to write the return is setTargetAtTime, which
+       is the nicer curve and the wrong tool here. A setTarget has no
+       end time, so it is never "past", and cancelScheduledValues --
+       which only removes events scheduled at or after the moment you
+       call it -- cannot remove one. Reactions come in twos and threes
+       (a shot, a save, a corner), so the second lean would ramp down
+       INTO an exponential still climbing underneath it and the two
+       would argue about the fader.
+
+       Every event here has an end time, so cancelScheduledValues
+       genuinely clears the decks and each reaction gets the whole
+       fader to itself. The cost is a straight line back instead of a
+       curve, at a depth of forty per cent over two and a half
+       seconds, which nobody can hear. */
+    var now = g.value;
+    g.cancelScheduledValues(t);
+    g.setValueAtTime(now, t);
+    g.linearRampToValueAtTime(floor, t + 0.07);
+    g.linearRampToValueAtTime(1, t + 0.07 + (secs || 0.9));
+  }
+
+  /* =======================================================================
+     THE REST OF WHAT A CROWD DOES
+
+     A ground is not a volume knob with a roar at the top of it. Before
+     this there were four noises in the whole stadium -- a roar, a
+     horn, some whistles and one "ooh" -- and between them they covered
+     a goal and nothing else. Which meant that a shot dragged wide, a
+     save, a ball off the post, a tackle won in front of the near
+     stand and a foul given against her all sounded like precisely
+     nothing at all: the loudest moments in football that are not
+     goals, played to an empty room.
+
+     What follows is the other five, and four of them are not cheering.
+     A crowd disappointed is a crowd making a noise, and it is the
+     noise it makes MOST.
+     ======================================================================= */
+
+  /* THE GROAN. Twenty thousand people going "ohhh" and meaning it,
+     which is a falling minor third with a lot of breath in it and
+     nothing triumphant anywhere. Every shot that misses gets one. */
+  function groan(weight) {
+    if (!AC || muted) return;
+    var t = AC.currentTime, w = weight === undefined ? 1 : weight;
+    [[248, 208, 1], [186, 156, 0.62]].forEach(function (v, i) {
+      var o = AC.createOscillator(); o.type = i ? "triangle" : "sawtooth";
+      o.frequency.setValueAtTime(v[0], t);
+      o.frequency.exponentialRampToValueAtTime(v[1], t + 0.7);
+      var lp = AC.createBiquadFilter();
+      lp.type = "lowpass"; lp.frequency.value = 820; lp.Q.value = 0.4;
+      var g = AC.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.052 * w * v[2], t + 0.15);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.95);
+      o.connect(lp); lp.connect(g); g.connect(L.peaks);
+      o.start(t); o.stop(t + 1.0);
+    });
+    /* the breath of the place under the voices */
+    var s = noiseFrom();
+    var bp = AC.createBiquadFilter();
+    bp.type = "bandpass"; bp.Q.value = 0.6;
+    bp.frequency.setValueAtTime(540, t);
+    bp.frequency.exponentialRampToValueAtTime(300, t + 0.8);
+    var ng = AC.createGain();
+    ng.gain.setValueAtTime(0.0001, t);
+    ng.gain.exponentialRampToValueAtTime(0.045 * w, t + 0.13);
+    ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+    s.connect(bp); bp.connect(ng); ng.connect(L.peaks);
+    s.start(t, Math.random() * 2); s.stop(t + 1.0);
+    leanBack(0.20 * w, 0.9);
+  }
+
+  /* APPLAUSE, WHICH IS NOT A ROAR. A roar is a held vowel; applause is
+     a texture of hands, and the difference between the two is the
+     difference between a goal and a good save. A wash of high noise
+     with a scatter of individual pairs of hands over it, because a
+     wash on its own is static. */
+  function applause(vol, secs) {
+    if (!AC || muted) return;
+    var t = AC.currentTime, v = vol || 0.11, d = secs || 2.2;
+    var s = noiseFrom();
+    var hp = AC.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 850;
+    var bp = AC.createBiquadFilter();
+    bp.type = "bandpass"; bp.frequency.value = 2000; bp.Q.value = 0.45;
+    var g = AC.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(v, t + 0.20);
+    g.gain.setValueAtTime(v, t + d * 0.42);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    s.connect(hp); hp.connect(bp); bp.connect(g); g.connect(L.peaks);
+    s.start(t, Math.random() * 2); s.stop(t + d + 0.1);
+    /* the individual hands: near ones loud and early, far ones late */
+    var n = Math.round(14 + v * 90);
+    for (var i = 0; i < n; i++) {
+      var ct = t + 0.02 + Math.pow(Math.random(), 0.7) * d * 0.75;
+      var cs = noiseFrom();
+      var cf = AC.createBiquadFilter();
+      cf.type = "bandpass"; cf.frequency.value = 1300 + Math.random() * 900;
+      cf.Q.value = 1.1;
+      var cg = AC.createGain();
+      cg.gain.setValueAtTime(v * (0.10 + Math.random() * 0.14), ct);
+      cg.gain.exponentialRampToValueAtTime(0.0001, ct + 0.11);
+      var cp = AC.createStereoPanner ? AC.createStereoPanner() : null;
+      cs.connect(cf); cf.connect(cg);
+      if (cp) { cp.pan.value = Math.random() * 1.7 - 0.85; cg.connect(cp); cp.connect(L.peaks); }
+      else cg.connect(L.peaks);
+      cs.start(ct, Math.random() * 2); cs.stop(ct + 0.16);
+    }
+    leanBack(0.16, Math.min(1.6, d));
+  }
+
+  /* THE GASP. Shorter and higher than the groan and with no voice in
+     it at all: the intake of breath when the ball hits the post, which
+     lasts about a third of a second and is the quietest a full
+     stadium ever gets. */
+  function gasp(vol) {
+    if (!AC || muted) return;
+    var t = AC.currentTime, v = vol || 0.07;
+    var s = noiseFrom();
+    var bp = AC.createBiquadFilter();
+    bp.type = "bandpass"; bp.Q.value = 1.4;
+    bp.frequency.setValueAtTime(700, t);
+    bp.frequency.linearRampToValueAtTime(1600, t + 0.3);
+    var g = AC.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(v, t + 0.07);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.42);
+    s.connect(bp); bp.connect(g); g.connect(L.peaks);
+    s.start(t, Math.random() * 2); s.stop(t + 0.5);
+    leanBack(0.26, 0.6);
+  }
+
+  /* JEERS. A foul against her side. Low, rough and ugly on purpose,
+     with whistles cutting through it -- which in most of the world,
+     and everywhere this tournament is played, is what booing is. */
+  function jeer(weight) {
+    if (!AC || muted) return;
+    var t = AC.currentTime, w = weight === undefined ? 1 : weight;
+    var s = noiseFrom();
+    var bp = AC.createBiquadFilter();
+    bp.type = "bandpass"; bp.frequency.value = 420; bp.Q.value = 0.8;
+    var sh = AC.createWaveShaper();
+    var cv = new Float32Array(1024);
+    for (var i = 0; i < 1024; i++) {
+      var x = (i / 512) - 1;
+      cv[i] = Math.tanh(x * 3.2) / 3.2;      // rough, not clean
+    }
+    sh.curve = cv;
+    var g = AC.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.075 * w, t + 0.16);
+    g.gain.setValueAtTime(0.075 * w, t + 0.7);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 1.45);
+    s.connect(bp); bp.connect(sh); sh.connect(g); g.connect(L.peaks);
+    s.start(t, Math.random() * 2); s.stop(t + 1.5);
+    /* a low swell under it, so it is a crowd and not a hiss */
+    var o = AC.createOscillator(); o.type = "sawtooth";
+    o.frequency.setValueAtTime(96, t);
+    o.frequency.linearRampToValueAtTime(82, t + 1.1);
+    var og = AC.createGain();
+    og.gain.setValueAtTime(0.0001, t);
+    og.gain.exponentialRampToValueAtTime(0.035 * w, t + 0.2);
+    og.gain.exponentialRampToValueAtTime(0.0001, t + 1.3);
+    o.connect(og); og.connect(L.peaks);
+    o.start(t); o.stop(t + 1.4);
+    whistles(Math.round(5 + 6 * w));
+    leanBack(0.28 * w, 1.3);
+  }
+
+  /* THE SURGE. A tackle won, a ball nicked off a shin, a run starting:
+     half a second of the place lifting. Not a celebration -- a
+     celebration after a tackle is a crowd that has not been to a
+     match. */
+  function surge(vol) {
+    if (!AC || muted) return;
+    roar(vol || 0.09, 0.95);
+    leanBack(0.15, 0.8);
+  }
+
   function roar(vol, secs) {
     if (!AC || muted) return;
     var t = AC.currentTime;
-    var s = AC.createBufferSource(); s.buffer = noise(3); s.loop = true;
+    var s = AC.createBufferSource(); s.buffer = longNoise(); s.loop = true;
     var f = AC.createBiquadFilter();
     f.type = "bandpass"; f.frequency.setValueAtTime(320, t);
     f.frequency.linearRampToValueAtTime(760, t + 0.4);
@@ -1918,7 +2250,9 @@ window.CupChant = (function () {
     lg.gain.exponentialRampToValueAtTime(0.0001, t + secs * 0.7);
     s.connect(f); f.connect(g); g.connect(L.peaks);
     lo.connect(lg); lg.connect(L.peaks);
-    s.start(t); s.stop(t + secs + 0.1);
+    /* a different stretch of the buffer each time, or every roar in
+       the tournament is the same three seconds of hiss */
+    s.start(t, Math.random() * 2); s.stop(t + secs + 0.1);
     lo.start(t); lo.stop(t + secs + 0.1);
   }
 
@@ -2023,25 +2357,118 @@ window.CupChant = (function () {
         if (delaySend) delaySend.gain.value = 0.26;
       }
       anthem = a || null;
-      bar = 0;
+      /* a new ground is a new song, and a song starts at its beginning */
+      bar = 0; pos = 0; atPos = 0; jumpTo = null; holdSec = null; sameSec = 0;
       nextBar = AC ? AC.currentTime + 0.1 : 0;
     },
     energy: function (e, ph) {
       E = Math.max(0, Math.min(1, e || 0));
-      phase = ph || phase;
+      /* WHERE THE MATCH AND THE MUSIC MEET. This argument was arriving
+         on every frame and being stored in a variable nothing read. A
+         phase CHANGE is a section change -- the whistle for kick-off
+         puts the band back at the top, the break at half-time drops
+         them to the quiet eight, and the moment play restarts they are
+         free to build again. */
+      if (ph && ph !== phase) {
+        phase = ph;
+        if (ph === "kickoff") { holdSec = null; goTo("intro"); }
+        else if (ph === "break") { holdSec = "break"; goTo("break"); }
+        else if (ph === "play") holdSec = null;
+        else if (ph === "idle") { holdSec = null; }
+      }
       mix();
     },
+    /* =====================================================================
+       EVERY NOISE A MATCH CAN ASK FOR
+
+       There were eight of these and the game fired four. A shot, a
+       save, the woodwork, a tackle, a foul, a card, half-time and the
+       final whistle all went past in silence, which is the one thing
+       a stadium never does.
+
+       Each of the loud ones also moves the song, and that is the
+       point of them being here rather than in a sound bank: a goal
+       does not just make a noise, it changes what the band is
+       playing, and the noise and the section land on the same moment.
+       ===================================================================== */
     event: function (kind) {
       if (!AC || muted) return;
-      if (kind === "goalHome") { release(false); roar(0.26, 3.4); horn(); whistles(9); }
-      else if (kind === "goalAway") { duck = 0.75; mix(); whistles(2);
-        setTimeout(function () { duck = 0; mix(); }, 2600); }
-      else if (kind === "nearMiss" || kind === "shot") ooh();
-      else if (kind === "superWind") breath(1.15);
-      else if (kind === "superHit") release(true);
-      else if (kind === "kickoff") { roar(0.10, 1.2); whistles(3); }
-      else if (kind === "win") { roar(0.2, 4.5); horn(); whistles(12); }
+      /* =====================================================================
+         A CROWD DOES NOT MAKE THE SAME NOISE TWICE IN A SECOND
+
+         A scramble in the six-yard box is four shots, two blocks and a
+         save inside two seconds, and firing a reaction at every one of
+         them stacks six overlapping roars into a single smear that is
+         louder than the goal it is not. Each kind gets a floor on how
+         often it can happen; the big ones are exempt, because a goal
+         is never too soon.
+         ===================================================================== */
+      var gap = REACT_GAP[kind];
+      if (gap) {
+        var nw = AC.currentTime;
+        if (reactAt[kind] && nw - reactAt[kind] < gap) return;
+        reactAt[kind] = nw;
+      }
+      switch (kind) {
+        /* ---- the ball is in the net ---------------------------------- */
+        case "goalHome":
+          /* the chorus, on the next bar line, under the roar */
+          goTo("chorus"); holdSec = null;
+          release(false); roar(0.26, 3.4); horn(); whistles(9);
+          leanBack(0.40, 2.6);
+          break;
+        case "goalAway":
+          /* THE OPPOSITE OF A DROP. The band falls back to the quiet
+             eight bars and the place empties of sound for a moment,
+             which is what conceding actually sounds like. */
+          goTo("break");
+          duck = 0.75; mix(); whistles(2); groan(1.15);
+          setTimeout(function () { duck = 0; mix(); }, 2600);
+          break;
+
+        /* ---- nearly ---------------------------------------------------- */
+        case "shot":      ooh(); leanBack(0.16, 0.7); break;
+        /* six inches wide is not the same event as a shot. It is the
+           only thing in football louder than a goal that is not one. */
+        case "nearMiss":  ooh(); groan(0.8); leanBack(0.30, 1.1); break;
+        /* wide, over, or straight at him: the commonest noise in football */
+        case "miss":      groan(0.85); break;
+        /* THEIRS going wide is not a groan, it is the breath the place
+           lets out -- half relief, half the beginning of a cheer. */
+        case "missTheirs": gasp(0.05); applause(0.07, 1.3); break;
+        /* the woodwork, which is the loudest gasp there is */
+        case "post":      gasp(0.09); groan(1.15); break;
+
+        /* ---- the goalkeeper -------------------------------------------- */
+        /* HERS makes it: relief, then hands. THEIRS makes it: a groan. */
+        case "save":      gasp(0.06); applause(0.10, 1.9); break;
+        case "saveTheirs": groan(0.9); break;
+
+        /* ---- the challenge ---------------------------------------------- */
+        case "tackle":    surge(0.10); break;
+        case "tackleLost": groan(0.40); break;
+        case "foul":      jeer(0.75); break;
+        case "card":      jeer(1.1); break;
+
+        /* ---- the heart -------------------------------------------------- */
+        case "superWind": breath(1.15); break;
+        case "superHit":  release(true); break;
+
+        /* ---- the whistle ------------------------------------------------ */
+        case "kickoff":   holdSec = null; goTo("intro");
+                          roar(0.10, 1.2); whistles(3); break;
+        case "halfTime":  holdSec = "break"; goTo("break");
+                          applause(0.09, 2.4); break;
+        case "fullTime":  applause(0.13, 3.0); break;
+        case "win":       holdSec = null; goTo("last");
+                          roar(0.2, 4.5); horn(); whistles(12); break;
+        case "lose":      holdSec = "break"; goTo("break"); groan(1.2); break;
+      }
     },
+
+    /* the arrangement, for a harness and for anything that wants to
+       put the band somewhere without making a noise about it */
+    section: function (name) { if (name) goTo(name); return sectionOf(atPos); },
     mute: function (v) {
       muted = !!v;
       if (out) out.gain.value = muted ? 0 : 0.9;
@@ -2099,9 +2526,11 @@ window.CupChant = (function () {
         L.ambience.gain.cancelScheduledValues(0);
         L.ambience.gain.setValueAtTime(0, 0);
       }
-      bar = 0;
+      bar = 0; pos = 0; atPos = 0; jumpTo = null; holdSec = null; sameSec = 0;
+      renderLinear = true;
       var t = 0.05, n = 0;
       while (t < seconds) { scheduleBar(t); t += beatSecs() * 4; n++; }
+      renderLinear = false;
       /* THE BAR LENGTH, because a caller cannot work it out. The tempo
          creeps four per cent with the crowd's energy, so a bar is not
          240/bpm seconds — and a harness measuring bar by bar off the
@@ -2114,7 +2543,15 @@ window.CupChant = (function () {
 
     debug: function () {
       if (!AC) return null;
-      return { energy: E, phase: phase, duck: duck, bar: bar,
+      return { energy: E, phase: phase, duck: duck, bar: bar, muted: muted,
+               /* the context's own clock: every fader in here is a
+                  function of it, so a harness that cannot see it
+                  cannot tell a broken duck from a stopped clock */
+               now: AC ? +AC.currentTime.toFixed(2) : null,
+               ctx: AC ? AC.state : null,
+               pos: atPos, section: sectionOf(atPos), queued: jumpTo === null
+                 ? null : sectionOf(jumpTo), hold: holdSec,
+               musicDuck: sc.music ? +sc.music.gain.value.toFixed(3) : null,
                anthem: anthem ? { key: anthem.key, tempo: anthem.tempo,
                                   mood: anthem.mood } : null,
                layers: {

@@ -1481,6 +1481,50 @@ window.OuissyCup = (function () {
       var past = end ? b.y > gl : b.y < gl;
       if (!past) return;
       var inMouth = b.x > gx0 + 1 && b.x < gx1 - 1;
+
+      /* =================================================================
+         THE WOODWORK, WHICH THIS GAME DID NOT HAVE
+
+         A ball a pixel outside the upright crossed the line and became
+         a goal kick -- exactly like one dragged ten yards wide. The
+         single loudest noise in football that is not a goal simply did
+         not exist here, and neither did the most dangerous ball in the
+         sport, which is the one coming back off a post with everybody
+         already turning away.
+
+         Two frames to hit. The posts sit at either edge of the mouth
+         and the bar across the top of it, and a ball that finds either
+         comes back INTO play with most of its pace gone and a good
+         deal of its direction changed. It is a single sample rather
+         than a swept collision, which is right: hitting the post
+         should be rare, and something moving fast enough to skip the
+         frame in one tick was never going to hit it.
+         ================================================================= */
+      var onPost = (Math.abs(b.x - gx0) <= 1.5 || Math.abs(b.x - gx1) <= 1.5)
+                   && b.z < 4.6;
+      var onBar = inMouth && b.z >= 4.2 && b.z < 5.4;
+      if (onPost || onBar) {
+        var back = end ? -1 : 1;
+        b.y = gl + back * 2.5;
+        b.vy = Math.abs(b.vy) * back * 0.55;
+        if (onPost) {
+          /* off the inside of the upright and back across the face of
+             the goal, which is where the rebound belongs */
+          b.vx = (b.x < P.cx ? 1 : -1) * Math.abs(b.vx) * 0.5
+               + (Math.random() - 0.5) * 18;
+        } else {
+          b.z = 3.9; b.vz = -Math.abs(b.vz) * 0.45;
+        }
+        SFX.post();
+        G.hitStop = Math.max(G.hitStop, TUNE.hitStopShot);
+        G.shake = Math.max(G.shake, 0.55);
+        /* the loudest gasp there is */
+        chantSay("post");
+        crowdPush(0.5);
+        uiSayLive(onBar ? "Off the bar!" : "Off the post!");
+        return;
+      }
+
       /* over the bar is not a goal. The crossbar is four pixels up,
          which is the whole reason a shot has any height at all. */
       if (inMouth && b.z < 4.2) {
@@ -1521,6 +1565,15 @@ window.OuissyCup = (function () {
         /* he put it behind for a corner */
         setPiece("corner", 1 - conceded, b.x < PITCH.cx ? -1 : 1, gl);
       } else {
+        /* SOMEBODY HAS JUST MISSED, and this is the commonest noise in
+           football: a whole ground going "ohhh" at a chance that has
+           gone. Two things decide which noise it is -- whose chance it
+           was, and by how much. Six inches wide of the upright is not
+           the same event as a ball into the car park, and a crowd that
+           makes one sound for both is a crowd that is not watching. */
+        var byHowMuch = Math.min(Math.abs(b.x - gx0), Math.abs(b.x - gx1));
+        chantSay(lastT !== 0 ? "missTheirs"
+                 : byHowMuch < 6 ? "nearMiss" : "miss");
         setPiece("goalkick", conceded, 0, gl);
       }
     });
@@ -1726,6 +1779,7 @@ window.OuissyCup = (function () {
       G.stat.passTry[taker.team]++;
       SFX.shot();
       crowdSwell(0.05, 1.2);
+      chantSay("shot");
     } else {
       var far = null, bestD = -1;
       G.players.forEach(function (q) {
@@ -2004,6 +2058,11 @@ window.OuissyCup = (function () {
         G.hitStop = Math.max(G.hitStop, TUNE.hitStopShot);
         G.shake = Math.max(G.shake, 0.3);
         crowdSwell(0.08, 1.4);
+        /* WHOSE KEEPER. Hers making it is relief and then hands;
+           theirs making it is the sound of a chance going. The stand
+           is on her side -- that is the same assumption goalHome and
+           goalAway have always been written on. */
+        chantSay(best.team === 0 ? "save" : "saveTheirs");
         uiSayLive("Saved.");
         return;
       }
@@ -2017,6 +2076,7 @@ window.OuissyCup = (function () {
         setAnim(best, "catch", 0.38);
       }
       SFX.save();
+      chantSay(best.team === 0 ? "save" : "saveTheirs");
     }
   }
 
@@ -4164,6 +4224,10 @@ window.OuissyCup = (function () {
     addHeart(p.team, TUNE.heartShot);
     SFX.shot();
     crowdSwell(0.03, 0.8);
+    /* THE INTAKE OF BREATH. A shot is the one moment everybody in a
+       ground is looking at the same thing, and until now it made no
+       sound up in the stands at all. */
+    chantSay("shot");
     /* a struck ball stops the world for a couple of frames and kicks up
        the turf under the standing foot. Less than a tackle: a shot is a
        connection, a tackle is a collision. */
@@ -4245,6 +4309,10 @@ window.OuissyCup = (function () {
       crowdSwell(0.10, 1.6);
       SFX.book(card === "red");
     }
+    /* BOOING IS A REACTION TO AN INJUSTICE, which means it depends
+       entirely on who did it. A foul by her side is the away end's
+       business; a foul against her is what the stand is for. */
+    if (victim.team === 0) chantSay(card ? "card" : "foul");
     setPiece("free", victim.team, 0, null, { x: victim.x, y: victim.y });
   }
 
@@ -4262,6 +4330,10 @@ window.OuissyCup = (function () {
       b.vy = Math.sin(ang) * TUNE.tacklePush;
       addHeart(p.team, TUNE.heartTackle);
       SFX.tackle();
+      /* A GROUND REACTS TO A TACKLE, and it reacts differently
+         depending on who made it: hers is half a second of the place
+         lifting, theirs is the groan of an attack ending. */
+      chantSay(p.team === 0 ? "tackle" : "tackleLost");
       /* the three things that make a challenge land: the world stops,
          the frame kicks, and the pitch comes up where the studs went in */
       G.hitStop = Math.max(G.hitStop, TUNE.hitStopTackle);
@@ -4504,6 +4576,8 @@ window.OuissyCup = (function () {
       if (G.stateT > TUNE.kickoffWait) {
         G.state = "play"; G.stateT = 0;
         SFX.whistle();
+        /* the band goes back to the top of the song with the whistle */
+        chantSay("kickoff");
       }
     } else if (G.state === "goal") {
       /* THE CUT TO THE REPLAY, once the first beat of the celebration
@@ -4647,6 +4721,8 @@ window.OuissyCup = (function () {
       G.heart = [0, 0]; G.superReady = [false, false];
     }
     SFX.longWhistle();
+    /* hands, not a roar: nobody cheers half-time, they applaud it */
+    chantSay("halfTime");
     /* the crowd stays; the score comes up underneath it with the first
        phrase of the theme and nothing else, which is what a ground
        sounds like fifteen minutes into a break */
@@ -4695,6 +4771,12 @@ window.OuissyCup = (function () {
     G.state = "full"; G.stateT = 0;
     SFX.longWhistle();
     var won = a > b;
+    chantSay("fullTime");
+    /* AND THEN WHICH KIND OF FULL TIME IT IS. The band takes the last
+       eight bars a tone up if she has won it and drops to the quiet
+       ones if she has not -- the same song, the same ground, and
+       nobody has to be told which way it went. */
+    chantSay(won ? "win" : "lose");
     if (won) { crowdSwell(0.2, 3.2); SFX.goal(); }
     finishRound(won);
   }
