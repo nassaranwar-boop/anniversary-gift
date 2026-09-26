@@ -46,7 +46,6 @@ const t = (n, c, note) => { c ? pass++ : fail++;
 
     /* ---- hold the camera on each of the four in turn ---- */
     const runs = [];
-    let honest = null;
     for (const row of says) {
       /* a night late enough for this one's line to be allowed */
       const night = Math.max(1, row.after || 1);
@@ -103,19 +102,38 @@ const t = (n, c, note) => { c ? pass++ : fail++;
                   fired, ok: fired === row.t, sawRing, ringAt,
                   said: N.tape().said, who: w2.who, held: w2.t });
 
-      /* the honesty check rides on the first one, here, while it is
-         still the same night and the line has just been spoken */
-      if (!honest && fired && N.tape().line === row.t) {
-        G().watchCam = null;
-        let ring2 = false;
+    }
+
+    /* ---- AND THE RING MUST NEVER PROMISE WHAT IT CANNOT PAY ----
+
+       Waiting for the queued line to reach the screen does not work
+       here: nothing in this synthetic setup drives the tape queue,
+       and twenty-five seconds of waiting produced NOT TESTED. So the
+       line is put up through tapeSay, which is what marks it told,
+       and the check CONFIRMS it went up before trusting the result.
+       That confirmation is the whole difference between this and the
+       first version, which said the line, never checked, and reported
+       a fault when the call had quietly declined. */
+    let honest = null;
+    {
+      const row = says[0];
+      N.begin(Math.max(1, row.after || 1)); N.midEnd();
+      const cast = N.cast();
+      N.only(row.id, 1);
+      cast[row.id].awake = true; cast[row.id].atDoor = false;
+      N.camTo(cast[row.id].room);
+      G().monOut = 0; G().lost = {};
+      const put = N.tapeSayRaw(row.t, row.who, false);
+      const up = N.tape().line === row.t;
+      let ring = false;
+      if (put && up) {
         const by3 = Date.now() + 12000;
         while (Date.now() < by3) {
-          if (N.watching().ring) { ring2 = true; break; }
+          if (N.watching().ring) { ring = true; break; }
           await new Promise((x) => setTimeout(x, 60));
         }
-        honest = { id: row.id, ring: ring2, wants: N.watching().wants,
-                   spoken: true };
       }
+      honest = { id: row.id, put, up, ring, wants: N.watching().wants };
     }
 
     return { says, runs, honest };
@@ -143,10 +161,12 @@ const t = (n, c, note) => { c ? pass++ : fail++;
     r.runs.every((x) => x.sawRing),
     r.runs.filter((x) => !x.sawRing).map((x) => x.id).join(', ') || 'every time');
   t('but never once there is nothing left to be had',
-    !!r.honest && r.honest.ring === false,
-    r.honest ? (r.honest.ring ? 'it promised ' + r.honest.id + ' again, which has already spoken'
-                               : 'stays dark once ' + r.honest.id + ' has spoken')
-             : 'NOT TESTED — no line reached the screen to test it with');
+    !!r.honest && r.honest.put && r.honest.up && r.honest.ring === false,
+    r.honest ? (!r.honest.put || !r.honest.up
+                  ? 'NOT TESTED — the line would not go up (put=' + r.honest.put + ' up=' + r.honest.up + ')'
+                  : r.honest.ring ? 'it promised ' + r.honest.id + ' again, which has already spoken'
+                                  : 'stays dark once ' + r.honest.id + ' has spoken')
+             : 'NOT TESTED');
   t('nothing in any of that threw', errs.length === 0, errs.slice(0, 2).join(' | ') || 'clean');
 
   console.log(`\n${pass} passed, ${fail} failed`);
