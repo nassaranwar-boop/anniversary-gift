@@ -21043,9 +21043,18 @@ const testHooks = {
      one, which is a distinction that cost a run of mixcheck. */
   sfxTest: (name) => {
     const f = SFX && SFX[name];
-    if (typeof f !== "function") return Object.keys(SFX || {});
-    try { f(0.9, 0); } catch (e) { try { f(); } catch (e2) {} }
-    return name;
+    if (typeof f !== "function") return { list: Object.keys(SFX || {}) };
+    let how = "two args";
+    try { f(0.9, 0); }
+    catch (e) {
+      how = "no args";
+      try { f(); } catch (e2) { return { name, threw: String(e2).slice(0, 60) }; }
+    }
+    /* it is not enough to have called it: a sound that is scheduled
+       while the context is suspended, or while the chapter is muted,
+       makes no noise and a meter reads that as an empty shop */
+    return { name, how, ctx: AC ? AC.state : "none", muted: !!muted,
+             cue: cueGain ? +cueGain.gain.value.toFixed(3) : null };
   },
   /* sample the bed from inside the page, on the frame clock, because
      a check that samples it over a round trip cannot tell a fader
@@ -21589,6 +21598,12 @@ const testHooks = {
         /* what is left on cueGain once he is taken off it: the shop */
         const shop = Math.max(1e-12, v - h);
         done({
+          /* the raw gated means as well as the derived ones: `shop` is
+             cueGain minus him, and a subtraction is a bad place to
+             find out that one of its terms was never measured */
+          cueRaw: +(10 * Math.log10(v)).toFixed(1),
+          voxRaw: +(10 * Math.log10(h)).toFixed(1),
+          frames: n, voiced: nv, hisFrames: nh,
           music: +(10 * Math.log10(m)).toFixed(1),
           voice: +(10 * Math.log10(v)).toFixed(1),
           him:   +(10 * Math.log10(h)).toFixed(1),

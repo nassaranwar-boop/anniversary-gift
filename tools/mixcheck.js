@@ -58,6 +58,16 @@ const { chromium } = require('playwright-core');
 
     N.begin(3); N.midEnd();
     await sleep(900);
+    /* THE NIGHT MUST NOT BE MAKING ITS OWN NOISE.
+
+       The previous run's "nothing happening" row came back with the
+       duck at 0.76 and something on cueGain, which means a line was
+       still going during the row that is supposed to be silence.
+       Every window after that was measuring the shift as much as the
+       thing under test. Pausing stops playStep, so no cue, no line
+       and no footstep fires except the ones this asks for. */
+    if (N.state().phase === 'play') N.pauseNow();
+    diag.paused = N.state().phase;
 
     /* PROVE THE AUDIO IS LIVE BEFORE MEASURING ANYTHING.
 
@@ -92,10 +102,11 @@ const { chromium } = require('playwright-core');
     /* the shop, one effect at a time, each fired repeatedly so the
        gate has something to hold on to */
     for (const name of ['doorClose', 'knock', 'step', 'bells', 'beep', 'hatch']) {
-      const bang = setInterval(() => { try { N.sfxTest(name); } catch (e) {} }, 230);
+      let told = null;
+      const bang = setInterval(() => { try { told = N.sfxTest(name); } catch (e) { told = { threw: String(e) }; } }, 230);
       const m = await N.balance(1300);
       clearInterval(bang);
-      out.push(Object.assign({ what: name }, m));
+      out.push(Object.assign({ what: name, sfx: told }, m));
       await sleep(350);
     }
 
@@ -123,13 +134,22 @@ const { chromium } = require('playwright-core');
   console.log('\n  audio context: ' + r.diag.ac + ', muted ' + r.diag.muted +
               ', takes in memory: ' + r.diag.ready);
   if (Array.isArray(r.diag.sfx)) console.log('  effects: ' + r.diag.sfx.length + ' of them');
-  console.log('  a recording actually played: ' + r.diag.live + ',  context after: ' + r.diag.acAfter);
+  console.log('  a recording actually played: ' + r.diag.live + ',  context after: ' + r.diag.acAfter +
+              ',  shift ' + r.diag.paused);
   console.log('\n  situation            score    shop     him     him over shop  duck   path');
   r.out.forEach((x) => {
     console.log('  ' + String(x.what).padEnd(20) +
                 String(x.music).padStart(6) + '  ' + String(x.shop).padStart(6) + '  ' +
                 String(x.him).padStart(6) + '  ' + String(x.overShop).padStart(9) + ' dB  ' +
-                String(x.bed).padStart(5) + '  ' + (x.took || ''));
+                String(x.bed).padStart(5) + '  ' + (x.took || '') +
+                (x.sfx && x.sfx.threw ? '  THREW ' + x.sfx.threw : '') +
+                (x.sfx && x.sfx.how ? '  (' + x.sfx.how + ')' : ''));
+  });
+  console.log('\n  raw buses (gated means, and how many frames had anything in them):');
+  r.out.forEach((x) => {
+    console.log('    ' + String(x.what).padEnd(20) + 'cueGain ' + String(x.cueRaw).padStart(7) +
+                '   voxOut ' + String(x.voxRaw).padStart(7) +
+                '   frames ' + x.frames + ', with sound ' + x.voiced + ', his ' + x.hisFrames);
   });
   console.log('\n  (dB relative to full scale; "duck" is where the score is held)\n');
   r.out.forEach((x) => { if (x.line) console.log('    ' + x.what + ': "' + x.line + '..."'); });
