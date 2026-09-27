@@ -8513,11 +8513,14 @@ img{-webkit-user-drag:none; user-select:none;}
   min-width:44px; min-height:44px;
 }
 
-.cup-ab-shot{ right:0;    bottom:1cqh; width:17cqh; height:17cqh; }
+/* TWO BUTTONS, NOT THREE. The kick is the big one and sits under the
+   thumb; the sprint is above and inboard of it, which is the same
+   diagonal every pad in every football game on a phone uses. The pass
+   button's rule is gone with the button. */
+.cup-ab-shot{ right:1cqh; bottom:3cqh;  width:19cqh; height:19cqh; }
 
-.cup-ab-pass{ left:0;    bottom:0;    width:14cqh; height:14cqh; }
 
-.cup-ab-drib{ right:2.5cqh; top:0;    width:14cqh; height:14cqh; }
+.cup-ab-drib{ right:19cqh; bottom:17cqh; width:15cqh; height:15cqh; }
 
 .cup-ab-face{
   position:absolute; inset:0; display:flex;
