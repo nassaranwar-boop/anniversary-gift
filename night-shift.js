@@ -8125,6 +8125,27 @@ function showRoom(id) {
    the shape of those three, not a sample.
    ========================================================= */
 let AC = null, master = null, bedGain = null, cueGain = null, duckGain = null, sideGain = null;
+/* A BUS OF HIS OWN, WHICH HE HAS NEVER HAD.
+
+   Every spoken line in this chapter connected straight into cueGain,
+   which is also where every door, footstep, knock, alarm and bell
+   goes. Three things follow from that and all three are bad:
+
+     there is no single place to set the voice against the shop, so
+       "make him quieter" means editing a dozen call sites;
+     MIX.voice has to be multiplied into every line at playback
+       instead of being what it obviously should be, a fader;
+     and the measurement is impossible -- balance() meters cueGain and
+       reports the voice and the sound effects as one number, so the
+       question "how far above the shop is he" has never been
+       answerable.
+
+   voxOut sits between the two. Nothing else changes: it is unity by
+   default and the voice still lands in cueGain through it. */
+let voxOut = null;
+/* Unity to begin with, so that adding the bus changes nothing audible
+   and any later move is a deliberate one with a number behind it. */
+const VOX_BUS = 1.0;
 let bedNodes = [], creakTimer = 0, audioOn = false, muted = false;
 
 /* THE FIVE FADERS.
@@ -8262,6 +8283,7 @@ function audioInit() {
   sideGain = AC.createGain(); sideGain.gain.value = 1; sideGain.connect(duckGain);
   bedGain = AC.createGain(); bedGain.gain.value = 0.0; bedGain.connect(sideGain);
   cueGain = AC.createGain(); cueGain.gain.value = 1.0; cueGain.connect(duckGain);
+  voxOut = AC.createGain(); voxOut.gain.value = VOX_BUS; voxOut.connect(cueGain);
   NB = noiseBuffer(3);
   loadMix();
   applyMix();
@@ -9044,7 +9066,7 @@ function voxBus(gain) {
   const out = AC.createGain(); out.gain.value = gain;
   const hp = AC.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 118; hp.Q.value = 0.7;
   const lp = AC.createBiquadFilter(); lp.type = "lowpass";  lp.frequency.value = 3600; lp.Q.value = 0.6;
-  out.connect(hp); hp.connect(lp); lp.connect(cueGain);
+  out.connect(hp); hp.connect(lp); lp.connect(voxOut || cueGain);
   /* the ring: a 74Hz carrier at a level you notice only when it stops */
   const ring = AC.createGain(); ring.gain.value = 0;
   const rc = AC.createOscillator(); rc.type = "sine"; rc.frequency.value = 74;
@@ -10039,7 +10061,7 @@ function voicePlay(buf, gain, many, through) {
   g.gain.setValueAtTime(0.0001, t);
   g.gain.linearRampToValueAtTime(gain, t + 0.03);
   src.connect(hp); hp.connect(pk); pk.connect(sat); sat.connect(lp); lp.connect(g);
-  g.connect(cueGain);
+  g.connect(voxOut || cueGain);
 
   /* FOUR HUNDRED OF THEM CAME OFF ONE DRAWING.
 
@@ -21016,6 +21038,15 @@ const testHooks = {
     target: VOICE_BED,
   }),
   door: () => cueDuck(0.5),
+  /* fire a named effect, for measuring the shop against the voice.
+     `door` above is the DUCK that a door causes, not the sound of
+     one, which is a distinction that cost a run of mixcheck. */
+  sfxTest: (name) => {
+    const f = SFX && SFX[name];
+    if (typeof f !== "function") return Object.keys(SFX || {});
+    try { f(0.9, 0); } catch (e) { try { f(); } catch (e2) {} }
+    return name;
+  },
   /* sample the bed from inside the page, on the frame clock, because
      a check that samples it over a round trip cannot tell a fader
      moving fast from a harness answering slowly -- and will report the
@@ -21514,9 +21545,12 @@ const testHooks = {
     const mk = (src) => {
       const a = AC.createAnalyser(); a.fftSize = 2048; src.connect(a); return a;
     };
-    const aMus = mk(MUS.bus), aVox = mk(cueGain);
+    /* cueGain is the shop AND the voice together, which is why this
+       could never answer the question it was built for. voxOut is
+       just him; cueGain minus him is the shop. */
+    const aMus = mk(MUS.bus), aVox = mk(cueGain), aHim = voxOut ? mk(voxOut) : null;
     const buf = new Float32Array(2048);
-    let mus = 0, vox = 0, n = 0, nv = 0;
+    let mus = 0, vox = 0, n = 0, nv = 0, him = 0, nh = 0;
     const t0 = perf(), cap = (ms || 1200) / 1000;
     const tick = () => {
       aMus.getFloatTimeDomainData(buf);
@@ -21532,6 +21566,12 @@ const testHooks = {
          something in them count. */
       const fr = e / buf.length;
       if (fr > 1e-6) { vox += fr; nv++; }
+      if (aHim) {
+        aHim.getFloatTimeDomainData(buf);
+        let eh = 0; for (let i = 0; i < buf.length; i++) eh += buf[i] * buf[i];
+        const fh = eh / buf.length;
+        if (fh > 1e-6) { him += fh; nh++; }
+      }
       n++;
       if (perf() - t0 < cap) setTimeout(tick, 20);
       else {
@@ -21545,9 +21585,15 @@ const testHooks = {
         const bed = sideGain.gain.value;
         const m = (mus / n + 1e-12) * bed * bed;
         const v = (nv ? vox / nv : 0) + 1e-12;
+        const h = (nh ? him / nh : 0) + 1e-12;
+        /* what is left on cueGain once he is taken off it: the shop */
+        const shop = Math.max(1e-12, v - h);
         done({
           music: +(10 * Math.log10(m)).toFixed(1),
           voice: +(10 * Math.log10(v)).toFixed(1),
+          him:   +(10 * Math.log10(h)).toFixed(1),
+          shop:  +(10 * Math.log10(shop)).toFixed(1),
+          overShop: +(10 * Math.log10(h / shop)).toFixed(1),
           gap:   +(10 * Math.log10(v / m)).toFixed(1),
           bed:   +bed.toFixed(3),
           rms:   +(MUS.rms || 0).toFixed(4),
