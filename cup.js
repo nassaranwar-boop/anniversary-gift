@@ -207,15 +207,26 @@ window.OuissyCup = (function () {
     sprintMul: 1.34,        // holding the button with no ball
     sprintDrain: 0.55,      // stamina per second while sprinting
     sprintFill: 0.30,       // and back per second while not
-    accel: 420,             // px/sec^2 — high, because arcade football is
-                            //   about direction, not about momentum
+    /* PX/SEC^2. High, because arcade football is about direction
+       rather than about momentum -- but 420 against a top speed of 62
+       is nought to full in a seventh of a second, which is a cursor
+       moving, not a person running. 300 still gets there in a fifth of
+       a second and leaves just enough weight to see. */
+    accel: 300,
     turnEase: 15,           // how fast the sprite's facing catches up
     turnCost: 3.2,          // pace shed for turning hard at speed
     switchHold: 0.65,       // she keeps a player at least this long
     switchGap: 26,          // and a swap needs this much of a gap
 
     /* --- the ball --- */
-    ballDrag: 0.86,         // per second, ground friction
+    /* GROUND FRICTION, and it was barely any. At 0.86 a ball keeps
+       86 per cent of its pace every second, which means a pass struck
+       at 150 is still doing 110 three seconds later -- it does not
+       arrive anywhere, it crosses the pitch. Grass takes more than
+       that off a football. At 0.74 a pass slows into its receiver the
+       way one does, and a shot still has more than enough left to
+       reach a goal from thirty yards. */
+    ballDrag: 0.74,         // per second, ground friction
     ballAirDrag: 0.30,      // in the air it keeps going
     gravity: 300,           // px/sec^2 for lofted balls
     bounce: 0.46,           // how much of the drop comes back
@@ -289,7 +300,13 @@ window.OuissyCup = (function () {
                             //   and it vibrates in place
 
     /* --- passing and shooting --- */
-    passSpeed: 150,
+    /* HOW HARD A PASS IS HIT. "The ball flies too quick between the
+       players" -- it did. Four-a-side means everybody is close
+       together, so almost every pass was a short one, and a short pass
+       was being struck at the floor of 95 units a second against
+       players who run at 62. The ball arrived in a third of a second,
+       which is not a pass anybody can read, let alone control. */
+    passSpeed: 118,
     passLead: 0.30,         // seconds of lead given to a moving target
     passErr: 0.24,          // radians of scatter on a pass at mid skill —
                             //   divided by the passer's accuracy, so the
@@ -2770,6 +2787,12 @@ window.OuissyCup = (function () {
     animStep(p, dt);
     p.coolT = Math.max(0, p.coolT - dt);
     p.hold = Math.max(0, p.hold - dt);
+    /* HOW LONG HE HAS HAD IT. The carrier's willingness to pass falls
+       off this -- see the note in the decision -- and it is kept here
+       rather than there so that it is also true of the player SHE is
+       driving, which is what makes her side's shape behave the same
+       way whoever is on the ball. */
+    p.carryT = (G.ball.owner === p) ? (p.carryT || 0) + dt : 0;
     if (p.tackleT > 0) {
       p.tackleT -= dt;
       p.vx *= 0.90; p.vy *= 0.90;
@@ -3204,8 +3227,18 @@ window.OuissyCup = (function () {
     var mine = !!(holder && holder.team === team);
     var outs = [];
     G.players.forEach(function (q) {
-      if (q.team !== team || q.gk || q.sentOff) return;
+      if (q.team !== team || q.gk) return;
+      /* A MAN WHO HAS BEEN SENT OFF KEEPS NO JOB.
+
+         He was skipped before the jobs were cleared, so whatever he was
+         doing when the red card came out -- pressing, usually, since
+         pressing is how you get sent off -- he went on being for the
+         rest of the match. The side then had two pressers on the board
+         and one of them was in the tunnel, which is both a defence with
+         a hole in it and a harness reporting a fault it cannot
+         explain. */
       q.job = null;
+      if (q.sentOff) { q.mark = null; return; }
       outs.push(q);
     });
     if (!outs.length) return;
@@ -3296,10 +3329,27 @@ window.OuissyCup = (function () {
      the line is short in the box and long at the halfway line. Both the
      job board and the defender himself have to agree on this point, or
      the assignment is optimising for somewhere nobody runs to. */
+  /* =======================================================================
+     A MARKER GOES WHERE HIS MAN IS ABOUT TO BE
+
+     This aimed at where the man IS, which is a quarter of a second
+     behind where he will be -- and a quarter of a second at a
+     striker's pace is eighteen units, which is the whole difference
+     between goal-side and trailing a shoulder. It cost nothing while
+     the side in possession never passed, because nobody was moving
+     anywhere; the moment the passing was fixed, markers spent a third
+     of their time on the wrong side of their man.
+
+     Leading the man by his own velocity is the thing every defender
+     does without being told, and it is one line.
+     ======================================================================= */
+  var MARK_LEAD = 0.30;             // seconds of his run to allow for
   function markSpot(team, o, along) {
     var ownGy = ownGoalY(team);
-    return { x: o.x + (PITCH.cx - o.x) * along,
-             y: o.y + (ownGy - o.y) * along };
+    var ox = o.x + (o.vx || 0) * MARK_LEAD;
+    var oy = o.y + (o.vy || 0) * MARK_LEAD;
+    return { x: ox + (PITCH.cx - ox) * along,
+             y: oy + (ownGy - oy) * along };
   }
   var MARK_ALONG = 0.24;
 
@@ -3902,7 +3952,28 @@ window.OuissyCup = (function () {
       var opt = bestPass(p, skill);
       D.look = (D.look || 0) + 1;
       if (opt) D.found = (D.found || 0) + 1;
-      if (opt && opt.score > (pressed ? 8 : 30)) {
+      /* =====================================================================
+         THE BAR WAS SET ABOVE WHAT THE SIDE COULD OFFER
+
+         Measured over six halves: the best pass available to a carrier
+         scored twenty-nine, and the bar he had to clear to play it was
+         thirty. So he essentially never passed -- twenty-eight passes
+         in six halves, and the carrier dribbling on ninety-five per
+         cent of the frames he had the ball. That is one man running
+         with it while three team-mates jog into space he never uses,
+         and it is exactly the "no football logic" he is describing:
+         the shape was fine, the decision on top of it was broken.
+
+         AND HOLDING IT HAS TO COST SOMETHING. A footballer who has
+         been on the ball for three seconds is looking for somebody; a
+         footballer who has just received it is allowed a touch. So the
+         bar falls the longer he carries, which produces the rhythm a
+         four-a-side game actually has -- a touch, a look, a pass --
+         rather than one long solo run per possession.
+         ===================================================================== */
+      var held = p.carryT || 0;
+      var bar = (pressed ? 4 : 18) - Math.min(13, held * 7);
+      if (opt && opt.score > bar) {
         D.pass = (D.pass || 0) + 1;
         return opt.through ? passInto(p, opt.mate, opt.tx, opt.ty)
                            : passTo(p, opt.mate);
@@ -3916,6 +3987,7 @@ window.OuissyCup = (function () {
        when wide — a winger cuts in, he does not run down the touchline
        into the corner flag and stop. */
     D.carry = (D.carry || 0) + 1;
+    D.heldFor = Math.max(D.heldFor || 0, +(p.carryT || 0).toFixed(1));
     D.toGoal = Math.min(D.toGoal === undefined ? 1e9 : D.toGoal, Math.round(toGoal));
 
     /* =====================================================================
@@ -4223,7 +4295,10 @@ window.OuissyCup = (function () {
     var tx = mate.x, ty = mate.y, sp = 0, t = 0;
     for (var i = 0; i < 2; i++) {
       var D = len(tx - p.x, ty - p.y);
-      sp = clamp(D * 1.9, 95, TUNE.passSpeed * 1.35);
+      /* WEIGHTED TO THE DISTANCE, and more gently than it was. At
+         D * 1.9 with a floor of 95 a twenty-yard ball and a five-yard
+         one were struck at nearly the same pace. */
+      sp = clamp(D * 1.35, 66, TUNE.passSpeed * 1.35);
       t = ballTime(D, sp);
       /* if it cannot reach, hit it as hard as the pass allows and take
          the time that gives — a ball that stops short is still a pass,
@@ -4765,8 +4840,70 @@ window.OuissyCup = (function () {
     return "play";
   }
 
+  /* =======================================================================
+     WHERE EVERYTHING WAS A SIXTIETH OF A SECOND AGO
+
+     The match runs on a fixed tick and the screen does not. A frame
+     arrives, the accumulator has 0.9 of a tick in it, no step runs and
+     nothing moves; the next frame has 1.9, two steps run and everything
+     jumps twice as far. At sixty hertz that is a judder you can feel
+     and cannot name, and on a 120Hz phone it is every other frame.
+     That is "the movement doesn't feel smooth", and no amount of
+     tuning the acceleration would ever have touched it.
+
+     The fix is the oldest one in the book: keep the tick fixed and
+     DRAW BETWEEN the last two of them. This is the first half -- every
+     player and the ball remember where they were when the step began.
+     ======================================================================= */
+  function snapPrev() {
+    if (!G) return;
+    for (var si = 0; si < G.players.length; si++) {
+      var q = G.players[si];
+      q._px = q.x; q._py = q.y;
+    }
+    G.ball._px = G.ball.x; G.ball._py = G.ball.y; G.ball._pz = G.ball.z;
+  }
+
+  /* and this is the second half: for the length of one draw, every
+     position is moved to where it was a fraction of a tick ago, and put
+     straight back afterwards. Rendering one step behind rather than
+     extrapolating forwards is deliberate -- extrapolation overshoots
+     every time the ball is struck, and a ball that visibly snaps back
+     on contact is worse than a ball that is sixteen milliseconds late. */
+  var lerped = false;
+  function lerpForDraw(a) {
+    if (!G || lerped || !(a > 0)) return;
+    lerped = true;
+    for (var li = 0; li < G.players.length; li++) {
+      var q = G.players[li];
+      q._sx = q.x; q._sy = q.y;
+      if (q._px !== undefined) {
+        q.x = q._px + (q.x - q._px) * a;
+        q.y = q._py + (q.y - q._py) * a;
+      }
+    }
+    var b = G.ball;
+    b._sx = b.x; b._sy = b.y; b._sz = b.z;
+    if (b._px !== undefined) {
+      b.x = b._px + (b.x - b._px) * a;
+      b.y = b._py + (b.y - b._py) * a;
+      b.z = b._pz + (b.z - b._pz) * a;
+    }
+  }
+  function unlerpForDraw() {
+    if (!G || !lerped) return;
+    lerped = false;
+    for (var ui = 0; ui < G.players.length; ui++) {
+      var q = G.players[ui];
+      if (q._sx !== undefined) { q.x = q._sx; q.y = q._sy; }
+    }
+    var b = G.ball;
+    if (b._sx !== undefined) { b.x = b._sx; b.y = b._sy; b.z = b._sz; }
+  }
+
   function step(dt) {
     if (!G) return;
+    snapPrev();
     G.stateT += dt;
     /* the one shared gap between any two footsteps — see footfall */
     stepCool = Math.max(0, stepCool - dt);
@@ -5379,7 +5516,38 @@ window.OuissyCup = (function () {
     camMode.hold = hold || 0;
   }
 
+  /* =======================================================================
+     THE PAN IS CLAMPED WHEREVER IT COMES FROM
+
+     "The camera sometimes flies outside the pitch behind their goal."
+     It did, and here is why: the clamp that stops the pan running past
+     a goal line lived inside the PLAY branch of placeCamera, and four
+     of the shots return before they ever reach it. A goal cuts to the
+     scorer -- who is by definition standing in or near the goalmouth,
+     and who then runs somewhere to celebrate -- with nothing holding
+     the frame on the pitch at all. Same for the replay, the super, and
+     a corner.
+
+     So the clamp moves here, into the one function every shot goes
+     through, and it is computed at the zoom being asked for rather
+     than at zoom one: the frame is half as wide at a cut-in, so a
+     close-up is allowed nearer the line than a wide shot, which is
+     both correct and what makes the celebration still work.
+     ======================================================================= */
+  function panClamp(y, zoom) {
+    if (!R2 || !SIDE) return y;
+    var lens = R2.project(wX(PITCH.cx), wY(camNow.y));
+    if (!lens || lens.k <= 0.001) return y;
+    /* vw is the frame at the CURRENT zoom; the one being asked for may
+       differ, and a frame half as wide sees half as far along */
+    var halfAlong = (R2.vw / 2) / lens.k * (R2.zoom || 1) / Math.max(1, zoom || 1);
+    var lo = PITCH.y0 - CAM.sideOver + halfAlong;
+    var hi = PITCH.y1 + CAM.sideOver - halfAlong;
+    return lo <= hi ? clamp(y, lo, hi) : PITCH.cy;
+  }
+
   function camTo(x, y, k, zoom) {
+    y = panClamp(y, zoom || 1);
     camNow.x += (x - camNow.x) * k;
     camNow.y += (y - camNow.y) * k;
     if (!R2) return;
@@ -5556,16 +5724,9 @@ window.OuissyCup = (function () {
        edge of the frame reaches a little way past the goal line is
        what a cable cam does anyway: the goalmouth ends up toward the
        side of the shot, which is exactly where television puts it. */
-    var y;
-    if (SIDE) {
-      var lens = R2.project(wX(PITCH.cx), wY(camNow.y));
-      var halfAlong = lens.k > 0.001 ? (R2.vw / 2) / lens.k : PITCH.h / 2;
-      var lo = PITCH.y0 - CAM.sideOver + halfAlong;
-      var hi = PITCH.y1 + CAM.sideOver - halfAlong;
-      y = lo <= hi ? clamp(want.y, lo, hi) : PITCH.cy;
-    } else {
-      y = clamp(want.y, PITCH.y0 + 30, PITCH.y1 + 6);
-    }
+    /* the side-on pan is clamped in camTo now, for every shot rather
+       than only for this one -- see panClamp */
+    var y = SIDE ? want.y : clamp(want.y, PITCH.y0 + 30, PITCH.y1 + 6);
     /* HOW CLOSE THE CAMERA MAY GET TO A TOUCHLINE.
 
        It was widened to 0.40 so that she could actually see a touchline
@@ -10176,6 +10337,11 @@ window.OuissyCup = (function () {
        repainted every frame because almost everything on it is moving */
     if (UI.on) heroStep(raw);
     syncRing();
+    /* HOW FAR PAST THE LAST TICK THIS FRAME IS -- see snapPrev. The
+       whole draw happens with every position nudged that fraction of
+       the way along, and every position is put back before anything
+       simulates again. */
+    lerpForDraw(acc / FIXED);
     draw(dt);
     syncHud();
     /* ONE CANVAS, TWO THINGS ON IT. A menu screen and the match HUD are
@@ -10191,6 +10357,7 @@ window.OuissyCup = (function () {
     } else if (uiCvs && !uiCvs.hidden) {
       uiCvs.hidden = true;
     }
+    unlerpForDraw();
   }
 
   var wired = false;
