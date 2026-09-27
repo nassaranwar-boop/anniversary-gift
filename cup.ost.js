@@ -146,22 +146,51 @@
          tournament getting closer rather than like two pieces of
          music. Nothing is at stake yet and the music should still not
          pretend otherwise; it just should not be empty. */
-      key: 0, minor: false, bpm: 86, bars: 8,
+    /* =====================================================================
+       WHAT THE MUSIC SHE ASKED FOR IS ACTUALLY MADE OF
+
+       She sent a recording of the game she wants this to feel like and
+       said the music is the style she would love. So rather than guess
+       at it, ninety seconds of it went through an analyser: the
+       strongest pulse sits around 190 a minute, which at that speed is
+       the sixteenths of something near 125; the pitch-class weight
+       lands on E major; the spectral centroid is 2.9kHz; and only
+       EIGHT PER CENT of the energy is below 120Hz.
+
+       That last number is the one that matters, and it is the opposite
+       of what was here. This chapter's music was written low, slow and
+       warm -- 86 beats a minute in C, an organ carrying the tune over
+       strings. Cartoon football music is fast, bright, mid-forward and
+       almost bass-free: it is all pluck, brass and snare, and it gets
+       out of the way of the game underneath it.
+
+       So the whole front-of-house family moves to E, speeds up, and
+       hands the tune from the organ to the pluck. The organ stays on
+       the pad, where a warm instrument belongs, quietly.
+       ===================================================================== */
+      /* AND THE TUNE STAYS ON A VOICE THAT SUSTAINS. Handing it to the
+         pluck to get the brightness measured in the reference took the
+         menu from -32dB to SILENCE -- a pluck is an envelope four
+         hundredths of a second long, and a melody made of them at this
+         tempo is a handful of clicks. Brass is the bright instrument
+         that also holds a note, which is what the reference actually
+         has: the top of its spectrum is a lead, not a percussion part. */
+      key: 4, minor: false, bpm: 124, bars: 8,
       chords: [1, 5, 6, 4, 1, 5, 4, 5],
-      theme: "full", themeInst: "organ",
-      pad: "strings", padGain: 0.22, bass: true,
-      ost: "eighths", ostInst: "pluck", drum: null, gain: 0.92,
+      theme: "full", themeInst: "brass",
+      pad: "organ", padGain: 0.16, bass: true,
+      ost: "drive", ostInst: "pluck", drum: "soft", gain: 0.92,
     },
 
     /* PICKING THE TEAM. She is doing something, so something is moving
        underneath — but the tune only gets its first phrase, because
        nothing has happened yet. */
     squad: {
-      key: 0, minor: false, bpm: 92, bars: 8,
+      key: 4, minor: false, bpm: 130, bars: 8,
       chords: [1, 5, 6, 4, 1, 5, 4, 5],
       theme: "frag", themeInst: "pluck",
-      pad: "organ", padGain: 0.14, bass: true,
-      ost: "eighths", ostInst: "pluck", drum: "soft", gain: 0.58,
+      pad: "organ", padGain: 0.12, bass: true,
+      ost: "drive", ostInst: "pluck", drum: "march", gain: 0.62,
     },
 
     /* THE DRAW. The theme is withheld entirely: you do not know who you
@@ -177,14 +206,14 @@
     /* THE THREE FIXTURES. Same tune, a minor third apart each time, and
        eight beats a minute faster. */
     tieA: {
-      key: 0, minor: false, bpm: 96, bars: 8,
+      key: 4, minor: false, bpm: 132, bars: 8,
       chords: [1, 5, 6, 4, 1, 5, 4, 5],
-      theme: "full", themeInst: "organ",
-      pad: "strings", padGain: 0.20, bass: true,
-      ost: "eighths", ostInst: "pluck", drum: "soft", gain: 0.64,
+      theme: "full", themeInst: "brass",
+      pad: "organ", padGain: 0.18, bass: true,
+      ost: "drive", ostInst: "pluck", drum: "march", gain: 0.66,
     },
     tieB: {
-      key: 3, minor: false, bpm: 104, bars: 8,
+      key: 7, minor: false, bpm: 138, bars: 8,
       chords: [1, 6, 4, 5, 1, 6, 4, 5],
       theme: "full", themeInst: "brass",
       pad: "organ", padGain: 0.22, bass: true,
@@ -193,7 +222,7 @@
     /* THE FINAL. A tritone up from where the tournament started, the
        fastest thing in the chapter, and the brass has the tune. */
     tieC: {
-      key: 6, minor: false, bpm: 112, bars: 8,
+      key: 10, minor: false, bpm: 144, bars: 8,
       chords: [1, 5, 6, 4, 1, 4, 5, 5],
       theme: "full", themeInst: "brass",
       pad: "strings", padGain: 0.26, bass: true,

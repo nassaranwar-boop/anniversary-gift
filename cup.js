@@ -6018,7 +6018,24 @@ window.OuissyCup = (function () {
        0.32 keeps the touchline and its boards comfortably in shot and
        keeps the stand where it belongs, at the edge of the picture. */
     var x = clamp(want.x, PITCH.cx - PITCH.w * 0.32, PITCH.cx + PITCH.w * 0.32);
-    camTo(x, y, snap ? 1 : camK(dt), 1);
+    /* =====================================================================
+       AND THE MATCH IS WATCHED CLOSE.
+
+       The one difference between this and the game she was shown that
+       is not a matter of taste: in that one a character is about a
+       fifth of the screen tall and you can see its face; here the
+       match camera sat at zoom one and a player was a twelfth of it,
+       a coloured smudge running about. Everything drawn into those
+       sprites -- the faces, the kits, the numbers on their backs, the
+       profiles -- was being thrown away by the distance it was viewed
+       from.
+
+       Zoom two halves the buffer and doubles everything in it. It is
+       the same whole-number blit the cut-ins already use, so nothing
+       gets blurry, and the radar in the corner covers what falls off
+       the edges -- which is exactly the trade the game she likes
+       makes. */
+    camTo(x, y, snap ? 1 : camK(dt), 2);
   }
 
   /* =======================================================================
