@@ -37,6 +37,29 @@ const ok = (n, c, x) => {
     ok(label + ': the book intro is up', await page.evaluate(() =>
       !!document.querySelector('.screen.active')));
 
+    /* ROTATION LOCK, WHICH NOTHING HAD EVER WALKED.
+
+       A portrait phone gets the "turn your phone" card over everything,
+       correctly -- and the suite then spent every run tapping a keypad
+       through it and reporting that the passcode was broken. It was
+       not: elementFromPoint at the centre of the 2 key returned the
+       card's own paragraph. A red line nobody believes is worse than no
+       line, and the honest fix is to do what somebody with rotation
+       lock switched on does, which is press the way past it. That path
+       exists precisely for her and had never once been taken here. */
+    const upright = await page.evaluate(() => {
+      const b = document.getElementById('rotate-anyway');
+      if (!b) return 'no card';
+      return getComputedStyle(document.getElementById('rotate-me')).display === 'none'
+        ? 'not shown' : 'shown';
+    });
+    if (upright === 'shown') {
+      await page.click('#rotate-anyway', { force: true });
+      await page.waitForTimeout(200);
+      ok(label + ': the way past the rotate card works', await page.evaluate(() =>
+        getComputedStyle(document.getElementById('rotate-me')).display === 'none'));
+    }
+
     // the passcode gate
     await page.evaluate(() => { if (window.finishBookIntro) finishBookIntro(); });
     const gateUp = await page.waitForFunction(
