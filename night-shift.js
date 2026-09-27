@@ -8178,16 +8178,30 @@ const VOX_BUS = 0.70;
    below BOTH of them, so the only thing with any weight in the room
    is whoever is talking.
 
-   So both ends move, because moving one end twice as far would be
-   wrong in a different way: the voice comes down 3dB and the shop
-   goes up 8, which closes an eighteen decibel gap to about seven. A
-   narrator six to eight decibels over the ambient effects is an
-   ordinary, comfortable mix.
+   So both ends move: the voice comes down about 3dB and the shop
+   goes up about 5.
+
+   AND THE SECOND HALF OF THAT IS A JUDGEMENT, NOT A MEASUREMENT,
+   which is worth saying plainly. The voice reading is trustworthy --
+   a spoken line is three to five continuous seconds and the meter
+   has something to hold on to. A door is a third of a second, and
+   measuring it here means firing it from a setInterval on a main
+   thread this container starves to under a frame a second, so
+   whether eight of them land inside the window or two is luck. The
+   same door measured -37.9, -36.0, -36.1, -37.7 and -56.8 across
+   five runs of the identical action. A twenty decibel swing is not a
+   measurement of anything.
+
+   So +5 rather than the +8 the first reading suggested: enough to be
+   clearly audible, small enough that if the reading was wrong it has
+   not wrecked anything, and trivial to move once somebody has
+   listened to it on real speakers. THIS NUMBER WANTS AN EAR, not
+   another run in here.
 
    sfxOut rather than cueGain, because cueGain also carries the tape
    machine's hum and hiss under his voice, and lifting that with the
    doors would just put the hiss in her lap. */
-const SFX_BUS = 2.5;
+const SFX_BUS = 1.8;
 let sfxOut = null;
 let bedNodes = [], creakTimer = 0, audioOn = false, muted = false;
 
