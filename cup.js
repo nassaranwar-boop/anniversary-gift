@@ -223,6 +223,7 @@ window.OuissyCup = (function () {
     switchHold: 1.15,
     switchGap: 42,          // and a swap needs this much of a gap
     manualHold: 0.9,        // and her own choice outranks the auto-pick
+    snapHold: 0.34,         // the least time between two automatic swaps
     giveUp: 0.42,           // the man who played it cannot receive it
 
     /* --- the ball --- */
@@ -282,7 +283,13 @@ window.OuissyCup = (function () {
        further than the longest ordinary touch or it is not beating
        anybody, and not so far that it is a pass to nobody. An ordinary
        touch peaks near 18 units; this puts it out around 30. */
-    knockAhead: 152,        // the speed the ball is pushed at
+    /* AND THE KNOCK HAS TO BEAT SOMEBODY. Shortening the ordinary
+       dribbling touch -- which is what stopped the ball living outside
+       its owner's reach -- shortened this with it: measured at fifteen
+       units against an ordinary touch of about ten, it was not a push
+       past the man, it was a slightly firmer touch. It goes out near
+       thirty again, which is the distance the risk lives in. */
+    knockAhead: 205,        // the speed the ball is pushed at
     knockBurst: 0.55,       // seconds of extra pace, to get there first
     knockBurstMul: 1.42,    // and how much extra
     knockTap: 0.18,         // let go inside this and it is a knock
@@ -1529,7 +1536,18 @@ window.OuissyCup = (function () {
     /* if one of hers has the ball, that IS the one she is driving —
        no distance test, no cooldown, no argument */
     if (G.ball.owner && G.ball.owner.team === 0 && !G.ball.owner.gk && manualT <= 0) {
-      if (G.controlled !== G.ball.owner) { G.controlled = G.ball.owner; switchT = 0; }
+      /* AND NOT TWICE IN THE SAME BREATH. Now that possession changes
+         hands properly, this rule fires every time it does -- measured
+         at twenty-three swaps a minute, one every two and a half
+         seconds, each one putting a different body under her thumb
+         mid-stride. A ball won and lost again inside a third of a
+         second is a scramble, not a change of possession, and she
+         should watch it rather than be handed three different players
+         while it happens. */
+      if (G.controlled !== G.ball.owner) {
+        if (switchT < TUNE.snapHold) return;
+        G.controlled = G.ball.owner; switchT = 0;
+      }
       return;
     }
     /* and it never switches away while she is carrying it */
@@ -3795,9 +3813,19 @@ window.OuissyCup = (function () {
       /* and the short option comes from HIS side too, half the way
          across to the ball: near enough to be a pass, far enough that
          the two of them are not in the same channel */
-      var sx = (PITCH.cx + slotSide(p, car) * PITCH.w * 0.30 + car.x) / 2;
+      /* AND HE STANDS CLOSE ENOUGH TO BE PASSED TO.
+
+         Measured across a match: the nearest team-mate to whoever had
+         the ball was THIRTY-SIX UNITS away, on a pitch a hundred and
+         seventy across. There was no short ball, so every pass was a
+         long one, which is why the ball spent a third of live play in
+         transit and why so many of them were cut out. A third of the
+         way across the pitch is where a supporting player stands in a
+         game of eleven-a-side; in a game of four it is the other side
+         of the room. */
+      var sx = (PITCH.cx + slotSide(p, car) * PITCH.w * 0.16 + car.x) / 2;
       tx = clamp(sx, PITCH.x0 + 14, PITCH.x1 - 14);
-      ty = clamp(car.y - d * 26, PITCH.y0 + 16, PITCH.y1 - 16);
+      ty = clamp(car.y - d * 19, PITCH.y0 + 16, PITCH.y1 - 16);
       urgency = 0.94;
       aiSprint(p, false, dt);
     } else {
@@ -12024,6 +12052,26 @@ window.OuissyCup = (function () {
        nobody may own it, and how near is the nearest player. One of
        those three is the answer and guessing which has already failed
        once. */
+    /* IS THERE ANYBODY TO PASS TO?
+
+       The ball is out of everybody's reach for well over a third of
+       live play, which means it spends its life travelling. A ball
+       travels a long way when the only option is a long way away, so
+       the question underneath "the passing is bad" is whether her team
+       mates ever offer themselves. This reports, for whoever has the
+       ball, how far the nearest and second-nearest of his own side
+       are. */
+    support: function () {
+      if (!G || !G.ball.owner) return null;
+      var o = G.ball.owner, ds = [];
+      G.players.forEach(function (q) {
+        if (q === o || q.team !== o.team || q.gk || q.sentOff) return;
+        ds.push(len(q.x - o.x, q.y - o.y));
+      });
+      ds.sort(function (a, b2) { return a - b2; });
+      return { team: o.team, near: +(ds[0] || 0).toFixed(1),
+               second: +(ds[1] || 0).toFixed(1), n: ds.length };
+    },
     ballWhy: function () {
       if (!G) return null;
       var b = G.ball, near = 1e9, nearName = null;

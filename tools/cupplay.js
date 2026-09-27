@@ -78,6 +78,7 @@ const SECS = +(process.argv[2] || 90);
     const keeps = [], dists = [];
     let keepT = 0;
     let firedThis = false, lastPass = -999, live = 0;
+    const support = [];
     /* WHAT STATE IS THE MATCH ACTUALLY IN? A game that is loose 80 per
        cent of the time is either a pinball table or a game that spends
        most of its life stopped for a restart, and those are opposite
@@ -136,6 +137,8 @@ const SECS = +(process.argv[2] || 90);
       }
       states[s2.state] = (states[s2.state] || 0) + 1;
       if (s2.state === 'play') {
+        const sup = H.support && H.support();
+        if (sup && sup.n) support.push(sup.near);
         const w = H.ballWhy();
         why.ticks++;
         nearSum += w.near;
@@ -184,6 +187,10 @@ const SECS = +(process.argv[2] || 90);
       keepMax: +(keeps[keeps.length - 1] || 0).toFixed(2),
       shots: shots, passes: passes,
       swapsPerMin: +(swaps / (live * FIXED) * 60).toFixed(1),
+      support: support.length
+        ? (() => { const a = support.slice().sort((x, y) => x - y);
+                   return a[Math.floor(a.length / 2)].toFixed(1); })()
+        : '-',
       why: (why.ticks ? ['owned ' + (why.owned / why.ticks * 100).toFixed(0) + '%',
              'locked ' + (why.locked / why.ticks * 100).toFixed(0) + '%',
              'in the air ' + (why.air / why.ticks * 100).toFixed(0) + '%',
@@ -207,6 +214,7 @@ const SECS = +(process.argv[2] || 90);
   console.log('    possessions           ' + r.keepN + ', median ' + r.keepMed + 's, best ' + r.keepMax + 's');
   console.log('    shots she got off     ' + r.shots);
   console.log('    player taken off her  ' + r.swapsPerMin + ' times a minute');
+  console.log('    nearest team-mate to whoever has it  ' + r.support + ' units');
   console.log('    while play ran        ' + r.why);
   console.log('    the match was in      ' + r.states);
   console.log('    shots on the board    ' + (r.shotsBy || []).join(' v '));
