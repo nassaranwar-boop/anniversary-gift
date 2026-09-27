@@ -283,6 +283,7 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
   for (const k in (script.tapeWhen || {})) {
     const it = script.tapeWhen[k];
     note(typeof it === 'string' ? it : it && it.t, 'tapeWhen ' + k);
+    if (it && it.elseT) note(it.elseT, 'tapeWhen ' + k + ' (never cued)');
   }
   for (const n in (script.afterChoice || {})) {
     note(script.afterChoice[n].kept && script.afterChoice[n].kept.t, `afterChoice ${n} kept`);
@@ -290,8 +291,12 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
   }
   for (const k in (script.pointAt || {})) note(script.pointAt[k].t, 'pointAt ' + k);
   for (const k in (script.ranDown || {})) note(script.ranDown[k].t, 'ranDown ' + k);
-  for (const n in (script.overheard || {}))
-    script.overheard[n].lines.forEach((l, i) => note(l.t, `overheard ${n}.${i}`));
+  /* a night holds a LIST of these now, and did not always */
+  for (const n in (script.overheard || {})) {
+    const sc = script.overheard[n];
+    (sc.length ? sc : [sc]).forEach((one, j) =>
+      one.lines.forEach((l, i) => note(l.t, `overheard ${n}.${j}.${i}`)));
+  }
   ok('no two lines in the chapter are the same sentence',
      dupes.length === 0, dupes[0] || Object.keys(texts).length + ' distinct lines');
 
@@ -316,7 +321,8 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
     if (typeof it !== 'string') whoOf(it.who, 'tapeWhen ' + k);
   }
   for (const n in (script.overheard || {}))
-    script.overheard[n].lines.forEach((l, i) => whoOf(l.who, `overheard ${n}.${i}`));
+    ((script.overheard[n].length ? script.overheard[n] : [script.overheard[n]]))
+      .forEach((one, j) => one.lines.forEach((l, i) => whoOf(l.who, `overheard ${n}.${j}.${i}`)));
   ok('and everybody a line is signed to is one of the four',
      strays.length === 0, strays[0] || 'no strays');
 
@@ -328,8 +334,8 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
      and it is the night the four of them all start speaking, so every
      other rule applies to it and nothing had ever played it through.
      Night six is the last hour and belongs to endcheck. */
-  const NIGHTS = [1, 2, 3, 4, 5];
-  const all = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+  const NIGHTS = [1, 2, 3];
+  const all = { 1: [], 2: [], 3: [] };
   for (let r = 0; r < RUNS; r++) {
     if (r) await openPage();
     /* every night is played whatever NIGHT says: the week-long rule at
@@ -403,21 +409,25 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
        early.length === 0, early[0] || 'every gate held');
 
     /* ---- the overheard exchange: all of it, in order ---- */
-    const ex = script.overheard && script.overheard[night];
-    if (ex) {
+    /* a night holds two of these, in order, so this asks for both of
+       them and for all of it, end to end */
+    const raw = script.overheard && script.overheard[night];
+    const exes = !raw ? [] : (raw.length ? raw : [raw]);
+    if (exes.length) {
+      const want = [].concat.apply([], exes.map((e) => e.lines));
       const bad = [];
       runs.forEach((run, ri) => {
-        const heard = run.said.filter((l) => ex.lines.some((x) => x.t === l.t));
-        if (heard.length !== ex.lines.length) {
-          bad.push(`run ${ri + 1}: ${heard.length} of ${ex.lines.length}` + (run.died ? ' (' + run.why + ')' : ''));
+        const heard = run.said.filter((l) => want.some((x) => x.t === l.t));
+        if (heard.length !== want.length) {
+          bad.push(`run ${ri + 1}: ${heard.length} of ${want.length}` + (run.died ? ' (' + run.why + ')' : ''));
           return;
         }
         heard.forEach((h, i) => {
-          if (h.t !== ex.lines[i].t) bad.push(`run ${ri + 1}: out of order at line ${i + 1}`);
+          if (h.t !== want[i].t) bad.push(`run ${ri + 1}: out of order at line ${i + 1}`);
         });
       });
-      ok(`night ${night}: the exchange between two of them plays in full, in order`,
-         bad.length === 0, bad.join('; ') || `${RUNS} runs, ${ex.lines.length} lines each`);
+      ok(`night ${night}: both exchanges between two of them play in full, in order`,
+         bad.length === 0, bad.join('; ') || `${RUNS} runs, ${want.length} lines each`);
     }
 
     /* ---- and the shop is never quiet for too long ---- */
@@ -508,8 +518,18 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
       const it = script.tapeWhen[k];
       if (!it || typeof it === 'string' || !it.by) continue;
       if (it.by[0] > NIGHTS[NIGHTS.length - 1]) continue;   // falls due after the last night played
-      if (heard[it.t] == null) missed.push(`run ${r + 1}: ${k} never arrived, due night ${it.by[0]} by ${it.by[1]}`);
-      else if (heard[it.t] > it.by[0]) missed.push(`run ${r + 1}: ${k} arrived night ${heard[it.t]}, due night ${it.by[0]}`);
+      /* EITHER WORDING COUNTS AS ARRIVING.
+
+         Four of these are written as a reply and have a second version
+         for the case where she never did the thing that would have cued
+         them -- and the deadline path is by definition that case, so
+         what actually lands is `elseT`. Matching only `t` reported the
+         beat as never having happened when it had happened in the only
+         form it could honestly take. */
+      const got = heard[it.t] != null ? heard[it.t]
+                : (it.elseT && heard[it.elseT] != null) ? heard[it.elseT] : null;
+      if (got == null) missed.push(`run ${r + 1}: ${k} never arrived, due night ${it.by[0]} by ${it.by[1]}`);
+      else if (got > it.by[0]) missed.push(`run ${r + 1}: ${k} arrived night ${got}, due night ${it.by[0]}`);
     }
   }
   ok('and a line with a deadline arrives by it, earned or not',

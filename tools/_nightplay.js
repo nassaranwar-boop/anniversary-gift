@@ -84,11 +84,18 @@ const say = (s) => { console.log(s); lines.push(s);
   });
 
   await p.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
-  await p.evaluate(() => {
+  /* NOTHING REMEMBERED AT ALL -- unless the opening has already been
+     read cold once and what is wanted this time is the six nights. The
+     statement and the terms are still played and still left by their
+     own SKIP buttons; only orientation is marked seen, which is what
+     the chapter itself does to a player after one pass through it. */
+  const SEEN = process.env.SEEN === '1';
+  await p.evaluate((seen) => {
     try { localStorage.clear(); } catch (e) {}
-    localStorage.setItem('ns_seenintro', '');         /* nothing remembered at all */
+    localStorage.setItem('ns_seenintro', '');
+    if (seen) localStorage.setItem('ns_notutor', '1');
     showScreen('nightshift');
-    return loadChapter('nightshift').then(() => OuissysNightShift.start()); });
+    return loadChapter('nightshift').then(() => OuissysNightShift.start()); }, SEEN);
   await p.waitForFunction(() => { try { return !!OuissysNightShift.__night.state(); } catch (e) { return false; } },
                           { timeout: 40000, polling: 200 });
   await T(2500);
@@ -124,6 +131,16 @@ const say = (s) => { console.log(s); lines.push(s);
   say('  phase: ' + (await card()).phase);
   await shot('after-begin');
 
+  if (SEEN) {
+    say('\n########## HIS STATEMENT -- left by its own SKIP, read cold in an earlier run');
+    await T(3400);                                   /* its SKIP fades in at 2.2s */
+    await tap('#ns-cine-skip', 'SKIP (the film)');
+    await T(2200);
+    await tap('#ns-terms-skip', 'SKIP (the terms)');
+    await T(2600);
+    say('  phase: ' + (await card()).phase);
+  }
+
   /* HIS STATEMENT. It is the opening of the story and it has a SKIP on
      it, so a first-timer watches the whole thing. Every line of it is
      written down and it is photographed as it goes. */
@@ -157,7 +174,7 @@ const say = (s) => { console.log(s); lines.push(s);
     await T(2200);
   }
 
-  await require('/home/user/anniversary-gift/tools/_nightplay2.js')(
+  await require(process.env.PLAY || '/home/user/anniversary-gift/tools/_nightplay2.js')(
     { p, T, tap, card, shot, say, lines, errs, NIGHTS, SPEED, DIR });
 
   fs.writeFileSync(DIR + '/log.txt', lines.join('\n'));

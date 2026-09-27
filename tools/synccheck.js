@@ -1,0 +1,311 @@
+/* THE SUBTITLE AGAINST THE READING.
+
+   Every caption in this chapter that lights word by word does it off
+   `perf() - <its own t0>`. Where the browser's own synthesiser is
+   talking that clock is corrected by real word boundaries through
+   voxMark, so it cannot drift. A RECORDING reports no boundaries --
+   and recordings are the whole point here, 278 of them -- so for his
+   actual voice that clock IS the subtitle. If it starts before the
+   sound does, the words run ahead of him.
+
+   voxSpeak deliberately holds a line for up to three and a half
+   seconds while its take loads, because a line that starts a beat
+   late is still his voice and a line that does not wait is a machine
+   reading his last words to her. That wait is the first thing a new
+   visitor meets, and it is exactly when the caption clock and the
+   sound can come apart.
+
+   voiceWarm has the whole chapter in memory seconds after the
+   manifest lands, so by the time any suite runs the wait can never
+   fire on its own. This drops one take back out of the cache to put
+   the page in the state a cold phone is in, then asks: when he
+   finally spoke, how much of the sentence was already written? */
+const { chromium } = require('playwright-core');
+
+let pass = 0, fail = 0;
+const t = (n, c, note) => { c ? pass++ : fail++;
+  console.log(`${c ? 'PASS' : 'FAIL'}  ${n}${note !== undefined ? '   ' + note : ''}`); };
+
+(async () => {
+  const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium-1194/chrome-linux/chrome',
+    args: ['--no-sandbox', '--no-proxy-server', '--use-gl=swiftshader', '--enable-unsafe-swiftshader',
+           '--autoplay-policy=no-user-gesture-required'] });
+  const p = await b.newPage({ viewport: { width: 900, height: 600 } });
+  p.on('pageerror', (e) => console.log('PAGEERROR', e.message));
+  await p.route('**/*', (r) => r.request().url().startsWith('http://127.0.0.1') ? r.continue() : r.abort());
+  await p.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await p.evaluate(() => { try { localStorage.clear(); } catch (e) {} localStorage.setItem('ns_notutor', '1');
+    showScreen('nightshift');
+    return loadChapter('nightshift').then(() => OuissysNightShift.start()); });
+  await p.waitForFunction(() => { try { return !!OuissysNightShift.__night.cast().jax; } catch (e) { return false; } },
+                          /* the second positional is the ARGUMENT, not the
+                             options: passing options there silently leaves
+                             the 30s default in place, which is how a boot
+                             that takes 40s on a busy container came back as
+                             "Timeout 30000ms exceeded" against a stated
+                             180000 */
+                          null, { timeout: 180000, polling: 500 });
+  /* voiceWarm has to have actually warmed, or every take looks absent
+     and the drop below finds nothing to drop */
+  await p.waitForFunction(() => { try { return OuissysNightShift.__night.voiceState().ready.length > 3; }
+                                  catch (e) { return false; } }, null, { timeout: 180000, polling: 500 });
+
+  const res = await p.evaluate(async () => {
+    const N = OuissysNightShift.__night;
+    /* THE NIGHT MUST NOT TALK OVER THE MEASUREMENT.
+
+       begin() starts a shift, and a running shift has its own tape:
+       tapeDue fires his next line whenever it is due, overwriting the
+       caption this is timing. That is how an earlier pass reported
+       fifteen words lit on a thirteen-word line -- it was counting a
+       different line that had replaced ours mid-count. Pausing stops
+       playStep, so nothing new comes due, while tapeTick called by
+       hand still drives the caption. */
+    N.begin(2); N.midEnd();
+    if (N.state().phase === 'play') N.pauseNow();
+    const sleep = (ms) => new Promise((r2) => setTimeout(r2, ms));
+    const lit = () => {
+      const el = document.getElementById('ns-tape');
+      if (!el || el.hidden) return { on: -1, of: -1 };
+      const w = el.querySelectorAll('i[data-w]');
+      let n = 0; w.forEach((x) => { if (x.className === 'on') n++; });
+      return { on: n, of: w.length };
+    };
+
+    /* AND THE SHORTEST LINES FIRST, ON PURPOSE.
+
+       The written line has its own reading time -- plan.dur plus a
+       1.1s tail -- and on a cold load that clock was running during
+       the wait for the take. A long line outlasts the wait and never
+       shows it. A three-word line does not: about 1.4s of reading
+       plus 1.1s of tail against a wait of up to 3.5 seconds, so the
+       caption hid itself and the take landed on an empty screen.
+       Sorting by length makes the check meet the case that breaks. */
+    const script = N.words();
+    const rows = [];
+    for (const n of [1, 2, 3, 4, 5, 6])
+      for (const row of (script.tapes[n] || [])) rows.push(row.t);
+    rows.sort((x, y) => String(x).split(/\s+/).length - String(y).split(/\s+/).length);
+
+    /* ONE LINE IS NOT ENOUGH, BECAUSE THE TAKE MAY NOT GET BACK.
+
+       voiceWait gives a dropped take 2.6 seconds to re-arrive and
+       decode, and then the line goes out without it -- by design. On
+       a starved machine that deadline is missed often, and the line
+       then takes the silent caption path, which is a DIFFERENT path
+       with different rules: nothing will ever speak it, so it is
+       correct for it to read on its own clock and go. An earlier
+       pass measured exactly that and reported five failures about a
+       recording that was never going to play. So each attempt says
+       which path it took, and the run keeps trying lines until one
+       of them actually comes back in his voice. */
+    /* AND THE WHOLE THING ON A WALL-CLOCK BUDGET.
+
+       Counting iterations is not a bound on a page like this one.
+       The watch loop below was written as 900 turns of a 20ms sleep
+       -- eighteen seconds by arithmetic, and on a page rendering at
+       about a frame a second a sleep(20) comes back well over a
+       second, so one attempt alone outran a 2400s timeout and the
+       run produced nothing at all. Every loop here is bounded by
+       Date.now() instead, so a slow machine gives fewer samples
+       rather than no answer. */
+    const T0 = Date.now();
+    const BUDGET = 150000;                     /* the whole measurement */
+    const PER_TRY = 40000;                     /* one line's wait */
+    const tries = [];
+    let got = null;
+    for (const txt of rows) {
+      if (tries.length >= 6 || Date.now() - T0 > BUDGET) break;
+      const id = N.voiceDrop(txt);
+      if (!id) continue;                       /* not a recorded line */
+      N.tapeQuiet();
+      const qBy = Date.now() + 4000;
+      while (N.tapeDebug().vox && Date.now() < qBy) await sleep(50);
+      if (!N.tapeSayRaw(txt, null, false)) { tries.push({ line: txt, why: 'would not go up' }); continue; }
+      if (N.tape().line !== txt) { tries.push({ line: txt, why: 'a different line is showing' }); continue; }
+
+      let litWhileWaiting = 0, wentAway = false, held = false, lowSpeakT = 99;
+      let into = null, litThen = null, shownThen = null;
+      const by = Date.now() + PER_TRY;
+      while (Date.now() < by) {
+        N.tapeTick(1 / 60);
+        const d = N.tapeDebug();
+        if (d.held) { held = true; if (d.speakT < lowSpeakT) lowSpeakT = d.speakT; }
+        if (d.vox) { into = N.tapeInto(); litThen = lit(); shownThen = d.shown; break; }
+        /* it may leave while he is on his way -- the hold is only a
+           blink guard now -- but it must be back by the time he
+           speaks, which tapeRevive promises and litAtStart measures.
+           Record the disappearance, do not stop watching for it. */
+        if (!d.shown) wentAway = true;
+        /* ONLY WHILE IT IS ACTUALLY WAITING.
+
+           Once voxAligned has released the hold the line is reading,
+           and on the silent caption path -- where nothing will ever
+           speak it -- reading is exactly what it should be doing. An
+           earlier pass counted the whole forty-second window and
+           reported "5 words lit against silence" about a five-word
+           line that had correctly finished reading itself. The
+           question is whether a word lights while the line is still
+           held for a take that has not arrived. */
+        if (d.held) { const l = lit(); if (l.on > litWhileWaiting) litWhileWaiting = l.on; }
+        await sleep(20);
+      }
+      const took = N.said().took;
+      const words = N.tapeDebug().planWords;
+      /* WHAT THE SCREEN SAID WHEN HE STARTED, TAKEN FROM INSIDE.
+
+         `into` and `litThen` above are read when this loop NOTICES the
+         voice, which on a starved machine is up to two and a half
+         seconds after it started -- an earlier pass reported "2.4s in,
+         4 of 4 words written" about a four-word line, which is a true
+         description of the probe's arrival and says nothing about his.
+         voxAligned runs in the same turn as voicePlay and writes down
+         what was lit before it moves the clock. That is the number. */
+      const al = N.voxAlign();
+      const rec = { line: txt, dropped: id, took, words, held, wentAway,
+                    litWhileWaiting, shownThen, lowSpeakT,
+                    litAtStart: al.litAtStart, ofAtStart: al.ofAtStart,
+                    heldAtStart: al.heldAtStart, revivedAtStart: al.revivedAtStart,
+                    intoWhenHeSpoke: into, litWhenHeSpoke: litThen };
+      tries.push(rec);
+      if (took === 'tape') { got = rec; break; }
+      await sleep(200);
+    }
+    /* ---- AND THE ARRIVAL ITSELF, WHICH THE NETWORK WILL NOT STAGE ----
+
+       Everything above waits for a dropped take to come back, and on
+       this machine it never does inside voiceWait's 2.6 seconds, so
+       the two assertions that matter most about a RECORDING -- that
+       the caption is there for it and in step with it -- go unasked
+       every run.
+
+       voxAlignNow is the hook voxSpeak itself calls at the instant
+       voicePlay starts. Calling it by hand is the arrival, exactly:
+       same function, same turn, same state. It does not prove audio
+       came out of the speakers -- the run above is what speaks to
+       that -- but it does prove the thing that was broken: that when
+       the sound starts, the caption is on the screen for it, and
+       that coming into sync does not rub out words she has already
+       been given. */
+    let arrive = null;
+    if (rows.length) {
+      const txt = rows[rows.length - 1];        /* a long one: time to read */
+      N.tapeQuiet();
+      const qBy2 = Date.now() + 4000;
+      while (N.tapeDebug().vox && Date.now() < qBy2) await sleep(50);
+      if (N.tapeSayRaw(txt, null, false) && N.tape().line === txt) {
+        /* let it read itself most of the way, the way it would while a
+           slow take is still coming */
+        const readBy = Date.now() + 20000;
+        let litBefore = 0;
+        while (Date.now() < readBy) {
+          N.tapeTick(1 / 60);
+          const l = lit();
+          if (l.on > 0) { litBefore = l.on; if (l.on >= 2) break; }
+          if (!N.tapeDebug().shown) break;
+          await sleep(20);
+        }
+        const goneFirst = !N.tapeDebug().shown;
+        /* THE SOUND STARTS NOW */
+        N.voxAlignNow(txt);
+        const after = lit(), d2 = N.tapeDebug();
+        arrive = { line: txt, litBefore, goneFirst,
+                   backUp: !!d2.shown && !!d2.up, litAfter: after.on, of: after.of };
+        /* and it carries on from there rather than starting again */
+        for (let i = 0; i < 20; i++) { N.tapeTick(1 / 60); await sleep(20); }
+        const l3 = lit();
+        arrive.litLater = l3.on;
+      }
+    }
+
+    return { tries, got, arrive, align: N.voxAlign() };
+  });
+
+  const best = res.got || res.tries[res.tries.length - 1] || {};
+  if (!res.tries.length) best.err = 'no recorded line anywhere in the tapes';
+
+  if (best.err) {
+    t('the check could set itself up', false, best.err);
+    console.log(`\n${pass} passed, ${fail} failed`);
+    await b.close(); process.exit(1);
+  }
+
+  res.tries.forEach((x, i) => {
+    console.log(`  try ${i + 1}: "${String(x.line).slice(0, 48)}" (${x.words} words) -> ` +
+                (x.why || 'took=' + x.took + (x.held ? ', held for the take' : ', not held')));
+  });
+  console.log();
+
+  const r = best;
+  console.log(`  "${String(r.line).slice(0, 64)}" (${r.words} words)`);
+  console.log(`  take ${r.dropped} dropped, so it had to be fetched the way a cold phone fetches it`);
+  console.log(`  it went out by the ${r.took} path`);
+  console.log(`  words already written when he began, read from inside: ` +
+              r.litAtStart + ' of ' + r.ofAtStart + ' (still held: ' + r.heldAtStart +
+              ', brought back: ' + r.revivedAtStart + ')');
+  console.log(`  ...and when this loop next got a turn, ${r.intoWhenHeSpoke}s later: ` +
+              (r.litWhenHeSpoke ? r.litWhenHeSpoke.on + ' of ' + r.litWhenHeSpoke.of : 'n/a') +
+              ' — the probe\'s arrival, not his');
+  console.log(`  the caption was held for the take: ${r.held}`);
+  console.log(`  words lit while the take was still loading: ${r.litWhileWaiting}`);
+  console.log(`  voxAligned: ${JSON.stringify(res.align)}\n`);
+
+  /* THE HOLD IS THE FIX, AND IT IS TESTABLE WHATEVER THE TAKE DOES.
+
+     Whether a dropped take gets back inside voiceWait's 2.6 seconds is
+     the network's business, not the chapter's. What the chapter owes
+     is this: while a line is in the air its caption stays on the
+     screen and stays unlit. Both hold on every path, so both are
+     asserted on whichever line the run ended up with. */
+  t('the caption is held while his take is in the air', r.held === true,
+    r.held ? 'held' : 'nothing stopped its reading clock');
+  t('it is on the screen when the wait ends',
+    r.shownThen !== false,
+    r.wentAway ? 'it went away mid-wait and came back' : 'never left');
+  t('and not one word lights while it is still waiting', r.litWhileWaiting === 0,
+    r.litWhileWaiting + ' word(s) lit against silence');
+
+  /* and these only mean anything about a line that really played off a
+     recording -- on the silent path there is no voice to be in step
+     with, and asserting against one measures nothing */
+  if (r.took === 'tape') {
+    t('he speaks it off the recording, not the synthesiser', true, 'took=tape');
+    /* either of the two is a pass, because they are the same promise:
+       the hold keeps it there for the ordinary short wait, and the
+       revive puts it back when the wait outlasts the hold */
+    t('the caption was there for him, held or brought back',
+      r.heldAtStart === true || r.revivedAtStart === true,
+      'held=' + r.heldAtStart + ' revived=' + r.revivedAtStart);
+    t('and not one word was written before he said it', r.litAtStart === 0,
+      r.litAtStart + ' of ' + r.ofAtStart + ' already lit');
+  } else {
+    console.log('  NOT ASKED: no dropped take got back inside voiceWait\'s 2.6s on this\n' +
+                '  machine, so every attempt went out by the ' + r.took + ' path. The three\n' +
+                '  assertions above still hold; the two about being in step with a\n' +
+                '  recording were not exercised and are not claimed.\n');
+  }
+
+  const a = res.arrive;
+  if (a) {
+    console.log('\n  the arrival, staged through voxAlignNow (the same call voxSpeak\n' +
+                '  makes the instant voicePlay starts):');
+    console.log(`    "${String(a.line).slice(0, 52)}"`);
+    console.log(`    ${a.litBefore} word(s) already written, caption ` +
+                (a.goneFirst ? 'had gone' : 'still up') + ' when the sound started');
+    console.log(`    after it: on screen ${a.backUp}, ${a.litAfter} of ${a.of} lit, ` +
+                `${a.litLater} a moment later\n`);
+    t('when the sound starts the caption is on the screen for it', a.backUp === true,
+      a.goneFirst ? 'it had gone and was brought back' : 'it never left');
+    t('and coming into sync rubs out nothing she has already read',
+      a.litAfter >= a.litBefore,
+      a.litBefore + ' written before, ' + a.litAfter + ' after');
+    t('and it carries on from there rather than starting again',
+      a.litLater >= a.litAfter, a.litAfter + ' -> ' + a.litLater);
+  } else {
+    t('the arrival could be staged', false, 'no line to stage it with');
+  }
+
+  console.log(`\n${pass} passed, ${fail} failed`);
+  await b.close();
+  process.exit(fail ? 1 : 0);
+})();

@@ -5,3 +5,5 @@ node_modules
 
 # screenshots tools/screens.js writes into the working directory
 s_*.png
+# throwaway probes that need to live under the repo so playwright resolves
+tools/tmp/

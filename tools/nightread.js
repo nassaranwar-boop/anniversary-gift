@@ -46,7 +46,7 @@ const { chromium } = require('playwright-core');
   terms.forEach(l => say('    ' + l));
 
   /* ---- each night ---- */
-  for (let n = 1; n <= 6; n++) {
+  for (let n = 1; n <= 3; n++) {
     const night = await W((n) => {
       const w = OuissysNightShift.__night, NS = w.words();
       w.route('night:' + n);
@@ -59,10 +59,15 @@ const { chromium } = require('playwright-core');
         rule: (card && card.querySelector('.ns-rule')) ?
               card.querySelector('.ns-rule').textContent : null,
         tapes: (NS.tapes[n] || []).map(t => [t.h, t.t]),
-        reveal: NS.reveal[n],
+        /* two and three of these a night now, and none of them is at
+           three in the morning any more: the plan says which and when */
+        reveals: (w.revealPlan ? w.revealPlan(n) : [[n, 3]])
+                   .map(([k, at]) => ({ at: at, r: NS.reveal[k] })).filter((x) => x.r),
         hook: NS.hooks[n] || null,
         feel: (w.score().feel['n' + n] || {}).feel,
-        find: (NS.finds.filter(f => f.on === n)[0] || {}),
+        finds: NS.finds.filter(f => f.on === n),
+        over: (() => { const sc = NS.overheard[n];
+                       return !sc ? [] : (sc.length ? sc : [sc]); })(),
       };
     }, n);
     say('\n' + '='.repeat(70));
@@ -87,13 +92,20 @@ const { chromium } = require('playwright-core');
           String(mm).padStart(2, '0') + '  ' + t);
     });
     say('\n   [longest silence between his lines: ' + Math.round(worst) + 's]');
-    say('\n   3:00 AM — SHE FINDS: ' + night.reveal.head + '  (' + night.reveal.at + ')');
-    night.reveal.lines.forEach(l => say('        ' + l.replace(/&[a-z]+;/g, '"')));
-    say('        he says: "' + night.reveal.say + '"');
-    say('        > ' + night.reveal.keep + '   /   ' + night.reveal.burn);
-    if (night.find && night.find.title) {
-      say('\n   hidden on camera ' + (night.find.room || '?') + ': ' + night.find.title);
-    }
+    night.over.forEach((sc, k) => {
+      say('\n   overheard from the ' + sc.room + ', from ' + sc.from + " o'clock:");
+      sc.lines.forEach(l => say('        ' + l.who.toUpperCase().padEnd(10) + ' ' + l.t));
+    });
+    night.reveals.forEach(({ at, r }) => {
+      const hh = Math.floor(at), mm = Math.round((at - hh) * 60);
+      say('\n   ' + (hh === 0 ? 12 : hh) + ':' + String(mm).padStart(2, '0') +
+          ' — SHE FINDS: ' + r.head + '  (' + r.at + ')');
+      r.lines.forEach(l => say('        ' + l.replace(/&[a-z]+;/g, '"')));
+      say('        he says: "' + r.say + '"');
+      say('        > ' + r.keep + '   /   ' + r.burn);
+    });
+    night.finds.forEach(f => say('\n   hidden on camera ' + (f.room || '?') + ': ' + f.title +
+                                 '  [' + f.where + ']'));
     if (night.hook) say('\n   6:00 AM leaves her with: ' + night.hook);
   }
 
@@ -107,7 +119,7 @@ const { chromium } = require('playwright-core');
   });
   end.finale.forEach(l => say('    ' + l));
   say('\n    ' + end.ask);
-  say('\n  [WIND THEM]');
+  say('\n  [FINISH THE FIFTH ONE]');
   end.wind.forEach(l => say('    ' + l));
   say('\n  [and then, out of the six nights of keeping and burning]');
   Object.keys(end.kept).filter(k => k !== 'ask').forEach(k =>

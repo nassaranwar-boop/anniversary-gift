@@ -142,6 +142,90 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
        return ever.filter(Boolean).length + ' of ' + ever.length + ' words'; })());
 
   ok('and none of it threw', errs.length === 0, errs[0] || '');
+
+  /* ---- AND THE BUILDING DOES NOT TALK OVER HIM ----
+
+     Played cold, at two o'clock on night one: "HOUR ZERO TWO." in its
+     own dark plate, printed across the words "and she was sitting", in
+     the middle of Chime's line about him never once being four minutes
+     early. Two captions, same pixels, neither readable.
+
+     The two were given fixed offsets -- the strip at `bottom:14cqh`,
+     the tape at `bottom:9cqh` -- which is fine while the tape is one
+     line of his and wrong the moment it is three: a name, a line, and
+     THROUGH THE DOOR under it. That is most of what the caption is once
+     the four of them start talking, and the hour turns six times a
+     night.
+
+     The tape's height is the thing that varies, and it varies with the
+     screen, so this asks at three shapes and it asks for the worst case
+     the chapter can produce: one of them, through a wall, saying
+     something long enough to wrap. */
+  console.log();
+  for (const vp of [{ width: 1000, height: 640, name: 'laptop' },
+                    { width: 740, height: 360, name: 'phone sideways' },
+                    { width: 390, height: 780, name: 'phone upright' }]) {
+    const q = await b.newPage({ viewport: { width: vp.width, height: vp.height } });
+    await q.route('**/*', (r) => { const u = r.request().url();
+      if (u.indexOf('book-scene.js') >= 0) return r.abort();
+      return u.startsWith('http://127.0.0.1') ? r.continue() : r.abort(); });
+    await q.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded', timeout: 120000 });
+    await q.evaluate(() => { try { localStorage.clear(); } catch (e) {}
+      /* ORIENTATION SILENCES THE STRIP ON PURPOSE.
+
+         uiTick only shows it when `!tutorOn()` -- "never during
+         orientation, which has its own box saying its own words". With
+         the tutorial running, the annunciator can never appear and this
+         check can never see the thing it is about. So the tutorial is
+         marked seen, which is what the chapter does to a player after
+         one pass anyway. */
+      localStorage.setItem('ns_notutor', '1');
+      showScreen('nightshift');
+      return loadChapter('nightshift').then(() => OuissysNightShift.start()); });
+    await q.waitForFunction(() => { try { return !!OuissysNightShift.__night.cast().jax; } catch (e) { return false; } },
+                            { timeout: 180000, polling: 500 });
+    await q.evaluate(() => { const N = OuissysNightShift.__night; N.begin(1); N.midEnd();
+      N.tapeSayRaw('He was never four minutes early in his life, and he told her he would be, every night, for fifteen years.',
+                   'chime', true); });
+    /* THE STRIP IS ON A TIMER AND THE PAGE DRAWS AT 0.7fps.
+
+       `annunciate` gives the caption a few seconds of `captionT` and
+       uiTick takes it down when that runs out. Announcing once and then
+       sleeping four seconds read a screen the strip had already left:
+       the first version of this failed three times with say hidden and
+       the tape up, which is the opposite of what it is looking for. So
+       it keeps the strip alive and waits for the frame where both are
+       actually on the glass. */
+    await q.evaluate(async () => {
+      const N = OuissysNightShift.__night;
+      for (let i = 0; i < 40; i++) {
+        N.announce('HOUR ZERO TWO.');
+        const t = document.getElementById('ns-tape'), y = document.getElementById('ns-say');
+        if (t && !t.hidden && y && !y.hidden && y.getBoundingClientRect().height) return;
+        await new Promise((r) => setTimeout(r, 250));
+      }
+    });
+    const r = await q.evaluate(() => {
+      const t = document.getElementById('ns-tape'), y = document.getElementById('ns-say');
+      const st = document.getElementById('ns-stage');
+      if (!t || !y || t.hidden || y.hidden) return { up: false, tape: !t || t.hidden, say: !y || y.hidden };
+      const a = t.getBoundingClientRect(), c = y.getBoundingClientRect(), s = st.getBoundingClientRect();
+      return { up: true,
+               over: !(c.bottom <= a.top || c.top >= a.bottom || c.right <= a.left || c.left >= a.right),
+               gap: Math.round(a.top - c.bottom),
+               inside: c.top >= s.top - 1 && c.bottom <= s.bottom + 1,
+               tapeH: Math.round(a.height), sayH: Math.round(c.height),
+               lift: getComputedStyle(st).getPropertyValue('--ns-say-lift').trim() };
+    });
+    ok(`${vp.name}: both captions are up at once`, r.up, JSON.stringify(r));
+    if (r.up) {
+      ok(`${vp.name}: the building does not print through his tape`, !r.over,
+         `gap ${r.gap}px, tape ${r.tapeH}px tall, lifted ${r.lift || '0px'}`);
+      ok(`${vp.name}: and the strip is still on the screen`, r.inside, JSON.stringify(r));
+    }
+    await q.close();
+  }
+
   console.log(`\n${pass} passed, ${fail} failed`);
   await b.close();
   process.exit(fail ? 1 : 0);

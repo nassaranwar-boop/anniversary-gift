@@ -58,7 +58,7 @@ const early = spoken.filter((k) => { const it = NS.tapeWhen[k];
   return it.after && it.by[0] < it.after; });
 ok('no deadline falls before the night the line is allowed to exist', !early.length, early);
 /* and none of them lands after the last night she could hear it */
-const late = spoken.filter((k) => NS.tapeWhen[k].by[0] > 5);
+const late = spoken.filter((k) => NS.tapeWhen[k].by[0] > 3);
 ok('and none of them is left until a night that may never come', !late.length, late);
 /* they are spread out: two of the four should not be due the same hour
    of the same night, or one talks over the other */
@@ -69,7 +69,8 @@ spoken.forEach((k) => { const s = NS.tapeWhen[k].by.join(':');
 ok('and no two of them come due in the same hour of the same night', !clash.length, clash);
 
 /* the pages she can walk past, and the one who points at each */
-const pointable = NS.finds.filter((f) => f.on < 6).map((f) => f.id);
+const LASTN = 3;
+const pointable = NS.finds.filter((f) => f.on < LASTN).map((f) => f.id);
 ok('every page she can walk past has somebody who will point at it',
    pointable.every((id) => NS.pointAt[id]), pointable.filter((id) => !NS.pointAt[id]));
 ok('and the one who points at a maker\'s tag is the toy it belongs to',
@@ -172,41 +173,54 @@ if (man) {
   /* she finds nothing, ever. Every night she still has something to find,
      and it is always the oldest thing she missed. */
   const sloppy = await p.evaluate(() =>
-    [1, 2, 3, 4, 5, 6].map((n) => OuissysNightShift.__night.carry(n, {})));
+    [1, 2, 3].map((n) => OuissysNightShift.__night.carry(n, {})));
   ok('a player who finds nothing still has something out there every night',
      sloppy.every((s) => s.armed), sloppy);
-  ok('and on each night it is that night\'s own page, in order',
-     sloppy.map((s) => s.armed).join(',') === 'cogsworth,chime,marabelle,jax,ledger,last',
+  /* two a night now: with nothing found, the oldest un-found one is out,
+     and on night one that is the first of night one's pair */
+  ok('and on each night it is the first of that night\'s own pair',
+     sloppy.map((s) => s.armed).join(',') === 'cogsworth,marabelle,ledger',
      sloppy.map((s) => s.armed));
+  /* and having pocketed the first of a night, the second is what is out */
+  const pair = await p.evaluate(() => {
+    const N = OuissysNightShift.__night;
+    return { a: N.carry(1, { cogsworth: true }),
+             b: N.carry(2, { cogsworth: true, chime: true, marabelle: true }),
+             c: N.carry(3, { cogsworth: true, chime: true, marabelle: true,
+                             jax: true, ledger: true }) };
+  });
+  ok('and the second page of a night comes out once she has the first',
+     pair.a.armed === 'chime' && pair.b.armed === 'jax' && pair.c.armed === 'last', pair);
 
   /* she misses night one and is perfect afterwards: night one's tag is
      put back out, and the soldier tells her where it is */
   const back = await p.evaluate(() => {
     const N = OuissysNightShift.__night;
-    return { n2: N.carry(2, { chime: true }),
-             n3: N.carry(3, { chime: true, marabelle: true }),
-             n4: N.carry(4, { chime: true, marabelle: true, jax: true }) };
+    return { n2: N.carry(2, { chime: true, marabelle: true, jax: true }),
+             n3: N.carry(3, { chime: true, marabelle: true, jax: true,
+                              ledger: true, last: true }) };
   });
   ok('the tag she walked past on night one is out again on night two',
      back.n2.armed === 'cogsworth' && back.n2.back === 'cogsworth', back.n2);
-  ok('and it is still out on night three, and on night four',
-     back.n3.armed === 'cogsworth' && back.n4.armed === 'cogsworth', back);
+  ok('and it is still out on the last night',
+     back.n3.armed === 'cogsworth' && back.n3.back === 'cogsworth', back);
   ok('and the soldier is the one who tells her where he left it',
      back.n2.points === 'cogsworth', back.n2);
 
   /* two missed: the older one comes back first */
   const two = await p.evaluate(() =>
-    OuissysNightShift.__night.carry(4, { marabelle: true, jax: true }));
+    OuissysNightShift.__night.carry(3, { marabelle: true, jax: true,
+                                         ledger: true, last: true }));
   ok('two missed, and the older one is the one the shop puts back first',
      two.armed === 'cogsworth' && two.back === 'cogsworth', two);
 
   /* nothing is ever handed to her early */
   const ahead = await p.evaluate(() => {
     const N = OuissysNightShift.__night;
-    return [1, 2, 3].map((n) => N.carry(n, { cogsworth: true, chime: true }));
+    return [1, 2].map((n) => N.carry(n, { cogsworth: true, chime: true }));
   });
   ok('and a thorough player is never handed a later night\'s page early',
-     ahead[0].armed === null && ahead[1].armed === null && ahead[2].armed === 'marabelle',
+     ahead[0].armed === null && ahead[1].armed === 'marabelle',
      ahead.map((a) => a.armed));
 
   console.log('\n=== and it really comes due inside a night');
@@ -253,16 +267,19 @@ if (man) {
      !again || again.t !== NS.afterChoice[1].kept.t, again);
 
   /* the page she walked past, pointed at -- after the choices are done */
-  const pointed = await due(3, 3, {
+  /* on the last night both of tonight's are still out, so nothing older
+     is ever handed back: the pointing happens on night two, with both
+     of night two's in her pocket and one of night one's walked past */
+  const pointed = await due(2, 3, {
     said: Object.assign({}, hisDone, { [NS.afterChoice[1].kept.t]: 1 }),
-    chose: { 1: 1 }, found: { marabelle: true } });
+    chose: { 1: 1 }, found: { chime: true, marabelle: true, jax: true } });
   ok('and the one whose tag she walked past tells her where it is',
      pointed && pointed.t === NS.pointAt.cogsworth.t && pointed.who === 'cogsworth', pointed);
 
   /* nothing is pointed at when she has missed nothing */
-  const clean = await due(3, 3, {
+  const clean = await due(2, 3, {
     said: Object.assign({}, hisDone, { [NS.afterChoice[1].kept.t]: 1 }),
-    chose: { 1: 1 }, found: { cogsworth: true, chime: true, marabelle: true } });
+    chose: { 1: 1 }, found: { cogsworth: true, chime: true, marabelle: true, jax: true } });
   ok('and nobody points at anything when she has missed nothing', clean === null, clean);
 
   console.log('\n=== and if she opens it she LOOKS at it');
@@ -341,7 +358,7 @@ if (man) {
   const handed = await p.evaluate(() => {
     const N = OuissysNightShift.__night, G = N.state();
     try { localStorage.removeItem('ns_found'); } catch (e) {}
-    N.begin(6); N.midEnd();
+    N.begin(3); N.midEnd();
     const c = N.cast();
     Object.keys(c).forEach((k) => { c[k].awake = false; c[k].asleep = true; });
     G.hour = 4; G.power = 90;
@@ -353,14 +370,18 @@ if (man) {
     return { intoFilm: intoFilm, phase: G.phase, kept: N.finds().kept,
              gave: !!(card && card.querySelector('.ns-gave')),
              rated: !!G.rating,
-             six: (() => { try { return !!JSON.parse(localStorage.getItem('ns_nights') || '{}')[6]; }
+             six: (() => { try { return !!JSON.parse(localStorage.getItem('ns_nights') || '{}')[3]; }
                            catch (e) { return false; } })() };
   });
   ok('the last night goes into the film rather than a scoreboard',
      handed.intoFilm === 'finale', handed.intoFilm);
   ok('and the card after it puts the last page in her hand, found or not',
      handed.kept.indexOf('last') >= 0 && handed.gave, handed);
-  ok('and that is what marks the six nights done', handed.six && handed.rated, handed);
+  /* the confession is on the same night as the signature now, so both
+     of the two that cannot be missed are handed over on the same card */
+  ok('and the confession with it, because both are on the last night',
+     handed.kept.indexOf('ledger') >= 0, handed.kept);
+  ok('and that is what marks the three nights done', handed.six && handed.rated, handed);
 
   console.log('\n=== the first minute of a night');
 
@@ -376,7 +397,7 @@ if (man) {
   const mid = await p.evaluate(async () => {
     const N = OuissysNightShift.__night, G = N.state();
     const out = [];
-    for (let n = 1; n <= 6; n++) {
+    for (let n = 1; n <= 3; n++) {
       N.begin(n);
       const st0 = N.midState();
       const p0 = G.power, h0 = G.hour;
@@ -397,7 +418,7 @@ if (man) {
                  /* one frame of the shift proper has already run by the
                     time the loop notices the beat is over, so the floor
                     is a frame's worth of idle drain rather than zero */
-                 heldPower: n === 4 ? true : Math.abs(G.power - p0) < 0.05,
+                 heldPower: n === 2 ? true : Math.abs(G.power - p0) < 0.05,
                  lost: Object.keys(G.lost).filter((k) => G.lost[k] > 0),
                  dark: !!G.hallDark, power: +G.power.toFixed(1),
                  sawMon: sawMon, sawDoor: sawDoor, sawMonOut: sawMonOut, sawLamp: sawLamp,
@@ -411,15 +432,20 @@ if (man) {
      mid.every((m) => m.heldClock), mid.map((m) => [m.n, m.heldClock]));
   ok('and it costs her nothing she did not watch it cost',
      mid.every((m) => m.heldPower), mid.map((m) => [m.n, m.power, m.heldPower]));
+  /* night two inherits three faults at once and does all three of them
+     in front of her, which is why it is twice the length of the others */
   ok('night two loses the workshop camera while she is looking at it',
      mid[1].sawMon && mid[1].lost.indexOf('workshop') >= 0, mid[1].lost);
-  ok('night three puts the hall lights out', mid[2].dark && mid[1].dark === false,
-     [mid[1].dark, mid[2].dark]);
-  ok('night four takes the first bite out of the meter in front of her',
-     mid[3].power < 99.5 && mid[3].sawLamp, [mid[3].power, mid[3].sawLamp]);
-  ok('night five tries the door that is going to be slow all night',
-     mid[4].sawDoor, mid[4].sawDoor);
-  ok('night six drops the monitor and puts it back', mid[5].sawMonOut, mid[5].sawMonOut);
+  ok('and puts the hall lights out in the same fifteen seconds',
+     mid[1].dark && mid[0].dark === false, [mid[0].dark, mid[1].dark]);
+  ok('and takes the first bite out of the meter in front of her',
+     mid[1].power < 99.5 && mid[1].sawLamp, [mid[1].power, mid[1].sawLamp]);
+  ok('night one breaks nothing, because nothing has broken yet',
+     mid[0].lost.length === 0 && !mid[0].dark && mid[0].power >= 99.5,
+     [mid[0].lost, mid[0].dark, mid[0].power]);
+  ok('night three tries the door that is going to be slow all night',
+     mid[2].sawDoor, mid[2].sawDoor);
+  ok('and drops the monitor and puts it back', mid[2].sawMonOut, mid[2].sawMonOut);
   ok('and every one of them hands her the desk with the monitor down',
      mid.every((m) => m.endsDown), mid.map((m) => [m.n, m.endsDown]));
 
@@ -645,7 +671,7 @@ if (man) {
   const rewatch = await p.evaluate(() => {
     const N = OuissysNightShift.__night;
     /* the title, with the whole chapter behind her */
-    localStorage.setItem('ns_nights', JSON.stringify({ 1: 1, 2: 1, 3: 1, 4: 1, 5: 1, 6: 1 }));
+    localStorage.setItem('ns_nights', JSON.stringify({ 1: 1, 2: 1, 3: 1 }));
     /* the title may already be up from an earlier check, and pressing
        title while on the title does not rebuild the card -- so go via
        another screen and come back, the way a player would */

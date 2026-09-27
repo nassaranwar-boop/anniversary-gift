@@ -85,6 +85,1285 @@ readable 30, bigscreen 313, mainshape 34, codecheck 7, enginecheck 3 --
 
 **Next session:** the book's composition and details (the one task
 still open), and the seven dead branches if he has not deleted them.
+### 2026-09-27c — the chapter was written 111% full, and a third of it was never heard
+
+**Asked for:** does it feel scarier yet; are three nights really a complete
+compression of the six; is the ending right; and is there any lag, bug or
+mistake anywhere. Check precisely and start fixing.
+
+**The finding, and it is the big one.** A night is six fifty-six-second
+hours, and the last one is five because the film takes the sixth.
+Everything anybody says goes through ONE queue, one line at a time, each
+costing its reading time plus a tail plus a gap. Adding up everything the
+three nights are written to carry and setting it against the clock that
+has to hold it: **the chapter was written 111% full.** Nights one, two and
+three were 106%, 113% and 114%. That has two consequences and both of them
+are exactly what he complained about.
+
+1. **Nothing could ever be silent.** Accounting for every frame of the last
+   night: 82% of it was somebody talking and fifteen seconds of it were
+   quiet. A horror night with a voice going four seconds out of five has no
+   room left in it to be frightened. "I do not feel scared at all" was, in
+   part, this.
+2. **About a hundred seconds of writing a night could never be reached**,
+   however well she played. The queue fell behind and had no way to catch
+   up, so it simply ran out of night. What fell off the end of night three,
+   every single run, was the three-line warning that something is coming
+   tonight — the setup for the entire last hour. Written, voiced, and never
+   once heard by anybody.
+
+Every suite was green throughout, because they all read the script rather
+than playing it.
+
+**He chose, asked directly: cut 40% of the talking.** Keep every fact, rule
+and confession; lose the repetition and the lines the last hour already
+says over the film. Done, and measured:
+
+| | night 1 | night 2 | night 3 |
+|---|---|---|---|
+| written full, before | 106% | 113% | 114% |
+| written full, after | 72% | 68% | 85% |
+| actually speaking, before | 61% | 68% | 82% |
+| actually speaking, after | 56% | 49% | 77% |
+
+**Four real bugs found by playing it rather than reading it:**
+
+- **Anything standing at her door silenced the narration with no bound at
+  all.** `tapeQuiet()` returned false while a toy was at a door and nothing
+  ever released it. On a night she plays properly there is something at a
+  door a great deal of the time — she shuts it and the toy stands there
+  trying the handle — so the whole tape just stopped, sometimes for minutes.
+  He is a man on a tape in a drawer; he cannot hear the shop. Twelve seconds
+  of deference now, then he plays.
+- **Every revelation fired an hour late.** `stepReveal` compared against
+  `G.hour`, a whole number, and every time in `REVEAL_PLAN` has a fraction
+  on it — 2.10, 4.50, 1.30, 4.15, 0.95, 3.05. So each one silently rounded
+  UP to the next whole hour and then had to find a quiet moment with nothing
+  at a door inside the busiest part of the night. Measured across a full
+  three-night run, the fourth revelation was **never offered at all**: she
+  lost the notebook, the choice about it, and Jax's speech about what she
+  did with it.
+- **The queue could fall behind and never catch up.** It now closes the gap
+  in proportion to how late he is: on schedule he takes his two and a half
+  seconds, an hour behind he takes one.
+- **The reactive queue cut in front of the written script until the night
+  ran out.** There is more reactive writing in a night than there is tape.
+  Now the tape's remaining seconds are reserved: nothing else starts if
+  saying it would leave no room for the rest of his tape.
+
+**Restored from the six-night build**, after a string-by-string audit of
+516 old lines against the current ones (401 carried over verbatim or folded;
+of the 115 absent, all but four were deliberate):
+
+- the ballerina's *cost* — "do not watch her all night, you will lose the
+  meter and she will still be there" — a RULE that went with night two's tape;
+- "You are still here. That is the part I keep not expecting.";
+- "Tonight is the one I actually needed you to reach.";
+- **his permission to walk away** — you have done the nights, you owe this
+  shop nothing, lock it and never come back, sell it or burn it or leave it,
+  I am not going to be here to mind. This is load-bearing: without it the
+  last card offers FINISH THE FIFTH ONE or LEAVE IT UNDER THE SHEET and
+  nothing anywhere has told her that leaving is allowed, so one ending reads
+  as her failing him instead of as her taking the thing he spent his last
+  morning making sure she had.
+
+**Moved rather than cut:** the five-line conversation where the four of them
+work out what he was doing in that chair was written into night three's tape
+queue, where it took the warning down with it. It is night two's second
+overheard scene now — the system that cannot be starved, because after
+`OVER_HOLD` it goes anyway and comes through the wall if she is not looking.
+What it displaced was the one exchange in the chapter about a number on the
+heads-up display rather than about him, her or the shop.
+
+**Three new suites**, and they are the ones that matter, because none of the
+twenty-odd existing ones could see any of this:
+
+- `nightfit.js` — does the chapter fit inside the chapter? Pure arithmetic,
+  no variance. Fails any night written past 92% full.
+- `nightair.js` — plays all three nights in a row and lists every written
+  line that never got said and every choice never answered. It drives the
+  eighteen steps of orientation, because night one does not start its clock
+  until she has done them.
+- `nightquiet.js` — accounts for every frame of a night: speaking, at a door,
+  the first minute, a conversation waiting for quiet, or silence.
+
+**Where it stands:** night one and night three now say every written line in
+every run. Night two loses one or two on a bad surge night (a blackout stops
+the tape dead while it lasts) — down from five every run. Every revelation is
+offered and every choice answered.
+
+**And then the other half of what he asked for: the visuals and the sound.**
+
+**The jumpscare was invisible.** `kill()` put the figure at the lens and
+its own comment said "lit by nothing but the office" — and the office at
+three in the morning is nearly black, so what a player actually saw on
+being caught was a body-shaped darkness in a dark frame for 1.15 seconds,
+and then a tidy panel with a name and two buttons. The most important
+second in the chapter was the one nobody could see. Now:
+
+- a hard, cold lamp fires on the figure for the duration, flickering at a
+  rate that does not divide into anything else;
+- it comes to a third of a metre instead of two thirds, with its eyes on
+  the lens rather than a tenth of a metre under them, so what fills the
+  frame is a **face** — Cogsworth's white mask and black eyes, Jax's
+  grin — instead of a torso;
+- 1.75 seconds instead of 1.15;
+- the last four tenths take every light in the building to nothing, so
+  the card comes up over black. What is left in the dark just before it
+  is two white eyes.
+
+**The scare was turning its own volume down.** `audioDuck(0.25)` lowers
+`duckGain` — which sits ABOVE `cueGain`, and the scare is cued through
+`cueGain`. So the loudest event in the game ducked *itself* to a quarter,
+forty milliseconds before it played. Same bug in the floor going up in
+the last hour. There is a `duckScore()` now that takes down the score and
+the bed and nothing else; the cue goes out at full into the output
+compressor, and the compressor pumping is most of what a loud thing
+sounds like. And the noise now lands 130ms after the cut — the figure
+takes about a sixth of a second to reach the lens, so the sound arrives
+when the face does, on a room that has just gone completely silent.
+
+**The office was one even brown wash.** Its lighting comment promises
+"four pools and two spills… nothing uniform", and then three things
+undid it: a neutral grey ambient at half strength laid over everything
+equally, a "failing" ceiling bulb set to exactly the same intensity as
+the desk lamp over a seven-and-a-half-metre falloff, and two doorway
+lights as strong as the desk lamp — so the two places a thing can appear
+were the two best-lit places in the room. Now the ambient is a fifth as
+strong and colder, the pendant is genuinely failing, the desk lamp
+reaches the desk and stops, and the doorways are lit from further back
+at 0.78 so a shape has to resolve out of a dark opening. Every designed
+pool is untouched. `fearcheck` re-run after: 5/0, and the curve is
+unchanged — careless dies on nights two and three, perfect never dies,
+night three takes a normal player to 2.6% with 45 seconds at an open door.
+
+**Lag, measured honestly.** Frame times cannot be measured in this
+container — it renders through SwiftShader at about two-thirds of a frame
+a second. What is portable: the chapter's own step costs **0.017ms a
+frame on night one and 0.128ms on night three** (of a 16ms budget), the
+scene gains no geometry and no textures between midnight and the far end
+of a night, and the heap sits at 47–48MB. There is no leak and the logic
+is free. The only number that could ever cost a weak machine frames is
+draw calls: **402 for 7,910 triangles on night one and 498 for 15,346 on
+night three, with geometries equal to calls to the unit** — nothing is
+merged or instanced, so twenty to thirty triangles per call is nearly all
+overhead. Not a fault today; a laptop from the last decade draws a
+thousand calls at sixty frames a second. `nightlag.js` records it and
+fails above 900, which is where it would start to hurt.
+
+**And then four goes at one bug, which is worth writing down because
+three of them were wrong.**
+
+`scriptcheck` kept reporting the same thing after the rewrite: a line
+carrying a deadline arriving a whole night after it. Four attempts:
+
+1. Let a line whose night has gone skip the minute between knocks.
+   Fixed the reported case; imprecise, because "is anything late?" and
+   "is THIS line late?" are different questions.
+2. Make the test per line. The reported case came straight back — a
+   line due TONIGHT still waited, and sixty-two seconds twice over is
+   two hours of a six hour night.
+3. Realise every line the loop reaches is ALREADY past its deadline,
+   so none of them may wait; the cooldown decides whether it knocks or
+   arrives through the tape, not whether it arrives. Correct, and still
+   25/1.
+4. Sort the candidates by deadline instead of taking the first one in
+   the object. Also correct — an object literal's key order is not an
+   ordering — and still 25/1.
+
+None of them was the bug. `theyWatched` and `seenMarabelle` were the
+only two deadlines in the chapter set at **five o'clock on a night that
+ends at six**: fifty-six seconds of window, in the busiest part of the
+night, against a queue carrying his tape and the speeches about what
+she kept or burned. Every other deadline in the file is at one, two or
+three. Both moved to three.
+
+And then `theyShut` failed too, at three — which said the hour was
+never the point either. **Night two was simply over-subscribed, and it
+was over-subscribed because of a change made earlier this same
+session**: the five-line conversation where the four work out what he
+was doing in that chair had been moved onto it. Night two already owes
+the answers to both of night one's choices.
+
+That exchange has now been in three places and only the third works:
+
+- **In `NS.tapes[3]`** (where it started): the tape is a one-at-a-time
+  queue shared with everything reactive, so the last night ran out of
+  night and the warning that sets up the last hour was never said.
+- **On night two as an overheard scene**: fixed the last night, broke
+  night two.
+- **On night three as an overheard scene**: `overTick` is the one path
+  in the chapter that cannot be starved — it yields to everything and
+  then, after `OVER_HOLD`, goes anyway, through the wall if she is not
+  looking. That is the guarantee those five lines needed and no amount
+  of scheduling inside the tape queue was going to provide it.
+
+`overcheck` used to assert the last night has NO overheard scene, on
+the reasoning that the last night's tape was them. The reasoning was
+sound and the arrangement it described did not work; the assertion now
+says the last night has exactly one, and says why.
+
+The ordering change and the cooldown change both stay, because both
+are right independently of this. Their notes no longer claim they
+settled it.
+
+**Next session, first:**
+1. **The voice takes are current** — the render ran and `linecheck` is 5/0.
+   Any line edited from here needs another `full` run; `linecheck` is what
+   says so.
+2. **The draw calls, if it ever runs badly on her machine.** 498 calls for
+   15,346 triangles is all overhead; merging the static props per room would
+   take it under a hundred. Do not do it speculatively — it is a real
+   refactor of carefully audited room layouts, and nothing is slow today.
+3. **The camera rooms have not had the lighting pass the office got.** Only
+   the office was regraded; the hall, the stage, the workshop and the rest
+   are still lit as they were.
+
+### 2026-09-27b — why it was not frightening, and the winding key that did not work
+
+**Asked for:** whether three nights is now right; make it scarier, because
+playing it he feels nothing; fix the winding button, which feels cheap
+and does not always work, and fix the reason behind winding, which he
+thinks does not work either; and check every detail of the gameplay.
+
+**The honest answer to "is it perfect": no, and here is the number.**
+`tools/fearcheck.js` is new. It plays each night three ways — a perfect
+guard, a normal one (half a second late to every door, monitor up a
+third of the time), and a careless one (monitor up two thirds of the
+night, winds one of the four) — and counts what actually happens to
+her. Before this session:
+
+| | night one | night two | night three |
+|---|---|---|---|
+| perfect, meter at six | 48.7% | 23.8% | 26.3% |
+| careless, meter at six | 16.3% | 1.9% | 3.5% |
+| **deaths, 27 runs, all skills** | **1** | | |
+
+One death in twenty-seven playthroughs, including a careless one. A
+horror game a careless player cannot lose is not frightening, whatever
+is on the screen, and that is the whole of the report.
+
+**And the reason it cannot kill her was one line.** Every arrival at
+her door already fires a sound of its own — boots, wings, a music box,
+bells — panned to the side it came from, which is what the chapter's
+entire audio design is for. And then `arriveCue` also said
+`MOTION: WEST DOOR`, in words, on the screen, every single time. She
+never had to listen, never had to look, and never had to be wrong.
+
+So on the last night the floor sensors stop resolving a bearing. They
+still say something is coming — she is not being asked to play without
+information — they stop saying which side. It is a new hazard,
+`blindSensors`, the midnight beat acts it out, and it is the single
+biggest change to how the chapter feels. Measured:
+
+| night three | before | after |
+|---|---|---|
+| perfect: seconds at an open door | 1.4s | 16.3s |
+| normal: meter at five o'clock | 15.9% | 2.7% |
+| careless: deaths in three runs | 0 | 1–2 |
+
+**Night one was inert, not gentle.** 48.7% of the meter left and zero
+seconds of exposure for a good player; sixteen per cent for a careless
+one who was never once in danger. It is still by a distance the easiest
+night, still has no parcels, and is still the tutorial — but the four
+arrive sooner and press a little harder, the office bulb has started
+going out by itself, and **the thing that stands in her office is
+allowed to happen on it.**
+
+That last one is the fix I would keep if I could only keep one.
+`DESK_FROM` was 3, then 2. It is 1. This is the only thing in the
+chapter that puts something in the room she is sitting in; it cannot
+kill her, it cannot cost her a single per cent, and it was not allowed
+to happen until her second shift. Everything else the game does to
+frighten her happens somewhere else, to a figure on a tube, and reaches
+her as a number going down. It is capped — once on the first two
+nights, twice on the last, four times in a playthrough — so it stays
+four moments rather than a mechanic.
+
+**THE WINDING KEY: four faults, and none of them was in the writing.**
+`tools/windcheck.js` is new (9 checks) and drives the real element with
+real pointer events on a real wall clock, because every one of these is
+invisible to anything that calls `windStart()` directly.
+
+1. **It walked away from her thumb.** The button is positioned every
+   frame from the toy's position on the monitor, and the toy is
+   walking. Hold it for a second and a bit on a phone and the target
+   slides out from under a thumb that has not moved: `pointerleave`
+   fires, the hold dies, nothing says why. **This is the main one.**
+   The press is captured to the element now, the position is frozen
+   for the duration of a hold, and `pointerleave` no longer cancels.
+2. **It vanished.** The key only existed below 55% of a wind. Above
+   that she is looking straight at one of his, pressing where the key
+   was, and there is nothing there. It is always on one of them now,
+   the ring shows how much wind is left when she is not holding, and
+   the label says FULL when there is nothing to do.
+3. **It aimed at nothing.** `G.windTarget` was set when a target
+   existed and never cleared when one stopped existing, so the button
+   stayed live with a stale id and the press did nothing at all. That
+   is the "sometimes".
+4. **It picked the wrong one.** Two in a room and it always took the
+   first in cast order.
+
+And a cancelled hold was silent, which from the chair is identical to
+the button not working. It ticks.
+
+**The reason behind winding was real and invisible.** Being wound
+already does four things: leaves a shut door 55% faster, is 35% less
+aggressive, is the only thing that can step in front of a parcel, and a
+wound Marabelle freezes when watched where a run-down one does not —
+the nastiest state in the chapter. Nothing ever told her any of it had
+happened. `NS.sys.slack` — "$1: RUN DOWN." — has been written, and
+correct, and **never once fired** in the chapter's life; `G.stats.slack`
+was declared and never incremented. The building announces it now, once
+per toy per night, with a hiss under it, and a wind that restarts a
+stopped one says RUNNING AGAIN rather than WOUND.
+
+**Other things the detail sweep found:**
+
+- **`NS.sys.camBack`** — "CAMERA $1: RESTORED." — zero references. The
+  hazard's own description says the feeds "come back on their own", and
+  they do, and the building never mentioned it. A room going dark is
+  frightening once; a room coming back is what tells her the dark one
+  was a room she could not see into.
+- **The HANDS OFF badge was not hard, it was impossible.** "Clear a
+  night without shutting a door", awarded on `closes === 0`. Every one
+  of the four is guaranteed to reach her door at least once a night,
+  and an arrival at an open door kills her. No line of play finishes a
+  night with zero closes. It is LIGHT TOUCH now — under forty seconds
+  of shut door across a shift, which is about two thirds of what an
+  attentive guard spends.
+- **`NS.howTo`**, the six one-line rules, had been read by nothing
+  since the how-to card was rewritten. Deleted — except that its last
+  line, LISTEN, had just become load-bearing, so that one is on the
+  card and orientation says it out loud on night one. A game that
+  quietly starts depending on the ear on its last night, having never
+  said so, is not difficult, it is unfair.
+
+**Where it stands now, measured:**
+
+| | perfect | normal | careless |
+|---|---|---|---|
+| night one | 49.8% | 38.9% | 15.0%, 0 deaths |
+| night two | 21.1% | 17.5% | 0.0%, 2 of 3 died |
+| night three | 17.4% | **2.7%** | 0.0%, 1–2 of 3 died |
+
+`fearcheck` asserts five of those as a floor now, so this cannot come
+back quietly: a careless player must be able to lose, a perfect one
+must not, the last night must cost a good player real seconds at an
+open door, it must take a normal one under 12%, and the curve must be
+monotone.
+
+**Then he said fix those two as well, so:**
+
+**Night one is not the gentle night any more, and it was the roster
+rather than the ramp.** The aggression curve cannot go much further
+without crossing night two's, and a first night harder than the night
+everything breaks is not a curve. What could move was who is on the
+floor: all four used to be up by twenty past four, which left the
+ceiling hatch live for the last hour and three quarters of her first
+shift and nothing coming through it before that. They are all up by
+three now — four more performer-hours in a night that had sixteen.
+That spends door seconds and camera seconds rather than reaction time,
+so the night gets busier without getting sharper, which is the right
+shape for the one she plays first.
+
+That change also broke three of night one's own desk lines and no
+check could see it. `taskFor` keeps the LAST entry whose hour has
+passed, so the ballerina landing on the same hour as the winding line
+hid the winding line, and the owl written after the chalk hid the owl.
+Everything in `taskcheck` stayed green, because every check in it asks
+what she is told AT an hour and none of them asked whether anything
+had been lost. There is one that does now.
+
+**The SKIP button is behind the door rather than in the room.**
+Deleting it was the obvious answer and the wrong one — he is still
+testing, and taking the tool away in the same change that makes the
+nights harder is a poor trade. It is off unless it is asked for by
+name: **open the site with `?skip=1` on the end of the address** and
+the button is there, on any night, exactly as it was. Without it there
+is no button, no listener and nothing on the screen, which is the
+state anybody handed this link is in.
+
+### 2026-09-27 — six nights into three, and the four faults he named
+
+**Asked for:** he said the game felt as though it had no purpose, that
+the narrator's talk was cheap and half of it not understandable, that
+some of the toys' lines did not match what was happening, and that a
+scenario he had built for nights five and six never happened. Then,
+asked how to fix it, he chose the structure himself: *"instead of doing
+6 nights, we will do 3, so compact all the night perfectly into 3
+perfect nights that she wont get bored of at all, then fix everything
+else"* — and picked all four faults as priorities rather than any
+subset.
+
+**What three nights actually meant.** Nothing was cut for space. Each
+of the three carries two of the old six: two revelations, two things
+hidden on the cameras, two conversations between them in a room down
+the hall, and one tape made out of the best of the two it replaces. The
+six keep-or-burn decisions are all still there and all still compute
+the ending — two on the first night, three on the second, one on the
+last. So is every oddment, every desk thing, every line the four speak
+to her, the staged save, and the last hour.
+
+What the six-night shape was actually buying was repetition. Nights two
+and five each added exactly one rule and otherwise reran the night
+before with a different tape over it, so a player not gripped by night
+three had three more of the same ahead of her before anything landed.
+The difficulty curve is now monotone by construction: night one is the
+old night one, night two sits where the old three and four sat, night
+three is the old night six exactly, hazards and ramp unchanged.
+
+**1. Lines that did not fit what was happening.** This was real and I
+had the mechanism wrong in my head until I read it again. Every line
+one of the four says to her is hung on something she does — wind one,
+shut a door on one, hold a camera on one — and each also carries a
+deadline, so that a player who never does the thing still gets the
+story. That is the right design and it is why the chapter is not
+optional. The fault is that four of those lines are written as an
+ANSWER. "Thank you. Nobody has done that since March" is a thank-you
+for winding him, and it arrived at four in the morning whether or not
+she had ever turned a key. So did "That was the right thing to do", to
+somebody who had not shut a door yet.
+
+Each of those four keeps its answer and gets a second version for the
+other case — same character, same subject, said unprompted instead of
+in reply:
+
+> **cued** Thank you. Nobody has done that since March.
+> **not cued** There is a key in the middle of my back and nobody has
+> turned it since March. I am not asking you for anything. I am telling
+> you where it is.
+
+No test is needed to choose between them. A cue marks the line said the
+instant it fires, so any line still unsaid at its deadline is by
+definition one she never prompted, and the deadline path is the one
+that says `elseT`. Both sentences are once-ever and marking either marks
+the other, so she never gets both.
+
+**2. Not being able to understand him — and I caused it last session.**
+It is not the tape. At `VOX_ROOM = 0.34` the band closes to 12kHz and
+the saturator runs at 1.27, neither of which costs a consonant. It is
+that the score ducks only 2.4dB under his voice (`VOICE_BED = 0.76`),
+which was the right number when the voice bus was at unity — and last
+session I took `VOX_BUS` to 0.70 to stop him sitting on top of the shop
+and did not move the duck to match. Measured on a bench render
+afterwards: his peak −20.7dB, the score he is talking over −20.2. He
+was underneath it.
+
+`VOICE_BED` is 0.55 now and `VOX_BUS` is 0.82. Net against the build
+this replaces he is four and a half decibels further in front; net
+against the build that chose 0.76 in the first place, one decibel. The
+line through a shut door had its lowpass at 700Hz, which takes every
+consonant off it — 1100Hz now, which keeps the muffle and hands back
+the fricatives, because the door is meant to cost her two thirds of the
+words and not all of them.
+
+And the other half of "cheap, and half of it has no meaning" is simply
+true when you read the six tapes end to end. Eighty-five lines became
+sixty. What went was the throat-clearing — "You are better at this than
+I was. I mean that", "You have probably worked out the pattern by now",
+"I am telling you this badly" — the lines that delayed a revelation the
+next line then gave, and four separate goodbyes: the night-six tape
+signed off, then the last hour signed off over a picture of his bench,
+then the finale card, then the last page. He gets one now, the one with
+the film under it.
+
+**3. No purpose.** He does set a goal in the first ninety seconds and
+the line under the clock restates it every hour; what was missing is
+anything that ACCUMULATED between them. She finished a night, read a
+card, and started another night that looked the same. The ledger — six
+marks, kept or burned or still out there — existed only on the six
+o'clock card and the title screen. It is on the card she reads on the
+way in now, with how many nights are left over it, and it opens the
+same drawer, so she can read back anything she kept before she goes in.
+Not on the first night: a progress bar at zero is worse than none.
+
+**4. The scenario that never happened — found, and it was a one-line
+bug.** It is `stageTheTurn`: at two in the morning on the last night a
+parcel is walked to the office door on rails and the nearest wound one
+of his takes it, which is the beat the whole chapter is built to
+arrive at. It was gated `if (STAGED.done || seenSave())`, and
+`seenSave` is a localStorage flag set the first time she is ever saved
+by one of his, on any night, in any run, for ever. It exists to stop
+the explanatory card appearing twice. What it actually did was cancel
+the whole set piece: a player saved once by accident on an early night
+— the exact fluke this scene exists to replace — had the last night's
+centrepiece silently deleted. The parcel is walked either way now;
+`seenSave` still decides whether the CARD comes up, which is all it was
+ever for.
+
+Measured both ways with the flag clear and with it already set, on the
+last night with the four wound: **intercept HAPPENED / card shown**, and
+**intercept HAPPENED / card not shown**. The last hour was never broken
+— five o'clock on the last night reaches `finale` — so of the two
+things he thought were missing, one was and one was not.
+
+**Also changed, because three nights broke them:** the parcel count is
+off the night number (one, two, all three) rather than `from + 1` with
+a floor of two, which over three nights would have given the last night
+fewer of them than the old night four. `armedFind` handles two pages on
+a night and `closeFind` puts the second one out once she has pocketed
+the first. `handOverMissed` hands over BOTH of the two that cannot be
+missed, since the ledger and the last page are on the same night now.
+`MIDNIGHT[n].breaks` is a list, because night two loses the workshop
+camera and the hall in the same fifteen seconds and with one slot the
+second was already broken while the annunciator announced it. Every
+workshop oddment moved to night one, because camera eight is dead from
+night two and two of them were hidden in a room that cannot be looked
+at. `DESK_FROM` is 2.
+
+**Two knocks a night, and the rest through the tape.** The thing the
+compression actually broke, which no amount of shuffling deadlines
+fixed: every line one of the four says to her comes to a door and
+knocks first, and there are thirteen of those — eight gated lines and
+five answers to what she did with his things. Over six nights that is
+about two a night. Over three it is four and a half, and a knock is
+not a line; it is a knock, an ask, the time she is given to decide,
+and then either the doorway or the shutter. Call it half a minute.
+`scriptcheck` reported it twice in the same run as "arrived night two,
+due night one" before I understood what I was looking at.
+
+So the ask is rationed rather than rewritten. The first two of a night
+knock; anything after that arrives in the same voice through the tape,
+the way his own lines do. She still pays the door for the first two,
+every night, and nothing is lost. It also reads better on the last
+night, where they have stopped asking to be let in anyway — the tape
+IS them by then, talking over her head and then to her directly — and
+a knock in the middle of that is the one of them who has not noticed
+the others have stopped.
+
+**Every night now has an hour in it where he says nothing.** That is
+not pacing taste, it is a requirement: everything reactive in this
+chapter waits for quiet, so a night with no quiet in it is a night
+where the reactive things never happen. The first time round I packed
+the tapes to sixteen lines a night and `overcheck` caught it
+immediately — night one's second conversation got three of its seven
+lines away before six o'clock. Thirteen, thirteen and seven, with a
+deliberate hole in the back half of each.
+
+**Measured afterwards, so the curve is not a guess.** `nightbudget`,
+an attentive guard playing each night twice — a door shut only while
+something is actually at it:
+
+| | at six | meter spent per hour |
+|---|---|---|
+| night one | 42% and 49% left | ~9% |
+| night two | 18% and 14% left | ~14% |
+| night three | reaches the film at five with 23% and 33% left | ~14.4% |
+
+Monotone, and the tightest night in the chapter is the middle one at
+14% in hand — which is slightly kinder than the old night six, which
+landed at nine. `nightcertain`: all four turn up on every night, ten
+runs each, nobody died. `nightbeats`: every beat the story promises
+reaches her, every time, on all three.
+
+---
+
+**Then he asked for the compacted script to be read end to end and made
+whole, and that read found the thing that actually breaks the ending.**
+
+**The last twenty minutes contradicted themselves.** At five o'clock on
+the last night the film destroys all four of them — the owl goes up
+into the ceiling with six of them holding on to it, the ballerina
+dances at four hundred of them and buys eleven seconds, the soldier
+walks the length of the room to a door that is not his and does not
+stop, and Jax puts the floor back over her head and detonates. It ends
+on four empty places, a burnt office and her saying his name into it.
+
+Forty seconds later the card said:
+
+> Out on the shop floor the four of them are walking back to their
+> places. The soldier to his plinth, the owl up into the rafters, the
+> ballerina under her glass, the jester folding himself back into his
+> box.
+
+and then asked her: *WIND THEM* or *LEAVE THEM*, over "there is a
+winding key on the counter, and four things standing very still in a
+shop that is hers now." All of that was written before the last hour
+existed and nothing had gone back to it. It is not a continuity slip,
+it is the ending of the chapter telling her the thing she just watched
+did not happen — and all five of the six-things endings were written
+for the same surviving four ("she will wind them every night for the
+rest of her life", "the four of them wind down where they stand").
+
+So the morning card says what is actually in the building at six — an
+empty plinth, an empty ledge, a glass dome with nothing under it, a box
+with the lid up, a hole in the office floor with the board leaning
+against the desk where she pushed it up from underneath — and it pays
+the debt the terms opened with, which nothing ever had: *he asked for
+three nights and said that afterwards she would have everything. She
+has it. It was under the chair she had been sitting on all week.*
+
+**And the last decision is now one that can happen.** It has been under
+a dust sheet since the second hour of the last night: he never finished
+the fifth one, the tag wired to its wrist says FOR HER TO WIND, WHEN
+SHE IS READY, and there is nobody left in the back room. **FINISH THE
+FIFTH ONE** or **LEAVE IT UNDER THE SHEET**. It uses two pages the
+chapter already guarantees her — the fifth one, and the folding chair
+he set out the week he took the lease and never once folded up, with
+her own chipped mug on the arm of it — so the ending is her carrying
+that chair through to his bench and sitting in it, or covering the
+thing up and squaring the corners. The film's own first line turns out
+to have set it up: *he had one rule about that bench, nothing left
+half-made overnight, and he broke it four times in fifteen years.* The
+fifth time he ran out of time.
+
+**Other things the read found, all of them compression damage:**
+
+- **A parcel arrived on night one with nothing to introduce it.** The
+  card that introduces the returners is the one she reads on her way in
+  to the SECOND night — a parcel on the step, no stamp, no name, opened
+  from the inside. Putting one in the hall on the night he spends
+  saying nothing in this shop wants to hurt you is the chapter's one
+  genuinely frightening thing arriving with nobody to say what it is.
+  None on the first, two on the second, three on the last.
+- **"I used to sit in that chair until four in the morning telling
+  myself I was working"** was cut from night one when I trimmed the
+  tapes, and it is the line Chime and Jax are quoting on the last
+  night. The echo was standing there with nothing behind it. It is back,
+  folded into night two's opening line, where he is sitting in the same
+  chair she is.
+- **The last night's hour lines pointed at beats that had already
+  happened** — "folded under the comb of the music box, the last thing
+  he wrote", an hour after that card came up — and nothing anywhere
+  pointed at the drawing, which is the revelation the whole night turns
+  on. Reordered, and the drawing now lands five minutes before the
+  instruction it is the picture for.
+- **The save card called whoever saved her "he"**, and `guardFor` hands
+  it the ballerina as readily as the soldier. The name goes into the
+  body of the card now, which is better than a pronoun would have been.
+- **"Cogsworth sets herself by it"** — he is a soldier and is "he"
+  everywhere else in two hundred lines.
+- **Monday meant two things in the same film**: Cogsworth had held the
+  west door "since Monday" and then offered four hundred of them a
+  winding "at nine on Monday morning". He has held it since Thursday.
+- **"One more week"** for three nights, in the terms.
+- **Winding was never named in an hourly line**, across three nights,
+  and it is the only thing she can do FOR one of them.
+
+**The voice.** Sixty-odd of his lines were rewritten, so the render was
+run from here — **Actions → Anwar's voice**, mode `full`, on
+`site-with-night-shift` — and it committed 250 takes back to the
+branch. `linecheck` went green on them. The read-through then changed
+four more lines (`terms-6`, `tape2-01`, `when-odd-clock`, `last-17`),
+so it was run once more. If any line is ever edited again, that is the
+Action to click and `linecheck` is the check that says whether it is
+needed.
+
+**Green at the end of it, with the takes in place:** storycheck 117,
+scriptcheck 26, overcheck 25, midcheck 38, linecheck 5, oncecheck 4,
+taskcheck 8, revealcheck 7, saycheck 20, nightskip 30, nightaudio 21,
+cuecheck 5, castcheck 9. `nightbeats` says every beat the story
+promises reaches her every time on all three nights; `nightcertain`
+says all four turn up on every night, ten runs each, nobody died.
+`kindcheck` times out in this container and is the platformer, not
+this chapter. Cache at v325.
+
+**The one judgement call left for him**, written down because it is a
+taste question and not a bug: the last night carries two keep-or-burn
+cards, the staged save, three of the four answering what she did on
+the nights before, and then the film. It measures fine and it reads
+well on the page, but it is the fullest night in the chapter. If it
+feels crowded to play, the letter at five past three is the piece to
+move onto the six o'clock card — it is the only one of the six whose
+answer is the ending rather than one of the four.
+
+### 2026-09-26c — three things to make it less boring, and what testing them cost
+
+**Asked for:** he asked whether the game needed anything else to be
+less boring, and then picked three of the four suggestions: more to
+find, an office to look at, and a reason to hold a camera rather than
+glance at one. He did not pick the fourth — a verb for answering the
+four when they speak to her — which was the right call and the one I
+was least sure of.
+
+**The reading that produced the suggestions**, because the numbers are
+worth keeping: a night is 336 seconds and carries about fourteen of
+his tape lines, call it two and a half minutes of voice in five and a
+half minutes of shift. The other three minutes have exactly one verb
+in them, winding, and that is only available when something happens to
+need it. There is one findable thing a night, in one fixed room. And
+`nightbudget` says an attentive guard spends 68 seconds on the monitor
+across a whole night, so the most detailed thing in the chapter is
+barely looked at, because looking costs meter and tells her something
+she can mostly get by ear.
+
+**1. Twelve things lying about the shop.** A mug with tea in it from a
+Tuesday, a radio that only gets one station and only after dark, one
+glove — "there has only ever been one glove, I have looked" — a tin of
+ten-pence pieces for machines that stopped taking real money in 1991,
+a drawing a girl did at a party that her mother made her apologise
+for, his boots kept at the shop so he never walked the workshop into
+her hallway, a clock four minutes fast that Cogsworth sets herself by
+so it is now the correct time, a jar of unsorted screws, and the fifth
+one he never finished.
+
+They are deliberately not pages. A page stops the shop, is a decision,
+and the ending is computed out of the six of them. An oddment is one
+sentence, does not stop the night, and touches nothing — the reason
+they exist is to fill the minutes when nothing is happening, and a
+thing that stops the game cannot fill the time in it. Weighted to
+nights one and two and to the hall, arcade and ducts, the three rooms
+no page is ever hidden in.
+
+**2. Four things in the office.** Her photograph on the corkboard,
+which has had somebody's on it since the shop opened and never twice
+the same person. The window onto a car park that looks out on nothing.
+The filing cabinet whose bottom drawer has not opened since the key
+went missing in about 2004. And the duct grate: "the only way into
+this room that I did not put a door on. I have thought about it a
+great deal this year." Offered only while the monitor is DOWN, so that
+sitting with the tube off — the one thing the power budget rewards and
+the one thing that never had anything in it — finally does.
+
+**3. All four of them answer being looked at.** This one turned out
+not to need inventing. Holding a camera on one of the four for six
+seconds is already a trigger and has been for versions; it paid out
+twice in six nights, and which line came back was chosen by the NIGHT
+rather than by who was on the tube, so a player holding the camera on
+Jax could be answered by the soldier in the next room. Each answers
+for itself now, and the two who never had anything to say have it.
+A thin ring fills beside whoever she is holding it on, because six
+seconds is a long time to hold a tube on something for no stated
+reason and nothing ever said that holding did anything at all.
+
+**Three faults came out of testing these, and two of them predate
+today.**
+
+*The dwell was counted in frames, not seconds.* The frame loop clamps
+`dt` to a tenth so a backgrounded tab cannot skip a night, and
+`uiTick` is handed that clamped value — so at sixty frames a second
+six seconds is six seconds, and at one it is sixty. The reward for
+being patient got slower the weaker the device was. The twenty seconds
+of stillness matters more: counted that way it wants two hundred
+frames, closer to five minutes of sitting perfectly still on a
+labouring phone, which made the brass-plate payoff — the answer to the
+best setup in the chapter — the beat a weak device was least likely to
+ever show her. Both are on the wall clock now, and this affected the
+shipped `theySeen` and `theyWatched` exactly as much as the new lines.
+
+*The dwell talked over the overheard conversations.* Everything in
+this building yields to two of them gossiping; `tapeTick` has an
+explicit `if (OVER.on) return`. The dwell did not, and the two meet in
+the least exotic situation there is — she parks the camera on the room
+the exchange is in because the exchange is in it, which is also how
+you hold a camera on one of them for six seconds. Night two lost two
+of its four lines. Caught by `overcheck`, not by reading.
+
+*And a sort three rooms away moved three of the six pages.*
+`findSpot` gained a sort by distance from frame centre, to help the
+clutter spread out. It also reordered the page's candidates: Chime's
+page went from y 1.38 to 1.03, while its card goes on saying it was
+found "on the ledge over the front door". The placement is procedural
+and the prose is not, and they had been quietly agreeing. The sort
+applies only to the clutter now, and the six pages were measured back
+to their original positions to the centimetre.
+
+Worth recording that `by: [2, 4]` is a night and an hour, not a range.
+Reading it as a range put Marabelle's deadline in the same slot as
+`theyWound` — two guaranteed lines in one hour — which `storycheck`
+caught, and then at two o'clock on night two, which is when that
+exchange starts, which only `overcheck` could catch.
+
+**Green:** oddcheck 10, lookcheck 7, watchcheck 6, overcheck 42,
+midcheck 67, saycheck 20, revealcheck 7, geomcheck 12, storycheck 113,
+codecheck 7, castcheck 9, oncecheck 4, linecheck 4. Cache at v323.
+
+`geomcheck` is the one that mattered most in that list — it is the
+ruler the whole "nothing stands inside the furniture" answer rests on,
+and `findSpots` changed the code that puts things on surfaces.
+
+**The eighteen lines have no takes yet**, and `linecheck` and
+`storycheck` both say so. That is the guard working: running the
+**Anwar's voice** workflow in `full` mode renders them with everything
+else. Until then they come out of the browser's own speech engine, in
+the wrong voice, or not at all.
+
+**NEXT:** unchanged — the nine `sidebyside` failures in the other four
+chapters, which are not in the night shift and need his say-so, and
+`scriptcheck`'s playing half, which this container will not finish.
+
+### 2026-09-26b — playing it wrong on purpose, and the subtitle that left before he arrived
+
+**Asked for:** four things, in his words — stop following the script
+and open the door when something is there, play as somebody who has
+never seen it; delete cozy mode, "cuz i find it dumb"; find any lag or
+glitch between a line being read and the same line being written under
+it; and find out whether the toys ever merge with the furniture while
+they move.
+
+**Cozy mode is gone.** `TUNE.cozy`, `NS.sys.cozy`, `G.cozy`, `cozyK()`
+and its eleven call sites, `COZY_KEY`/`loadCozy`/`saveCozy`, the title
+button, the `route("cozy")` branch, and the CSS. Two of the collapses
+were not mechanical: the alarm spacing lost a `cozyK("alarms")` divisor
+that could only ever be 1 once the dial was gone, and `scare()` lost
+its soft branch entirely, so there is now one scare and it is the loud
+one. `nightplay` and `proportion` lost their references too.
+
+**1. Hammering the pad blew straight past the death card.** `onKey`
+maps Enter and space to "press the card's main button" whenever the
+phase is not `play`. That is the only way through this chapter without
+a mouse and it has to stay. Space is also the monitor key. So a player
+doing the most ordinary thing there is — flicking the cameras up and
+down with the space bar because something is coming — is still
+mid-flick when it reaches her, and the press already on its way
+dismisses the card that says WHO reached her, and cuts off his line
+about it with the card.
+
+A card is deaf for its first 1.2 seconds now. The number is not a feel:
+`screenOver` schedules that line 950ms after the card appears, and
+`route()` takes the voice with it, so a card dismissible before then
+costs her the line as well as the name. The pointer is not guarded — a
+click has to land on the button, and the buttons are nowhere near the
+pad.
+
+**2. A short caption could leave before its recording arrived.**
+`speakT` is the written line's own reading time, `plan.dur + 1.1`, and
+it starts running the moment the caption goes up. `voxSpeak` on a cold
+load does not start the sound then: it holds the line for up to three
+and a half seconds while it finds out whether there is a take, which is
+the whole reason his voice survives a first visit. Nothing connected
+the two. Four words is about 1.4s of reading plus 1.1s of tail against
+a 3.5s wait — so the caption served its whole reading time during the
+wait, hid itself, and the take landed on an empty screen. Most of the
+four's lines are short.
+
+**3. And the opening film defeated the fix it was given.** `cineSpeak`
+set `CINE.lineT0 = perf()` on the line *after* `voxSpeak`, so the hold
+was overwritten the instant it was applied. Worse, `lineDone` advances
+the film 0.35s after `lineT0` when a speech engine exists, so on a cold
+load the caption could be a whole line ahead of the voice. The tape and
+the terms both set their clock before the call; this was the one that
+did not.
+
+**What the fix for 2 and 3 turned into, which is the part worth
+reading.** The first shape was a long hold: freeze the caption's
+reading clock while the take is in the air, for up to 7.5 seconds.
+That broke something 200 lines away. `overcheck` went from 42 to 41 —
+"night 2, never on that camera: she still hears all of it, 2 of 4".
+
+It was settled with an A/B rather than another guess: the pre-session
+chapter run against the *current* harness, so the chapter was the only
+variable, gives 42. `tools/_whystuck.js` printed the state per
+game-second and found `held=true` for fifty-six of them, never
+released. `overTick` reads `TAPE.up` as "he is speaking", night two's
+exchange starts 24 seconds into the two o'clock hour and finishes about
+nine seconds before the three o'clock reveal cuts it off, and 7.5
+seconds of hold on each of four lines took two of them away.
+
+So the hold was the wrong shape. What has to be true is that *he is
+never heard over an empty screen*, and a hold cannot promise that,
+because a hold has to end: any deadline short enough not to leave a
+caption stuck is one a slow take can outlast. `tapeRevive` promises it
+instead, at the one moment where it costs nothing — if the sound is
+starting and the line starting is the line the tape last had up, the
+tape gets it back. `TAPE.plan`, `TAPE.who` and `TAPE.through` all
+survive `tapeHide`, so that is the same caption returning rather than a
+new one appearing. Which lets the hold be 1.5s, a blink guard, and
+`overcheck` is 42 again.
+
+One bug was written and caught on the way: `voxHold` parks `t0` a
+million seconds ahead so no word is ever due while the take is in the
+air, and when the hold expired by *deadline* rather than by
+`voxAligned`, nothing put that clock back — the line would have served
+its whole reading time with every word dark and then hidden. Worse than
+the fault the hold was for. The clock is handed back when the handle
+trips.
+
+**The toys do not merge with the furniture, and that is a measured
+answer rather than a shrug.** `tools/standcheck.js` samples every awake
+figure twice an in-game second across all six nights, doors held and
+power pinned so nothing ends early, measured against geomcheck's own
+ruler — the torso band from `y+0.20` to `y+0.90`, a 0.34 by 0.34
+footprint, and `DEEP = 0.12` to tell a graze from standing inside
+something. 21,086 samples, no failures.
+
+It is worth writing down WHY, because the answer is structural and it
+means this cannot regress by accident: movement in this chapter is
+discrete. `stepCast` advances `ch.step` and `syncChar` snaps the group
+to that step's anchor through `putChar`. Nothing interpolates between
+two anchors, so there is no moment at which a figure is between the
+table and the doorway — it is at one hand-placed spot or the next. The
+only way into furniture is a bad anchor, and every anchor in the shop
+is already covered by geomcheck.
+
+Two candidate faults were chased and both were mine. `freeSpotIn` hands
+a crowded arrival a spare `s[0-9]` anchor with no furniture test, and
+in the office `s0`/`s1`/`s2` sit on the two doors and the hatch — but
+`isDoorSpot` matches those by coordinate before `freeSpotIn` is ever
+consulted, so the path is unreachable. The "fix" for it filtered spare
+spots to `y < 0.5`, which would have banned the stage's display plinths
+(`s0` at 1.44, `s1` at 0.88) and broken placements that are correct
+today. Reverted, and recorded in the commit message so nobody tries it
+again. The second was an apparent 8cm float on `stage.s1`; rendered,
+and the soldier's boots are on the deck.
+
+The one placement standcheck does not cover is the scare pose, which is
+deliberately off-anchor: `kill()` puts the figure 0.92m straight down
+the lens with its eyes at camera height. It is not sampled because it
+is not a position the walk can produce.
+
+**Three harness faults cost more time than any of the bugs, and all
+three are the same fault: this container is slow enough to lie to a
+test.**
+
+- *A press "the instant the card appears" was a second late.* At 0.7
+  frames a second a `setTimeout(200)` comes back a second and a half
+  later, so `misbehave` pressed long after `CARD_DEAF` had expired and
+  reported the guard doing nothing. It presses from a `MutationObserver`
+  on the overlay now, which runs as a microtask off the same
+  `innerHTML` write — the real shape of the fault, a hand already in
+  motion. Measured: 24 keys 0.014s after the card, phase still `over`.
+- *"2.4s into the line, 4 of 4 words written"* was a true description
+  of when the probe next got a turn and said nothing about when he
+  started. `voxAligned` writes down what the screen said before it
+  moves the clock; that is the only honest place to take it.
+- *Every boot wait was silently capped at 30 seconds.* Playwright's
+  `waitForFunction` takes `(fn, arg, options)`, and passing options
+  second puts them in the argument slot. A stated 180000 died at 30000.
+
+**One more fault came out of measuring the fix.** `synccheck`
+reported `litAtStart: 5 of 5, heldAtStart: false` — the 1.5s hold had
+expired, the line had begun reading on its own clock, and `voxAligned`
+then re-zeroed. On the silent path that costs nothing. On the tape
+path it means a take arriving after the hold darkens words she has
+already read and lights them again — the same objection, in miniature,
+and it is the ordinary case on a slow connection, which is the case
+the hold exists for. So the word test only ever turns a word ON. The
+clock under it may still move backwards, because that re-zero is what
+keeps a recording and its subtitle together; it just may not cost her
+anything to look at. Every line is drawn fresh by `tapeDraw`, so the
+next one starts dark whatever this one ended as.
+
+**And the tape path can now be asked about at all.** Every run of
+`synccheck` waits for a dropped take to come back and none ever does
+inside `voiceWait`'s 2.6 seconds here, so the two assertions that
+matter most about a recording went unasked every time — correctly
+reported as not claimed rather than passed. `voxAlignNow` is the hook
+`voxSpeak` itself calls the instant `voicePlay` starts, so calling it
+by hand is the arrival: same function, same turn, same state. It does
+not prove audio reached the speakers, and the output keeps the two
+apart. Measured: 9 words written before the sound started, 9 after,
+then 9 of 28 to all 28 as the voice carried on.
+
+**Green after all of it:** misbehave 2, synccheck 6, overcheck 42,
+midcheck 67, saycheck 20, revealcheck 7, voicecold 4, newplayer 5,
+standcheck 21,086 samples. Cache at v322.
+
+`voicecold` is worth a note for whoever runs these next. It failed
+twice at "169 of 270 takes in memory" and "179 of 270", which looked
+like a regression and is not one: it waits 60 seconds for all 270
+takes to fetch and decode four at a time on the main thread, and this
+container cannot always do it. Settled the same way as `overcheck` —
+the pre-session chapter against the current harness — and then twice
+more on the current chapter with the machine idle: 4 of 4 every time,
+43 takes in memory, identical either side. The comment above its own
+wait already records this happening once before.
+
+**NEXT:** unchanged and still his call — the nine `sidebyside` failures
+in gate, hub, keepsake and apocalypse at landscape-phone sizes, which
+are not in the night shift, and `scriptcheck`'s playing half, which
+this container will not finish.
+
+### 2026-09-26 — the week played through, and three things only playing could find
+
+**Asked for:** the same thing again, in his words — play Ouissy's Night
+Shift in its branch, every button, every placement, every line, every
+sound, as a visitor and not only as code, and fix whatever is wrong.
+
+**What made this session different from the last one** is that the
+nights were actually played. The previous pass analysed the chapter and
+fixed ten things; it never got a shift from midnight to six. Three
+faults came out of doing that, and none of them were findable by
+reading.
+
+**1. The opening film's SKIP could not be seen.** A minute of his
+statement plays before anyone touches anything, and the way out of it
+was invisible. `.ns-cine::after` is the bottom letterbox bar and, being
+an `::after`, it paints after every child of `.ns-cine`; the button sits
+at `bottom:3.4%` and the bar is an opaque 11%. On a laptop the bar is 57
+pixels and the button 44, so it was swallowed whole; on a phone it took
+the bottom half. The button was in the DOM on every beat, faded in on
+cue, and answered a click the entire time. The terms card gave it away:
+same class, plainly visible, because it mounts in the overlay where
+there is no bar. Fixed with `z-index:2`.
+
+`nightskip.js` is the suite that should have caught it and asserted
+nothing at all — it called `elementFromPoint` on the button's middle,
+printed "a finger there lands on: ns-cine", and moved on. Playwright's
+`isVisible()` said true throughout, because to it a box without
+`display:none` is visible. It judges now, at three shapes: 30 checks.
+
+**2. The hour turned through the middle of what Chime was saying.** At
+two o'clock on night one, "HOUR ZERO TWO." printed in its own dark plate
+across the words "and she was sitting". Both captions in the same
+pixels, neither readable. The strip and the tape had fixed offsets,
+which is fine while the tape is one line of his and wrong the moment it
+is three — a name, a line, and THROUGH THE DOOR — which is most of what
+it is once the four of them start talking. The objection was already
+written into the code four lines above, about orientation: two boxes of
+words stacked on each other read as a bug. It had never been applied to
+his tape. `sayClear2()` measures the caption and hands CSS the lift as
+`--ns-say-lift`; a caption that has not changed costs one integer
+compare. Measured after: laptop lifts 50px, the two phone shapes need
+none and get none.
+
+**3. Night one promised something it does not do.** Its line at midnight
+was "Learn where things are. Nothing in here wants to hurt you yet."
+Its roster is `{ cogsworth: 0, marabelle: 2, jax: 4 }` — one of them
+walking from the moment the clock starts, three by four o'clock,
+including the one with the shortest patience at a door. Played cold,
+taking that line at its word, the first night was lost five times.
+Midnight now says one of them is already up, and a new four o'clock line
+says the thing a new player cannot know: that Jax does not wait. His own
+tape at 2:48 still says "Nothing in this shop wants to hurt you. I want
+to say that on the first night, while it is still true" — that one
+stays. The shop's readout tells her the truth and he tells her a
+comforting half-truth, which is better than either alone.
+
+**What the playing said about the game itself.** Nights one to four were
+survived first time each once the driver stopped playing badly. The
+end-of-night card reads the play rather than reporting it — STEADY on
+one and two, RATTLED ("it got close, twice") on three. The keeper card,
+when one of his gets to the door first, is the best writing in the
+chapter and wanted nothing. Two things that looked like faults were the
+game being right, and both are worth keeping in mind: Marabelle's death
+card says "do not take your eyes off me" while night two's tape at 2:10
+says "Do not look at her all night, though. You will lose the meter and
+she will still be there" — obeying either alone loses the night, and
+both halves are written where a player meets them. And night five's
+instruction to wind all four is not decoration: a run that stopped
+winding to save meter blacked out at five.
+
+**Four faults that were the harness, not the shop**, all of which read
+like game bugs until they were chased down, and worth recording so the
+next session does not chase them again:
+
+- The pad debounces every button at 320ms so one tap cannot count
+  twice. The driver's ticks are 94ms apart, so it spent the window on
+  futile repeats and lost the press that mattered. Five night-one
+  deaths. A direct probe cleared the shop first: with the monitor up one
+  pointerdown shuts the door, an immediate second press is swallowed,
+  one 340ms later is honoured.
+- The driver excluded talking toys from "at the door". A toy that speaks
+  while standing at one stopped counting, the driver opened the door on
+  it, and `toggleDoor` gives "a moment, and only a moment" — 1.3
+  seconds, shorter than a tick. Six night-five deaths and four on six.
+  The shop never lied: its edge glow uses `ch.awake && ch.atDoor` with
+  no such exclusion, so the amber stays lit and a watching player holds
+  the door.
+- Parking the camera on Marabelle all night, which is half of what the
+  game tells her, ran the reserve to nothing.
+- `saycheck`'s own new rule failed twice before it was right: it
+  announced once and slept past the strip's `captionT`, and it cleared
+  localStorage so orientation was running, and the annunciator is
+  suppressed during orientation on purpose.
+
+**Also:** `introshot` now asks the second half of its question. Nine
+rays through the middle answer "is the lens buried"; they do not answer
+the foyer beat's large pale slab in the corner, which playing raised. A
+9x9 grid over the whole frame and a 42% ceiling on how much of it may be
+within arm's reach: the foyer is 28% at its worst and the other six are
+11% or less, so the slab is foreground framing and not a wall the camera
+backed into. 14 checks.
+
+**The driver.** This container draws the shop at 0.7 frames a second and
+the frame loop clamps dt to a tenth, so the game's clock runs at a
+fifth to a fourteenth of real time and six nights take most of a day —
+which is why every earlier attempt at a full playthrough was killed.
+`_nightplay4.js` moves the whole tick inside the page, keeps every
+control a real pointer event, and carries only the clock, in
+thirtieth-of-a-second slices of the same playStep the loop runs. A
+chunk of twenty ticks costs about 1.8 seconds. `FROM=n` starts at a
+chosen night for looking at one night's shape.
+
+**And the difficulty curve is right, which is the thing the deaths kept
+raising.** `nightbudget.js` exists for exactly this question — it plays
+each night as an attentive guard would, a door shut only while
+something is at it and the monitor up about a fifth of the time, and
+prints where the meter lands:
+
+```
+night 1   50.6% / 46.7%    comfortable
+night 2   42.5%
+night 3   28%
+night 4   17.9%
+night 5   10.4%            on fumes
+night 6   34.7% / 29%      hands to the finale at hour five
+```
+
+Monotonic from fifty down to ten across one to five, which is what its
+own comment says it must be: "Night one should finish comfortable and
+night six on fumes; if that curve is not monotonic, TUNE.power is
+wrong." It is not wrong. Every night is survivable with a real margin.
+The driver's deaths on three and five were the driver: the budget tool
+spends 68 seconds a night on the monitor and the driver was parking it
+on Marabelle for hours.
+
+**Green, after the changes:** codecheck 7, linecheck 5, storycheck 114,
+oncecheck 4, castcheck 9, nightbeats, midcheck 67, overcheck 42,
+revealcheck 7, camcheck 13, geomcheck 12, saycheck 20, nightskip 30,
+introshot 14, cardshots 22, endcheck 47, and nightbudget's curve.
+Cache at v321. cardshots is the one that matters for the stylesheet
+change — every card the chapter can put up still fits its screen and
+every button on it is still reachable — and endcheck is the one that
+matters most of all, because the last hour is the ending of the whole
+gift: all eighty-nine shots played, each given the time it was written
+for, the camera moving in every one, whoever is speaking in frame and
+near enough to be the subject of their own shot, and nothing standing
+between the lens and them.
+
+`scriptcheck` is the one that did not finish: its static half passed
+(131 distinct lines, his tapes in page order, every signed line one of
+the four) but it plays nights one to five three times over and the
+container will not do that inside fifteen minutes any more. The change
+it would have been watching is the new `h: 4` line in night one's
+`tonight` list, and `taskFor` simply walks that list and takes the last
+entry whose hour has come, so a fourth entry in ascending order cannot
+change its behaviour — and storycheck reads the whole script and is
+green. Worth running somewhere faster.
+
+**NEXT:** the nine `sidebyside` failures in the other four chapters —
+gate, hub, keepsake and apocalypse at landscape-phone sizes. That is
+the oldest open thing here and it is not in the night shift, so it
+needs his say-so first: his last scope correction was "No im only
+talking about the ouissy's night shift game."
+
+A full six nights in one unbroken sitting is still not done — one to
+four have each been survived and their cards read, five and six only in
+pieces — but it is no longer answering an open question about the
+chapter, only about the driver. Worth having, not urgent.
+
+The thing standing in the way of it is narrower now but not gone. The
+driver parked the monitor on Marabelle for whole hours, where
+nightbudget's attentive guard spends 68 seconds on it across the
+night, and that is why it kept arriving at five with nothing left. It
+glances instead now — four ticks on her, eight with the monitor down —
+which still obeys both halves of what the game tells her.
+
+Run on night five, the hardest one, it helped and did not finish: 82%
+at one o'clock where the stare left it 78%, 48% at the reveal against
+40%, and still 2% by four, blacked out at five with Jax at the door.
+So the driver is closer and still costlier than an attentive guard,
+and the remaining waste is the doors — it shuts on everything that
+arrives and holds until it leaves, where nightbudget holds 116 seconds
+across a whole night. That is the next thing to narrow for anyone who
+wants the unbroken week. None of it is a question about the chapter:
+nightbudget already shows night five finishing at 10.4% played well.
+
+### 2026-09-25 — the night shift, played cold and taken apart
+
+**Asked for:** play the night shift in its branch and analyse everything
+about it — every button, every placement, every line, every sound, the
+process of it — not just by reading the code but as a new player
+visiting the site. Find whatever is wrong or missing, fix it, and make
+it feel like a film rather than a chore.
+
+**First, where it lives.** Not on main. The chapter was taken off main
+on 19 Sept at his own request and the whole site WITH it lives on
+`site-with-night-shift` — 20,210 lines of `night-shift.js` and 278
+voice takes that main does not have. Anything fixed here goes there.
+Merging main back is NOT the way to carry a fix across: main is this
+branch minus the game, so the merge arrives carrying a deletion of the
+chapter. It was tried, it conflicted exactly that way, and it was
+abandoned for a surgical swap of the one `<script>` that needed moving.
+
+**TEN FAULTS. The big one first.**
+
+**EVERY SHOT OF THE OPENING FILM STARTED INSIDE A WALL.** Seven beats,
+ninety seconds, the first thing a new player sees. Measured with the
+new `tools/introshot.js`, which walks each camera move and fires nine
+rays through the middle of the frame: at the start of the push-in the
+nearest geometry was **two centimetres** from the lens on the foyer,
+the workshop and the party room, and **zero** on the hall and the
+arcade. The camera began outside the room's shell, in the geometry, and
+emerged a third of the way through. The stage flew through something at
+38% of its move and the office at 75%. What that looks like when you
+play it is a shot that opens on a black shape and then clears, seven
+times in a row. The party room's was a dome across the middle of the
+frame, which is what a prop looks like from the inside — that is what
+sent me looking, in a screenshot, under the line "There are four in the
+back room that I never sold."
+
+Every LOOK is untouched; the framing was his. Only the start and end of
+each move changed, by the smallest amount that clears the room, and
+every one still travels 0.9 to 3.9 metres so none became a still. The
+office needed a shape rather than a nudge: pulled inside its back wall
+it had 0.18m of travel left, so it is a dolly and crane now.
+
+**THE MENU WAS 23-PIXEL BUTTONS ON A PHONE.** Measured at 390x844: every
+button on the title card was 23–26px and the six night numbers were
+FIFTEEN, against the 44px this site holds every other control to. Two
+right decisions meeting badly — the stage is deliberately 52% of an
+upright phone so the door buttons sit under the picture rather than
+over the doorway, and the overlay is `inset:0` inside that stage. So a
+card wanting 400px was fitted into 219 and `fitCard` shrank it to
+`FIT_MIN`, 0.58. That floor is on READABILITY; nothing anywhere was a
+floor on being able to press the thing. While a card is up there is
+nothing to watch, so it gets the whole screen now — six hundred empty
+pixels became the card's, and nothing needs shrinking or scrolling.
+
+**And eight more:** the chapter's own name at 8.6px on a landscape
+phone (the one caption in the file with no pixel floor); the opening
+title with no plate, invisible against the lit foyer wall; four cards
+labelled `TITLE`, the developer's word, now `THE WEEK`; the location
+pill from the visitor tracker parked under his opening line and, on a
+phone, on top of the door buttons; the branch still carrying the old
+tracker that asks on every refresh; `HOW IT WORKS` telling her to wind
+the four and never once saying how — the chapter's central verb with no
+instructions; the chapter's name printed twice on the first portrait
+screen; and `introPose`, a hook I added, cancelling the frame loop and
+never giving it back.
+
+**THE INSTRUMENTS LIED THREE TIMES**, and each one would have let me
+say it was fine:
+
+- a probe that skipped anything invisible — which is all four of them
+  during the film — and so reported "clear" while looking at nothing;
+- a canvas read one frame after the draw, which on WebGL with no
+  preserved buffer returns black for every pixel, and reported a hole
+  in all seven shots at once;
+- `introPose` calling `showRoom` without `useView`. `showRoom` only
+  swaps which room is VISIBLE; the six-lamp rig that lights it is moved
+  by `useView`, right beside it in the frame loop. Posing without it
+  left every lamp in the room before, so the measurement said black
+  while the screenshots of that same film were plainly lit.
+
+And a fourth, after the fixes: `cardshots` asserted a card "fits inside
+the stage", which was fair until cards were deliberately let out of the
+stage — then it produced six failures that were the fix working. It
+measures against the window now.
+
+**TWO NEW TOOLS.** `tools/introshot.js` — the opening film, judged for
+depth rather than darkness, because a toy shop at night is legitimately
+half black and "how dark is this frame" flags all seven and proves
+nothing. `tools/cardshots.js` — every card in the chapter photographed
+and checked: the title, how it works, the record, the drawer, the
+mixer, the night card, the pause, the find, the page she decides about,
+the save, being caught. Half of those a careful player never reaches,
+which is why nobody had looked at them. 22/22 at laptop size and 22/22
+on a phone.
+
+**Three things that looked like faults and were not**, each settled by
+measurement rather than argument: CUSTOM NIGHT is not on the board until
+the week is done; night two is disabled until night one is finished;
+and the caught card takes twelve seconds to appear IN HERE because the
+frame loop clamps dt to 0.1s so a backgrounded tab cannot skip a night,
+and this container paints about one frame a second with a card up. On a
+phone holding 10fps it lands in the 1.15 seconds it was written for.
+Also the night buttons: 26px visible, but they carry an invisible 44px
+target under `@media (hover:none)` and were right all along.
+
+**Green:** storycheck 114, endcheck 47, overcheck 42, midcheck 67,
+scriptcheck 40 (three playthroughs), camcheck 13, geomcheck 12,
+saycheck 11, revealcheck 7, oncecheck 4, codecheck 7, linecheck 5,
+castcheck 9, enginecheck 3, seamcheck 34 clean seams, nightbeats, and
+cardshots 22 at both sizes. `sidebyside` has 9 failures and not one of
+them is in the night shift — they are the gate, the hub, the keepsake
+and the apocalypse at landscape-phone sizes, and they are the next
+thing to look at. `mainshape` wants a second server on port 8901.
+
+**NEXT:** those nine `sidebyside` failures in the other four chapters.
 
 ### 2026-09-19c — the gate lying down, the big screens, and the faults you have to read for
 

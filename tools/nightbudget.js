@@ -1,7 +1,7 @@
 /* The power budget, measured rather than guessed. Plays every night as
    an attentive guard would — a door shut only while something is
    actually at it, the monitor up a fifth of the time — and prints where
-   the meter lands. Night one should finish comfortable and night six on
+   the meter lands. Night one should finish comfortable and night three on
    fumes; if that curve is not monotonic, TUNE.power is wrong. */
 const { chromium } = require('playwright-core');
 (async () => {
@@ -17,7 +17,7 @@ const { chromium } = require('playwright-core');
   await p.evaluate(() => { try{localStorage.clear();}catch(e){} showScreen('nightshift'); return loadChapter('nightshift').then(() => OuissysNightShift.start()); });
   await p.waitForFunction(() => Object.keys(OuissysNightShift.__night.cast()).length >= 4, { timeout: 20000, polling: 200 });
   await p.evaluate(() => OuissysNightShift.__night.silence(true));
-  for (const night of [1,1,2,3,4,5,6,6]) {
+  for (const night of [1,1,2,2,3,3]) {
     const r = await p.evaluate((night) => {
       const w = OuissysNightShift.__night;
       w.route('night:' + night); w.route('go');
