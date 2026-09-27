@@ -24,7 +24,7 @@ const CHAPTERS = [
                                  '.rc-key-big','.rc-key-sm','.rc-pad-cluster','.rc-tag']],
   ['quest',  'hub-card-quest',  ['.hv-stage','.hv-chip','.hv-btn','.hv-top','.hv-note']],
   ['night',  'hub-card-nightshift', ['.ns-stage','.ns-btn','.ns-btn-sm','.ns-key','.ns-hud','.ns-mon',
-                                 '.ns-overlay','.ns-cozy']],
+                                 '.ns-overlay']],
 ];
 
 /* a probe for a control that is not on screen in this scene has to be built

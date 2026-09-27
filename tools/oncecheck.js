@@ -50,7 +50,7 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
     /* a clean playthrough: she has been told nothing yet */
     N.forgetTold();
     const heard = [];
-    for (const night of [1, 2, 3, 4]) {
+    for (const night of [1, 2, 3]) {
       N.begin(night);
       let last = '';
       for (let k = 0; k < 60 * 30 * 8; k++) {

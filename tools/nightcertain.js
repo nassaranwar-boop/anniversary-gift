@@ -18,7 +18,7 @@ const RUNS = 10;
   await p.waitForFunction(()=>Object.keys(OuissysNightShift.__night.cast()).length>=4,{timeout:20000,polling:200});
   await p.evaluate(()=>OuissysNightShift.__night.silence(true));
   let bad = 0;
-  for (let night=1; night<=6; night++) {
+  for (let night=1; night<=3; night++) {
     const res = await p.evaluate(({night,RUNS}) => {
       const w = OuissysNightShift.__night;
       const tally = {}, out = [];

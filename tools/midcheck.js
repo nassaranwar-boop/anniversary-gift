@@ -100,11 +100,11 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
 
   /* the written scene, so the check knows what should have been said */
   const written = await p.evaluate(() => OuissysNightShift.__night.midScript());
-  ok('the six nights each have a scene written for them',
-     written && [1, 2, 3, 4, 5, 6].every((n) => written[n] && written[n].beats.length >= 4),
-     written ? [1, 2, 3, 4, 5, 6].map((n) => written[n] ? written[n].beats.length : 0).join('/') + ' beats' : 'no script');
+  ok('the three nights each have a scene written for them',
+     written && [1, 2, 3].every((n) => written[n] && written[n].beats.length >= 4),
+     written ? [1, 2, 3].map((n) => written[n] ? written[n].beats.length : 0).join('/') + ' beats' : 'no script');
 
-  for (const n of [1, 2, 3, 4, 5, 6]) {
+  for (const n of [1, 2, 3]) {
     const r = await run(n);
     const f = r.film, last = f[f.length - 1], w = written[n];
     const tag = `night ${n}`;
@@ -120,8 +120,10 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
     ok(`${tag}: the clock does not move while it runs`, clock,
        'hour ' + Math.max(...f.filter((x) => x.on).map((x) => x.hour)));
 
-    /* the meter. Night four spends two per cent on purpose and nothing
-       else spends anything at all */
+    /* the meter. The one night with a bus fault in its opening spends
+       two per cent on purpose -- night two now, which inherited the
+       old night four's brown-out along with the workshop camera and
+       the hall -- and nothing else spends anything at all */
     const held = f.filter((x) => x.on);
     const spent = +(held[0].power - held[held.length - 1].power).toFixed(2);
     const budget = w.beats.some((x) => x.act === 'surge') ? 2.01 : 0.001;
@@ -169,8 +171,21 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
        drift <= 1, drift ? `${drift} slices adrift — ${worst}` : 'exact');
   }
 
-  /* the two nights that BREAK something: the fault has to arrive on the
-     line that announces it, not before the scene starts */
+  /* THE ONE NIGHT THAT BREAKS ANYTHING, AND IT BREAKS TWO THINGS.
+
+     A fault has to arrive on the line that announces it, not before
+     the scene starts. There were two such nights and they are one
+     night now: camera eight dies on beat three and the hall goes out
+     on beat seven, inside the same fifteen seconds, and each of them
+     has to still be alive up to its own beat. That is what MID.breaks
+     being a list is for -- with one slot the second of them was
+     already broken at t=0 while the annunciator announced it five
+     seconds later, which is the exact fault this scene exists to
+     remove.
+
+     Night three does NOT stage either of them: both broke last night
+     and stay broken, so the hall is dark from the first frame, which
+     is correct and is checked as such. */
   const two = await run(2);
   const beforeSnow = two.film.filter((x) => x.on && x.i < 3);
   ok('night two: camera eight is alive until it is not',
@@ -179,13 +194,17 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
   ok('night two: and dead once the shift starts',
      two.film[two.film.length - 1].wsDead, '');
 
-  const three = await run(3);
-  const beforeDark = three.film.filter((x) => x.on && x.i < 4);
-  ok('night three: the hall is lit until the third bank goes',
+  const beforeDark = two.film.filter((x) => x.on && x.i < 7);
+  ok('night two: the hall is lit until the third bank goes',
      beforeDark.length > 2 && beforeDark.every((x) => !x.dark),
      'dark in ' + beforeDark.filter((x) => x.dark).length + ' of ' + beforeDark.length + ' slices before it goes');
-  ok('night three: and dark once the shift starts',
-     three.film[three.film.length - 1].dark, '');
+  ok('night two: and dark once the shift starts',
+     two.film[two.film.length - 1].dark, '');
+
+  const three = await run(3);
+  ok('night three stages neither, because both broke last night',
+     three.film[0].dark && three.film[three.film.length - 1].dark,
+     'dark from the first frame: ' + !!three.film[0].dark);
 
   /* a custom night is a sandbox */
   const custom = await p.evaluate(() => {
