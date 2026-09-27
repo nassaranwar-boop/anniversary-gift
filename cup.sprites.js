@@ -823,8 +823,15 @@ window.CupSprites = (function () {
        side view is a front view with the eyes moved, which is exactly
        what the first build looked like. */
     if (profile) {
-      sh.rect(cx + r - 1, cy, 2, 2, skin.base);
-      sh.px(cx + r, cy + 2, skin.shadow);
+      /* THREE ROWS, NOT ONE. A two-pixel bump on the front of a circle
+         is a circle with a pixel out of place; a nose is a bridge, a
+         tip and the shadow under it, and it is the only thing that
+         tells a side view from a front view that has been slid along.
+         It costs four pixels. */
+      sh.px(cx + r - 1, cy - 1, skin.base);                  // the bridge
+      sh.rect(cx + r - 1, cy, 3, 2, skin.base);              // the tip
+      sh.px(cx + r + 1, cy + 1, skin.shadow);                // under it
+      sh.px(cx + r - 1, cy + 2, skin.shadow);                // and the lip
     }
 
     var fringeY = cy - Math.round(r * 0.22);
@@ -1087,7 +1094,14 @@ window.CupSprites = (function () {
     var legH = Math.round(14 * bh);
     /* the chest is never wider than the head — at 21 pixels against a
        17-pixel head she read as a bell rather than a footballer */
-    var torsoW = Math.round(8 * bw * (1 - face.turn * 0.24));
+    /* A CHEST TURNED SIDEWAYS IS A LOT NARROWER, and at a quarter off
+       it was not: a player running across the screen was very nearly as
+       wide as one running at it, which is what made the side facings
+       read as the front drawing rotated rather than as a person seen
+       from the side. Two fifths is measured off a shoulder width
+       against a chest depth, and it is the difference between a
+       character with a front and a character with four of them. */
+    var torsoW = Math.round(8 * bw * (1 - face.turn * 0.40));
 
     if (p.squash) { torsoH -= 1; torsoW += 1; }
     if (p.stretch) { torsoH += 1; torsoW -= 1; }
