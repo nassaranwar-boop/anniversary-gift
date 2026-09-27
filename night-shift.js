@@ -16664,6 +16664,21 @@ function tapeDue(dt) {
      and a half of waiting costs them nothing. */
   if (TAPE.up || voxTalking() || OVER.on) return;
   const hourNow = G.hour + (G.hourT || 0) / Math.max(1, TUNE.hourSeconds);
+  /* AND THE MOST OVERDUE ONE GOES FIRST.
+
+     This walked NS.tapeWhen in key order and took the first line
+     whose deadline had passed, and only one goes per opportunity. By
+     the middle of night two there are several past their gate at
+     once, so which one she got was decided by where it happened to
+     sit in an object literal -- and a line due TONIGHT could sit
+     behind one due at the end of the week and never make it.
+     scriptcheck caught it as "seenMarabelle arrived night 3, due
+     night 2", in one run out of three, which is exactly what an
+     ordering bug looks like from the outside.
+
+     Sorted by deadline now: the one with the least time left is the
+     one that is said. It is the only ordering that is not arbitrary. */
+  let best = null, bestBy = Infinity;
   for (const k in NS.tapeWhen) {
     const it = NS.tapeWhen[k];
     if (typeof it === "string" || !it.by) continue;
@@ -16672,6 +16687,11 @@ function tapeDue(dt) {
     if (wasTold(it.t) || (it.elseT && wasTold(it.elseT))) continue;
     if (G.night < it.by[0]) continue;
     if (G.night === it.by[0] && hourNow < it.by[1]) continue;
+    const due = it.by[0] * 24 + it.by[1];
+    if (due < bestBy) { bestBy = due; best = it; }
+  }
+  if (best) {
+    const it = best;
     /* GETTING HERE MEANS SHE NEVER DID THE THING.
 
        A cue marks the line said the moment it fires, so any line still
