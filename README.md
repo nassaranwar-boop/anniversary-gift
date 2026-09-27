@@ -279,6 +279,24 @@ so it was run once more. If any line is ever edited again, that is the
 Action to click and `linecheck` is the check that says whether it is
 needed.
 
+**Green at the end of it, with the takes in place:** storycheck 117,
+scriptcheck 26, overcheck 25, midcheck 38, linecheck 5, oncecheck 4,
+taskcheck 8, revealcheck 7, saycheck 20, nightskip 30, nightaudio 21,
+cuecheck 5, castcheck 9. `nightbeats` says every beat the story
+promises reaches her every time on all three nights; `nightcertain`
+says all four turn up on every night, ten runs each, nobody died.
+`kindcheck` times out in this container and is the platformer, not
+this chapter. Cache at v325.
+
+**The one judgement call left for him**, written down because it is a
+taste question and not a bug: the last night carries two keep-or-burn
+cards, the staged save, three of the four answering what she did on
+the nights before, and then the film. It measures fine and it reads
+well on the page, but it is the fullest night in the chapter. If it
+feels crowded to play, the letter at five past three is the piece to
+move onto the six o'clock card — it is the only one of the six whose
+answer is the ending rather than one of the four.
+
 ### 2026-09-26c — three things to make it less boring, and what testing them cost
 
 **Asked for:** he asked whether the game needed anything else to be
