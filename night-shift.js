@@ -5042,16 +5042,53 @@ function buildOffice(R) {
      monitor is cold, the ceiling bulb is failing, and each doorway has
      just enough light beyond it to make a silhouette out of anything
      standing there. */
-  R.light({ x: -0.9, y: 1.08, z: deskZ - 0.3, color: "#ffb765", intensity: 1.5, distance: 5.8, decay: 1.3, tag: "desk" });
-  R.light({ x: 0.86, y: 1.22, z: deskZ - 0.06, color: "#79b6e2", intensity: 0.62, distance: 1.9, decay: 1.7, tag: "monitor" });
-  R.light({ x: -0.35, y: 2.3, z: -0.45, color: "#ffd0a0", intensity: 1.5, distance: 7.4, decay: 1.35, tag: "pendant" });
-  R.light({ x: -1.75, y: 1.5, z: -D / 2 + 0.75, color: "#7f9ad6", intensity: 0.8, distance: 4.8, decay: 1.6, tag: "window" });
-  R.light({ x: -W / 2 - 0.7, y: 1.75, z: doorZ, color: "#ffc98a", intensity: 1.5, distance: 3.6, decay: 1.5, tag: "doorL" });
-  R.light({ x:  W / 2 + 0.75, y: 1.8, z: doorZ, color: "#d9b9a4", intensity: 1.5, distance: 3.8, decay: 1.5, tag: "doorR" });
+  /* THE LAMP IS ON THE DESK, SO IT LIGHTS THE DESK.
 
+     Five metres eighty of falloff from a lamp with a shade on it put
+     usable light on the far wall, the ceiling and both doorways. It
+     reaches the desk and the chair now and stops, which is what a
+     reading lamp does and what leaves the rest of the room to the
+     other five. */
+  R.light({ x: -0.9, y: 1.08, z: deskZ - 0.3, color: "#ffb765", intensity: 1.55, distance: 3.5, decay: 1.5, tag: "desk" });
+  R.light({ x: 0.86, y: 1.22, z: deskZ - 0.06, color: "#79b6e2", intensity: 0.62, distance: 1.9, decay: 1.7, tag: "monitor" });
+  /* AND THE FAILING BULB IS ACTUALLY FAILING.
+
+     Its own comment said "the ceiling bulb is failing" and it was set
+     to exactly the same intensity as the desk lamp, over a seven and a
+     half metre falloff -- so it lit the entire room evenly from above
+     and flattened the four pools underneath it into one brown wash.
+     A room with one even light in it has no shape, and a room with no
+     shape has nowhere for anything to be. */
+  R.light({ x: -0.35, y: 2.3, z: -0.45, color: "#ffd0a0", intensity: 0.85, distance: 5.4, decay: 1.5, tag: "pendant" });
+  R.light({ x: -1.75, y: 1.5, z: -D / 2 + 0.75, color: "#7f9ad6", intensity: 0.8, distance: 4.8, decay: 1.6, tag: "window" });
+  /* AND THE TWO DOORWAYS ARE LIT FROM BEHIND, NOT FILLED IN.
+
+     These were as strong as the desk lamp, so the two places a thing
+     can appear were the two best-lit places in the room and anything
+     standing in one arrived fully described. Their own comment asks
+     for "just enough light beyond it to make a silhouette", which is
+     half of this: a shape resolving out of a dark opening is the
+     oldest picture in the genre, and it needs the opening to be dark.
+     Half the light, and further back, so the spill lands on the hall
+     behind the frame rather than on whatever is inside it. */
+  R.light({ x: -W / 2 - 1.15, y: 1.75, z: doorZ, color: "#ffc98a", intensity: 0.78, distance: 3.2, decay: 1.7, tag: "doorL" });
+  R.light({ x:  W / 2 + 1.2,  y: 1.8,  z: doorZ, color: "#d9b9a4", intensity: 0.78, distance: 3.3, decay: 1.7, tag: "doorR" });
+
+  /* AND THE DARK IS ALLOWED TO BE DARK.
+
+     The ambient was a neutral grey at half strength laid over
+     everything equally, which is the one thing that undoes a lit set:
+     it raises the floor under the shadows until there are none, and
+     the four pools and two spills above become decoration on a
+     uniformly visible room. A horror set needs somewhere the light
+     does not reach, and this is the room with the two doorways in it.
+
+     So: less of it, and colder, so what is left of the shadow is the
+     colour of a window at three in the morning rather than the colour
+     of the wallpaper. Every designed pool is untouched. */
   R.mood({
-    fog: { color: "#080a10", near: 3.5, far: 17 },
-    ambient: { color: "#2b2c34", intensity: 0.5 },
+    fog: { color: "#05070d", near: 2.8, far: 13 },
+    ambient: { color: "#181d29", intensity: 0.22 },
   });
 
   /* --- the seat ---------------------------------------------------- */
@@ -8746,6 +8783,27 @@ function audioDuck(v, ms) {
   duckGain.gain.linearRampToValueAtTime(v, t + (ms || 120) / 1000);
 }
 
+/* GET OUT OF THE WAY OF THE LOUD THING, WITHOUT TAKING IT WITH YOU.
+
+   The two loudest events in the chapter -- being caught, and the floor
+   going up in the last hour -- both called audioDuck(0.25) to clear
+   room for themselves. But duckGain sits ABOVE cueGain, and both of
+   those sounds are cued through cueGain, so each one ducked ITSELF to
+   a quarter, forty milliseconds before it played. The jumpscare has
+   been turning its own volume down for as long as it has existed.
+
+   sideGain is the score and the bed and nothing else. That is what
+   should get out of the way. The cue goes out at full, into the
+   output compressor, which is what stops a loud thing being a broken
+   thing -- and its pumping is most of what a loud thing sounds like. */
+function duckScore(v, ms) {
+  if (!AC || !sideGain) return;
+  const t = now();
+  sideGain.gain.cancelScheduledValues(t);
+  sideGain.gain.setValueAtTime(sideGain.gain.value, t);
+  sideGain.gain.linearRampToValueAtTime(v, t + (ms || 120) / 1000);
+}
+
 /* --- the two primitives everything else is made of ---------------- */
 /* Where a sound is coming from. Every cue carries the pan of the side
    its owner attacks from, so on headphones the soldier is always in your
@@ -9136,7 +9194,7 @@ const SFX = {
   /* the four ways it ends. Sharp, loud, short — and different enough
      that you know which one got you before the screen tells you. */
   scare(id) {
-    audioDuck(0.25, 40);
+    duckScore(0.06, 40);
     if (id === "cogsworth") {
       burst({ f0: 2600, f1: 300, dur: 0.9, gain: 0.85, q: 0.6, filter: "bandpass" });
       for (let i = 0; i < 5; i++) tone({ type: "square", f0: 180 + i * 37, f1: 60, dur: 0.7, gain: 0.14, at: i * 0.012, filter: "lowpass", ff: 2200 });
@@ -9159,7 +9217,7 @@ const SFX = {
       tone({ type: "sawtooth", f0: 150, f1: 40, dur: 1.2, gain: 0.25, filter: "lowpass", ff: 1400 });
       SFX.laugh(1.1);
     }
-    setTimeout(() => audioDuck(1, 700), 900);
+    setTimeout(() => duckScore(1, 700), 900);
   },
 };
 
@@ -13572,6 +13630,49 @@ function walkHome() {
 }
 
 /* --- the end of it ------------------------------------------------- */
+/* HOW LONG THE THING IS IN HER FACE BEFORE THE CARD.
+
+   It was 1.15 seconds, and on a machine that is a flash. The card that
+   follows is a tidy, well-set panel with a name and two buttons, so
+   what a player actually experienced on being caught was: tension,
+   tension, a dark blur, a menu. The most important second in the
+   chapter was the one nobody could see. */
+const SCARE_HOLD = 1.75;
+/* and the last part of it, where the room goes out, so the card comes
+   up over black rather than fading in over the furniture */
+const SCARE_OUT = 0.4;
+
+/* THE ONE LIGHT IN THE CHAPTER THAT IS NOT IN THE SHOP.
+
+   kill() put the figure at the lens and its own comment said "lit by
+   nothing but the office" -- and the office at three in the morning is
+   nearly black, so the jumpscare was a black shape with two stray
+   highlights on it, in the middle of a dark frame. It did not read as
+   a face coming at you. It read as the picture breaking.
+
+   So there is a lamp for it: hard, cold, close, on the camera side, up
+   at the height of its eyes. It is the shop's fault board flashing, or
+   the monitor blowing out, or nothing at all -- it does not have to be
+   explained, it has to be SEEN. It flickers at a rate that does not
+   divide into anything else in the chapter, and it goes out with the
+   rest of the room. */
+let scareLight = null;
+function scareLamp(on, t) {
+  if (!scene || !T) return;
+  if (!scareLight) {
+    scareLight = new T.PointLight(new T.Color("#dfe7ff"), 0, 4.2, 1.35);
+    scene.add(scareLight);
+  }
+  if (!on) { scareLight.intensity = 0; return; }
+  const base = view.userData.base;
+  _dir.set(0, 0, -1).applyQuaternion(base.quat);
+  /* just behind her shoulder, so the thing is lit from where she is */
+  scareLight.position.copy(base.pos).addScaledVector(_dir, -0.18);
+  scareLight.position.y = base.pos.y + 0.22;
+  const f = 0.72 + Math.sin(t * 41.3) * 0.2 + Math.sin(t * 97.1) * 0.12;
+  scareLight.intensity = clamp(f, 0.35, 1.1) * 7.5;
+}
+
 function kill(ch) {
   if (G.phase !== "play") return;
   sayClear();
@@ -13601,8 +13702,16 @@ function kill(ch) {
   ch.group.visible = true;
   ch.group.updateMatrix();
   G.killChar = ch;
-  SFX.scare(ch.def.id);
+  /* AND A BEAT OF NOTHING FIRST.
+
+     The score and the bed are cut above, and then the noise fired in
+     the same instant, so the silence that was bought was never spent.
+     The figure takes about a sixth of a second to reach the lens; the
+     sound lands when the face does, on a room that has just gone
+     completely quiet. That gap is the cheapest thing in this file and
+     it is most of why a scare works. */
   bedStop();
+  setTimeout(() => { if (G.phase === "over") SFX.scare(ch.def.id); }, 130);
   showHud(false);
   noOverlay();
 }
@@ -14122,7 +14231,7 @@ function finaleBoom() {
   if (!ac() || muted) return;
   const t = now() + CUE_LEAD;
   musicMode("none");
-  audioDuck(0.25, 90);
+  duckScore(0.08, 90);
   for (let k = 0; k < 4; k++) {
     const at = t + k * 0.16;
     const o = AC.createOscillator(); o.type = "sine";
@@ -14153,7 +14262,7 @@ function finaleBoom() {
   fxFire(FIN.room || "office", -2.2, 0.2, -0.9, 6, { size: 1.2 });
   fxFire(FIN.room || "office", 1.4, 0.2, -1.4, 4, { size: 0.9 });
   setTimeout(() => { if (FIN.on) fxFlash(0.35, 700, "#ff9a44"); }, 130);
-  setTimeout(() => audioDuck(1, 1400), 900);
+  setTimeout(() => duckScore(1, 1400), 900);
 }
 
 /* the clock of the film, run early in the frame so that a shot which
@@ -17343,7 +17452,7 @@ function frame(ts) {
     G.deadT += dt;
     /* the card waits for the scare to land. A game over screen arriving
        on the same frame as the thing that caused it reads as a bug. */
-    if (G.deadT > 1.15 && !G.cardT) { G.cardT = 1; screenOver(); }
+    if (G.deadT > SCARE_HOLD && !G.cardT) { G.cardT = 1; screenOver(); }
   }
 
   /* the last hour is a film in the shop, so it goes down the same path
@@ -17407,12 +17516,32 @@ function frame(ts) {
     const ch = G.killChar;
     const k = Math.min(1, G.deadT * 6);
     _dir.set(0, 0, -1).applyQuaternion(view.userData.base.quat);
-    ch.group.position.copy(view.userData.base.pos).addScaledVector(_dir, lerp(1.45, 0.66, k));
-    ch.group.position.y = view.userData.base.pos.y - (ch.group.userData.eyeY || 1.5) + lerp(0.22, 0.06, k);
+    /* CLOSER, AND WITH ITS HEAD IN THE FRAME.
+
+       It stopped at 0.66m, which at a seventy degree lens is a torso.
+       What she got was a body-shaped darkness. It comes to a third of
+       a metre now and its eyes are put on the lens rather than a
+       tenth of a metre under it, so the thing in the frame is a face. */
+    ch.group.position.copy(view.userData.base.pos).addScaledVector(_dir, lerp(1.45, 0.34, k));
+    ch.group.position.y = view.userData.base.pos.y - (ch.group.userData.eyeY || 1.5) + lerp(0.26, 0.02, k);
     ch.group.rotation.set(Math.sin(G.t * 30) * 0.05, Math.atan2(-_dir.x, -_dir.z) + Math.sin(G.t * 24) * 0.09, Math.sin(G.t * 27) * 0.06);
     ch.group.updateMatrix();
-    G.shake = Math.max(G.shake, 0.8 - G.deadT * 0.5);
-  }
+    G.shake = Math.max(G.shake, 0.9 - G.deadT * 0.42);
+    /* AND THE ROOM GOES OUT UNDER IT.
+
+       The card used to fade up over the office, with the lamp and the
+       filing cabinet and the little moon in the window still sitting
+       there behind it, which reads as the game politely returning to
+       a menu. The last four tenths of a second take every light in
+       the building down to nothing, so what she is reading is on
+       black, and the only thing she saw before it was a face. */
+    const out = clamp((G.deadT - (SCARE_HOLD - SCARE_OUT)) / SCARE_OUT, 0, 1);
+    const keep = 1 - out;
+    scareLamp(true, G.t);
+    if (scareLight) scareLight.intensity *= keep;
+    if (rigAmbient) rigAmbient.intensity = (rigAmbient.userData.base || 0.5) * keep * 0.55;
+    for (let i = 0; i < rig.length; i++) rig[i].intensity = (rig[i].userData.base || 0) * keep;
+  } else if (scareLight && scareLight.intensity) scareLamp(false, 0);
 
   renderer.render(scene, view);
   fpsAcc += dt; fpsN++;

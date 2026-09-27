@@ -120,16 +120,75 @@ every run. Night two loses one or two on a bad surge night (a blackout stops
 the tape dead while it lasts) — down from five every run. Every revelation is
 offered and every choice answered.
 
+**And then the other half of what he asked for: the visuals and the sound.**
+
+**The jumpscare was invisible.** `kill()` put the figure at the lens and
+its own comment said "lit by nothing but the office" — and the office at
+three in the morning is nearly black, so what a player actually saw on
+being caught was a body-shaped darkness in a dark frame for 1.15 seconds,
+and then a tidy panel with a name and two buttons. The most important
+second in the chapter was the one nobody could see. Now:
+
+- a hard, cold lamp fires on the figure for the duration, flickering at a
+  rate that does not divide into anything else;
+- it comes to a third of a metre instead of two thirds, with its eyes on
+  the lens rather than a tenth of a metre under them, so what fills the
+  frame is a **face** — Cogsworth's white mask and black eyes, Jax's
+  grin — instead of a torso;
+- 1.75 seconds instead of 1.15;
+- the last four tenths take every light in the building to nothing, so
+  the card comes up over black. What is left in the dark just before it
+  is two white eyes.
+
+**The scare was turning its own volume down.** `audioDuck(0.25)` lowers
+`duckGain` — which sits ABOVE `cueGain`, and the scare is cued through
+`cueGain`. So the loudest event in the game ducked *itself* to a quarter,
+forty milliseconds before it played. Same bug in the floor going up in
+the last hour. There is a `duckScore()` now that takes down the score and
+the bed and nothing else; the cue goes out at full into the output
+compressor, and the compressor pumping is most of what a loud thing
+sounds like. And the noise now lands 130ms after the cut — the figure
+takes about a sixth of a second to reach the lens, so the sound arrives
+when the face does, on a room that has just gone completely silent.
+
+**The office was one even brown wash.** Its lighting comment promises
+"four pools and two spills… nothing uniform", and then three things
+undid it: a neutral grey ambient at half strength laid over everything
+equally, a "failing" ceiling bulb set to exactly the same intensity as
+the desk lamp over a seven-and-a-half-metre falloff, and two doorway
+lights as strong as the desk lamp — so the two places a thing can appear
+were the two best-lit places in the room. Now the ambient is a fifth as
+strong and colder, the pendant is genuinely failing, the desk lamp
+reaches the desk and stops, and the doorways are lit from further back
+at 0.78 so a shape has to resolve out of a dark opening. Every designed
+pool is untouched. `fearcheck` re-run after: 5/0, and the curve is
+unchanged — careless dies on nights two and three, perfect never dies,
+night three takes a normal player to 2.6% with 45 seconds at an open door.
+
+**Lag, measured honestly.** Frame times cannot be measured in this
+container — it renders through SwiftShader at about two-thirds of a frame
+a second. What is portable: the chapter's own step costs **0.017ms a
+frame on night one and 0.128ms on night three** (of a 16ms budget), the
+scene gains no geometry and no textures between midnight and the far end
+of a night, and the heap sits at 47–48MB. There is no leak and the logic
+is free. The only number that could ever cost a weak machine frames is
+draw calls: **402 for 7,910 triangles on night one and 498 for 15,346 on
+night three, with geometries equal to calls to the unit** — nothing is
+merged or instanced, so twenty to thirty triangles per call is nearly all
+overhead. Not a fault today; a laptop from the last decade draws a
+thousand calls at sixty frames a second. `nightlag.js` records it and
+fails above 900, which is where it would start to hurt.
+
 **Next session, first:**
 1. **48 voice takes are stale** — `linecheck` names them. The "Anwar's voice"
    Action must be run in `full` mode or those lines fall back to browser speech.
-2. **The visuals and the sound have not been touched yet.** The jeopardy was
-   fixed last session and the silence to be frightened in was made this one;
-   the lighting, the colour, the scare itself and the audio palette are still
-   as they were. This is the other half of "upgrade the visuals and the sound
-   effects to be scarier".
-3. **Lag has not been measured honestly**, and the full suite battery has not
-   been run since the rewrite.
+2. **The draw calls, if it ever runs badly on her machine.** 498 calls for
+   15,346 triangles is all overhead; merging the static props per room would
+   take it under a hundred. Do not do it speculatively — it is a real
+   refactor of carefully audited room layouts, and nothing is slow today.
+3. **The camera rooms have not had the lighting pass the office got.** Only
+   the office was regraded; the hall, the stage, the workshop and the rest
+   are still lit as they were.
 
 ### 2026-09-27b — why it was not frightening, and the winding key that did not work
 
