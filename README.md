@@ -186,13 +186,98 @@ landed at nine. `nightcertain`: all four turn up on every night, ten
 runs each, nobody died. `nightbeats`: every beat the story promises
 reaches her, every time, on all three.
 
-**Left undone, and it needs a click from him:** sixty-odd of his lines
-were rewritten, so they have no recordings. Run **Actions → Anwar's
-voice → Run workflow** on `site-with-night-shift` with mode `full`. It
-takes about four minutes and commits the takes itself. Until then those
-lines come out of the browser's own speech engine, which is the thing
-the recordings exist to replace. `linecheck` is the check that goes
-green when it is done.
+---
+
+**Then he asked for the compacted script to be read end to end and made
+whole, and that read found the thing that actually breaks the ending.**
+
+**The last twenty minutes contradicted themselves.** At five o'clock on
+the last night the film destroys all four of them — the owl goes up
+into the ceiling with six of them holding on to it, the ballerina
+dances at four hundred of them and buys eleven seconds, the soldier
+walks the length of the room to a door that is not his and does not
+stop, and Jax puts the floor back over her head and detonates. It ends
+on four empty places, a burnt office and her saying his name into it.
+
+Forty seconds later the card said:
+
+> Out on the shop floor the four of them are walking back to their
+> places. The soldier to his plinth, the owl up into the rafters, the
+> ballerina under her glass, the jester folding himself back into his
+> box.
+
+and then asked her: *WIND THEM* or *LEAVE THEM*, over "there is a
+winding key on the counter, and four things standing very still in a
+shop that is hers now." All of that was written before the last hour
+existed and nothing had gone back to it. It is not a continuity slip,
+it is the ending of the chapter telling her the thing she just watched
+did not happen — and all five of the six-things endings were written
+for the same surviving four ("she will wind them every night for the
+rest of her life", "the four of them wind down where they stand").
+
+So the morning card says what is actually in the building at six — an
+empty plinth, an empty ledge, a glass dome with nothing under it, a box
+with the lid up, a hole in the office floor with the board leaning
+against the desk where she pushed it up from underneath — and it pays
+the debt the terms opened with, which nothing ever had: *he asked for
+three nights and said that afterwards she would have everything. She
+has it. It was under the chair she had been sitting on all week.*
+
+**And the last decision is now one that can happen.** It has been under
+a dust sheet since the second hour of the last night: he never finished
+the fifth one, the tag wired to its wrist says FOR HER TO WIND, WHEN
+SHE IS READY, and there is nobody left in the back room. **FINISH THE
+FIFTH ONE** or **LEAVE IT UNDER THE SHEET**. It uses two pages the
+chapter already guarantees her — the fifth one, and the folding chair
+he set out the week he took the lease and never once folded up, with
+her own chipped mug on the arm of it — so the ending is her carrying
+that chair through to his bench and sitting in it, or covering the
+thing up and squaring the corners. The film's own first line turns out
+to have set it up: *he had one rule about that bench, nothing left
+half-made overnight, and he broke it four times in fifteen years.* The
+fifth time he ran out of time.
+
+**Other things the read found, all of them compression damage:**
+
+- **A parcel arrived on night one with nothing to introduce it.** The
+  card that introduces the returners is the one she reads on her way in
+  to the SECOND night — a parcel on the step, no stamp, no name, opened
+  from the inside. Putting one in the hall on the night he spends
+  saying nothing in this shop wants to hurt you is the chapter's one
+  genuinely frightening thing arriving with nobody to say what it is.
+  None on the first, two on the second, three on the last.
+- **"I used to sit in that chair until four in the morning telling
+  myself I was working"** was cut from night one when I trimmed the
+  tapes, and it is the line Chime and Jax are quoting on the last
+  night. The echo was standing there with nothing behind it. It is back,
+  folded into night two's opening line, where he is sitting in the same
+  chair she is.
+- **The last night's hour lines pointed at beats that had already
+  happened** — "folded under the comb of the music box, the last thing
+  he wrote", an hour after that card came up — and nothing anywhere
+  pointed at the drawing, which is the revelation the whole night turns
+  on. Reordered, and the drawing now lands five minutes before the
+  instruction it is the picture for.
+- **The save card called whoever saved her "he"**, and `guardFor` hands
+  it the ballerina as readily as the soldier. The name goes into the
+  body of the card now, which is better than a pronoun would have been.
+- **"Cogsworth sets herself by it"** — he is a soldier and is "he"
+  everywhere else in two hundred lines.
+- **Monday meant two things in the same film**: Cogsworth had held the
+  west door "since Monday" and then offered four hundred of them a
+  winding "at nine on Monday morning". He has held it since Thursday.
+- **"One more week"** for three nights, in the terms.
+- **Winding was never named in an hourly line**, across three nights,
+  and it is the only thing she can do FOR one of them.
+
+**The voice.** Sixty-odd of his lines were rewritten, so the render was
+run from here — **Actions → Anwar's voice**, mode `full`, on
+`site-with-night-shift` — and it committed 250 takes back to the
+branch. `linecheck` went green on them. The read-through then changed
+four more lines (`terms-6`, `tape2-01`, `when-odd-clock`, `last-17`),
+so it was run once more. If any line is ever edited again, that is the
+Action to click and `linecheck` is the check that says whether it is
+needed.
 
 ### 2026-09-26c — three things to make it less boring, and what testing them cost
 

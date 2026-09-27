@@ -457,9 +457,9 @@ const NS = {
     lines: [
       "The handle stopped turning.",
       "There is something standing in the doorway that she has spent a week keeping out of it, and it is not looking at her. It is looking at the thing in the corridor, and the thing in the corridor is going back the way it came.",
-      "When it is gone he stands there a moment longer, and then walks back to his place in the dark, and stops, run all the way down.",
+      "When it is gone $1 stands there a moment longer, and then walks back to a place in the dark, and stops, run all the way down.",
     ],
-    who: "$1 will not do that again until she winds him.",
+    who: "$1 will not do that again until she winds it.",
   },
 
   /* the same thing, with eight centimetres of roller shutter in front of
@@ -471,9 +471,9 @@ const NS = {
       "The handle stops turning.",
       "It does not stop the way it stops when they give up — that is a slow stop, and it goes quiet afterwards. This one stops all at once, like a hand being taken off it, and the quiet afterwards has two things standing in it.",
       "Something drags a few feet up the corridor. Something heavier stays exactly where it is until the dragging has finished. Then the heavier one walks away, unhurried, in the direction of its own shelf, and the walk goes on longer than it should, because it is winding down as it goes.",
-      "She never opens the door. She has been told not to and she does not. She just sits with her hand flat on it, feeling him come apart on the other side, doing the thing he was made to do for somebody who is not watching.",
+      "She never opens the door. She has been told not to and she does not. She just sits with her hand flat on it, feeling $1 come apart on the other side, doing the thing it was made to do for somebody who is not watching.",
     ],
-    who: "$1 will not do that again until she winds him.",
+    who: "$1 will not do that again until she winds it.",
   },
 
   /* the one line at the end of a night, in place of a score. It is not
@@ -505,7 +505,7 @@ const NS = {
       "Three nights. That is what I am asking for. Three, and then everything.",
       "I have left the whole of it in here — on the tapes, on the shelves, in the book under the till. It is all yours. But I am not handing the worst thing I ever did to somebody who might not be here on Saturday.",
       "So get through them. All three. And try very hard not to let anything reach you, because I would like you to hear the end of this from me and not work it out from the mess.",
-      "You have been braver than me for fifteen years. One more week.",
+      "You have been braver than me for fifteen years. Three more nights.",
     ],
     /* the one button, which is the only choice she has here */
     go: "STAY",
@@ -679,14 +679,23 @@ const NS = {
     ],
   },
 
-  /* six nights of small decisions, answered at once on the last morning */
+  /* THREE NIGHTS OF SMALL DECISIONS, ANSWERED AT ONCE ON THE LAST
+     MORNING — AND ANSWERED FOR THE SHOP THE FILM ACTUALLY LEAVES.
+
+     Every one of these was written for a back room with four toys
+     still standing in it: "she will wind them every night for the rest
+     of her life", "what is left in the shop on Monday morning is four
+     toys", "the four of them wind down where they stand". There is
+     nothing left in the back room to wind. They are what she is
+     carrying instead, which is the whole point of having spent the
+     week deciding what to carry. */
   kept: {
     ask: "THREE NIGHTS. SIX THINGS OF HIS.",
-    all:   "She keeps all of it — the key, the chalk, the book, the notebook, the drawing and the letter — and the shop opens on Monday with her name over the door. She will wind them every night for the rest of her life, and not one of those nights will be because he told her to.",
-    most:  "She keeps most of him and lets the rest go, which is what people actually do. The shop opens. Some of the drawers stay shut.",
-    some:  "She keeps the four of them and burns nearly everything else: the addresses, the book, the fifteen years of notes. What is left in the shop on Monday morning is four toys and a woman who knows exactly what they are.",
-    none:  "She burns all of it and walks out at six with nothing in her hands, and the four of them wind down where they stand, facing the door she left by. It is the only ending in which nobody is watching her, and she has earned it.",
-    four:  "She burns the business and keeps the toys. Four things he made out of her, and not one single thing he ever did with them.",
+    all:   "She keeps all of it — the key, the chalk, the book, the notebook, the drawing and the letter — and the shop opens on Monday with her name over the door. There is nothing in the back room left to wind. She carries the key anyway, and uses it, every morning, on a workshop door that sticks and has to be lifted and turned.",
+    most:  "She keeps most of him and lets the rest go, which is what people actually do. The shop opens. Some of the drawers stay shut, and one of them stays shut on purpose.",
+    some:  "She keeps what he made and burns nearly everything he did with it — the addresses, the book, the fifteen years of notes. What is left in the shop on Monday morning is four empty places and a woman who can tell you the name of what stood in every one of them, and what each of them was for, and which part of her it was copied from.",
+    none:  "She burns all of it and walks out at six with nothing in her hands. Not the key, not the drawing, not one page in his handwriting, and four empty places behind her that she is under no obligation to explain to anybody for the rest of her life. It is the only ending in which nobody is watching her and nothing of his is either, and she has earned it.",
+    four:  "She burns the business and keeps what he made her out of. The addresses go. The book goes. Fifteen years of notes go. The drawing stays, because the drawing is the only page in this building where the four of them are facing outwards.",
   },
 
   /* What tonight is FOR.  /* What tonight is FOR. The card told her which night it was and what
@@ -923,7 +932,7 @@ const NS = {
       /* the west door */
       { room: "office", secs: 3.8, fov: 44,
         from: [-1.25, 1.52, 0.52], to: [-1.55, 1.48, 0.18], look: [-2.85, 1.36, -0.90],
-        line: { who: "cogsworth", t: "Twelve minutes past five. I have the west door. I have had it since Monday." } },
+        line: { who: "cogsworth", t: "Twelve minutes past five. I have the west door. I have had it since Thursday." } },
       /* the grate */
       /* THE OWL'S CLOSE-UPS HAD NO `lux` ON THEM AT ALL.
 
@@ -1699,6 +1708,14 @@ const NS = {
        half apart, so night one is also the tutorial for all four. */
     1: [
       { h: 0,   t: "Learn where things are. The soldier is already up, and he is patient." },
+      /* AND THE CHAPTER'S KINDEST VERB WAS NEVER ON THE DESK.
+
+         Winding is the only thing she can do FOR one of them, it is
+         what the whole last night turns on, and across three nights of
+         hourly lines it was never once named. His tape mentions it at
+         four in the morning on the first night and that was the whole
+         of it. */
+      { h: 1,   t: "Each of them has a key in its back. Find one on a camera and hold the key until the ring fills." },
       { h: 1.5, t: "The ballerina is out. She stops dead while you are looking at her, and moves the moment you are not." },
       { h: 2,   t: "Something of his is taped inside the drawer, where his hand would go." },
       { h: 3,   t: "The jack-in-the-box is out. He is the one who will not wait at a door." },
@@ -1714,12 +1731,23 @@ const NS = {
       { h: 4, t: "Read it, and then decide whether you keep it. Nobody is going to ask you twice." },
       { h: 5, t: "One hour, and then the worst of it is behind you." },
     ],
+    /* THE LAST NIGHT'S LINES USED TO POINT AT THINGS THAT HAD ALREADY
+       HAPPENED.
+
+       Read end to end: the line at four o'clock said "folded under the
+       comb of the music box, the last thing he wrote", and the last
+       thing he wrote had come up as a card an hour earlier. Nothing
+       anywhere pointed at the drawing, which is the revelation the
+       whole last night is built on and the one that explains the
+       instruction he gives at twenty past one. These run in front of
+       what they are about now, in the order the night actually does
+       them. */
     3: [
       { h: 0, t: "Last one. Wind all four of them tonight. A key in the back, about a second each." },
-      { h: 1, t: "And if one of his gets to a door before you do — let it. Do not shut it." },
-      { h: 2, t: "Under the dust sheet at the back of the stage there is a fifth one, unfinished." },
-      { h: 3, t: "A second chair in the supply closet, with a mug on the arm of it that is not his." },
-      { h: 4, t: "Folded under the comb of the music box. The last thing he wrote." },
+      { h: 1, t: "Pinned inside the workshop door, on graph paper. It is dated the week he was told." },
+      { h: 2, t: "If one of his gets to a door before you do — let it. Do not shut it. He has asked twice." },
+      { h: 3, t: "Folded under the comb of the music box. The last thing he wrote." },
+      { h: 4, t: "Under the dust sheet at the back of the stage there is a fifth one, unfinished. And a second chair in the supply closet, with a mug on the arm of it that is not his." },
       { h: 5, t: "One hour. The shutters go up on their own, the way they always have. Sit still." },
     ],
   },
@@ -1815,7 +1843,7 @@ const NS = {
        only thing standing between the crime and the reason for it —
        which is exactly the wrong place to put a gap. */
     2: [
-      { h: 0.00, t: "You came back. I have been sitting here all day not knowing whether you would." },
+      { h: 0.00, t: "You came back. I have been sitting in that chair all day not knowing whether you would — the same chair I used to sit in until four in the morning telling myself I was working." },
       { h: 0.30, t: "Two of three. This is the one I have been dreading, so I am going to get it over with. I have started this tape four times." },
       { h: 0.75, t: "There is a book under the till. I would rather you did not. You will, and you should." },
       { h: 1.10, t: "Four hundred and eleven of them went out of this shop, every one to a real address, to somebody who was pleased to get it. They were bought as presents, and that part is true." },
@@ -1854,14 +1882,18 @@ const NS = {
        now, and they tell her eight minutes before it arrives. */
     3: [
       { h: 0.00, t: "Three. The last one, and I made this tape in the morning, which I never do." },
-      { h: 0.32, t: "They have started coming back on their own. I did not call them. Nobody called them. There is nothing left to send them anywhere, so they are doing the only thing they know." },
-      { h: 0.85, t: "Keep the four of them wound tonight. All four. There is a key in the back of each one and it takes about a second. Please." },
+      { h: 0.30, t: "They have started coming back on their own. I did not call them. Nobody called them. There is nothing left to send them anywhere, so they are doing the only thing they know." },
+      { h: 0.75, t: "Keep the four of them wound tonight. All four. There is a key in the back of each one and it takes about a second. Please." },
+      /* and the drawing comes up here, at five to one: four of them
+         standing round a woman at a desk, facing outwards. It is the
+         picture the next line is the caption to, and for three nights
+         he has been unable to say either of them. */
       { h: 1.20, t: "And if one of them gets to the door before you do — let it. Do not shut it. Let it." },
       { h: 1.50, t: "You will have worked out by now what I was, and I would like to say I was more than that. I was not. A man is the sum of what he actually did. I was also a man who made four things that will stand at a door for you, and that is on the list too." },
-      { h: 2.05, t: "If you wind her one more time before you go, she will dance. She only ever did it when she thought nobody was watching. So did you." },
-      { h: 2.35, t: "That is the end of the tape. There was more and I could not get through it." },
+      { h: 2.00, t: "If you wind her one more time before you go, she will dance. She only ever did it when she thought nobody was watching. So did you." },
+      { h: 2.30, t: "That is the end of the tape. There was more and I could not get through it." },
 
-      /* AN HOUR OF NOTHING, AND THEN IT IS NOT HIM.
+      /* AN HOUR AND A HALF OF NOTHING, AND THEN IT IS NOT HIM.
 
          Half past two to half past three is the longest silence in the
          chapter and it is there on purpose: three of the four have
@@ -1869,8 +1901,7 @@ const NS = {
          each of them twenty seconds long, and a twenty second speech
          needs a twenty second hole to start in. Everything reactive in
          this chapter waits for quiet, so a night with no quiet in it
-         is a night where the reactive things never happen -- which was
-         the fault, under another name, before any of this was cut. */
+         is a night where the reactive things never happen. */
       { h: 3.60, who: "cogsworth", t: "She has checked that door twice. The second time from the landing, the way she does at home." },
       { h: 3.74, who: "marabelle", t: "You are not supposed to know what she does at home." },
       { h: 3.88, who: "cogsworth", t: "He wrote it down. He wrote all of it down. I have read the book, same as you." },
@@ -1919,7 +1950,7 @@ const NS = {
     "odd-spool":   "Brass wire, eighteen gauge. Everything in this building that turns is holding hands with a bit of that.",
     "odd-drawing": "A girl drew that at a party here and her mother made her apologise for the wall. I had it framed the next morning.",
     "odd-boots":   "My boots. I kept a pair at the shop so I never walked the workshop into your hallway. You noticed. You never said.",
-    "odd-clock":   "That clock is four minutes fast and has been since I hung it. Cogsworth sets herself by it, so now it is the correct time.",
+    "odd-clock":   "That clock is four minutes fast and has been since I hung it. Cogsworth sets himself by it, so now it is the correct time.",
     "odd-tickets": "Nobody ever redeemed the big prize. It is still in the cabinet. It is a bear, and it is not very good.",
     "odd-jar":     "Screws. Not sorted. Twenty-two years of meaning to.",
     "odd-fifth":   "Do not mind that one. It is not finished and it is not going to be, and you will see why on the last night.",
@@ -2354,40 +2385,92 @@ const NS = {
       t: "The supply closet. There is a second chair in it, and a mug on the arm of the chair, and he put it there the week he took the lease. I have decided that I do not know what it is for. Look at it instead of me." },
   },
 
-  /* Dawn on the last night, and the one thing she gets to decide. */
+  /* =====================================================================
+     DAWN ON THE LAST MORNING, AND THE ONE THING SHE GETS TO DECIDE.
+
+     AND IT USED TO ASK HER TO DO SOMETHING THAT CANNOT HAPPEN.
+
+     The choice was WIND THEM or LEAVE THEM: "there is a winding key on
+     the counter, and four things standing very still in a shop that is
+     hers now." That was written before the last hour existed, and the
+     last hour destroys all four of them in front of her. Chime goes up
+     into the ceiling with six of them holding on to it. Marabelle
+     dances at four hundred of them and buys eleven seconds. Cogsworth
+     is halfway across the room with his hand out. Jax puts the floor
+     back over her head and detonates. The film ends on four empty
+     stands, a burnt office and her saying his name into it.
+
+     And then, forty seconds later, the card said they were walking
+     back to their places, and asked her whether she would like to wind
+     them. Read end to end that is not a small continuity slip; it is
+     the ending of the chapter telling her that the thing she just
+     watched did not happen, which is the surest way to make twenty
+     minutes of film feel like it was about nothing.
+
+     So the last decision is the one the shop actually leaves her, and
+     it has been sitting under a dust sheet since the second hour of
+     the last night. He never finished the fifth one. The tag wired to
+     its wrist says FOR HER TO WIND, WHEN SHE IS READY, and he ran out
+     of time, and now there is nobody left in the back room and a
+     bench with his tools still on it.
+
+     Does she pick them up?
+
+     Both answers are right and the chapter refuses to prefer one. One
+     of them is her deciding she is allowed to make something. The
+     other is her noticing that a half-built toy with an instruction on
+     the wrist is the same man doing the same thing one last time, and
+     declining. ===================================================== */
   ending: {
-    ask: "There is a winding key on the counter, and four things standing very still in a shop that is hers now. One more thing to decide, and then nobody is asking her for anything ever again.",
+    ask: "There is a dust sheet at the back of the stage with something under it that he never finished, and his bench at the back of the workshop, and a shop that is hers. Nobody is left in this building to ask her for anything ever again. One more thing to decide, and it is hers.",
     wind: {
-      label: "WIND THEM",
+      label: "FINISH THE FIFTH ONE",
+      head: "SHE FINISHES IT",
       lines: [
-        "She goes out onto the floor in the dark and winds all four of them — not on a monitor at arm's length this time, but standing in front of them with her hand on the key.",
-        "Nothing happens. Nothing was ever going to happen — they are toys, and it is six in the morning, and the man who made them has been dead for eleven days.",
-        "The soldier keeps better time than she does. The owl is up where she would be. The ballerina will not move while she is watching, and the jester in the box has never once left a door.",
-        "She stands in the middle of her husband's shop and understands, all at once and far too late, that she has been looking at a portrait of herself for three nights and calling it a haunting.",
-        "Then she opens the shutters, because it is morning, and there is a shop to run.",
+        "She takes the sheet off. The face is done and nothing else is — no mechanism, no key, a hole in the back where one goes and nothing behind it.",
+        "The tag on the wrist says FOR HER TO WIND, WHEN SHE IS READY, and it has taken her until this morning to work out that the her on the tag was never the toy.",
+        "She has spent three nights watching four of them do exactly what they were built to do, and every one of them came to a door at some point and told her in its own words what it was. She knows how a thing that keeps time goes together. She also knows, now, what it costs to build something out of a person you were not brave enough to talk to.",
+        "So she clears his bench, and carries the folding chair through from the supply closet — the one he set out the week he took the lease and never once folded up, with her own chipped mug still standing on the arm of it — and puts it down at the bench, and sits in it, and starts in on the fifth one.",
+        "He had one rule about that bench and it was nothing left half-made overnight, and he broke it four times in fifteen years, and the fifth time he ran out of time to put it right. So that is hers to finish as well.",
+        "Not to stand at a door. Because she would like to see it done, and because there is nobody left in this building to build it for her, and because she has always been able to do this and nobody ever once asked her to.",
       ],
     },
     leave: {
-      label: "LEAVE THEM",
+      label: "LEAVE IT UNDER THE SHEET",
+      head: "SHE LEAVES IT",
       lines: [
-        "She puts the key down on the counter and leaves it there.",
-        "He was a man who could not say a thing out loud in fifteen years, and his answer was to build it out of brass and leave her to work it out on her own, in the dark, at four in the morning, with the doors shut.",
+        "She puts the sheet back over it and squares the corners, the way you cover a thing you are not throwing away.",
+        "Fifteen years of making things out of her because he could not say a sentence out loud, and the last thing he left was a half-built one with an instruction on the wrist. She is allowed to notice that he was still doing it at the end.",
         "That is not nothing. It is also not enough, and she is allowed to know both of those at the same time.",
-        "So she lets them wind down, and she takes the last page, and she opens the shutters — and by the time the light gets to the back room the soldier has stopped where he stands, facing the office, the way he has faced it every night this week.",
-        "She will wind them tomorrow. She already knows she will. But not because he told her to.",
+        "So she opens the shutters, and locks the back room behind her, and goes home to sleep — and the shop opens on Monday, because it is hers and she is better at this than he was, and not one part of that requires her to pick up his tools.",
+        "She will take the sheet off one day. She already knows she will. But not this morning, and not because he asked.",
       ],
     },
   },
 
-  /* Six o'clock on the last night. Dawn, a still shop, and the one
-     object that finishes it. */
+  /* SIX O'CLOCK ON THE LAST MORNING, AFTER THE FILM.
+
+     It said: the shutters go up on their own, and out on the floor the
+     four of them are walking back to their places, the soldier to his
+     plinth and the owl up into the rafters. None of that is true any
+     more and it is not a small untruth — it is the card immediately
+     after the twenty minutes in which every one of them is destroyed,
+     and it repeated two of that film's own closing lines back at her
+     verbatim on top of it.
+
+     What is here instead is what is actually in the building at six:
+     four empty stands, a hole in the office floor with the board laid
+     back over it, and a great deal of brown paper that is not going
+     anywhere now. And the one thing the chapter has owed her since the
+     first ninety seconds of it, which is him keeping his word. He
+     asked for three nights and said that afterwards she would have
+     everything. She has it. It was under the chair. */
   finale: {
     title: "6:00 AM",
     lines: [
-      "The shutters go up on their own at six. They always have.",
-      "Out on the shop floor the four of them are walking back to their places. Not hurrying. The soldier to his plinth, the owl up into the rafters, the ballerina under her glass, the jester folding himself back into his box — and then, one after another, they stop, the way a thing stops when it is finished rather than interrupted.",
-      "They have done that every morning this week. She watched it on a monitor for two of them without once understanding what she was looking at, and tonight the cameras went at five and she is watching it with her own eyes.",
-      "They were never coming for her. They were coming to her, and she has spent three nights getting very good at keeping them out.",
+      "The shutters go up at six. Nobody had to be here for that, and this morning nobody was.",
+      "There is an empty plinth on the show stage, an empty ledge over the front door, a glass dome in the party room with nothing under it, and a box in the supply closet with the lid up. There is a hole in the office floor with the board leaning against the desk beside it, where she pushed it up from underneath, because the one that laid it over her was never going to be lifting it off again. And out in the hall there is a great deal of brown paper and string that is not going anywhere now.",
+      "He asked her for three nights and said that when they were done she would have everything. She has it. It was under the chair she had been sitting on all week, and he could not say so, because saying so meant saying the rest of it.",
     ],
   },
 
@@ -6926,19 +7009,19 @@ const SOLD = [
   {
     id: "post1", name: "UNREGISTERED",
     what: "a parcel that came back", colour: "#7b6a55",
-    variant: 0, door: "left", from: 1,
+    variant: 0, door: "left", from: 1, night: 2,
     route: [["foyer","s0"], ["foyer","s2"], ["hall","far"], ["hall","mid"], ["hall","near"], ["office","leftDoor"]],
   },
   {
     id: "post2", name: "UNREGISTERED",
     what: "a parcel that came back", colour: "#6d6558",
-    variant: 1, door: "right", from: 2,
+    variant: 1, door: "right", from: 2, night: 2,
     route: [["foyer","s1"], ["hall","far"], ["arcade","s1"], ["party","s1"], ["party","s2"], ["office","rightDoor"]],
   },
   {
     id: "post3", name: "UNREGISTERED",
     what: "a parcel that came back", colour: "#83705a",
-    variant: 2, door: "left", from: 3,
+    variant: 2, door: "left", from: 3, night: 3,
     route: [["foyer","s2"], ["hall","near"], ["hall","mid"], ["office","leftDoor"]],
   },
 ];
@@ -7064,17 +7147,30 @@ function soldActive(def) {
     return top >= (def.from + 1) * 5;
   }
   if (G.mode !== "story") return false;
-  /* THREE NIGHTS, THREE PARCELS, ONE MORE EACH NIGHT.
+  /* NONE, TWO, THREE.
 
-     This read `G.night >= def.from + 1` with a floor of two, which over
-     six nights meant none, one, two, three, three, three. Over three it
-     would have meant none, one, two -- the last night of the chapter
-     would have had one fewer of them in it than the old night four. The
-     count is off the night number now: one on the first, two on the
-     second, all three on the last, which is the same ramp the six-night
-     version reached, arrived at in half the time. Custom Night still
-     reads `from` the way it always did. */
-  return G.night >= def.from;
+     `G.night >= def.from + 1` with a floor of two gave none, one, two,
+     three, three, three over six nights. Over three that is none, one,
+     two -- the last night of the chapter with one fewer of them in it
+     than the old night four had.
+
+     Going the other way and putting one on the first night was worse,
+     and it took a read of the whole script to see why: nothing in
+     night one introduces them. The card she reads on the way in to the
+     SECOND night is the introduction -- "there is a parcel on the
+     step, no stamp, no name, and the paper has been opened from the
+     inside" -- and his tape explains them an hour later. A brown paper
+     parcel appearing in the hall on the first night, on the night he
+     spends saying nothing in this shop wants to hurt you, is the one
+     genuinely frightening thing in the chapter arriving with nobody to
+     say what it is.
+
+     So the first night is the four of them and nothing else, the
+     second night gets two the morning after she finds one on the step,
+     and the last night has all three. `night` is the story schedule;
+     `from` is left alone because Custom Night reads it as a dial
+     threshold and that is a different question. */
+  return G.night >= (def.night || def.from + 1);
 }
 
 function stepSold(ch, dt) {
@@ -13237,7 +13333,11 @@ function heldCard(keeper, shut, door) {
     '<div class="ns-card ns-card-held">' +
       '<p class="ns-from">' + fmt(H.where, door === "right" ? "east" : "west") + '</p>' +
       '<div class="ns-lines">' +
-        H.lines.map((l) => "<p>" + l + "</p>").join("") +
+        /* the name goes into the body of the card as well as the line
+           under it: `where` substitutes the door and `who` the name,
+           and until now the lines themselves called every one of the
+           four "he" */
+        H.lines.map((l) => "<p>" + fmt(l, keeper.def.name) + "</p>").join("") +
       '</div>' +
       '<p class="ns-pencil">' + fmt(H.who, keeper.def.name) + '</p>' +
       '<div class="ns-btns"><button class="ns-btn ns-btn-go" data-go="heldOut">BACK TO IT</button></div>' +
@@ -14230,7 +14330,7 @@ function stepSignal(dt) {
 const REVEAL_PLAN = {
   1: [{ n: 1, at: 2.10 }, { n: 2, at: 4.50 }],
   2: [{ n: 3, at: 1.30 }, { n: 4, at: 4.15 }],
-  3: [{ n: 5, at: 0.60 }, { n: 6, at: 3.05 }],
+  3: [{ n: 5, at: 0.95 }, { n: 6, at: 3.05 }],
 };
 
 const REVEAL = { done: {}, night: 0, at: 0 };
@@ -14372,7 +14472,13 @@ function choiceHour(n) { const v = keptAll()["h" + n]; return v == null ? 0 : v;
    night has between the end of his tape and the four of them starting
    to talk. The sixth is the letter, at five past three, and nothing
    answers that one: the last hour does. */
-const ANSWER_GAP = 2.4;
+/* Two and a half in-game hours was fine while every one of these was
+   answered on the night after. The two made on the last night have to
+   be answered on the same one, in the hour and a half he leaves empty
+   in the middle of it -- so the gap is two hours, which puts the
+   drawing's answer at five to three with the hole open until half
+   past. */
+const ANSWER_GAP = 2.0;
 function answerable(n, hourNow) {
   const cn = choiceNight(n);
   /* a decision from before the night was recorded beside it -- a save
@@ -17857,7 +17963,7 @@ function screenEnding(which) {
   if (which === "wind") SFX.tuneWhole(0.8);
   overlay(
     '<div class="ns-card ns-card-fin">' +
-      '<p class="ns-nightno">' + (which === "wind" ? "SHE WINDS IT" : "SHE LEAVES IT") + '</p>' +
+      '<p class="ns-nightno">' + (e.head || (which === "wind" ? "SHE WINDS IT" : "SHE LEAVES IT")) + '</p>' +
       '<div class="ns-lines">' + e.lines.map((l) => "<p>" + l + "</p>").join("") + '</div>' +
       /* and then the six nights of small decisions, answered */
       '<p class="ns-kept-ask">' + NS.kept.ask + '</p>' +

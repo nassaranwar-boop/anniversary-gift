@@ -255,8 +255,11 @@ for (const k in (NS.gotYou || {}))
 ((NS.lastHour && NS.lastHour.after && NS.lastHour.after.lines) || []).forEach((l, k) =>
   add('note-' + (k + 1), l, 'the letter on the bench'));
 
-add('kept-clean', NS.kept && NS.kept.clean, 'six nights, untouched');
-add('kept-hurt',  NS.kept && NS.kept.hurt,  'six nights, not untouched');
+/* NS.kept.clean and NS.kept.hurt used to be added here and have not
+   existed for some time -- those two lines are NS.keptTerms, and they
+   are printed on the six o'clock card rather than spoken, so they want
+   no take. `add` drops a falsy text, which is why two dead lines sat
+   here without anything going red. */
 
 if (process.argv.indexOf('--json') >= 0) {
   const m = {};

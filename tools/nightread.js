@@ -107,7 +107,7 @@ const { chromium } = require('playwright-core');
   });
   end.finale.forEach(l => say('    ' + l));
   say('\n    ' + end.ask);
-  say('\n  [WIND THEM]');
+  say('\n  [FINISH THE FIFTH ONE]');
   end.wind.forEach(l => say('    ' + l));
   say('\n  [and then, out of the six nights of keeping and burning]');
   Object.keys(end.kept).filter(k => k !== 'ask').forEach(k =>

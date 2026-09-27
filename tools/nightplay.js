@@ -536,7 +536,7 @@ function ok(name, cond, extra) {
   console.log('\n— the shift the story ends on —');
   const fin = await page.evaluate(() => {
     const w = OuissysNightShift.__night, s = w.state();
-    w.route('night:6'); w.route('go');
+    w.route('night:3'); w.route('go');
     s.hour = 5; s.power = 60;
     ['cogsworth', 'chime', 'marabelle', 'jax'].forEach((k) => { w.cast()[k].asleep = true; });
     w.pump(70);
