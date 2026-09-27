@@ -146,7 +146,7 @@ window.CUP_CONFIG = {
 
          Two names do not change, for the obvious reason.
          ===================================================================== */
-      id: "ouissy", name: "OUISSY", role: "st", star: true, captainable: true,
+      id: "ouissy", name: "OUISSY", number: 10, role: "st", star: true, captainable: true,
       tag: "Star Captain · Playmaker",
       build: { h: 1.00, w: 1.00 }, head: "ouissy",
       /* HER OWN COLOURS, the ones she has in every other chapter on this
@@ -163,7 +163,7 @@ window.CUP_CONFIG = {
       emblem: "heart", armband: true,
     },
     {
-      id: "anwar", name: "ANWAR", role: "st", star: true, captainable: true,
+      id: "anwar", name: "ANWAR", number: 7, role: "st", star: true, captainable: true,
       tag: "Co-Star · Striker",
       /* his skin and hair are not really set here: ANWAR above wins, and
          cup.js copies them down over this entry as it loads. They are
@@ -179,7 +179,7 @@ window.CUP_CONFIG = {
 
     /* ---- strikers ---- */
     {
-      id: "ember", name: "WALID", role: "st", captainable: true,
+      id: "ember", name: "WALID", number: 9, role: "st", captainable: true,
       tag: "Striker · quick and hot-headed",
       build: { h: 0.87, w: 0.92 }, head: "flame",
       skin: "#f2c79c", hair: "#e8642a",
@@ -190,7 +190,7 @@ window.CUP_CONFIG = {
       emblem: "flame", trail: "spark",
     },
     {
-      id: "atlas", name: "SOUFIANE", role: "st", captainable: true,
+      id: "atlas", name: "SOUFIANE", number: 4, role: "st", captainable: true,
       tag: "Striker · built like the mountain",
       build: { h: 1.14, w: 1.26 }, head: "crop",
       skin: "#c9925e", hair: "#241a12",
@@ -201,7 +201,7 @@ window.CUP_CONFIG = {
       emblem: "mountain",
     },
     {
-      id: "comet", name: "ADAM", role: "st", captainable: true,
+      id: "comet", name: "ADAM", number: 11, role: "st", captainable: true,
       tag: "Striker · gone before you look up",
       build: { h: 1.02, w: 0.90 }, head: "goggles",
       skin: "#e8c2a0", hair: "#3a4a63",
@@ -214,7 +214,7 @@ window.CUP_CONFIG = {
 
     /* ---- playmakers ---- */
     {
-      id: "lumi", name: "SALMA", role: "mid", captainable: true,
+      id: "lumi", name: "SALMA", number: 8, role: "mid", captainable: true,
       tag: "Playmaker · sees the pass before it exists",
       build: { h: 0.90, w: 0.96 }, head: "bun",
       skin: "#f6dcc0", hair: "#b07a3c",
@@ -225,7 +225,7 @@ window.CUP_CONFIG = {
       emblem: "lantern", charm: true,
     },
     {
-      id: "sage", name: "MEHDI", role: "mid", captainable: true,
+      id: "sage", name: "MEHDI", number: 6, role: "mid", captainable: true,
       tag: "Playmaker · never looks like they are trying",
       build: { h: 1.10, w: 0.86 }, head: "sprig",
       skin: "#e2c4a2", hair: "#6a5a3e",
@@ -236,7 +236,7 @@ window.CUP_CONFIG = {
       emblem: "leaf",
     },
     {
-      id: "echo", name: "AMINE", role: "mid", captainable: true,
+      id: "echo", name: "AMINE", number: 14, role: "mid", captainable: true,
       tag: "Playmaker · cannot stand still",
       build: { h: 0.92, w: 0.90 }, head: "phones",
       skin: "#d9a882", hair: "#6b3f8a",
@@ -250,7 +250,7 @@ window.CUP_CONFIG = {
 
     /* ---- defenders ---- */
     {
-      id: "boulder", name: "OTHMANE", role: "def", captainable: true,
+      id: "boulder", name: "OTHMANE", number: 5, role: "def", captainable: true,
       tag: "Defender · does not move for anybody",
       build: { h: 0.94, w: 1.38 }, head: "flat",
       skin: "#c79a72", hair: "#3e4248",
@@ -261,7 +261,7 @@ window.CUP_CONFIG = {
       emblem: "shield",
     },
     {
-      id: "thorn", name: "ZAKARIA", role: "def", captainable: true,
+      id: "thorn", name: "ZAKARIA", number: 3, role: "def", captainable: true,
       tag: "Defender · waiting for you to take a touch too many",
       build: { h: 1.04, w: 0.94 }, head: "pads",
       skin: "#d6a078", hair: "#241418",
@@ -272,7 +272,7 @@ window.CUP_CONFIG = {
       emblem: "rose",
     },
     {
-      id: "willow", name: "KENZA", role: "def", captainable: true,
+      id: "willow", name: "KENZA", number: 2, role: "def", captainable: true,
       tag: "Defender · ends up in their box somehow",
       build: { h: 1.16, w: 0.88 }, head: "willow",
       skin: "#eccfb4", hair: "#4a7a72",
@@ -285,7 +285,7 @@ window.CUP_CONFIG = {
 
     /* ---- keepers ---- */
     {
-      id: "gustav", name: "HAMZA", role: "gk",
+      id: "gustav", name: "HAMZA", number: 1, role: "gk",
       tag: "Keeper · has seen all of this before",
       build: { h: 1.06, w: 1.18 }, head: "cap",
       skin: "#e8c9a8", hair: "#6a5232",
@@ -296,7 +296,7 @@ window.CUP_CONFIG = {
       emblem: "glove",
     },
     {
-      id: "marina", name: "IMANE", role: "gk",
+      id: "marina", name: "IMANE", number: 12, role: "gk",
       tag: "Keeper · airborne before the ball is",
       build: { h: 1.02, w: 0.92 }, head: "pony",
       skin: "#f0d2b8", hair: "#2f4a6b",

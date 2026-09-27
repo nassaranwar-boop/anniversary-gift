@@ -1261,10 +1261,28 @@ window.CupSprites = (function () {
 
     if (face.back) {
       /* from behind she is a back, so: a number, and her hair over the
-         shoulders rather than tucked behind them */
-      var ny = shoulderY + 5, gp = P.fam.trim;
-      sh.rect(ux - 1, ny, 3, 7, gp.light);
-      sh.rect(ux - 2, ny + 1, 1, 5, gp.light);
+         shoulders rather than tucked behind them.
+
+         THE NUMBER WAS NOT A NUMBER. It was two rectangles -- three
+         wide, SEVEN tall, in trim.light -- which on a cream trim
+         derives to pure #ffffff and on a sixteen-pixel torso runs from
+         the shoulder blades down into the shorts. Blown up on the
+         contact sheet it is a white slab across the back of every
+         character in the game, and it is the loudest thing on any of
+         them. It read as a fault in the kit, because it is one.
+
+         A digit is five pixels tall and three wide, which is the
+         smallest a numeral can be and still be a numeral, and it is
+         drawn in the trim's own tone rather than its highlight. It is
+         clamped to sit inside the shirt: a number that touches the
+         waistband is a smear again whatever shape it is. Two digits go
+         side by side where the chest is wide enough for them and the
+         tens digit is dropped where it is not -- on a body turned
+         three-quarters away there is no room for 14 and half a number
+         is worse than one. */
+      var gp = P.fam.trim;
+      var ny = Math.min(shoulderY + 4, hipY - 7);
+      backNumber(sh, ux, ny, L.number || 0, gp.base, torsoW);
       backHair(sh, L, P, ux, headCy, headR, face, p.hairLag);
     } else if (L.emblem === "heart" && torsoW >= 6) {
       var ey = shoulderY + 6, hp = P.fam.heart;
@@ -1277,6 +1295,43 @@ window.CupSprites = (function () {
 
     drawHead(sh, L, P, ux, headCy, headR, face, p);
     return { sheet: sh, air: p.air || 0 };
+  }
+
+  /* =======================================================================
+     THE NUMBER ON HER BACK
+
+     A three-by-five bitmap for each numeral, one bit a pixel, written
+     out as strings because at this size a font is three lines of data
+     and anything cleverer is three hundred lines of nothing.
+     ======================================================================= */
+  var DIGITS = {
+    "0": "111101101101111", "1": "010110010010111", "2": "111001111100111",
+    "3": "111001111001111", "4": "101101111001001", "5": "111100111001111",
+    "6": "111100111101111", "7": "111001001001001", "8": "111101111101111",
+    "9": "111101111001111",
+  };
+
+  function digit(sh, x, y, ch, col) {
+    var g = DIGITS[ch];
+    if (!g) return;
+    for (var i = 0; i < 15; i++) {
+      if (g.charAt(i) === "1") sh.px(x + (i % 3), y + ((i / 3) | 0), col);
+    }
+  }
+
+  /* One digit centred, or two side by side with a pixel between them --
+     and only where the chest is wide enough to carry both without the
+     number running off the edge of the shirt. */
+  function backNumber(sh, cx, y, n, col, torsoW) {
+    n = Math.max(0, Math.round(n || 0));
+    var s = String(n);
+    if (s.length > 1 && torsoW < 6) s = s.slice(-1);
+    if (s.length > 1) {
+      digit(sh, cx - 3, y, s.charAt(0), col);
+      digit(sh, cx + 1, y, s.charAt(1), col);
+    } else {
+      digit(sh, cx - 1, y, s, col);
+    }
   }
 
   /* =======================================================================
