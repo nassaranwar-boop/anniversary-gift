@@ -8501,6 +8501,19 @@ img{-webkit-user-drag:none; user-select:none;}
   mask:radial-gradient(circle, transparent 58%, #000 60%);
 }
 .ns-wind.winding::before{ border-color:rgba(255,206,140,.95); }
+/* WHEN THERE IS NOTHING TO DO TO IT.
+
+   The key used to disappear above 55% of a wind, which from where she
+   is sitting is the button not working. It stays, dimmed, with the
+   ring showing how much wind is left and FULL on the label, so a
+   glance answers "does this one need me" and an absence never has to
+   be interpreted. */
+.ns-wind.full{ opacity:.5; }
+.ns-wind.full::before{ border-color:rgba(200,162,96,.3); }
+.ns-wind.full::after{ background:conic-gradient(rgba(200,214,180,.55) var(--k, 0%), transparent 0); }
+/* and while she is holding it, it does not move and it is obvious */
+.ns-wind.winding{ opacity:1; }
+.ns-wind.winding::after{ background:conic-gradient(rgba(255,226,170,.95) var(--k, 0%), transparent 0); }
 .ns-wind[hidden]{ display:none !important; }
 /* whose key it is. This was `::first-line { content: attr(data-who) }`,
    which does nothing at all — `content` does not apply to ::first-line —

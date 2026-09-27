@@ -2516,6 +2516,10 @@ const NS = {
     /* nothing in six nights has ever knocked and then waited */
     asking:     "$1: SOMETHING IS KNOCKING. IT IS NOT TRYING THE HANDLE.",
     wound:      "$1: WOUND.",
+    /* one that had stopped, started again: the building distinguishes
+       them because she should be able to hear the difference between
+       topping one up and bringing one back */
+    woundBack:  "$1: RUNNING AGAIN.",
     slack:      "$1: RUN DOWN.",
     six:       "SIX HUNDRED HOURS. SHIFT ENDS.",
   },
@@ -12496,6 +12500,8 @@ function resetCast() {
     ch.knockT = 0;
     ch.awake = false;
     ch.asleep = false;
+    /* the shop says "RUN DOWN" once per night per toy, not once ever */
+    ch.slackSaid = false;
     /* Camera zero and the daylight walk-through both pin a figure in
        place with this, and stepCast leaves a pinned one alone. The
        gallery pins all four and nothing here used to unpin them, so a
@@ -17152,9 +17158,27 @@ function buildUI() {
      you do for a second and a bit, not a thing you tap */
   if (EL["ns-key"]) {
     const k = EL["ns-key"];
-    k.addEventListener("pointerdown", (e) => { e.stopPropagation(); e.preventDefault(); windStart(); });
-    ["pointerup", "pointerleave", "pointercancel"].forEach((ev) =>
-      k.addEventListener(ev, (e) => { e.stopPropagation(); windEnd(); }));
+    /* POINTER CAPTURE, AND NOT pointerleave.
+
+       A second-and-a-bit hold on a 44px target that is positioned from
+       a walking toy loses itself constantly: the thumb does not move,
+       the button does, pointerleave fires and the wind is gone. The
+       press is captured to the element now, so every move and the
+       release are delivered here whatever is under the finger, and
+       leaving no longer cancels anything. windHotspot freezes the
+       position for the duration as well, so there are two independent
+       reasons it cannot happen again. */
+    k.addEventListener("pointerdown", (e) => {
+      e.stopPropagation(); e.preventDefault();
+      try { k.setPointerCapture(e.pointerId); } catch (err) { /* older engines */ }
+      windStart();
+    });
+    ["pointerup", "pointercancel"].forEach((ev) =>
+      k.addEventListener(ev, (e) => {
+        e.stopPropagation();
+        try { if (k.hasPointerCapture(e.pointerId)) k.releasePointerCapture(e.pointerId); } catch (err) {}
+        windEnd();
+      }));
   }
 
   /* THE FOUR KEYS. One pip each, in that one's own colour, built from
@@ -18632,6 +18656,9 @@ const WIND = {
   /* seconds of holding to wind one, and what it costs */
   hold: 1.15,
   cost: 1.0,
+  /* at or above this fraction of a full wind it is as wound as it can
+     usefully be, and the key says so instead of disappearing */
+  full: 0.92,
   /* How long a full wind lasts, in in-game hours. Nine, so that keeping
      all four going costs about one wind each across a six-hour night —
      four percent of the meter, which is a real cost she can feel and
@@ -18648,47 +18675,104 @@ function windState(id) {
 /* is this one still running on the wind she gave it? */
 function isWound(ch) { return (ch.wound || 0) > 0; }
 
-/* the key on its back, found the same way the pages are: by looking */
+/* THE KEY ON ITS BACK, AND THE FOUR REASONS IT DID NOT WORK.
+
+   "It feels cheap and it does not always work." It did not, and the
+   reasons are all here rather than in how it was written:
+
+     it walked away    The button is positioned every frame from the
+                       toy's own position on the monitor, and the toy
+                       is walking. Hold it for a second and a bit on a
+                       phone and the target slides out from under a
+                       thumb that has not moved — pointerleave fires,
+                       the hold is cancelled, and nothing anywhere says
+                       why. This is the main one. It is frozen while
+                       she is holding it now, and the press is captured
+                       to the element so it cannot be lost by drift.
+     it vanished       The key only appeared below 55% of a wind. Above
+                       that she is looking straight at one of the four,
+                       pressing where the key was a minute ago, and
+                       there is nothing there. An absence is not an
+                       explanation. It is always on one of his now, and
+                       it says FULL when there is nothing to do.
+     it aimed wrong    `G.windTarget` was set when a target existed and
+                       never cleared when one stopped existing, so the
+                       press armed a stale id, stepWind cancelled it on
+                       the next frame, and the button did nothing at
+                       all. That is the "sometimes".
+     it picked wrong   Two of them in one room and it always chose the
+                       first in cast order, so the other one could not
+                       be wound however long she looked at it. It picks
+                       whichever of them needs it most. */
 function windHotspot() {
   const elk = EL["ns-key"];
   if (!elk) return;
   let target = null;
-  if (G.phase === "play" && G.monitor && G.monOut <= 0 && !isLost(G.cam)) {
+  /* a hold in progress keeps its target, wherever the thing has got to:
+     losing a wind because the toy took a step is the bug */
+  if (G.winding && cast[G.winding] && G.phase === "play") target = cast[G.winding];
+  else if (G.phase === "play" && G.monitor && G.monOut <= 0 && !isLost(G.cam)) {
     for (let i = 0; i < CAST.length; i++) {
       const ch = cast[CAST[i].id];
-      /* only in the room she is actually looking at, only while it is
-         standing still enough to get a key into, and only if it needs it */
-      if (ch && ch.awake && ch.room === G.cam && !ch.atDoor && windNeeded(ch)) { target = ch; break; }
+      /* in the room she is looking at, and standing still enough to get
+         a key into. Whether it NEEDS winding is shown, not enforced. */
+      if (!ch || !ch.awake || ch.room !== G.cam || ch.atDoor) continue;
+      if (!target || (ch.wound || 0) < (target.wound || 0)) target = ch;
     }
   }
   elk.hidden = !target;
-  if (!target) { G.winding = null; G.windT = 0; return; }
+  if (!target) { G.windTarget = null; G.winding = null; G.windT = 0; return; }
   G.windTarget = target.def.id;
-  _proj.setFromMatrixPosition(target.group.matrixWorld).project(view);
-  const x = (_proj.x * 0.5 + 0.5) * 100;
-  const y = (-_proj.y * 0.5 + 0.5) * 100;
-  if (_proj.z > 1 || x < 3 || x > 97 || y < 3 || y > 97) { elk.hidden = true; return; }
-  elk.style.left = x + "%";
-  elk.style.top = y + "%";
-  elk.style.setProperty("--k", Math.round(clamp(G.windT / WIND.hold, 0, 1) * 100) + "%");
-  elk.classList.toggle("winding", G.winding === target.def.id);
-  /* say whose key it is. The name was being set and never shown. */
+  const holding = G.winding === target.def.id;
+  /* FROZEN WHILE SHE IS HOLDING IT. The position is recomputed every
+     frame from a thing that walks; a control that moves during its own
+     press is a control that cannot be pressed. */
+  if (!holding) {
+    _proj.setFromMatrixPosition(target.group.matrixWorld).project(view);
+    const x = (_proj.x * 0.5 + 0.5) * 100;
+    const y = (-_proj.y * 0.5 + 0.5) * 100;
+    if (_proj.z > 1 || x < 3 || x > 97 || y < 3 || y > 97) { elk.hidden = true; return; }
+    elk.style.left = x + "%";
+    elk.style.top = y + "%";
+  }
+  /* the ring shows the hold while she is holding, and how much wind is
+     left in that one the rest of the time -- so a glance at it answers
+     "does this need me" without her having to try */
+  const k = holding ? clamp(G.windT / WIND.hold, 0, 1)
+                    : clamp((target.wound || 0) / WIND.hours, 0, 1);
+  elk.style.setProperty("--k", Math.round(k * 100) + "%");
+  elk.classList.toggle("winding", holding);
+  elk.classList.toggle("full", !holding && !windNeeded(target) && k >= WIND.full);
   const lab = elk.firstElementChild;
-  if (lab && lab.textContent !== target.def.name) lab.textContent = target.def.name;
+  const want = target.def.name + (!holding && k >= WIND.full ? " \u00b7 FULL" : "");
+  if (lab && lab.textContent !== want) lab.textContent = want;
   elk.dataset.who = target.def.name;
 }
+/* below this it is worth her while, and the pip says so */
 function windNeeded(ch) { return (ch.wound || 0) < WIND.hours * 0.55; }
 
 /* holding the key */
 function windStart() {
   if (G.phase !== "play" || !G.windTarget) return;
+  const ch = cast[G.windTarget];
+  /* the stale-target press: windHotspot used to leave the last target
+     armed after it stopped being on screen, so the button was live and
+     did nothing */
+  if (!ch || !ch.awake || ch.atDoor) { G.windTarget = null; return; }
   G.winding = G.windTarget;
   G.windT = 0;
   /* on a wall clock: a hold is an input, and an input that takes longer
      on a slow machine is a bug rather than a difficulty setting */
   G.windT0 = perf();
 }
-function windEnd() { G.winding = null; G.windT = 0; }
+function windEnd(quiet) {
+  /* A CANCELLED HOLD USED TO BE SILENT.
+     Let go early, or switch camera, or let it walk out of the room, and
+     the ring emptied with no sound and no line: identical, from where
+     she is sitting, to the button not working. It ticks. */
+  if (!quiet && G.winding && G.windT > 0.18 && G.windT < WIND.hold) SFX.tick(0.35, 0);
+  G.winding = null; G.windT = 0;
+}
 
 /* WHAT THE SIX DECISIONS DO WHILE SHE IS STILL PLAYING.
 
@@ -18716,7 +18800,26 @@ function stepWind(dt) {
     const ch = cast[d.id];
     if (!ch) return;
     if (ch.wound === undefined) ch.wound = 0;
-    if (ch.wound > 0) ch.wound = Math.max(0, ch.wound - dt * perHour);
+    if (ch.wound > 0) {
+      ch.wound = Math.max(0, ch.wound - dt * perHour);
+      /* THE MOMENT IT STOPS BEING HIS.
+
+         A run-down one is thirty-five per cent more aggressive, and a
+         run-down Marabelle does not freeze when she is watched, which
+         is the single nastiest state in the chapter -- and for the
+         whole of the chapter's life nothing anywhere told her it had
+         happened. NS.sys.slack has been written, and correct, and
+         never once fired. The building notices now, the way it
+         notices everything else, and that is both the feedback the
+         mechanic needed and a genuinely bad thing to hear at four in
+         the morning. */
+      if (ch.wound <= 0 && !ch.slackSaid && ch.awake && G.phase === "play") {
+        ch.slackSaid = true;
+        G.stats.slack++;
+        say(fmt(NS.sys.slack, ch.def.name), true);
+        SFX.hiss(0.35);
+      }
+    }
   });
   if (!G.winding) return;
   const ch = cast[G.winding];
@@ -18729,14 +18832,23 @@ function stepWind(dt) {
        running at a third of the rate paid a third of the price. A wind
        costs a wind. */
     spendPower(WIND.cost);
+    const wasSlack = !isWound(ch);
     ch.wound = WIND.hours;
+    ch.slackSaid = false;
     G.stats.winds++;
     /* the first one is his, explaining the control. The second is the
        first time any of them ever answers her. */
     tapeTrigger(G.stats.winds > 1 ? "theyWound" : "firstWind");
-    windEnd();
-    SFX.crank(0.7);
-    say(fmt(NS.sys.wound, ch.def.name));
+    windEnd(true);
+    /* IT HAS TO LAND. A wind was a quiet crank and one flat line from
+       the annunciator, for the one thing in this game she does FOR
+       something rather than against it. It is the crank, the key
+       turning over, and the ring going round — and picking one up off
+       the floor is its own sound. */
+    SFX.crank(0.95);
+    setTimeout(() => { if (G.phase === "play") SFX.tick(0.5, TUNE.pan[ch.def.door] || 0); }, 190);
+    G.shake = Math.max(G.shake, 0.12);
+    say(fmt(wasSlack ? NS.sys.woundBack : NS.sys.wound, ch.def.name));
     bumpUI();
   }
 }
