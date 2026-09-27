@@ -2179,35 +2179,17 @@ const NS = {
      gone and the audio nominal.
      ===================================================================== */
   overheard: {
-    /* FIVE EXCHANGES, AND THE FIFTH WAS IN THE WRONG QUEUE.
+    /* FIVE EXCHANGES, AND THE FIFTH TOOK THREE TRIES TO PLACE.
 
        One a night across the four nights before they ever spoke to
        her. There are two such nights now, so the first two of them
        hold two each, and the value in each is unchanged: the first is
        about the shop and the second is about him.
 
-       The fifth one is the four of them on the last night working out
-       what he was doing in that chair, and it was written straight
-       into NS.tapes[3] as seven lines with speakers on them. That
-       reads the same on the page and does not play the same at all,
-       because the tape is a QUEUE: it says the first unsaid line
-       whose hour has passed, one at a time, and everything reactive
-       on that night — two speeches answering what she kept or burned,
-       the knocks, the pointing — goes through the same hole. Measured
-       across a full three-night run, the queue on night three was a
-       whole in-game hour behind by half past two and never caught up,
-       and the last five lines of the night were never said. Two of
-       those were this conversation's punchline and three of them were
-       the warning that something is coming tonight, which is the
-       setup for the entire last hour. Written, voiced, unreachable.
-
-       overTick cannot be starved like that. It yields to the first
-       minute, orientation, a scare, a blackout, a door and anything
-       being said — and then, after OVER_HOLD, it goes anyway, and if
-       she is not looking at the room it comes through the wall,
-       because the one thing it may never be is unheard. That is the
-       guarantee those seven lines needed, and it is why they live
-       here now instead.
+       The fifth is the four of them on the last night, and its own
+       note is below on the night-three entry: it was written into
+       the last night's tape queue, then moved to night two, and
+       belongs in neither.
 
        `from` is the hour it can start. The second one on a night is
        held until the back half of it on purpose: two conversations
@@ -2244,16 +2226,50 @@ const NS = {
         { who: "chime",     t: "Bulbs do not do that." },
         { who: "cogsworth", t: "No. Somebody wanted the hall dark. And it was not the hall they wanted it dark for." },
       ] },
-      /* AND THE SECOND ONE HERE IS NOW THE LAST NIGHT'S.
+      /* The bus started taking bites out of the meter at midnight, in
+         front of her, for two per cent. The box is the one who notices
+         what she does with numbers, because he is the one who has been
+         counting her. */
+      { room: "party", from: 3.0, lines: [
+        { who: "jax",       t: "It took two per cent off her at midnight and she wrote it down." },
+        { who: "marabelle", t: "She writes everything down. He did that too, and it drove me to distraction." },
+        { who: "jax",       t: "Then she is going to notice what it is taking it FOR." },
+      ] },
+    ],
+    /* THE LAST NIGHT, AND ALL FOUR OF THEM IN IT.
 
-         What was here was four lines of Jax and Marabelle noticing
-         that the bus had taken two per cent off her meter and that
-         she had written it down. It is the one exchange in the
-         chapter that is about a number on the heads-up display rather
-         than about him, her, or the shop, and the last night had to
-         give up something real to make room for itself. This is what
-         went. */
-      { room: "foyer", from: 3.0, lines: [
+       THIS EXCHANGE HAS BEEN IN THREE PLACES AND ONLY ONE OF THEM
+       WORKS, WHICH IS WORTH WRITING DOWN.
+
+       It began written straight into NS.tapes[3] as five lines with
+       speakers on them. That reads the same on the page and does not
+       play the same at all, because the tape is a QUEUE: one line at
+       a time, shared with his own script, the speeches answering what
+       she kept or burned, and the knocks. It ran the last night out
+       of night and took the warning down with it.
+
+       So it moved to night two's second overheard slot, which fixed
+       the last night and broke night two -- that night already owes
+       the answers to BOTH of night one's choices, and adding
+       forty-six seconds of conversation to it pushed its own deadline
+       lines into night three. scriptcheck found that twice, on two
+       different lines, one run in three.
+
+       This is the place that works. overTick cannot be starved: it
+       stands aside for the first minute, orientation, a scare, a
+       blackout, a door and anything being said, and then after
+       OVER_HOLD it goes ANYWAY, and if she is not looking at the room
+       it comes through the wall, because the one thing it may never
+       be is unheard. That is the guarantee these five lines needed,
+       and no amount of scheduling inside the tape queue was ever
+       going to provide it.
+
+       The foyer, and not the workshop: tonight that camera is dead
+       from the first minute, and a scene she can never once look at
+       is one the system will always push through a wall. Half past
+       two, so it has his tape behind it and the warning in front. */
+    3: [
+      { room: "foyer", from: 2.6, lines: [
         { who: "cogsworth", t: "She has checked that door twice. The second time from the landing, the way she does at home." },
         { who: "marabelle", t: "You are not supposed to know what she does at home." },
         { who: "cogsworth", t: "He wrote it all down. I have read the book, same as you." },

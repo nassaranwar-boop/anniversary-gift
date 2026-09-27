@@ -118,15 +118,34 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
      [1, 2].every((n) => scenesOf(n).length === 2 &&
                          scenesOf(n).every((sc) => sc.lines.length >= 3)),
      [1, 2].map((n) => scenesOf(n).map((sc) => sc.lines.length).join('+')).join(' / '));
-  ok('and the last night does not, because by then they talk to her',
-     !script[3], Object.keys(script).join(','));
+  /* AND THE LAST NIGHT HAS ONE, WHICH IT DID NOT USED TO.
+
+     This asserted !script[3] -- "the last night does not, because by
+     then they talk to her" -- on the reasoning that the last night's
+     TAPE was them, so a fifth exchange would be a third thing doing
+     the same job. The reasoning was sound and the arrangement it
+     described did not work: five lines of the four of them talking
+     were written into NS.tapes[3] with speakers on them, and the
+     tape is a one-at-a-time queue shared with his own script and
+     with everything that answers her, so the last night ran out of
+     night and the warning that sets up the last hour was never once
+     said. Moving them to night two broke night two instead, which
+     owes the answers to both of night one's choices.
+
+     They are an overheard scene on night three now, because overTick
+     is the one path in the chapter that cannot be starved. So the
+     last night has exactly one, and that is the shape to hold. */
+  ok('and the last night has one, in the system that cannot be starved',
+     scenesOf(3).length === 1 && scenesOf(3)[0].lines.length >= 3,
+     Object.keys(script).join(',') + '  night 3: ' +
+       scenesOf(3).map((sc) => sc.lines.length).join('+'));
   ok('and the second one on a night is held back to the far side of it',
      [1, 2].every((n) => scenesOf(n)[1].from >= scenesOf(n)[0].from + 2),
      [1, 2].map((n) => scenesOf(n).map((sc) => sc.from).join('->')).join(' / '));
   ok('every line in them is spoken by one of the four, and no line by the speaker before it',
-     [1, 2].every((n) => scenesOf(n).every((sc) => sc.lines.every((l, i) =>
+     [1, 2, 3].every((n) => scenesOf(n).every((sc) => sc.lines.every((l, i) =>
        ['cogsworth', 'chime', 'marabelle', 'jax'].indexOf(l.who) >= 0 &&
-       (i === 0 || l.who !== sc.lines[i - 1].who)))), 'two voices, taking turns');
+       (i === 0 || l.who !== sc.lines[i - 1].who)))), 'taking turns');
 
   /* one night, pumped to six o'clock, with the camera either parked on
      the room the conversation is in or deliberately never on it */

@@ -179,9 +179,66 @@ overhead. Not a fault today; a laptop from the last decade draws a
 thousand calls at sixty frames a second. `nightlag.js` records it and
 fails above 900, which is where it would start to hurt.
 
+**And then four goes at one bug, which is worth writing down because
+three of them were wrong.**
+
+`scriptcheck` kept reporting the same thing after the rewrite: a line
+carrying a deadline arriving a whole night after it. Four attempts:
+
+1. Let a line whose night has gone skip the minute between knocks.
+   Fixed the reported case; imprecise, because "is anything late?" and
+   "is THIS line late?" are different questions.
+2. Make the test per line. The reported case came straight back — a
+   line due TONIGHT still waited, and sixty-two seconds twice over is
+   two hours of a six hour night.
+3. Realise every line the loop reaches is ALREADY past its deadline,
+   so none of them may wait; the cooldown decides whether it knocks or
+   arrives through the tape, not whether it arrives. Correct, and still
+   25/1.
+4. Sort the candidates by deadline instead of taking the first one in
+   the object. Also correct — an object literal's key order is not an
+   ordering — and still 25/1.
+
+None of them was the bug. `theyWatched` and `seenMarabelle` were the
+only two deadlines in the chapter set at **five o'clock on a night that
+ends at six**: fifty-six seconds of window, in the busiest part of the
+night, against a queue carrying his tape and the speeches about what
+she kept or burned. Every other deadline in the file is at one, two or
+three. Both moved to three.
+
+And then `theyShut` failed too, at three — which said the hour was
+never the point either. **Night two was simply over-subscribed, and it
+was over-subscribed because of a change made earlier this same
+session**: the five-line conversation where the four work out what he
+was doing in that chair had been moved onto it. Night two already owes
+the answers to both of night one's choices.
+
+That exchange has now been in three places and only the third works:
+
+- **In `NS.tapes[3]`** (where it started): the tape is a one-at-a-time
+  queue shared with everything reactive, so the last night ran out of
+  night and the warning that sets up the last hour was never said.
+- **On night two as an overheard scene**: fixed the last night, broke
+  night two.
+- **On night three as an overheard scene**: `overTick` is the one path
+  in the chapter that cannot be starved — it yields to everything and
+  then, after `OVER_HOLD`, goes anyway, through the wall if she is not
+  looking. That is the guarantee those five lines needed and no amount
+  of scheduling inside the tape queue was going to provide it.
+
+`overcheck` used to assert the last night has NO overheard scene, on
+the reasoning that the last night's tape was them. The reasoning was
+sound and the arrangement it described did not work; the assertion now
+says the last night has exactly one, and says why.
+
+The ordering change and the cooldown change both stay, because both
+are right independently of this. Their notes no longer claim they
+settled it.
+
 **Next session, first:**
-1. **48 voice takes are stale** — `linecheck` names them. The "Anwar's voice"
-   Action must be run in `full` mode or those lines fall back to browser speech.
+1. **The voice takes are current** — the render ran and `linecheck` is 5/0.
+   Any line edited from here needs another `full` run; `linecheck` is what
+   says so.
 2. **The draw calls, if it ever runs badly on her machine.** 498 calls for
    15,346 triangles is all overhead; merging the static props per room would
    take it under a hundred. Do not do it speculatively — it is a real
