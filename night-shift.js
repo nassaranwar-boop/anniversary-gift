@@ -16614,30 +16614,25 @@ function tapeSpare() {
   return left - owed;
 }
 
+/* IS THERE A DEADLINE LINE WHOSE NIGHT HAS ALREADY PASSED? */
+function lateLineDue() {
+  for (const k in NS.tapeWhen) {
+    const it = NS.tapeWhen[k];
+    if (typeof it === "string" || !it.by) continue;
+    if (G.night <= it.by[0]) continue;
+    if (TAPE.said[it.t] || (it.elseT && TAPE.said[it.elseT])) continue;
+    if (wasTold(it.t) || (it.elseT && wasTold(it.elseT))) continue;
+    return true;
+  }
+  return false;
+}
+
 function tapeDue(dt) {
   if (!TAPE.on || !TAPE.opened || !NS.tapeWhen || G.phase !== "play") return;
   if (TAPE.pending || TALK.on) return;
-  /* AND HIS OWN SCRIPT HAS RIGHT OF WAY WHEN THE NIGHT IS RUNNING OUT.
+  /* (his tape's right of way over the long speeches is further down,
+     below the lines that carry a deadline -- see tapeSpare) */
 
-     Everything in here shares one queue, and there is more reactive
-     writing in a night than there is tape: the speeches about what
-     she kept or burned run twenty seconds each, and three of them can
-     come due on one night. So on the busy nights the tape fell behind
-     and the reactive queue kept cutting in front of it, and what ran
-     out of night was always the written script -- on night two, four
-     runs in ten lost the end of the confession, which is the whole
-     point of that night.
-
-     Losing a reactive line is survivable; they are answers to things,
-     and there is another hour and another night for most of them.
-     Losing the end of his tape is not. So once he is more than half
-     an hour behind and there is less than an hour and a half of night
-     left, nothing else starts until he has caught up. Which is also
-     just true: a man on a tape with the shutters coming up does not
-     wait politely for a toy to finish. */
-  /* thirty seconds is one of the longer things any of them says, plus
-     its gap. Below that, the night can no longer afford both. */
-  if (tapeSpare() < 30) return;
   /* AND NOT ONE STRAIGHT AFTER ANOTHER.
 
      Several of these come due at the same time -- they are gated by
@@ -16650,7 +16645,21 @@ function tapeDue(dt) {
      stands there" a player sees. They queue now, at a minute apart, and
      the shop goes back to being a shop in between. */
   TALK.cool = Math.max(0, (TALK.cool || 0) - dt);
-  if (TALK.cool > 0) return;
+  /* EXCEPT FOR A LINE THAT IS ALREADY LATE.
+
+     A minute between knocks is right for two lines both due tonight.
+     It is not right for a line whose night has already gone: sixty-two
+     seconds twice over is two of a six hour night reserved, and on the
+     busiest night that was enough to push a deadline past midnight.
+     scriptcheck caught it as "theyShut arrived night 3, due night 2".
+
+     A deadline is the promise that she gets the line whether or not
+     she ever did the thing. A deadline that waits politely for a
+     cooldown is not a deadline, so one that has already been missed
+     goes at the next quiet moment rather than the next free minute.
+     It still will not talk over anything: the checks below are for
+     what is being SAID, and those it waits for like everything else. */
+  if (TALK.cool > 0 && !lateLineDue()) return;
   /* AND NOTHING KNOCKS ON TOP OF A LINE THAT IS STILL BEING SAID.
 
      His own lines queue: they go into TAPE.pending and tapeTick puts
@@ -16712,6 +16721,29 @@ function tapeDue(dt) {
      matters more than where she left one of them -- and not in the
      first hour, which belongs to him. */
   if (hourNow < 1) return;
+  /* AND ONLY IF THE NIGHT CAN STILL AFFORD IT.
+
+     Everything sounding in this chapter goes through one queue, and
+     there is more reactive writing in a night than there is tape:
+     these speeches run twenty seconds each and three of them can come
+     due on one night. Unchecked, they cut in front of the written
+     script until the night ran out, and what was lost was always the
+     script -- on night two, four runs in ten lost the end of the
+     confession.
+
+     tapeSpare() is how many seconds of night are left once the rest
+     of tonight's tape is paid for. Below the length of one more
+     speech, there is no room for one and the tape has right of way.
+
+     THE GATE SITS HERE AND NOT AT THE TOP OF THIS FUNCTION, which is
+     where it went first. Above it are the lines that carry a DEADLINE
+     -- `by: [night, hour]` -- and a deadline that yields is not a
+     deadline: scriptcheck caught two of them arriving a whole night
+     late the moment they were made to queue behind his tape. Those go
+     whatever the night can afford. These are the ones that can wait,
+     because an answer to something she did an hour ago is still an
+     answer in another hour. */
+  if (tapeSpare() < 30) return;
   const choices = keptAll();
   for (const n in (NS.afterChoice || {})) {
     const set = NS.afterChoice[n];
