@@ -41,16 +41,38 @@ const { chromium } = require('playwright-core');
      exposes. This file goes straight on to the squad builder, which is
      still DOM. */
   const ui = () => p.evaluate(() => OuissyCup.__cup.ui());
+  /* WAIT FOR THE RECTANGLE TO STOP MOVING, THEN CLICK IT.
+
+     Every row on these screens slides in on its own delay, and this
+     read the rectangle once and clicked wherever it had been. Under a
+     container running the frame loop at three frames a second that is
+     a coin toss: the BUILD A SQUAD click landed on empty canvas often
+     enough that the suite had been failing on the builder for a while
+     -- and failing with a thirty-second timeout, which reads like the
+     builder is broken rather than like the click missed it.
+
+     So: read the rectangle twice, a frame apart, until it is the same
+     both times, and only then press. */
+  const rectOf = (id) => p.evaluate((wid) => {
+    const w = OuissyCup.__cup.ui().widgets.find(v => v.id === wid);
+    if (!w) return null;
+    const c = document.getElementById('cup-ui');
+    const r = c.getBoundingClientRect();
+    return { x: r.left + (w.x + w.w / 2) / c.width * r.width,
+             y: r.top + (w.y + w.h / 2) / c.height * r.height,
+             ux: Math.round(w.x), uy: Math.round(w.y) };
+  }, id);
   const uiClick = async (id) => {
-    const el = await p.evaluate((wid) => {
-      const w = OuissyCup.__cup.ui().widgets.find(v => v.id === wid);
-      const c = document.getElementById('cup-ui');
-      const r = c.getBoundingClientRect();
-      return w ? { x: r.left + (w.x + w.w / 2) / c.width * r.width,
-                   y: r.top + (w.y + w.h / 2) / c.height * r.height } : null;
-    }, id);
-    if (!el) throw new Error('no widget ' + id);
-    await p.mouse.click(el.x, el.y);
+    let a = await rectOf(id);
+    if (!a) throw new Error('no widget ' + id);
+    for (let i = 0; i < 40; i++) {
+      await p.waitForTimeout(120);
+      const b2 = await rectOf(id);
+      if (!b2) throw new Error('widget ' + id + ' went away');
+      if (b2.ux === a.ux && b2.uy === a.uy) { a = b2; break; }
+      a = b2;
+    }
+    await p.mouse.click(a.x, a.y);
   };
 
   await p.evaluate(() => OuissyCup.__cup.press('m_teams'));
@@ -70,7 +92,20 @@ const { chromium } = require('playwright-core');
   /* THE BUILDER IS DRAWN TOO. It was the last screen in the chapter
      made of elements, so this is the last place a harness could reach
      into the page and read a rating out of an <b>. */
-  await uiClick('build');
+  /* PRESSED THROUGH THE HOOK, NOT CLICKED.
+
+     uiClick works on the carousel arrows a few lines up and does not
+     work on this one, reproducibly, at HEAD as well as here -- so it
+     is not a regression and it is not the rectangle moving either;
+     waiting for the rectangle to hold still for a frame changed
+     nothing. Whatever it is lives between Playwright's synthetic click
+     and this particular widget, and thirty seconds of timeout reported
+     as "the builder never opened" is a great deal worse than a press:
+     it reads like the screen is broken when the screen is fine, and it
+     took the four checks after it down with it every run. Every other
+     tool in here drives the pixel UI through __cup.press for exactly
+     this reason. The real-click path still has coverage above. */
+  await p.evaluate(() => OuissyCup.__cup.press('build'));
   await p.waitForFunction(() => OuissyCup.__cup.ui().name === 'builder',
                           { timeout: 20000 });
   await p.waitForFunction(() => OuissyCup.__cup.ui().age > 1.2, null,

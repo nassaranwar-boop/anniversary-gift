@@ -8242,48 +8242,92 @@ window.OuissyCup = (function () {
      own shadow, hovered it lifts and brightens, pressed it drops onto
      the shadow and the shadow disappears. That collapse is the whole
      feeling of pressing something. */
+  /* A CHAMFERED PLATE, ROW BY ROW. Two pixels off each corner is the
+     cheapest thing in pixel UI that says somebody designed this: a
+     plain rectangle is what a rectangle looks like when nobody did. */
+  function plate(x2, y2, w, h, cut, col) {
+    for (var i = 0; i < h; i++) {
+      var inset = i < cut ? cut - i : (i >= h - cut ? cut - (h - 1 - i) : 0);
+      if (w - inset * 2 > 0) box(x2 + inset, y2 + i, w - inset * 2, 1, col);
+    }
+  }
+
   function button(b, t) {
     var x2 = Math.round(b.x), y2 = Math.round(b.y);
     var w = Math.round(b.w), h = Math.round(b.h);
     var tone = b.tone || "#3a5a6a";
-    var ink = "#0d1412";
     var lifted = b.hover && !b.down;
     var drop = b.down ? 0 : 3;
     var oy = b.down ? 3 : (lifted ? -1 : 0);
+    var cut = h >= 14 ? 2 : 1;
 
-    if (!b.down) box(x2 + 2, y2 + drop + oy, w, h, "rgba(4,8,10,.5)");
+    /* =====================================================================
+       A ROW IN A MENU IS A PLATE, NOT A DIV
+
+       What was here was a filled rectangle, a one-pixel black keyline
+       and four one-pixel bevel lines. Photographed on the title screen
+       that is a blue box with words in it -- the thing that reads as a
+       web page sitting on top of a game, and the thing she kept being
+       told looked basic. Nothing about it was wrong; there was just
+       almost nothing to it.
+
+       Five things make it a plate. The corners are chamfered, which is
+       the cheapest mark of intent in pixel UI. The face is banded --
+       three steps, light at the top, dark at the bottom -- because a
+       flat fill is a shape and a banded one is a surface catching
+       light. There is a spine down the left edge in the tone's own
+       highlight, which gives a column of rows a rhythm and an edge to
+       read down. The keyline is doubled, so the plate has a rim and a
+       shadow instead of a border. And the label is CUT IN: dark ink
+       with a lit lip under it on a light face, light ink with a dark
+       lip on a dark one, chosen by measuring the face rather than
+       guessing -- the same test that already picked the keyline's
+       colour, which had been the only thing on the button that knew
+       how bright the button was.
+       ===================================================================== */
     var face = lifted ? lift(tone, 26) : tone;
     if (b.on) face = lift(tone, 16);
-    box(x2, y2 + oy, w, h, ink);
-    box(x2 + 1, y2 + oy + 1, w - 2, h - 2, face);
-    line(x2 + 1, y2 + oy + 1, w - 2, 1, lift(face, 70));
-    line(x2 + 1, y2 + oy + 1, 1, h - 2, lift(face, 45));
-    line(x2 + 1, y2 + oy + h - 2, w - 2, 1, lift(face, -60));
-    line(x2 + w - 2, y2 + oy + 1, 1, h - 2, lift(face, -45));
+    var fv = parseInt(face.slice(1), 16);
+    var lum = (((fv >> 16) & 255) * 0.30 + ((fv >> 8) & 255) * 0.59 + (fv & 255) * 0.11);
+    var light = lum > 140;
+
+    /* what it throws */
+    if (!b.down) plate(x2 + 2, y2 + drop + oy, w, h, cut, "rgba(4,8,10,.46)");
+    /* the rim, then the plate */
+    plate(x2 - 1, y2 + oy - 1, w + 2, h + 2, cut + 1, "#0b1014");
+    plate(x2, y2 + oy, w, h, cut, shade(face, 0.34));
+
+    /* the face, in three bands */
+    var b1 = Math.max(1, Math.round(h * 0.34));
+    var b2 = Math.max(1, Math.round(h * 0.34));
+    plate(x2 + 1, y2 + oy + 1, w - 2, h - 2, cut, face);
+    box(x2 + cut, y2 + oy + 1, w - cut * 2, b1, lift(face, 16));
+    box(x2 + cut, y2 + oy + h - 1 - b2, w - cut * 2, b2, lift(face, -22));
+    /* the lit lip along the very top, and the dark one along the base */
+    box(x2 + cut, y2 + oy + 1, w - cut * 2, 1, lift(face, 62));
+    box(x2 + cut, y2 + oy + h - 2, w - cut * 2, 1, lift(face, -52));
+
+    /* THE SPINE. Three pixels down the left edge in the face's own
+       highlight: it is what makes a stack of rows read as a list with a
+       margin rather than as six separate boxes. */
+    box(x2 + 1, y2 + oy + cut, 2, h - cut * 2, lift(face, light ? -44 : 54));
+    box(x2 + 1, y2 + oy + cut, 1, h - cut * 2, lift(face, light ? -20 : 86));
 
     /* the selected one wears a marching keyline, so which button is
        about to fire is never a matter of a slightly different beige */
     if (b.on) {
       var ph = Math.floor(t * 14) % 4;
-      /* IT HAS TO CONTRAST WITH WHAT IT IS AROUND.
-         A fixed pale yellow keyline round a gold button is a pale
-         yellow line on a gold field — which is what the primary action
-         had, so the one marker saying "this is the button" was the one
-         you could not see. It picks white or ink depending on how light
-         the button it is marking is. */
-      var f = parseInt(face.slice(1), 16);
-      var lum = (((f >> 16) & 255) * 0.30 + ((f >> 8) & 255) * 0.59 + (f & 255) * 0.11);
-      UIX.fillStyle = lum > 140 ? "#1a1208" : "#ffffff";
+      UIX.fillStyle = light ? "#1a1208" : "#ffffff";
       for (var i = 0; i < w - 2; i++) {
         if ((i + ph) % 4 < 2) {
-          UIX.fillRect(x2 + 1 + i, y2 + oy - 1, 1, 1);
-          UIX.fillRect(x2 + 1 + i, y2 + oy + h, 1, 1);
+          UIX.fillRect(x2 + 1 + i, y2 + oy - 2, 1, 1);
+          UIX.fillRect(x2 + 1 + i, y2 + oy + h + 1, 1, 1);
         }
       }
       for (var j = 0; j < h; j++) {
         if ((j + ph) % 4 < 2) {
-          UIX.fillRect(x2 - 1, y2 + oy + j, 1, 1);
-          UIX.fillRect(x2 + w, y2 + oy + j, 1, 1);
+          UIX.fillRect(x2 - 2, y2 + oy + j, 1, 1);
+          UIX.fillRect(x2 + w + 1, y2 + oy + j, 1, 1);
         }
       }
     }
@@ -8300,12 +8344,25 @@ window.OuissyCup = (function () {
     var blockH = FONT_H * sc + (b.sub ? FONT_H + 2 : 0);
     var ty = y2 + oy + Math.round((h - blockH) / 2);
     var midX = x2 + Math.round(w / 2);
+    /* EIGHT PIXELS OF INSET, NOT TWELVE. The plate's chamfer took two
+       pixels off each corner and I gave the type four more each side to
+       clear it -- which is four pixels the narrow buttons did not have.
+       CAPTAIN? became CAPTAI..., DIAMOND became DIAMO..., WIDE became
+       WI... A chamfer is at the corners; the middle of the plate, which
+       is where a single line of type sits, is as wide as it ever was. */
     drawText(midX, fitText(b.label, w - 8, sc), ty,
-             { align: "center", colour: b.ink || "#ffffff",
-               scale: sc, shadow: "rgba(0,0,0,.55)" });
+             { align: "center", colour: b.ink || (light ? "#241a08" : "#ffffff"),
+               scale: sc,
+               shadow: light ? lift(face, 60) : "rgba(0,0,0,.6)",
+               shadowX: 0, shadowY: 1 });
     if (b.sub) {
+      /* the note is QUIETER than the name, which it was not: at
+         lift(tone, 90) a subtitle on a dark row came out brighter than
+         the row's own title and the two lines read as one sentence in
+         two sizes. */
       drawText(midX, fitText(b.sub, w - 10, 1), ty + FONT_H * sc + 2,
-               { align: "center", colour: b.subInk || lift(tone, 90) });
+               { align: "center",
+                 colour: b.subInk || (light ? shade(face, 0.34) : lift(face, 40)) });
     }
   }
 
@@ -9296,6 +9353,28 @@ window.OuissyCup = (function () {
     box(x2 + k, y2 + k * 3, k, k, col);
   }
 
+  /* A QUIET FIELD FOR TYPE TO SIT ON.
+
+     The title column stands on a photograph of a stand full of people,
+     a run of advertising boards and a lit pitch -- every one of them
+     busy, and all three behind the six things she has to read. wash()
+     is the whole canvas and vignette() is the corners; neither can give
+     one column its own quiet.
+
+     A hard-edged panel would just be a second rectangle on top of the
+     first. This fades: solid where the words are, and over the last
+     third of its width it steps down to nothing, so the ground comes
+     back rather than being boxed out of it. */
+  function columnScrim(x2, y2, w, h, strength) {
+    var solid = Math.round(w * 0.62);
+    box(x2, y2, solid, h, "rgba(7,11,15," + strength + ")");
+    var steps = w - solid;
+    for (var i = 0; i < steps; i++) {
+      var a = strength * (1 - i / steps) * (1 - i / steps);
+      box(x2 + solid + i, y2, 1, h, "rgba(7,11,15," + a.toFixed(3) + ")");
+    }
+  }
+
   function titleMenu() {
     lineUp(run.myTeam);
     scoreCue("menu");
@@ -9356,6 +9435,8 @@ window.OuissyCup = (function () {
       menuAir(UI.t, accent);
       vignette(0.62);
       bunting(0, cols, UI.t);
+      /* and the column gets its own quiet to stand on */
+      columnScrim(0, 12, 268, UIH - 14, 0.5);
 
       /* ---- THE LOCKUP. A trophy, the name, and the line under it, as
          one block with its own weight rather than a heading that could
@@ -9363,15 +9444,25 @@ window.OuissyCup = (function () {
       var tp = slideIn(age, 0, -30);
       var cxm = 126;                       // centred over the left column
       pixTrophy(cxm - 7, 16 + tp.off, UI.t);
+      /* THE NAME WAS WEARING ITS OWN MISTAKE. A three-pixel drop in the
+         team's shirt red under white letters with a black outline is
+         not a shadow, it is a second copy of the word in the wrong
+         colour, and at the size a title is set that is the first thing
+         the eye finds. It gets a rule in that red instead -- under the
+         words, where a rule belongs -- and the letters keep the outline
+         that was already doing the work of lifting them off the stand. */
       drawText(cxm, cfg("TITLE", "Ouissy\u2019s Cup").toUpperCase(), 38 + tp.off,
                { align: "center", scale: 2, colour: "#ffffff",
                  outline: "#0d1412", outlineW: 2,
-                 shadow: accent, shadowX: 0, shadowY: 3 });
-      drawText(cxm, "FOUR A SIDE", 54 + tp.off,
+                 shadow: "rgba(0,0,0,.6)", shadowX: 0, shadowY: 2 });
+      var tw = Math.min(150, textWidth(cfg("TITLE", "Ouissy\u2019s Cup"), 2) + 8);
+      box(cxm - Math.round(tw / 2), 52 + tp.off, tw, 1, accent);
+      box(cxm - Math.round(tw / 2), 53 + tp.off, tw, 1, shade(accent, 0.4));
+      drawText(cxm, "FOUR A SIDE", 57 + tp.off,
                { align: "center", colour: trim, outline: "#0d1412", track: 2 });
 
       /* ---- the rows ---- */
-      var y2 = 68, H = 24, GAP = 4;
+      var y2 = 71, H = 24, GAP = 4;
       rows.forEach(function (r, i) {
         var sl = slideIn(age, 0.05 + i * 0.045, -180);
         var b = uiButton("m_" + r.id, 12 + sl.off, y2 + i * (H + GAP), 228, H,
@@ -9387,16 +9478,32 @@ window.OuissyCup = (function () {
          were things the game decided for her and never mentioned. ---- */
       var fp = slideIn(age, 0.34, 40);
       var fy = UIH - 26 + fp.off;
+      /* ---- ONE BAR, AND IT SAYS WHAT IT IS.
+
+         These were three chips of three different colours sitting on
+         the grass with nothing joining them and nothing naming them --
+         a red one, a grey one and a yellow one, which look like three
+         unrelated controls somebody left there. They are two settings,
+         so they get two labels and one strip to stand on, and the
+         difficulty reads as a row of choices with one of them lit
+         rather than as a lit button next to two dark ones. She has
+         never played a game; a control nobody named is a control
+         nobody presses. ---- */
+      var barW = 252, barX = 8;
+      box(barX - 2, fy - 10, barW + 4, 32, "rgba(7,11,15,.62)");
+      box(barX - 2, fy - 10, barW + 4, 1, "rgba(255,255,255,.10)");
+      drawText(barX + 2, "YOUR TEAM", fy - 8, { colour: "#7f9aa8", track: 1 });
       var cw = 62;
-      uiButton("m_team", 12, fy, cw, 18, mine.short || "\u2014",
+      uiButton("m_team", barX + 2, fy, cw, 18, mine.short || "\u2014",
                { tone: accent, ink: "#f4f4e8", go: act.teams });
-      pixCrest(mine, 12 + cw - 18, fy + 3, 14, 12, UI.t);
-      var dx = 12 + cw + 6;
+      pixCrest(mine, barX + 2 + cw - 18, fy + 3, 14, 12, UI.t);
+      var dx = barX + 2 + cw + 8;
+      drawText(dx, "HOW HARD", fy - 8, { colour: "#7f9aa8", track: 1 });
       diffList().forEach(function (d) {
         var on = d.id === diffId;
         var w2 = Math.max(40, textWidth(d.name) + 12);
         uiButton("m_d_" + d.id, dx, fy, w2, 18, d.name,
-                 { tone: on ? trim : "#24343c", ink: on ? "#2a1c08" : "#9fb0a8",
+                 { tone: on ? trim : "#1c2a32", ink: on ? "#2a1c08" : "#83969f",
                    go: function () { setDiff(d.id); } });
         dx += w2 + 4;
       });
@@ -9784,6 +9891,65 @@ window.OuissyCup = (function () {
     return D;
   }
 
+  /* THE MODEL, DRAWN TO FILL THE BOX SHE IS LOOKING AT.
+
+     pixModel blits the whole sixty-four pixel cell, and a character
+     only lives in about half of one -- the rest is the headroom a jump
+     and a dive need. In a fifty-six pixel box that leaves a figure
+     around thirty pixels tall, which is SMALLER than she sees him on
+     the pitch, on the one screen whose entire job is letting her see
+     what she has just picked.
+
+     So the cell is cropped to the pixels he actually occupies -- found
+     by measuring the frame rather than by guessing at fractions of it,
+     and cached with the bake, because scanning four thousand pixels
+     every frame to draw one figure would be absurd -- and that crop is
+     scaled to the box. */
+  function modelBounds(at) {
+    if (at.__fit) return at.__fit;
+    var S = at.size, uv = at.uv("idle", "s", 0);
+    var g = at.canvas.getContext("2d");
+    var d;
+    try { d = g.getImageData(uv.col * S, uv.row * S, S, S).data; }
+    catch (e) { return (at.__fit = { x: 0, y: 0, w: S, h: S }); }
+    var x0 = S, y0 = S, x1 = -1, y1 = -1;
+    for (var y = 0; y < S; y++) {
+      for (var x = 0; x < S; x++) {
+        if (d[(y * S + x) * 4 + 3] < 8) continue;
+        if (x < x0) x0 = x; if (x > x1) x1 = x;
+        if (y < y0) y0 = y; if (y > y1) y1 = y;
+      }
+    }
+    if (x1 < 0) return (at.__fit = { x: 0, y: 0, w: S, h: S });
+    return (at.__fit = { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 });
+  }
+
+  function pixModelFit(look, kit, cx3, botY, boxW, boxH, t) {
+    if (!window.CupSprites || !look || !UIX) return 0;
+    var key = (look.id || "x") + "|" + (kit ? kit.shirt + kit.shorts + kit.socks +
+                                              kit.trim : "-");
+    if (!modelCache[key]) {
+      var ks = Object.keys(modelCache);
+      while (ks.length >= MODEL_KEEP) { delete modelCache[ks.shift()]; }
+      try { modelCache[key] = window.CupSprites.bake(look, kit); }
+      catch (e) { return 0; }
+    }
+    var at = modelCache[key];
+    var n = (at.anims && at.anims.idle) || 1;
+    var f = Math.floor((t || 0) * 5) % n;
+    var uv = at.uv("idle", "s", f);
+    if (!uv) return 0;
+    var S = at.size, fit = modelBounds(at);
+    /* a WHOLE number, so the pixels stay square -- a model at 1.7 times
+       is a model with some rows twice as tall as the others */
+    var k = Math.max(1, Math.floor(Math.min(boxW / fit.w, boxH / fit.h)));
+    var dw = fit.w * k, dh = fit.h * k;
+    UIX.imageSmoothingEnabled = false;
+    UIX.drawImage(at.canvas, uv.col * S + fit.x, uv.row * S + fit.y, fit.w, fit.h,
+                  Math.round(cx3 - dw / 2), Math.round(botY - dh), dw, dh);
+    return dh;
+  }
+
   function blankBuild() {
     return { id: "own_" + Date.now(), custom: true, name: "OUR SIDE", short: "OUR",
              crest: "heart", flag: "crest", squad: [null, null, null, null],
@@ -9987,7 +10153,8 @@ window.OuissyCup = (function () {
          picked anybody -- so it is never empty and never a stranger. */
       var modelId = build.captain || chosen[0] || build.squad[0] || "ouissy";
       var modelLook = ROSTER[modelId] || ROSTER.ouissy;
-      pixModel(modelLook, build.kit, rx + MODW / 2, grassY + 12, 1, UI.t);
+      pixModelFit(modelLook, build.kit, rx + MODW / 2, grassY + 12,
+                  MODW - 8, modH - 22, UI.t);
       drawText(rx + MODW / 2, fitText((modelLook && modelLook.name) || "", MODW - 6, 1),
                grassY + 4, { align: "center", colour: "#0d2a14" });
       /* and the badge she has picked, on the wall above him */
@@ -10040,9 +10207,25 @@ window.OuissyCup = (function () {
         SWATCHES.forEach(function (c, i5) {
           var sx2 = kx + swLab + i5 * swPitch;
           var on = cur === c;
+          /* THE ONE SHE HAS PICKED HAS TO SHOUT. A one-pixel pale ring
+             round a chip eight pixels wide, on a row of nine other
+             chips, is not a selection -- it is a slightly different
+             edge, and on this screen the whole question is which
+             colour is on. The chosen one gets a double ring, a notch
+             out of each corner and a tick sitting on it. */
           box(sx2 - 1, ry - 1, swPitch, swPitch + 1, on ? "#ffe9a8" : "#0d1412");
+          if (on) box(sx2 - 2, ry - 2, swPitch + 2, swPitch + 3, "#0d1412");
+          if (on) box(sx2 - 1, ry - 1, swPitch, swPitch + 1, "#ffe9a8");
           box(sx2, ry, swPitch - 2, swPitch - 1, c);
           box(sx2, ry, swPitch - 2, 1, lift(c, 55));
+          if (on) {
+            var tcx = sx2 + Math.round((swPitch - 2) / 2) - 2;
+            var tcy = ry + Math.round((swPitch - 1) / 2) - 2;
+            box(tcx, tcy + 2, 1, 2, "#0d1412"); box(tcx + 1, tcy + 3, 1, 2, "#0d1412");
+            box(tcx + 2, tcy + 1, 1, 2, "#0d1412"); box(tcx + 3, tcy, 1, 2, "#0d1412");
+            box(tcx - 1, tcy + 1, 1, 2, "#ffffff"); box(tcx, tcy + 2, 1, 2, "#ffffff");
+            box(tcx + 1, tcy + 1, 1, 2, "#ffffff"); box(tcx + 2, tcy - 1, 1, 3, "#ffffff");
+          }
           UI.widgets.push({ id: label + "_" + i5, x: sx2 - 1, y: ry - 1,
                             w: swPitch, h: swPitch + 3, label: label + " " + (i5 + 1),
                             go: function () { set(c); redraw(); } });
