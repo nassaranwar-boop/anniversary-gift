@@ -21719,6 +21719,7 @@ const testHooks = {
     mk(MUS.bus, "music");
     mk(voxOut, "him");
     mk(cueGain, "cue");
+    mk(sfxOut, "sfx");
     const db = (x) => +(10 * Math.log10(Math.max(1e-12, x))).toFixed(1);
     setTimeout(() => {
       const r = { bed: +sideGain.gain.value.toFixed(3) };
@@ -21728,7 +21729,8 @@ const testHooks = {
         r[k + "Peak"] = db(t.loud);
         r[k + "Blocks"] = t.blocks;
         try { taps[k].sp.disconnect(); taps[k].sp.onaudioprocess = null; } catch (e) {}
-        try { (k === "music" ? MUS.bus : k === "him" ? voxOut : cueGain).disconnect(taps[k].sp); } catch (e) {}
+        const src = k === "music" ? MUS.bus : k === "him" ? voxOut : k === "sfx" ? sfxOut : cueGain;
+        try { src.disconnect(taps[k].sp); } catch (e) {}
       }
       try { sink.disconnect(); } catch (e) {}
       /* the score as she hears it, after the duck */

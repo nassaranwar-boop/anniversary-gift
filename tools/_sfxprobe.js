@@ -29,9 +29,9 @@ const { chromium } = require('playwright-core');
       const bang = setInterval(() => { try { N.sfxTest(name); } catch(e) {} }, 200);
       const m = await N.meterBuses(1600);
       clearInterval(bang);
-      rows.push(name.padEnd(11) + ' cue mean ' + String(m.cue).padStart(7) +
-                '  cue peak ' + String(m.cuePeak).padStart(7) +
-                '  blocks ' + m.cueBlocks + '  (cue fader ' + N.audio().cue + ')');
+      rows.push(name.padEnd(11) + ' sfxOut ' + String(m.sfx).padStart(7) +
+                '  cueGain ' + String(m.cue).padStart(7) +
+                '  blocks ' + m.cueBlocks);
       await sleep(400);
     }
     /* and through the real control, in case the hook is the problem */
@@ -44,8 +44,9 @@ const { chromium } = require('playwright-core');
       const bang = setInterval(hit, 400);
       const m = await N.meterBuses(2000);
       clearInterval(bang);
-      rows.push('the door button'.padEnd(11) + ' cue mean ' + String(m.cue).padStart(7) +
-                '  cue peak ' + String(m.cuePeak).padStart(7) + '  blocks ' + m.cueBlocks);
+      rows.push('the door button  sfxOut ' + String(m.sfx).padStart(7) +
+                '  cueGain ' + String(m.cue).padStart(7) +
+                '   peaks: sfxOut ' + m.sfxPeak + ', cueGain ' + m.cuePeak);
     }
     /* and his voice, in the same run and on the same meter, so the
        gap is one measurement and not two compared across runs */
