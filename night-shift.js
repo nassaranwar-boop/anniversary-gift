@@ -2043,7 +2043,25 @@ const NS = {
 
     /* NIGHT FOUR. She has been watching one of them on a camera for
        long enough that it has noticed. */
-    theyWatched: { after: 1, by: [1, 5], who: "chime",
+    /* AND THE DEADLINE IS AT THREE, NOT AT FIVE.
+
+       This and seenMarabelle below were the only two deadlines in the
+       chapter set in the last hour of a night -- every other one is
+       at one, two or three. An hour of window is fifty-six seconds,
+       and it is fifty-six seconds of the busiest part of the night,
+       with his tape, the speeches about what she kept or burned and
+       whatever is at the door all in the same queue. So they missed:
+       scriptcheck reported "theyWatched arrived night 2, due night 1"
+       and "seenMarabelle arrived night 3, due night 2" in run after
+       run, and three separate attempts to fix it in the machinery
+       -- letting an overdue line skip the cooldown, then only an
+       overdue one, then saying the most overdue first -- each moved
+       the symptom around without touching this.
+
+       It was never a scheduling fault. It was a deadline written with
+       no room behind it. She still has two hours from one o'clock to
+       earn the version where she DID look. */
+    theyWatched: { after: 1, by: [1, 3], who: "chime",
                    t: "You can stop looking at me now. I only go round. I have gone round this shop every night for eleven years and I have never once been anywhere.",
                    elseT: "You could put that camera on me for an hour and it would not be worth the meter. I only go round. I have gone round this shop every night for eleven years and I have never once been anywhere." },
 
@@ -2083,7 +2101,8 @@ const NS = {
        yielding rule exists to prevent. storycheck knows about slot
        clashes between these lines and knows nothing about the
        exchanges, so that one only showed up in overcheck. */
-    seenMarabelle: { after: 1, by: [2, 5], who: "marabelle",
+    /* at three rather than five, for the reason on theyWatched above */
+    seenMarabelle: { after: 1, by: [2, 3], who: "marabelle",
                    t: "You have found the one that works. I cannot move while you are looking at me. Neither can you, and you have not noticed yet.",
                    elseT: "I cannot move while I am being looked at. That is the whole of me and it is the only thing in this building that works on me, and you have not tried it yet. I am not going to pretend I am sorry about that." },
     seenJax:     { after: 1, by: [3, 1], who: "jax",
@@ -16672,12 +16691,15 @@ function tapeDue(dt) {
      once, so which one she got was decided by where it happened to
      sit in an object literal -- and a line due TONIGHT could sit
      behind one due at the end of the week and never make it.
-     scriptcheck caught it as "seenMarabelle arrived night 3, due
-     night 2", in one run out of three, which is exactly what an
-     ordering bug looks like from the outside.
-
      Sorted by deadline now: the one with the least time left is the
-     one that is said. It is the only ordering that is not arbitrary. */
+     one that is said. It is the only ordering here that is not
+     arbitrary.
+
+     This did NOT on its own fix the line that was arriving late --
+     that turned out to be a deadline written into the last hour of a
+     night, with no room behind it, and it is fixed where it was
+     written. See the note on NS.tapeWhen.theyWatched. It is still the
+     right order. */
   let best = null, bestBy = Infinity;
   for (const k in NS.tapeWhen) {
     const it = NS.tapeWhen[k];
