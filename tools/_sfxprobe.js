@@ -21,6 +21,7 @@ const { chromium } = require('playwright-core');
     const a0 = N.audio();
     rows.push('audio: ctx ' + a0.ctx + ', muted ' + a0.muted + ', cue ' + a0.cue +
               ', side ' + a0.side + ', duck ' + a0.duck + ', master ' + a0.master);
+    rows.push('buses: voxOut ' + a0.vox + ', sfxOut ' + a0.sfx);
     /* in the office, not paused, nothing else going on */
     N.begin(1); N.midEnd();
     await sleep(700);

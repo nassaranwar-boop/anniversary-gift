@@ -20470,6 +20470,8 @@ const testHooks = {
     master: master ? +master.gain.value.toFixed(3) : null,
     bed: bedGain ? +bedGain.gain.value.toFixed(4) : null,
     cue: cueGain ? +cueGain.gain.value.toFixed(3) : null,
+    vox: voxOut ? +voxOut.gain.value.toFixed(3) : "NOT BUILT",
+    sfx: sfxOut ? +sfxOut.gain.value.toFixed(3) : "NOT BUILT",
     side: sideGain ? +sideGain.gain.value.toFixed(3) : null,
     duck: duckGain ? +duckGain.gain.value.toFixed(3) : null,
     music: { ready: MUS.ready, mode: MUS.mode, want: MUS.want,
