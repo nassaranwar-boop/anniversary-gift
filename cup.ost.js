@@ -133,11 +133,24 @@
     /* THE DOOR. One voice on an organ over a slow four. Nothing is at
        stake yet and the music should not pretend otherwise. */
     menu: {
-      key: 0, minor: false, bpm: 84, bars: 8,
+      /* WHAT WAS HERE WAS AN ORGAN AND A HELD CHORD, and nothing else
+         at all -- no pulse, no movement, eight bars of it. That is
+         right for a door and wrong for the screen somebody sits on
+         while they decide what to do, which is where she will spend
+         longer than on any other screen in the chapter.
+
+         A pluck on the eighths under the organ is the whole fix: it
+         gives the theme a floor to stand on and something to be slow
+         against. The drum stays out -- it arrives on the team screen,
+         which makes walking from one to the other feel like the
+         tournament getting closer rather than like two pieces of
+         music. Nothing is at stake yet and the music should still not
+         pretend otherwise; it just should not be empty. */
+      key: 0, minor: false, bpm: 86, bars: 8,
       chords: [1, 5, 6, 4, 1, 5, 4, 5],
       theme: "full", themeInst: "organ",
-      pad: "strings", padGain: 0.16, bass: true,
-      ost: "none", drum: null, gain: 0.60,
+      pad: "strings", padGain: 0.22, bass: true,
+      ost: "eighths", ostInst: "pluck", drum: null, gain: 0.92,
     },
 
     /* PICKING THE TEAM. She is doing something, so something is moving

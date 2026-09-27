@@ -9096,6 +9096,135 @@ window.OuissyCup = (function () {
     }
   }
 
+  /* =======================================================================
+     THE AIR IN THE GROUND
+
+     "Create a new animated background for the main menu, I want it
+     premium and aesthetically pleasing, not just some basic shit."
+
+     What was there was the match renderer with a flat wash over it: a
+     pitch, a stand, and a dark rectangle. Correct, and nothing was
+     happening in it.
+
+     This is the weather. It goes over the stadium rather than
+     replacing it, because the stadium is the good part -- her side is
+     standing on that grass and they should stay there. Four layers,
+     all cheap, and all moving at different speeds, which is the whole
+     trick: a still image with one thing moving on it looks like a bug,
+     and a still image with four things moving at four speeds looks
+     like air.
+
+       THE GRADE     a dusk wash, warm at the top and cold at the
+                     bottom, which is what an evening kick-off looks
+                     like and what the score has always sounded like.
+       THE LIGHTS    four floodlight glows along the top, each
+                     breathing on its own cycle so they never pulse
+                     together. Banded discs rather than a smooth
+                     gradient, because everything else on this canvas
+                     is made of pixels and one soft edge would give the
+                     whole thing away.
+       THE SHAFTS    three beams leaning in from the lights, drifting
+                     sideways slower than anything else on screen. You
+                     do not see them move; you see that the picture is
+                     not still.
+       THE PETALS    and the thing that makes it hers rather than any
+                     football game's: hearts, falling slowly, swaying,
+                     the same motif the book and the gate are built on.
+     ======================================================================= */
+  var airDrops = null;
+  function menuAir(t, accent) {
+    if (!UIX || !UIW) return;
+    /* ---- 1. the grade ---- */
+    UIX.fillStyle = "rgba(52,20,62,0.26)";
+    UIX.fillRect(0, 0, UIW, Math.round(UIH * 0.55));
+    UIX.fillStyle = "rgba(8,18,34,0.26)";
+    UIX.fillRect(0, Math.round(UIH * 0.55), UIW, UIH - Math.round(UIH * 0.55));
+
+    /* ---- 2. the floodlights ---- */
+    var lights = 4;
+    for (var i = 0; i < lights; i++) {
+      var lx = Math.round(UIW * (i + 0.5) / lights);
+      /* THE LAMPS SIT ABOVE THE STAND, not up in the skyline where the
+          first go put them -- a floodlight behind a tower block is a
+          street light. */
+      var ly = Math.round(UIH * 0.17);
+      /* each on its own cycle, so they never breathe together */
+      var pulse = 0.72 + Math.sin(t * 0.55 + i * 1.9) * 0.28;
+      /* SEVEN BANDS, NOT FOUR, AND SMALLER. At four the falloff was
+         coarse enough to read as a grey disc rather than as a glow --
+         a hard edge on a light is the one thing that gives it away.
+         Seven steps at a third of the strength is the same amount of
+         light with the edge taken off it, and at 0.11 of the frame it
+         sits over the stand instead of over the title. */
+      var rad = Math.round(UIH * 0.11 * pulse);
+      for (var b2 = 7; b2 >= 1; b2--) {
+        UIX.fillStyle = "rgba(255,246,214," + (0.026 * b2 / 2 * pulse).toFixed(3) + ")";
+        uiDiscTo(lx, ly, Math.round(rad * b2 / 7));
+      }
+      /* the lamp itself */
+      box(lx - 1, ly - 1, 3, 3, "#fff6d6");
+    }
+
+    /* ---- 3. the shafts ---- */
+    var shafts = 3;
+    for (var s2 = 0; s2 < shafts; s2++) {
+      var drift = Math.sin(t * 0.08 + s2 * 2.1) * (UIW * 0.06);
+      var topX = Math.round(UIW * (0.22 + s2 * 0.29) + drift);
+      var wide = Math.round(UIW * 0.07);
+      var slope = 0.55 + s2 * 0.12;
+      var bot = Math.round(UIH * 0.72);
+      for (var y2 = 0; y2 < bot; y2 += 2) {
+        var f = y2 / bot;
+        /* a beam is brightest at the lamp and gone by the grass */
+        UIX.fillStyle = "rgba(255,244,206," + (0.085 * (1 - f * 0.92)).toFixed(3) + ")";
+        UIX.fillRect(Math.round(topX + y2 * slope), y2,
+                     Math.round(wide * (1 + f * 1.6)), 2);
+      }
+    }
+
+    /* ---- 4. the petals ---- */
+    if (!airDrops || airDrops.w !== UIW) {
+      airDrops = { w: UIW, list: [] };
+      for (var d2 = 0; d2 < 16; d2++) {
+        airDrops.list.push({
+          x: Math.random() * UIW,
+          y: Math.random() * UIH,
+          v: 5 + Math.random() * 9,          // units a second
+          sw: 8 + Math.random() * 14,        // how far it sways
+          ph: Math.random() * 6.28,
+          big: Math.random() < 0.35,
+        });
+      }
+    }
+    airDrops.list.forEach(function (d3) {
+      var y3 = (d3.y + t * d3.v) % (UIH + 20) - 10;
+      var x3 = d3.x + Math.sin(t * 0.7 + d3.ph) * d3.sw;
+      if (x3 < -6) x3 += UIW; if (x3 > UIW + 6) x3 -= UIW;
+      pixHeart(Math.round(x3), Math.round(y3), d3.big ? 2 : 1,
+               d3.big ? "rgba(255,168,202,0.66)" : "rgba(255,206,226,0.46)");
+    });
+  }
+
+  /* a disc with no colour of its own: the caller has set fillStyle, so
+     one glow is four calls rather than four colours */
+  function uiDiscTo(cx2, cy2, r2) {
+    for (var y2 = -r2; y2 <= r2; y2++) {
+      var w = Math.round(Math.sqrt(Math.max(0, r2 * r2 - y2 * y2)));
+      if (w < 1) continue;
+      UIX.fillRect(cx2 - w, cy2 + y2, w * 2 + 1, 1);
+    }
+  }
+
+  /* the motif this whole site is built on, at one or two pixels a row */
+  function pixHeart(x2, y2, k, col) {
+    var rows = [[0, 2], [1, 3], [1, 3], [0, 2], [1, 1]];
+    /* five rows of a three-wide heart: two lobes, a body, a point */
+    box(x2, y2, k, k, col); box(x2 + k * 2, y2, k, k, col);
+    box(x2, y2 + k, k * 3, k, col);
+    box(x2 + k * 0.5, y2 + k * 2, k * 2, k, col);
+    box(x2 + k, y2 + k * 3, k, k, col);
+  }
+
   function titleMenu() {
     lineUp(run.myTeam);
     scoreCue("menu");
@@ -9151,7 +9280,9 @@ window.OuissyCup = (function () {
          side standing on it, and that is worth seeing. Enough to stop
          the crowd's texture running through the letters of the title,
          and no more. */
-      wash(0.42);
+      wash(0.34);
+      /* and then the evening happens on top of it -- see menuAir */
+      menuAir(UI.t, accent);
       vignette(0.62);
       bunting(0, cols, UI.t);
 

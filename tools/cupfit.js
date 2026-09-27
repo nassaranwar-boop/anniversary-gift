@@ -37,7 +37,18 @@ const SIZES = [
   console.log('  window            canvas      scale  picture     wasted');
   for (const [name, w, h] of SIZES) {
     await p.setViewportSize({ width: w, height: h });
-    await p.waitForTimeout(500);
+    /* WAIT FOR THE CANVAS, NOT FOR THE CLOCK. The resize handler runs
+       off a frame, and a frame in this container is a third of a
+       second, so a fixed 500ms sleep photographed the PREVIOUS size
+       and reported it against this one's name -- three rows of a
+       six-row table were measurements of something else. */
+    await p.waitForFunction(() => {
+      const c = document.getElementById('cup-canvas');
+      const r = c.parentElement.getBoundingClientRect();
+      return Math.abs(c.width - Math.round(r.width)) <= 1
+          && Math.abs(c.height - Math.round(r.height)) <= 1;
+    }, null, { timeout: 60000, polling: 100 }).catch(() => {});
+    await p.waitForTimeout(200);
     const m = await p.evaluate(() => {
       const c = document.getElementById('cup-canvas');
       const R = OuissyCup.__cup.r2();

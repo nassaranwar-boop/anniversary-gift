@@ -663,8 +663,19 @@ window.CupPitch2D = (function () {
        then asking what width that height IMPLIES at the stage's own
        proportions leaves the error on one axis only, and halves it.
        844x390 was 0.5% out the other way and is 0.05% now. */
-    var bh = Math.max(72, 2 * Math.round(dh / best / 2));
+    /* AND IT IS FLOORED, NOT ROUNDED, because present() blits at a WHOLE
+       number and a buffer four pixels too tall does not lose four
+       pixels, it loses the whole scale. A phone at 844x390 picked
+       scale 2, rounded 195 rows up to 196, and 196 times two is 392 --
+       two pixels more than the screen has. So it blitted at ONE, and
+       three quarters of the frame was roof colour. Flooring to the grid
+       keeps the chosen scale reachable on both axes; the width is then
+       rounded to the shape the height implies and walked back if the
+       rounding took it past the edge. Measured: 844x390 goes from 75%
+       dead frame to 1%, and no other size moves. */
+    var bh = Math.max(72, 2 * Math.floor(dh / best / 2));
     var bw = Math.max(120, 2 * Math.round(bh * (dw / dh) / 2));
+    while (bw > 120 && bw * best > dw) bw -= 2;
     if (bw === this.baseW && bh === this.baseH) return;
     this.baseW = bw; this.baseH = bh;
     var was = this.zoom || 1;
