@@ -79,6 +79,7 @@ const SECS = +(process.argv[2] || 90);
     let keepT = 0;
     let firedThis = false, lastPass = -999, live = 0;
     const support = [];
+    let offBall = 0, offMe = 0, seen = 0, inView = 0;
     /* WHAT STATE IS THE MATCH ACTUALLY IN? A game that is loose 80 per
        cent of the time is either a pinball table or a game that spends
        most of its life stopped for a restart, and those are opposite
@@ -122,6 +123,10 @@ const SECS = +(process.argv[2] || 90);
       }
       if (!carrying) firedThis = false;
       H.step(1, st.ux, st.uy, down, btn || 'shot');
+      /* and the camera gets its frame's worth of easing, or every
+         question about what is on screen is a question about where the
+         camera was at kick-off */
+      if (H.camStep) H.camStep(FIXED);
       if (down && btn) { H.hold(btn, false); if (btn === 'shot') shots++; else passes++; }
 
       /* PRESS ON THROUGH HALF TIME. A hundred and twenty seconds of
@@ -137,6 +142,8 @@ const SECS = +(process.argv[2] || 90);
       }
       states[s2.state] = (states[s2.state] || 0) + 1;
       if (s2.state === 'play') {
+        const os = H.onScreen && H.onScreen();
+        if (os) { seen++; if (!os.ball) offBall++; if (!os.me) offMe++; inView += os.players; }
         const sup = H.support && H.support();
         if (sup && sup.n) support.push(sup.near);
         const w = H.ballWhy();
@@ -187,6 +194,9 @@ const SECS = +(process.argv[2] || 90);
       keepMax: +(keeps[keeps.length - 1] || 0).toFixed(2),
       shots: shots, passes: passes,
       swapsPerMin: +(swaps / (live * FIXED) * 60).toFixed(1),
+      frame: seen ? ('ball off screen ' + (offBall / seen * 100).toFixed(0) +
+                     '%, her man off screen ' + (offMe / seen * 100).toFixed(0) +
+                     '%, ' + (inView / seen).toFixed(1) + ' of 8 players in shot') : '-',
       support: support.length
         ? (() => { const a = support.slice().sort((x, y) => x - y);
                    return a[Math.floor(a.length / 2)].toFixed(1); })()
@@ -214,6 +224,7 @@ const SECS = +(process.argv[2] || 90);
   console.log('    possessions           ' + r.keepN + ', median ' + r.keepMed + 's, best ' + r.keepMax + 's');
   console.log('    shots she got off     ' + r.shots);
   console.log('    player taken off her  ' + r.swapsPerMin + ' times a minute');
+  console.log('    the picture           ' + r.frame);
   console.log('    nearest team-mate to whoever has it  ' + r.support + ' units');
   console.log('    while play ran        ' + r.why);
   console.log('    the match was in      ' + r.states);

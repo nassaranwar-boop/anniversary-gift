@@ -12078,6 +12078,40 @@ window.OuissyCup = (function () {
        mates ever offer themselves. This reports, for whoever has the
        ball, how far the nearest and second-nearest of his own side
        are. */
+    /* IS THE BALL EVEN ON THE SCREEN?
+
+       Doubling the match zoom halves how much of the pitch the frame
+       holds, which is the whole point of it and also the whole risk:
+       a camera that lags the play at zoom one merely trails it, and at
+       zoom two it loses it. So this projects the ball and every player
+       through the renderer and counts how many of them land inside the
+       picture. A close camera that cannot hold the ball is worse than
+       a distant one that can. */
+    /* MOVE THE CAMERA WITHOUT DRAWING A FRAME.
+
+       placeCamera lives in draw(), not in step(), because moving the
+       camera is a thing you do once per painted frame and stepping the
+       simulation is a thing you do sixty times a second regardless. A
+       harness that pumps step() and then asks what is on screen is
+       therefore asking about a camera that has not moved since kick-off
+       -- which is how "the ball is off screen 91% of the time" got
+       measured, and it was measuring nothing at all. This eases the
+       camera exactly as a frame would, and paints nothing. */
+    camStep: function (dt) { placeCamera(dt === undefined ? 1 / 60 : dt, false); },
+    onScreen: function () {
+      if (!G || !R2 || !R2.project) return null;
+      var w = R2.vw, h = R2.vh;
+      var inFrame = function (x, y) {
+        var q = R2.project(wX(x), wY(y));
+        if (!q || q.k <= 0.001) return false;
+        return q.x >= 0 && q.x < w && q.y >= 0 && q.y < h;
+      };
+      var n = 0;
+      G.players.forEach(function (q) { if (inFrame(q.x, q.y)) n++; });
+      return { ball: inFrame(G.ball.x, G.ball.y),
+               me: !!(G.controlled && inFrame(G.controlled.x, G.controlled.y)),
+               players: n, of: G.players.length, zoom: R2.zoom };
+    },
     support: function () {
       if (!G || !G.ball.owner) return null;
       var o = G.ball.owner, ds = [];
