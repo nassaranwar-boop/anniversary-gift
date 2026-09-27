@@ -6744,6 +6744,43 @@ window.OuissyCup = (function () {
                     moves, which is the only feedback a thumb covering
                     the whole control can actually get.
      ======================================================================= */
+  /* A FILLED POLYGON, SCANLINE BY SCANLINE.
+
+     Everything on this HUD was a disc, because uiDisc was the only
+     shape there was. A disc is the shape a button has when nobody
+     decided what shape it should have -- it has no facets to catch
+     light, no flat to stamp a word into, and three of them in a corner
+     read as three of the same thing. A hexagon has six edges, a flat
+     top and a flat bottom, and it is what a key on a good pad looks
+     like. This is the one primitive that was missing. */
+  function uiPoly(cx2, cy2, r2, n, rot, col) {
+    var pts = [], i2;
+    for (i2 = 0; i2 < n; i2++) {
+      var a = rot + i2 * Math.PI * 2 / n;
+      pts.push([cx2 + Math.cos(a) * r2, cy2 + Math.sin(a) * r2]);
+    }
+    var y0 = 1e9, y1 = -1e9;
+    for (i2 = 0; i2 < n; i2++) { y0 = Math.min(y0, pts[i2][1]); y1 = Math.max(y1, pts[i2][1]); }
+    for (var y2 = Math.round(y0); y2 <= Math.round(y1); y2++) {
+      var xs = [];
+      for (i2 = 0; i2 < n; i2++) {
+        var p0 = pts[i2], p1 = pts[(i2 + 1) % n];
+        if ((p0[1] <= y2 && p1[1] > y2) || (p1[1] <= y2 && p0[1] > y2)) {
+          xs.push(p0[0] + (y2 - p0[1]) / (p1[1] - p0[1]) * (p1[0] - p0[0]));
+        }
+      }
+      if (xs.length < 2) continue;
+      xs.sort(function (a2, b2) { return a2 - b2; });
+      for (var k = 0; k + 1 < xs.length; k += 2) {
+        var xa = Math.round(xs[k]), xb = Math.round(xs[k + 1]);
+        if (xb > xa) box(xa, y2, xb - xa, 1, col);
+      }
+    }
+  }
+  /* a flat-topped hexagon is the keycap; the rotation is fixed here so
+     no caller has to remember which way up it goes */
+  function uiHex(cx2, cy2, r2, col) { uiPoly(cx2, cy2, r2, 6, Math.PI / 6, col); }
+
   function hudKey(r2, label, base, opts) {
     if (!r2) return;
     var o = opts || {};
@@ -6753,68 +6790,91 @@ window.OuissyCup = (function () {
     var down = !!o.down;
     var lift0 = down ? 1 : 3;                  // how proud the cap stands
     var capY = cy2 - lift0;
+    var hex = o.round ? uiDisc : uiHex;
 
-    /* the well, and what it throws on the grass */
-    uiDisc(cx2, cy2 + (down ? 1 : 3), rad, "rgba(4,8,10,.42)");
-    uiDisc(cx2, cy2, rad, "#080d11");
-    uiDisc(cx2, cy2, rad - 1, shade(base, 0.30));
-    /* the bezel: the action's colour, around the outside of the cap */
-    uiDisc(cx2, cy2, rad - 1, shade(base, 0.52));
-    uiDisc(cx2, cy2 + 1, rad - 2, shade(base, 0.24));
+    /* =====================================================================
+       A KEYCAP, NOT A SWEET
 
-    /* the cap */
-    uiDisc(cx2, capY, rad - 2, shade(base, 0.58));
-    uiDisc(cx2, capY, rad - 3, base);
-    /* the dome. Two crescents offset up and left, each a step lighter,
-       and one small specular at the top -- which is a sphere lit from
-       over her left shoulder, the same light every sprite in this
-       chapter is lit by. */
+       What was here was five concentric discs with a word laid over the
+       top of them. Photographed at the size she actually plays at they
+       are three glossy circles in a corner -- the shape a button has
+       when nobody chose a shape -- and the engraving, which is real in
+       the code, is two pixels on a curved surface and disappears.
+
+       So: a hexagonal cap in a hexagonal socket, with a machined bezel
+       between them; the light coming from over her left shoulder, the
+       same light every sprite in this chapter is lit by, so the upper
+       left faces are pale and the lower right ones are not; and the
+       word cut into a RECESSED PLATE across the middle of the cap
+       rather than floated on its face. A plate gives the letters a
+       flat to sit on and a lip to throw a shadow off, which is what
+       makes cut type read as cut.
+       ===================================================================== */
+
+    /* what it throws on the grass */
+    hex(cx2, cy2 + (down ? 2 : 4), rad, "rgba(4,8,10,.34)");
+    /* the socket, and the machined ring around it */
+    hex(cx2, cy2, rad, "#070c10");
+    hex(cx2, cy2, rad - 1, shade(base, 0.26));
+    hex(cx2, cy2 + 1, rad - 2, shade(base, 0.16));
+
+    /* the cap itself */
+    hex(cx2, capY, rad - 2, shade(base, 0.46));
+    hex(cx2, capY, rad - 3, base);
+
+    /* THE FACETS. A hexagon lit from the upper left has three faces in
+       the light and three out of it, and drawing that is the whole
+       reason for the shape: a flat catches light evenly and reads as
+       machined, where a sphere's gradient reads as plastic. */
     if (!down) {
-      uiDisc(cx2 - 1, capY - 1, rad - 5, lift(base, 18));
-      uiDisc(cx2 - 2, capY - 2, rad - 8, lift(base, 38));
-      if (rad > 14) uiDisc(cx2 - 3, capY - 4, Math.max(1, rad - 13), lift(base, 62));
+      hex(cx2 - 1, capY - 2, rad - 4, lift(base, 14));
+      hex(cx2 - 1, capY - 3, rad - 6, lift(base, 30));
+      if (rad > 13) hex(cx2 - 2, capY - 5, Math.max(2, rad - 10), lift(base, 52));
     } else {
-      /* pressed: the light is mostly gone and what is left is a rim */
-      uiDisc(cx2 - 1, capY - 1, rad - 6, lift(base, 8));
+      hex(cx2, capY - 1, rad - 4, lift(base, 6));
     }
 
     /* the charge collar, outside everything, so a winding shot reads
        even with a thumb over the face of the button */
     if (o.charge > 0) {
-      var lit = Math.round(clamp(o.charge, 0, 1) * 24);
+      var lit = Math.round(clamp(o.charge, 0, 1) * 28);
       for (var i = 0; i < lit; i++) {
-        var a = -Math.PI / 2 + (i / 24) * Math.PI * 2;
-        box(Math.round(cx2 + Math.cos(a) * (rad + 2)) - 1,
-            Math.round(cy2 + Math.sin(a) * (rad + 2)) - 1, 2, 2,
+        var a = -Math.PI / 2 + (i / 28) * Math.PI * 2;
+        box(Math.round(cx2 + Math.cos(a) * (rad + 3)) - 1,
+            Math.round(cy2 + Math.sin(a) * (rad + 3)) - 1, 2, 2,
             o.charge > 0.92 ? "#ffffff" : "#ffe9a8");
       }
     }
 
     if (o.icon) o.icon(cx2, capY - 4);
     if (!label) return;
-    /* THE ENGRAVING. Cut with the dark tone, lit along the bottom lip
-       with a light one -- `shadow` is drawn behind and offset, which
-       is exactly the lip. */
-    var wide = rad * 2 - 6;
+
+    /* THE PLATE, AND THE WORD CUT INTO IT. */
+    var wide = Math.round(rad * 1.7);
     var lines = textWidth(label, 1) <= wide ? [label] : splitTwo(label, wide);
-    /* CENTRED ON THE CAP, not on the socket. The cap stands three
-       pixels proud of the well it sits in, so a label centred on the
-       rectangle sits three pixels low on the thing it is stamped into
-       -- which is exactly how it looked. */
-    var ly = capY - 3 - (lines.length - 1) * 4;
+    var th = lines.length * 8 - 2;
+    var py = capY - Math.round(th / 2) - 1;
+    var pw = Math.round(rad * 1.9);
+    box(cx2 - Math.round(pw / 2), py - 1, pw, th + 3, shade(base, 0.62));
+    box(cx2 - Math.round(pw / 2), py - 2, pw, 1, shade(base, 0.34));
+    box(cx2 - Math.round(pw / 2), py + th + 2, pw, 1, lift(base, 34));
+    var ly = py;
     lines.forEach(function (ln) {
       drawText(cx2, fitText(ln, wide, 1), ly,
                { align: "center",
-                 colour: o.ink || shade(base, 0.30),
-                 shadow: lift(base, 52), shadowX: 0, shadowY: 1 });
+                 colour: o.ink || shade(base, 0.08),
+                 shadow: lift(base, 46), shadowX: 0, shadowY: 1 });
       ly += 8;
     });
   }
 
-  /* the old name, so the heart button and anything added later still
-     paint. It is the same button with no press state. */
+  /* The super stays a DISC while the three actions are keycaps, and
+     that is the point of it: the one button that is not always there
+     should not be the same shape as the three that are. Shape is the
+     fastest thing a thumb reads, faster than colour and far faster
+     than a word. */
   function hudRound(r2, label, tone, ink, charge, icon) {
-    hudKey(r2, label, tone, { ink: ink, charge: charge, icon: icon });
+    hudKey(r2, label, tone, { ink: ink, charge: charge, icon: icon, round: true });
   }
 
   /* break one word or two into two lines that each fit */
@@ -9200,8 +9260,8 @@ window.OuissyCup = (function () {
       var y3 = (d3.y + t * d3.v) % (UIH + 20) - 10;
       var x3 = d3.x + Math.sin(t * 0.7 + d3.ph) * d3.sw;
       if (x3 < -6) x3 += UIW; if (x3 > UIW + 6) x3 -= UIW;
-      pixHeart(Math.round(x3), Math.round(y3), d3.big ? 2 : 1,
-               d3.big ? "rgba(255,168,202,0.66)" : "rgba(255,206,226,0.46)");
+      menuHeart(Math.round(x3), Math.round(y3), d3.big ? 2 : 1,
+                d3.big ? "rgba(255,168,202,0.66)" : "rgba(255,206,226,0.46)");
     });
   }
 
@@ -9216,7 +9276,18 @@ window.OuissyCup = (function () {
   }
 
   /* the motif this whole site is built on, at one or two pixels a row */
-  function pixHeart(x2, y2, k, col) {
+  /* A HEART FOR THE MENU SKY, and NOT the one the heart meter uses.
+
+     This was called pixHeart too. Function declarations hoist, the
+     later one wins, and the HUD's meter -- which calls
+     pixHeart(x, y, size, part, colour) with five arguments -- has been
+     landing in this four-argument one ever since, handing it a
+     fraction where it expected a colour string. A number is not a
+     valid fillStyle, canvas keeps whatever colour was last set, and
+     the five hearts of the super meter painted as one pale slab in the
+     corner of the pitch for every frame of every match. An empty bar
+     looks like a bar; a broken one looked like a design. */
+  function menuHeart(x2, y2, k, col) {
     var rows = [[0, 2], [1, 3], [1, 3], [0, 2], [1, 1]];
     /* five rows of a three-wide heart: two lobes, a body, a point */
     box(x2, y2, k, k, col); box(x2 + k * 2, y2, k, k, col);
