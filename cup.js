@@ -215,8 +215,15 @@ window.OuissyCup = (function () {
     accel: 300,
     turnEase: 15,           // how fast the sprite's facing catches up
     turnCost: 3.2,          // pace shed for turning hard at speed
-    switchHold: 0.65,       // she keeps a player at least this long
-    switchGap: 26,          // and a swap needs this much of a gap
+    /* SHE KEEPS A PLAYER AT LEAST THIS LONG, and at 0.65 the game was
+       taking him off her ELEVEN TIMES A MINUTE -- once every five and a
+       half seconds, measured. Nothing disorients somebody who has never
+       played a game faster than the character under their thumb
+       becoming a different character while they are still moving. */
+    switchHold: 1.15,
+    switchGap: 42,          // and a swap needs this much of a gap
+    manualHold: 0.9,        // and her own choice outranks the auto-pick
+    giveUp: 0.42,           // the man who played it cannot receive it
 
     /* --- the ball --- */
     /* GROUND FRICTION, and it was barely any. At 0.86 a ball keeps
@@ -230,8 +237,33 @@ window.OuissyCup = (function () {
     ballAirDrag: 0.30,      // in the air it keeps going
     gravity: 300,           // px/sec^2 for lofted balls
     bounce: 0.46,           // how much of the drop comes back
-    dribbleReach: 9,        // how close a loose ball has to be to be won
-    keepReach: 30,          // and how far the carrier can be shoved off it
+    /* HOW CLOSE A LOOSE BALL HAS TO BE TO BE WON, and it was NINE.
+
+       Measured over ninety seconds of somebody playing this the way
+       she does -- hold the stick at their goal, press things -- the
+       ball is loose seventy-three per cent of the time the match is
+       actually running, her longest possession in the whole game was
+       under a second, and the median one was three tenths of a second.
+       That is not a football match. That is a pinball table with
+       people standing near it.
+
+       Nine units is the reason. The median distance from the man she
+       is driving to the ball is around eighteen, and a loose ball is
+       usually moving, so the window in which anybody can pick it up
+       opens and shuts inside a frame or two. Nobody wins it, so it
+       stays loose, so nobody wins it. Fifteen is a stride rather than
+       a toe, and it is the difference between a game where possession
+       exists and one where it does not. */
+    dribbleReach: 15,
+    /* and how much of that an OPPONENT gets when the ball is somebody
+       else's pass -- see the note in resolvePossession */
+    /* Tightening this to 0.55 took the opposition out of the match --
+       the beaten side's possession measured at a tenth of one per
+       cent. A game she cannot lose is not an easier game, it is no
+       game. 0.7 leaves the pass its advantage and leaves them a way
+       back in. */
+    cutOut: 0.7,
+    keepReach: 36,          // and how far the carrier can be shoved off it
                             //   — raised with the touch dribble, because
                             //   the ball is now GENUINELY out in front.
                             //   The first setting left only a couple of
@@ -250,7 +282,7 @@ window.OuissyCup = (function () {
        further than the longest ordinary touch or it is not beating
        anybody, and not so far that it is a pass to nobody. An ordinary
        touch peaks near 18 units; this puts it out around 30. */
-    knockAhead: 128,        // the speed the ball is pushed at
+    knockAhead: 152,        // the speed the ball is pushed at
     knockBurst: 0.55,       // seconds of extra pace, to get there first
     knockBurstMul: 1.42,    // and how much extra
     knockTap: 0.18,         // let go inside this and it is a knock
@@ -258,14 +290,22 @@ window.OuissyCup = (function () {
     knockCost: 0.16,        // stamina, so it is a decision and not a habit
     /* --- the touch ---
        A dribble is a series of impulses, and these are its shape. */
-    touchNear: 6.5,         // units ahead at a standstill
-    touchPace: 0.13,        // and how much further per unit of pace
+    /* AND THE BALL STAYS NEARER THE FOOT.
+
+       At 6.5 + 0.13 per unit of pace a player at top speed pushes it
+       almost fifteen units ahead -- further than anybody's reach was,
+       which meant an ordinary dribble spent every stride with the ball
+       outside the radius that decides who owns it. Ten at full pace
+       keeps it inside the new reach, so running with it is running
+       with it rather than repeatedly kicking it away and hoping. */
+    touchNear: 5.0,         // units ahead at a standstill
+    touchPace: 0.085,       // and how much further per unit of pace
     touchGap: 0.13,         // the least time between two touches
     touchErr: 0.30,         // radians of wander at mid skill, before the
                             //   touch stat divides into it
     closeMul: 0.88,         // pace while holding the ball close
     closeTouch: 0.46,       // and how much shorter every touch becomes
-    touchLoose: 0.032,      // how often a touch is half again too long —
+    touchLoose: 0.018,      // how often a touch is half again too long —
                             //   the one that gets away, and where most
                             //   turnovers in a real match come from
     /* --- contact --- */
@@ -280,21 +320,37 @@ window.OuissyCup = (function () {
     bumpStun: 0.30,         // how long the one who came off worse is off
                             //   balance, and cannot accelerate
 
-    stretch: 6,             // extra reach for a ball arriving at you
-    trapErr: 0.55,          // radians a first touch can squirt off line at
+    stretch: 11,            // extra reach for a ball arriving at you
+    trapErr: 0.38,          // radians a first touch can squirt off line at
                             //   mid skill, before the touch stat divides
                             //   into it — and scaled by how hard the ball
                             //   was hit, because a driven pass is harder
                             //   to kill than a rolled one
     trapTime: 0.26,         // how long the receiving touch reads on the
                             //   sprite before they are running with it
-    nickEdge: 5,            // how much nearer the ball a challenger has to
+    /* AND A THIEF HAS TO BE CLEARLY NEARER. At five, with the ball
+       pushed fifteen ahead, two players either side of it traded it
+       back and forth every few frames and neither of them ever had it
+       for long enough to do anything. */
+    nickEdge: 9,
                             //   be than the carrier to steal it between
                             //   touches. At the foot nobody can be; with
                             //   the ball pushed ahead, somebody standing
                             //   in its path can
-    settle: 0.28,           // after winning it, nobody can touch it
-    controlLock: 0.20,      // seconds after a touch before anyone else can
+    settle: 0.34,           // after winning it, nobody can touch it
+    /* SECONDS AFTER A KICK BEFORE ANYBODY MAY TOUCH IT, and this was a
+       quarter of a second. Counted over live play: forty per cent of it
+       somebody owns the ball, twenty-six per cent it is genuinely out
+       of everyone's reach in transit, and THIRTY-FOUR PER CENT it is
+       lying in range of a player who is not allowed to pick it up. A
+       third of the football is a rule waiting to expire.
+
+       It exists to stop two players trading the ball forty times a
+       second, and that job is already done twice over -- by `settle`
+       after a tackle and by `nickEdge`, which makes a challenger be
+       clearly nearer. A tenth of a second is enough to stop a kick
+       being instantly undone by the man who was kicked past. */
+    controlLock: 0.10,
                             //   take it — without this two players standing
                             //   on the ball trade it sixty times a second
                             //   and it vibrates in place
@@ -306,9 +362,17 @@ window.OuissyCup = (function () {
        was being struck at the floor of 95 units a second against
        players who run at 62. The ball arrived in a third of a second,
        which is not a pass anybody can read, let alone control. */
-    passSpeed: 118,
+    /* AND THE PASS WAS TOO FAST TO BE A PASS. At 118 with the drag
+       grass gives, a ball played across this pitch is still travelling
+       when it reaches the far side -- which is the "it flies between
+       the players" she kept describing. 96 arrives. */
+    passSpeed: 96,
     passLead: 0.30,         // seconds of lead given to a moving target
-    passErr: 0.24,          // radians of scatter on a pass at mid skill —
+    /* RADIANS OF SCATTER ON A PASS. A quarter of a radian is fourteen
+       degrees, which over thirty units puts the ball seven units off
+       the man -- often enough over the touchline, which is why nearly
+       a fifth of the match was being spent on set pieces. */
+    passErr: 0.15,
                             //   divided by the passer's accuracy, so the
                             //   good ones find a foot and the rest find
                             //   the area
@@ -356,7 +420,18 @@ window.OuissyCup = (function () {
        goals come back: there are enough challenges to break a stalled
        attack open, and few enough that a side can still put three
        passes together. */
-    tackleUrge: 0.056,
+    /* HOW KEENLY THEY GO IN. Her longest possession in ninety seconds
+       was a second and a third and the median was a quarter of a
+       second: the man under her thumb never has the ball long enough
+       to decide anything, which is the whole complaint. They still
+       press and they still win it back; they just do not arrive
+       before she has had a touch. */
+    /* AND THEN NOT SO CALM THAT IT STOPS BEING A MATCH. At 0.034 she
+       won 3-0 and 4-0 with thirteen shots to none -- a game you cannot
+       lose is not easier, it is nothing. This sits between the two:
+       measured, she keeps the ball long enough to decide something and
+       they still take it back. */
+    tackleUrge: 0.045,
     tackleTime: 0.34,
     tackleCool: 0.55,
     tacklePush: 70,         // how hard the ball is knocked away
@@ -389,14 +464,14 @@ window.OuissyCup = (function () {
                             //   for it to be a booking rather than a foul
     freeKickBack: 26,       // how far the defending side drops off the ball
 
-    replaySpeed: 0.62,      // how fast a replay runs. Slower than life,
+    replaySpeed: 0.80,      // how fast a replay runs. Slower than life,
                             //   because that is what a replay is for
-    setPause: 1.25,         // the held moment on a corner or a goal kick,
+    setPause: 0.6,          // the held moment on a corner or a goal kick,
                             //   while everybody walks to their mark. Under
                             //   a second it is a teleport; over two it is
                             //   a game that keeps stopping
-    kickoffWait: 1.5,
-    goalCheer: 3.2,
+    kickoffWait: 0.9,
+    goalCheer: 2.2,
     goldenGoal: cfg("RULES.goldenGoal", 60),     // sudden death if level
 
     /* --- how much a stat is worth ---------------------------------------
@@ -1432,6 +1507,7 @@ window.OuissyCup = (function () {
      centre point.
      ======================================================================= */
   var switchT = 0;
+  var manualT = 0;      // she asked for this one; the auto-pick waits
   /* NOBODY DRIVING.
 
      Measuring the AI with a human player on the pitch measures the
@@ -1446,12 +1522,13 @@ window.OuissyCup = (function () {
   function pickControlled(force, dt) {
     if (AUTOPLAY) { G.controlled = null; return; }
     switchT += dt || 0;
+    manualT = Math.max(0, manualT - (dt || 0));
     var mine = G.players.filter(function (p) { return p.team === 0 && !p.gk; });
     if (!mine.length) return;
 
     /* if one of hers has the ball, that IS the one she is driving —
        no distance test, no cooldown, no argument */
-    if (G.ball.owner && G.ball.owner.team === 0 && !G.ball.owner.gk) {
+    if (G.ball.owner && G.ball.owner.team === 0 && !G.ball.owner.gk && manualT <= 0) {
       if (G.controlled !== G.ball.owner) { G.controlled = G.ball.owner; switchT = 0; }
       return;
     }
@@ -1497,6 +1574,7 @@ window.OuissyCup = (function () {
   function ballStep(dt) {
     var b = G.ball;
     b.lock = Math.max(0, b.lock - dt);
+    b.giveT = Math.max(0, (b.giveT || 0) - dt);
 
     /* =====================================================================
        A DRIBBLE IS A SERIES OF TOUCHES, NOT A MAGNET
@@ -1986,6 +2064,7 @@ window.OuissyCup = (function () {
     b.owner = null;
     b.lastTouch = from;
     b.lock = TUNE.controlLock;
+    b.giveT = TUNE.giveUp;          // and he cannot simply take it back
     b.vx = Math.cos(ang) * speed;
     b.vy = Math.sin(ang) * speed;
     b.vz = lift || 0;
@@ -2093,13 +2172,41 @@ window.OuissyCup = (function () {
     G.players.forEach(function (p) {
       if (p.sentOff) return;
       if (p.tackleT > 0 && !p.gk) return;
+      /* NO TAKE-BACKS. The man who just played it cannot be the man who
+         receives it. With a fifteen-unit reach and a stretch on top, a
+         passer stood in the path of his own pass and picked it straight
+         back up -- measured as "a tapped pass lets the ball go: OUISSY
+         -> OUISSY", which is a pass that never happened. The window is
+         long enough for the ball to leave him and no longer. */
+      if (p === b.lastTouch && (b.struck || 0) > 0 && b.giveT > 0) return;
       var d = len(p.x - b.x, p.y - b.y);
       /* a loose ball is won on distance alone and nothing else, so that
          a scramble is never decided by a number she cannot see. The one
          exception is a keeper in his own area, whose hands are his stat. */
+      /* =====================================================================
+         A PASS IS MEANT FOR SOMEBODY, AND THE GAME SHOULD KNOW THAT
+
+         Widening everybody's reach to fifteen units fixed possession --
+         the ball went from loose three quarters of the time to under
+         half -- and broke passing in the same stroke: completion fell
+         to thirty per cent, because a wider radius helps the defender
+         standing in the lane exactly as much as it helps the man the
+         ball was played to. Measured, that is worse than what it
+         replaced: a pass that never arrives is the thing she was
+         describing when she said the ball flies between the players.
+
+         So the reach is not the same for both. The side that played it
+         gets the full stride; an opponent has to get properly in the
+         way. Every assisted football game does some version of this
+         and none of them advertise it, because what it buys is a pass
+         that goes where it was aimed, which is what a player thinks
+         they did. It is not a shield: an opponent who is genuinely
+         nearer still takes it, and a ball nobody played -- a rebound,
+         a clearance, a loose scramble -- is even for everybody. */
+      var friendly = !b.lastTouch || b.lastTouch.team === p.team;
       var reach = p.gk && inBox(p, b)
         ? TUNE.gkReach * (p.mul || FLAT_MUL).gk * diff().gk
-        : TUNE.dribbleReach;
+        : TUNE.dribbleReach * (friendly ? 1 : TUNE.cutOut);
       /* YOU CAN STRETCH FOR ONE THAT IS COMING TO YOU.
 
          A player reaches further for a ball arriving at him than for one
@@ -2110,7 +2217,11 @@ window.OuissyCup = (function () {
          pass rolls on untouched — which reads as the receiver ignoring
          it. It applies only to a ball moving TOWARD him, so it never
          widens the window for chasing one that is running away. */
-      if (!p.gk) {
+      /* AND THE STRETCH IS FOR A BALL MEANT FOR YOU. Putting a foot
+         out at a ball arriving is what a receiver does; giving the same
+         eleven units to the defender it is arriving PAST is how a pass
+         gets cut out by somebody who was never in the lane. */
+      if (!p.gk && friendly) {
         var bs = len(b.vx, b.vy);
         if (bs > 40) {
           var closing = ((p.x - b.x) * b.vx + (p.y - b.y) * b.vy) / bs;
@@ -4406,12 +4517,22 @@ window.OuissyCup = (function () {
       /* WEIGHTED TO THE DISTANCE, and more gently than it was. At
          D * 1.9 with a floor of 95 a twenty-yard ball and a five-yard
          one were struck at nearly the same pace. */
-      sp = clamp(D * 1.35, 66, TUNE.passSpeed * 1.35);
+      /* AND THE CEILING HAS TO BE HIGH ENOUGH TO REACH THE FAR SIDE.
+
+         Slowing the pass from 118 to 96 to stop it flying between
+         people also lowered this cap from 159 to 130, and a ball
+         struck at 130 into the drag grass gives cannot cross this
+         pitch -- so every long pass fell into the "it cannot reach"
+         branch below, was hit at the cap anyway and stopped short.
+         Measured, completion went to thirty per cent. The WEIGHT of a
+         normal pass and the HARDEST a pass may be struck are two
+         different numbers and were sharing one. */
+      sp = clamp(D * 1.35, 66, TUNE.passSpeed * 1.9);
       t = ballTime(D, sp);
       /* if it cannot reach, hit it as hard as the pass allows and take
          the time that gives — a ball that stops short is still a pass,
          it is just a poor one */
-      if (t < 0) { sp = TUNE.passSpeed * 1.35; t = D / sp * 1.5; }
+      if (t < 0) { sp = TUNE.passSpeed * 1.9; t = D / sp * 1.5; }
       tx = mate.x + mate.vx * t;
       ty = mate.y + mate.vy * t;
     }
@@ -4793,6 +4914,21 @@ window.OuissyCup = (function () {
     if (!next || next === G.controlled) return null;
     G.controlled = next;
     switchT = 0;
+    /* AND IT STICKS FOR A BEAT.
+
+       pickControlled's first rule is that whoever on her side has the
+       ball IS the player she is driving, with no cooldown and no
+       argument -- which is right, and which quietly made this button do
+       nothing the moment possession started working. Before, a team
+       mate owned the ball two fifths of the time; now it is more than
+       half, so the rule fires on the very next tick and puts her
+       straight back where she was. Measured: SHOOT without the ball
+       went from OUISSY -> AMINE to OUISSY -> OUISSY.
+
+       She asked. An explicit ask beats an automatic pick for the best
+       part of a second, and after that the game may have its rule
+       back. */
+    manualT = TUNE.manualHold;
     /* a flick of the marker so she can see who she has become */
     next.switchT = 0.45;
     SFX.move();
@@ -5436,6 +5572,11 @@ window.OuissyCup = (function () {
      top of it. No second rendering path, no chance of the replay and
      the match disagreeing about how anything looks.
      ======================================================================= */
+  /* A REPLAY IS A PUNCTUATION MARK, NOT AN INTERVAL. Counted across a
+     match: play was running fifty-four per cent of the time and the
+     replay and the celebration together took fifteen. Three seconds of
+     slow motion after a goal in a fifty-two second half is a twentieth
+     of the whole game, every time anybody scores. */
   var REPLAY_HZ = 30, REPLAY_SECS = 3.0;
   var replayBuf = [], replayAcc = 0, replay = null;
 
@@ -5463,7 +5604,7 @@ window.OuissyCup = (function () {
      plus the finish, which is what a television director picks too. */
   function replayStart() {
     if (replayBuf.length < 12) return false;
-    var want = Math.min(replayBuf.length, Math.round(REPLAY_HZ * 1.6));
+    var want = Math.min(replayBuf.length, Math.round(REPLAY_HZ * 1.3));
     replay = { frames: replayBuf.slice(replayBuf.length - want), i: 0, t: 0 };
     G.state = "replay"; G.stateT = 0;
     setCamMode("replay", G.scorerP);
@@ -11871,6 +12012,31 @@ window.OuissyCup = (function () {
       G.ball.owner = q; G.ball.lock = 0;
       G.ball.x = q.x + 4; G.ball.y = q.y - 5; G.ball.z = 0;
       return q.name;
+    },
+    /* WHY HAS NOBODY GOT THE BALL?
+
+       Possession sat at seventy-nine per cent loose, I widened every
+       radius that decides who wins it, and it moved by half a point --
+       which means the radii were not what was stopping it and I was
+       about to tune the wrong numbers a second time. This reports the
+       state of the three gates in resolvePossession on any given tick:
+       is the ball locked, is it in the air above the height at which
+       nobody may own it, and how near is the nearest player. One of
+       those three is the answer and guessing which has already failed
+       once. */
+    ballWhy: function () {
+      if (!G) return null;
+      var b = G.ball, near = 1e9, nearName = null;
+      G.players.forEach(function (q) {
+        if (q.sentOff) return;
+        var d = len(q.x - b.x, q.y - b.y);
+        if (d < near) { near = d; nearName = q.name; }
+      });
+      return { lock: +(b.lock || 0).toFixed(2), z: +b.z.toFixed(1),
+               speed: +len(b.vx, b.vy).toFixed(0),
+               near: +near.toFixed(1), who: nearName,
+               owner: b.owner && b.owner.name,
+               reach: TUNE.dribbleReach, airCap: 7 };
     },
     me: function () {
       var p = G.controlled;
