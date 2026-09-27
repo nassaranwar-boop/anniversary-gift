@@ -2516,6 +2516,8 @@ const NS = {
     doorFault: "DOOR TWO: ACTUATOR DEGRADED.",
     monFault:  "MONITOR FEED: INTERRUPTED.",
     unknown:    "UNREGISTERED UNIT AT $1.",
+    /* and the last night, with the bearing gone. See sayUnknown. */
+    unknownBlind: "UNREGISTERED UNIT AT THE OFFICE. BEARING UNRESOLVED.",
     held:       "$1: HELD.",
     /* nothing in six nights has ever knocked and then waited */
     asking:     "$1: SOMETHING IS KNOCKING. IT IS NOT TRYING THE HANDLE.",
@@ -7247,7 +7249,7 @@ function stepSold(ch, dt) {
     ch.cool = range(Math.random, 5, 12) * burnDrag();
     SFX.postDrag(TUNE.pan[ch.def.door]);
     tapeTrigger("firstParcel");
-    say(fmt(NS.sys.unknown, ch.def.door === "left" ? "WEST DOOR" : "EAST DOOR"), true);
+    sayUnknown(ch);
     return;
   }
 
@@ -7314,7 +7316,7 @@ function stepSold(ch, dt) {
     G.stats.arrivals++;
     G.stats.returns++;
     SFX.postSettle(TUNE.pan[ch.def.door]);
-    say(fmt(NS.sys.unknown, ch.def.door === "left" ? "WEST DOOR" : "EAST DOOR"), true);
+    sayUnknown(ch);
   } else {
     SFX.postDrag(TUNE.pan[ch.def.door], TUNE.cueGain[clamp(stepsLeft(ch), 0, 3)]);
   }
@@ -12723,6 +12725,18 @@ function cue(ch, g) {
   else if (ch.def.id === "marabelle") { SFX.tune(v * 0.8, 1, p); }
   else { SFX.crank(v * 0.7, p); setTimeout(() => SFX.bells(v, p), 300); }
 }
+/* ONE OF THE FOUR HUNDRED, AT A DOOR.
+
+   The same rule as arriveCue and for the same reason: on the last
+   night the floor sensors cannot resolve a bearing, and it would be a
+   strange kind of failure that lost the direction of a thing it can
+   identify and kept the direction of a thing it cannot. Three places
+   said this and all three named the door. */
+function sayUnknown(ch) {
+  if (hazard("blindSensors")) { say(NS.sys.unknownBlind, true); return; }
+  say(fmt(NS.sys.unknown, ch.def.door === "left" ? "WEST DOOR" : "EAST DOOR"), true);
+}
+
 /* and the different, closer sound it makes when it is at the door */
 function arriveCue(ch) {
   const p = TUNE.pan[ch.def.door];
@@ -13341,7 +13355,7 @@ function stageTheTurn(dt) {
   ch.doorT = 1.2;
   syncChar(ch);
   SFX.postSettle(TUNE.pan[ch.def.door]);
-  say(fmt(NS.sys.unknown, ch.def.door === "left" ? "WEST DOOR" : "EAST DOOR"), true);
+  sayUnknown(ch);
 }
 
 function guardFor(door) {
