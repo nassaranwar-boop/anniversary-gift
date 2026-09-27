@@ -47,44 +47,60 @@ const { chromium } = require('playwright-core');
   await p.waitForTimeout(600);
 
   const r = await p.evaluate(async () => {
-    const N = OuissysNightShift.__night, G = () => N.state();
+    const N = OuissysNightShift.__night;
     const sleep = (ms) => new Promise((x) => setTimeout(x, ms));
     const out = [];
     const diag = {};
-    try { diag.ac = N.audio().state; } catch (e) { diag.ac = 'unknown'; }
-    try { diag.sfx = N.sfxTest('__list__'); } catch (e) { diag.sfx = 'no hook'; }
+    try { const a = N.audio(); diag.ac = a.ctx; diag.muted = a.muted; diag.bed = a.bedRunning; }
+    catch (e) { diag.ac = 'no hook'; }
+    try { diag.sfx = N.sfxTest('__list__'); } catch (e) { diag.sfx = []; }
     try { diag.ready = N.voiceState().ready.length; } catch (e) {}
 
     N.begin(3); N.midEnd();
     await sleep(900);
 
-    out.push(Object.assign({ what: 'nothing happening' }, await N.balance(1400)));
+    /* PROVE THE AUDIO IS LIVE BEFORE MEASURING ANYTHING.
 
-    {
-      const bang = setInterval(() => { try { N.sfxTest('doorClose'); } catch (e) {} }, 240);
-      const m = await N.balance(1500);
-      clearInterval(bang);
-      out.push(Object.assign({ what: 'doors going' }, m));
-    }
-    await sleep(700);
-
-    /* his: keep trying lines until one actually comes off a recording */
-    {
-      const script = N.words();
-      for (const line of (script.tapes[3] || []).slice(0, 8)) {
-        N.tapeQuiet();
-        if (!N.tapeSayRaw(line.t, null, false)) continue;
-        await sleep(600);
-        const m = await N.balance(1600);
-        const took = N.said().took;
-        out.push(Object.assign({ what: 'him speaking', took, line: String(line.t).slice(0, 32) }, m));
-        if (took === 'tape') break;
-        await sleep(700);
+       The previous run measured the doors first and got silence, then
+       got a good voice reading seven rows later -- so the doors were
+       fine and the context simply was not running yet. Nothing is
+       measured until a line has demonstrably come off a recording. */
+    let live = false;
+    const script = N.words();
+    const hisLines = (script.tapes[3] || []).concat(script.tapes[2] || []);
+    let hisRow = null;
+    for (const line of hisLines.slice(0, 12)) {
+      N.tapeQuiet();
+      if (!N.tapeSayRaw(line.t, null, false)) continue;
+      await sleep(600);
+      const m = await N.balance(1600);
+      if (N.said().took === 'tape') {
+        live = true;
+        hisRow = Object.assign({ what: 'him speaking', took: 'tape',
+                                 line: String(line.t).slice(0, 32) }, m);
+        break;
       }
+      await sleep(500);
     }
-    await sleep(900);
+    diag.live = live;
+    diag.acAfter = (function () { try { return N.audio().ctx; } catch (e) { return '?'; } })();
+    if (!live) return { out, diag };
 
-    /* and one of theirs, the same way */
+    await sleep(1200);
+    out.push(Object.assign({ what: 'nothing happening' }, await N.balance(1600)));
+
+    /* the shop, one effect at a time, each fired repeatedly so the
+       gate has something to hold on to */
+    for (const name of ['doorClose', 'knock', 'step', 'bells', 'beep', 'hatch']) {
+      const bang = setInterval(() => { try { N.sfxTest(name); } catch (e) {} }, 230);
+      const m = await N.balance(1300);
+      clearInterval(bang);
+      out.push(Object.assign({ what: name }, m));
+      await sleep(350);
+    }
+
+    out.push(hisRow);
+
     {
       const says = N.watching().says.filter((x) => x.t);
       for (const w of says) {
@@ -93,17 +109,21 @@ const { chromium } = require('playwright-core');
         await sleep(600);
         const m = await N.balance(1600);
         const took = N.said().took;
-        out.push(Object.assign({ what: w.who + ' speaking', took, line: String(w.t).slice(0, 32) }, m));
+        out.push(Object.assign({ what: w.who + ' speaking', took,
+                                 line: String(w.t).slice(0, 32) }, m));
         if (took === 'tape') break;
-        await sleep(700);
+        await sleep(600);
       }
     }
     return { out, diag };
   });
+
   await b.close();
 
-  console.log('\n  audio context: ' + r.diag.ac + ',  takes in memory: ' + r.diag.ready);
-  if (Array.isArray(r.diag.sfx)) console.log('  effects: ' + r.diag.sfx.slice(0, 16).join(', '));
+  console.log('\n  audio context: ' + r.diag.ac + ', muted ' + r.diag.muted +
+              ', takes in memory: ' + r.diag.ready);
+  if (Array.isArray(r.diag.sfx)) console.log('  effects: ' + r.diag.sfx.length + ' of them');
+  console.log('  a recording actually played: ' + r.diag.live + ',  context after: ' + r.diag.acAfter);
   console.log('\n  situation            score    shop     him     him over shop  duck   path');
   r.out.forEach((x) => {
     console.log('  ' + String(x.what).padEnd(20) +
