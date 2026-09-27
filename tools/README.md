@@ -181,6 +181,24 @@ heading; waiting for `state().state === 'play'` lets the flash decay.
   widened, because widening them throws away the only thing they are
   for. If it fails on one metric by a couple of points, run it again
   before believing it; if it fails the same one twice, believe it.
+- **`cupmodel.js`** — *does the model actually wear what she picks?*
+  The squad builder stands a player in the panel so that changing the
+  kit, the trim, the shorts or the badge is something she SEES. That
+  claim is exactly the kind that can be true in a comment and false on
+  the screen, so this reads the pixels: it takes the swatch's own
+  colour off the canvas, presses it, and counts the pixels of that HUE
+  inside the model's own rectangle. Three things had to be learned to
+  make it say anything true. A checksum over his box cannot tell a
+  colour change from his idle breathing — measured, breathing moved it
+  further than some of the colours did. Exact rgb matching finds
+  nothing ever, because a sprite is baked from a ramp and a #c1272d
+  shirt paints as rgb(199,56,71) — hue survives that, lightness does
+  not. And the panel behind him is a blue-grey that passes a
+  saturation test, so only lit pixels count. It caught a real one: the
+  two hand-drawn characters took every colour from the bible including
+  the kit, so Ouissy wore the same red shirt for all six faculties and
+  the model never changed at all.
+
 - **`cupheard.js`** — *does any of it actually make a sound?*
   `cupsfx.js` counts the calls, which answers "is this sound ever asked
   for" and cannot answer "does asking for it produce anything". A sound

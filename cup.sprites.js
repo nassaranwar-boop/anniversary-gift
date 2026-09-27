@@ -162,8 +162,30 @@ window.CupSprites = (function () {
     var P = new Palette();
     var B = BIBLE[L.id];
     if (B) {
+      /* =====================================================================
+         THE BIBLE OWNS THE PERSON. THE CLUB OWNS THE CLOTHES.
+
+         This branch took EVERY colour from the bible, including the
+         three that belong to whichever side the player happens to be
+         turning out for -- so the two hand-drawn characters wore the
+         same red shirt, the same gold trim and the same cream shorts
+         in all six faculties, and in whatever she built herself.
+
+         It hid in plain sight because they look right: they were
+         drawn against that kit. It surfaced the moment the squad
+         builder put a model on the screen -- she picked a blue shirt,
+         the data changed, and the model stayed red for ever.
+
+         What the bible is FOR is the person: their skin, their hair,
+         their eyes, the colour of their super. What a kit is for is
+         the kit. So the bible's kit colours are the fallback now
+         rather than the law, exactly as they are for everybody else,
+         and the two of them run out in their side's colours like the
+         other eleven.
+         ===================================================================== */
       P.area("skin", B.skin);   P.area("hair", B.hair);
-      P.area("kit", B.kit);     P.area("trim", B.trim);
+      P.area("kit", kit && kit.shirt ? derive(kit.shirt) : B.kit);
+      P.area("trim", kit && kit.trim ? derive(kit.trim) : B.trim);
       /* THE SHORTS ARE NOT THE TRIM.
 
          The bible's cream (#f4ecd8) sits two points away from her skin
@@ -173,8 +195,10 @@ window.CupSprites = (function () {
          character disappeared. Same cream, taken down far enough that
          skin reads against it, with the bible's value kept as the
          highlight so the family still belongs to the kit. */
-      P.area("shorts", ["#cbbc97", "#e6dabb", "#f4ecd8", "#8f7f5a"]);
-      P.area("gold", B.gold);   P.area("heart", B.heart);
+      P.area("shorts", kit && kit.shorts ? derive(kit.shorts)
+                                         : ["#cbbc97", "#e6dabb", "#f4ecd8", "#8f7f5a"]);
+      P.area("gold", kit && kit.trim ? derive(kit.trim) : B.gold);
+      P.area("heart", B.heart);
       P.area("boot", B.boot);
       P.flat("eye", B.eye);     P.flat("white", B.white);
       P.flat("blush", B.blush); P.flat("mouth", B.mouth);

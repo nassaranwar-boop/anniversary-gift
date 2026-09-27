@@ -8355,10 +8355,27 @@ window.OuissyCup = (function () {
   /* Open a screen. Everything is staggered off `UI.born`, so a screen
      does not appear, it arrives — each panel a couple of frames after
      the one before it. */
-  function uiOpen(name, drawFn) {
+  /* =======================================================================
+     RE-OPENING A SCREEN IS NOT ARRIVING AT IT
+
+     Every screen here is an immediate-mode draw function, and a screen
+     that has to change something about itself re-registers -- which is
+     how the squad builder redraws after every single tap on a colour.
+     That reset `born`, so the entrance animation ran AGAIN: pick a
+     shirt and the whole panel slid in from off the side of the screen,
+     pick another and it did it again. Sixty pixels of travel for a
+     colour swatch.
+
+     `keep` says "this is the same screen changing its mind", and the
+     age -- which every slide, count-up and fade in the chapter hangs
+     off -- carries on from where it was.
+     ======================================================================= */
+  function uiOpen(name, drawFn, keep) {
     uiSize();
+    var same = keep && UI.on && UI.name === name;
     UI.screen = drawFn; UI.name = name;
-    UI.born = UI.t; UI.focus = 0; UI.hot = null; UI.down = null;
+    if (!same) { UI.born = UI.t; UI.focus = 0; }
+    UI.hot = null; UI.down = null;
     UI.widgets = []; UI.say = [];
     if (uiCvs) { uiCvs.hidden = false; uiCvs.classList.add("on"); }
     UI.on = true;
@@ -9521,6 +9538,50 @@ window.OuissyCup = (function () {
   var CRESTS = ["heart", "star", "flame", "mountain", "lantern", "leaf",
                 "note", "shield", "rose", "wave", "key", "book", "moon"];
 
+  /* =======================================================================
+     THE MODEL
+
+     "I would love if there was a model player there so when she changes
+     the colour of the shorts or the kit or the badge she could see it
+     perfectly."
+
+     She could not. The builder showed two rows of coloured squares and
+     a row of badges, and the only way to find out what any of it
+     looked like on a person was to save the side, start a match and
+     look at somebody eighty units away. So this stands one of them in
+     the panel, wearing what she has chosen, breathing.
+
+     It is the SAME bake the match uses -- not a drawing of a player,
+     the player -- so what she sees here is exactly what runs out at
+     kick-off. One sheet per combination of colours, and the cache is
+     capped, because spinning through a ten-colour palette twice is
+     twenty sheets nobody will look at again.
+     ======================================================================= */
+  var modelCache = {};
+  var MODEL_KEEP = 10;
+  function pixModel(look, kit, x, y, scale, t, anim) {
+    if (!window.CupSprites || !look || !UIX) return 0;
+    var key = (look.id || "x") + "|" + (kit ? kit.shirt + kit.shorts + kit.socks +
+                                              kit.trim : "-");
+    if (!modelCache[key]) {
+      var ks = Object.keys(modelCache);
+      while (ks.length >= MODEL_KEEP) { delete modelCache[ks.shift()]; }
+      try { modelCache[key] = window.CupSprites.bake(look, kit); }
+      catch (e) { return 0; }
+    }
+    var at = modelCache[key];
+    var a = anim || "idle";
+    var n = (at.anims && at.anims[a]) || 1;
+    var f = Math.floor((t || 0) * 5) % n;
+    var uv = at.uv(a, "s", f);
+    if (!uv) return 0;
+    var S = at.size, D = Math.round(S * (scale || 1));
+    UIX.imageSmoothingEnabled = false;
+    UIX.drawImage(at.canvas, uv.col * S, uv.row * S, S, S,
+                  Math.round(x - D / 2), Math.round(y - D), D, D);
+    return D;
+  }
+
   function blankBuild() {
     return { id: "own_" + Date.now(), custom: true, name: "OUR SIDE", short: "OUR",
              crest: "heart", flag: "crest", squad: [null, null, null, null],
@@ -9556,12 +9617,14 @@ window.OuissyCup = (function () {
      a screen she works on rather than one she reads. The left is who
      there is; the right is who she has picked and what they look like.
      ======================================================================= */
-  function drawBuilder(backTo) {
+  function drawBuilder(backTo, keep) {
     var roster = cfg("ROSTER", []);
     var keepers = roster.filter(function (r) { return r.role === "gk"; });
     var outfield = roster.filter(function (r) { return r.role !== "gk"; });
 
-    var redraw = function () { drawBuilder(backTo); };
+    /* KEEPING ITS AGE. Without the second argument every tap on a
+       swatch re-ran the screen's entrance -- see uiOpen. */
+    var redraw = function () { drawBuilder(backTo, true); };
     var rate = function (r) {
       return Math.round((r.stats.speed + r.stats.power +
                          r.stats.skill + r.stats.defence) / 4);
@@ -9653,8 +9716,16 @@ window.OuissyCup = (function () {
         chip(r, lx + col * (lw / 2 + 2), ly + row * 18, Math.floor(lw / 2) - 2);
       });
 
-      /* ---- RIGHT: who she has picked ------------------------------ */
+      /* ---- RIGHT: who she has picked, and what they look like ------
+
+         The model does not take a column off the whole panel -- that
+         was the first go at this and it pushed the tenth swatch of
+         every row off the right-hand edge. It stands BESIDE the kit
+         rows, which is the only part of the screen that is about what
+         the side looks like, and the team sheet above it keeps the
+         full width it needs for four names and four armbands. */
       var rx = 214, rw = UIW - rx - 8, ry = deckTop + 6;
+
       drawText(rx, "YOUR SIDE", ry, { colour: "#7f9a92", track: 2 });
       ry += 10;
       for (var i3 = 0; i3 < 4; i3++) {
@@ -9681,15 +9752,58 @@ window.OuissyCup = (function () {
         ry += 16;
       }
 
+      /* =================================================================
+         THE MODEL, BESIDE THE COLOURS SHE IS CHOOSING
+
+         "I would love if there was a model player there so when she
+         changes the colour of the shorts or the kit or the badge she
+         could see it perfectly." She could not: the builder showed two
+         rows of coloured squares and a row of badges, and the only way
+         to find out what any of it looked like on a person was to save
+         the side, start a match, and look at somebody eighty units
+         away.
+
+         It is the SAME bake the match uses, so this is not a drawing
+         of a player wearing her kit -- it is the player who runs out
+         at kick-off, standing still.
+         ================================================================= */
+      var MODW = 56;
+      var modTop = ry + 2;
+      /* AS TALL AS WHAT IS BESIDE IT, and no taller. At ninety-two the
+         model box rather than the content decided where the crest, the
+         shape and the name went -- and the name went off the bottom. */
+      var modH = 72;
+      box(rx, modTop, MODW, modH, "#0a1015");
+      box(rx + 1, modTop + 1, MODW - 2, modH - 2, "#13202a");
+      line(rx + 1, modTop + 1, MODW - 2, 1, "#2b3d46");
+      /* a strip of grass to stand on, or he is floating in a box */
+      var grassY = modTop + modH - 15;
+      box(rx + 1, grassY, MODW - 2, 14, "#3f8c46");
+      for (var gb = 0; gb < MODW - 2; gb += 8) box(rx + 1 + gb, grassY, 4, 14, "#46974d");
+      /* WHO IS STANDING THERE: her captain if she has named one, the
+         first player she picked otherwise, and Ouissy before she has
+         picked anybody -- so it is never empty and never a stranger. */
+      var modelId = build.captain || chosen[0] || build.squad[0] || "ouissy";
+      var modelLook = ROSTER[modelId] || ROSTER.ouissy;
+      pixModel(modelLook, build.kit, rx + MODW / 2, grassY + 12, 1, UI.t);
+      drawText(rx + MODW / 2, fitText((modelLook && modelLook.name) || "", MODW - 6, 1),
+               grassY + 4, { align: "center", colour: "#0d2a14" });
+      /* and the badge she has picked, on the wall above him */
+      pixCrest({ id: "model_" + build.crest, crest: build.crest, kit: build.kit },
+               rx + Math.round(MODW / 2) - 11, modTop + 4, 22, 15, UI.t);
+
+      /* everything from here to the shape sits to the RIGHT of him */
+      var kx = rx + MODW + 6, kw = rw - MODW - 6;
+
       /* the rating, and what the side is actually like */
       ry += 1;
-      drawText(rx, full ? String(teamRating(build)) : "--", ry,
+      drawText(kx, full ? String(teamRating(build)) : "--", ry,
                { scale: 2, colour: full ? "#ffe9a8" : "#4f6a62",
                  outline: "#0d1412" });
-      drawText(rx + 34, "TEAM RATING", ry + 5, { colour: "#7f9a92", track: 2 });
+      drawText(kx + 34, "TEAM RATING", ry + 5, { colour: "#7f9a92", track: 2 });
       var capR = build.captain ? ROSTER[build.captain] : null;
       if (capR && capR.super) {
-        drawText(rx + rw, fitText("\u2665 " + capR.super.name, rw - 120, 1), ry + 5,
+        drawText(kx + kw, fitText("\u2665 " + capR.super.name, kw - 100, 1), ry + 5,
                  { align: "right", colour: capR.super.colour || "#ff5f8f" });
       }
       ry += 16;
@@ -9697,10 +9811,10 @@ window.OuissyCup = (function () {
         var st = teamStats(build);
         [["PACE", st.speed], ["POWER", st.power],
          ["SKILL", st.skill], ["GRIT", st.defence]].forEach(function (b2, i4) {
-          var bx2 = rx + (i4 % 2) * Math.round(rw / 2);
+          var bx2 = kx + (i4 % 2) * Math.round(kw / 2);
           var by2 = ry + Math.floor(i4 / 2) * 10;
           drawText(bx2, b2[0], by2, { colour: "#7f9a92" });
-          statBar(bx2 + 34, by2 + 1, Math.round(rw / 2) - 42, 5,
+          statBar(bx2 + 32, by2 + 1, Math.round(kw / 2) - 40, 5,
                   b2[1] / 100, accent);
         });
       }
@@ -9710,19 +9824,28 @@ window.OuissyCup = (function () {
       ry += full ? 20 : 6;
 
       /* ---- the kit ------------------------------------------------ */
+      /* THE PITCH COMES OFF THE COLUMN, not off a constant. Ten
+         swatches at a fixed thirteen pixels ran straight off the
+         right-hand edge the moment the model took a strip out of this
+         panel -- the tenth of every row was outside the canvas. */
+      /* FORTY-TWO, because "SHORTS" is six characters and at thirty-two
+         it came out as "SHO...". A truncated label on a colour picker
+         is a picker for something unnamed. */
+      var swLab = 42;
+      var swPitch = Math.max(8, Math.floor((kw - swLab) / SWATCHES.length));
       var swatchRow = function (label, cur, set) {
-        drawText(rx, label, ry + 2, { colour: "#7f9a92" });
+        drawText(kx, fitText(label, swLab - 2, 1), ry + 2, { colour: "#7f9a92" });
         SWATCHES.forEach(function (c, i5) {
-          var sx2 = rx + 34 + i5 * 13;
+          var sx2 = kx + swLab + i5 * swPitch;
           var on = cur === c;
-          box(sx2 - 1, ry - 1, 13, 13, on ? "#ffe9a8" : "#0d1412");
-          box(sx2, ry, 11, 11, c);
-          box(sx2, ry, 11, 1, lift(c, 55));
+          box(sx2 - 1, ry - 1, swPitch, swPitch + 1, on ? "#ffe9a8" : "#0d1412");
+          box(sx2, ry, swPitch - 2, swPitch - 1, c);
+          box(sx2, ry, swPitch - 2, 1, lift(c, 55));
           UI.widgets.push({ id: label + "_" + i5, x: sx2 - 1, y: ry - 1,
-                            w: 13, h: 13, label: label + " " + (i5 + 1),
+                            w: swPitch, h: swPitch + 3, label: label + " " + (i5 + 1),
                             go: function () { set(c); redraw(); } });
         });
-        ry += 14;
+        ry += swPitch + 3;
       };
       swatchRow("KIT", build.kit.shirt, function (c) {
         build.kit.shirt = c;
@@ -9730,8 +9853,19 @@ window.OuissyCup = (function () {
         build.kit.socks = c;
       });
       swatchRow("TRIM", build.kit.trim, function (c) { build.kit.trim = c; });
+      /* THE SHORTS WERE NOT A CHOICE. Two rows of colour and neither of
+         them was the one she can see most of when a player runs. */
+      swatchRow("SHORTS", build.kit.shorts, function (c) {
+        build.kit.shorts = c;
+        build.kit.shortsDark = shade(c, 0.78);
+      });
 
-      /* ---- crest, shape, name ------------------------------------- */
+      /* ---- crest, shape, name -------------------------------------
+         BELOW THE MODEL, AND BACK TO THE FULL WIDTH. The kit rows sit
+         beside him; everything from here down runs under him, so it
+         gets the panel again -- and it has to actually clear his box,
+         or the crest row is painted across his head. */
+      ry = Math.max(ry, modTop + modH + 4);
       var pillRow = function (label, items, cur, set) {
         drawText(rx, label, ry + 4, { colour: "#7f9a92" });
         var px3 = rx + 34, rowY = ry;
@@ -9770,12 +9904,12 @@ window.OuissyCup = (function () {
                           w: cw2, h: 18, label: "crest " + k,
                           go: function () { build.crest = k; redraw(); } });
       });
-      ry += 22;
+      ry += 20;
       pillRow("SHAPE", cfg("FORMATIONS", []), build.formation,
               function (v) { build.formation = v; });
       drawText(rx + 34, fitText(formationNote(build.formation) || "", rw - 36, 1),
-               ry - 3, { colour: "#5f8a7a" });
-      ry += 8;
+               ry - 4, { colour: "#5f8a7a" });
+      ry += 5;
 
       drawText(rx, "NAME", ry + 4, { colour: "#7f9a92" });
       textField(rx + 34, ry, rw - 34, 13,
@@ -9818,7 +9952,7 @@ window.OuissyCup = (function () {
 
       /* and they walk out as she picks them, in the kit she has chosen */
       if (chosen.length) build.__dirty = true;
-    });
+    }, keep);
 
     /* the side on the grass behind the screen is rebuilt outside the
        paint, because building it makes a match and a match is not a
@@ -11500,6 +11634,10 @@ window.OuissyCup = (function () {
                }),
                captain: build.captain, name: build.name, short: build.short,
                kit: build.kit.shirt, trim: build.kit.trim,
+               /* THE SHORTS BELONG IN HERE TOO. They are a control now,
+                  and a harness that cannot read them cannot tell a
+                  swatch that does nothing from one that works. */
+               shorts: build.kit.shorts,
                crest: build.crest, formation: build.formation,
                rating: full ? teamRating(build) : 0 };
     },
