@@ -8781,6 +8781,12 @@ window.OuissyCup = (function () {
       /* lighter than the team screen's: this one has a whole pitch
          behind it rather than a single spotlit character, and at full
          strength the dither read as a smudge down the left-hand edge */
+      /* THE STADIUM GOES BEHIND GLASS HERE TOO, but more gently than on
+         the other two: this screen is a picture of a ground with her
+         side standing on it, and that is worth seeing. Enough to stop
+         the crowd's texture running through the letters of the title,
+         and no more. */
+      wash(0.42);
       vignette(0.62);
       bunting(0, cols, UI.t);
 

@@ -685,7 +685,11 @@ window.CUP_CONFIG = {
     { id: "amical", name: "FRIENDLY MATCH",
       note: "one game, any two sides, any campus" },
     { id: "derby", name: "THE DERBY",
-      note: "dentistry against Marrakech \u00b7 under the lights" },
+      /* FORTY CHARACTERS IS THE ROW. At forty-five this came out as
+         "dentistry against Marrakech - under the..." on the title
+         screen, which is a fixture note that does not say when the
+         fixture is. "v" is how a fixture is written anyway. */
+      note: "dentistry v Marrakech \u00b7 under the lights" },
   ],
 
   /* The cup's three rounds. `id` is who she meets; the final is fixed
