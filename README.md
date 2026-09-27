@@ -13,6 +13,124 @@ landed, what is half-done and what the next session should do first.
 **Add a new entry every session.** Anything not written down here is
 lost when the container is reclaimed.
 
+### 2026-09-27c — the chapter was written 111% full, and a third of it was never heard
+
+**Asked for:** does it feel scarier yet; are three nights really a complete
+compression of the six; is the ending right; and is there any lag, bug or
+mistake anywhere. Check precisely and start fixing.
+
+**The finding, and it is the big one.** A night is six fifty-six-second
+hours, and the last one is five because the film takes the sixth.
+Everything anybody says goes through ONE queue, one line at a time, each
+costing its reading time plus a tail plus a gap. Adding up everything the
+three nights are written to carry and setting it against the clock that
+has to hold it: **the chapter was written 111% full.** Nights one, two and
+three were 106%, 113% and 114%. That has two consequences and both of them
+are exactly what he complained about.
+
+1. **Nothing could ever be silent.** Accounting for every frame of the last
+   night: 82% of it was somebody talking and fifteen seconds of it were
+   quiet. A horror night with a voice going four seconds out of five has no
+   room left in it to be frightened. "I do not feel scared at all" was, in
+   part, this.
+2. **About a hundred seconds of writing a night could never be reached**,
+   however well she played. The queue fell behind and had no way to catch
+   up, so it simply ran out of night. What fell off the end of night three,
+   every single run, was the three-line warning that something is coming
+   tonight — the setup for the entire last hour. Written, voiced, and never
+   once heard by anybody.
+
+Every suite was green throughout, because they all read the script rather
+than playing it.
+
+**He chose, asked directly: cut 40% of the talking.** Keep every fact, rule
+and confession; lose the repetition and the lines the last hour already
+says over the film. Done, and measured:
+
+| | night 1 | night 2 | night 3 |
+|---|---|---|---|
+| written full, before | 106% | 113% | 114% |
+| written full, after | 72% | 68% | 85% |
+| actually speaking, before | 61% | 68% | 82% |
+| actually speaking, after | 56% | 49% | 77% |
+
+**Four real bugs found by playing it rather than reading it:**
+
+- **Anything standing at her door silenced the narration with no bound at
+  all.** `tapeQuiet()` returned false while a toy was at a door and nothing
+  ever released it. On a night she plays properly there is something at a
+  door a great deal of the time — she shuts it and the toy stands there
+  trying the handle — so the whole tape just stopped, sometimes for minutes.
+  He is a man on a tape in a drawer; he cannot hear the shop. Twelve seconds
+  of deference now, then he plays.
+- **Every revelation fired an hour late.** `stepReveal` compared against
+  `G.hour`, a whole number, and every time in `REVEAL_PLAN` has a fraction
+  on it — 2.10, 4.50, 1.30, 4.15, 0.95, 3.05. So each one silently rounded
+  UP to the next whole hour and then had to find a quiet moment with nothing
+  at a door inside the busiest part of the night. Measured across a full
+  three-night run, the fourth revelation was **never offered at all**: she
+  lost the notebook, the choice about it, and Jax's speech about what she
+  did with it.
+- **The queue could fall behind and never catch up.** It now closes the gap
+  in proportion to how late he is: on schedule he takes his two and a half
+  seconds, an hour behind he takes one.
+- **The reactive queue cut in front of the written script until the night
+  ran out.** There is more reactive writing in a night than there is tape.
+  Now the tape's remaining seconds are reserved: nothing else starts if
+  saying it would leave no room for the rest of his tape.
+
+**Restored from the six-night build**, after a string-by-string audit of
+516 old lines against the current ones (401 carried over verbatim or folded;
+of the 115 absent, all but four were deliberate):
+
+- the ballerina's *cost* — "do not watch her all night, you will lose the
+  meter and she will still be there" — a RULE that went with night two's tape;
+- "You are still here. That is the part I keep not expecting.";
+- "Tonight is the one I actually needed you to reach.";
+- **his permission to walk away** — you have done the nights, you owe this
+  shop nothing, lock it and never come back, sell it or burn it or leave it,
+  I am not going to be here to mind. This is load-bearing: without it the
+  last card offers FINISH THE FIFTH ONE or LEAVE IT UNDER THE SHEET and
+  nothing anywhere has told her that leaving is allowed, so one ending reads
+  as her failing him instead of as her taking the thing he spent his last
+  morning making sure she had.
+
+**Moved rather than cut:** the five-line conversation where the four of them
+work out what he was doing in that chair was written into night three's tape
+queue, where it took the warning down with it. It is night two's second
+overheard scene now — the system that cannot be starved, because after
+`OVER_HOLD` it goes anyway and comes through the wall if she is not looking.
+What it displaced was the one exchange in the chapter about a number on the
+heads-up display rather than about him, her or the shop.
+
+**Three new suites**, and they are the ones that matter, because none of the
+twenty-odd existing ones could see any of this:
+
+- `nightfit.js` — does the chapter fit inside the chapter? Pure arithmetic,
+  no variance. Fails any night written past 92% full.
+- `nightair.js` — plays all three nights in a row and lists every written
+  line that never got said and every choice never answered. It drives the
+  eighteen steps of orientation, because night one does not start its clock
+  until she has done them.
+- `nightquiet.js` — accounts for every frame of a night: speaking, at a door,
+  the first minute, a conversation waiting for quiet, or silence.
+
+**Where it stands:** night one and night three now say every written line in
+every run. Night two loses one or two on a bad surge night (a blackout stops
+the tape dead while it lasts) — down from five every run. Every revelation is
+offered and every choice answered.
+
+**Next session, first:**
+1. **48 voice takes are stale** — `linecheck` names them. The "Anwar's voice"
+   Action must be run in `full` mode or those lines fall back to browser speech.
+2. **The visuals and the sound have not been touched yet.** The jeopardy was
+   fixed last session and the silence to be frightened in was made this one;
+   the lighting, the colour, the scare itself and the audio palette are still
+   as they were. This is the other half of "upgrade the visuals and the sound
+   effects to be scarier".
+3. **Lag has not been measured honestly**, and the full suite battery has not
+   been run since the rewrite.
+
 ### 2026-09-27b — why it was not frightening, and the winding key that did not work
 
 **Asked for:** whether three nights is now right; make it scarier, because

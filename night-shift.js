@@ -1820,22 +1820,14 @@ const NS = {
        time. Which is the truest thing in the chapter and he does not
        know he is saying it. */
     1: [
-      { h: 0.00, t: "One of three. You said yes, so here is the first thing." },
-      { h: 0.22, t: "The kettle is behind the till. It takes a while. Everything in here does." },
-      { h: 0.52, t: "Look at the shop tonight and nothing else. Learn where things are." },
-      { h: 0.85, t: "The monitor draws power while it is up. So does a shut door. That is the whole of the job, and there is more meter than there is night." },
-      { h: 1.25, t: "Shut the door if one gets close. It costs you a little. It costs you less than the other thing." },
-      { h: 1.62, t: "The four in the back are not stock. I never sold those. They walk, and that is not a fault — I built them to, and by Saturday you will be glad of it." },
-      { h: 2.15, t: "The soldier keeps time. He has never once been late. I admired that in somebody else first." },
-      { h: 2.55, t: "The owl goes through the ceiling, because that is how a roof works. It is not being clever. The hatch stops it and nothing else does." },
-      { h: 3.00, t: "The ballerina stops when she is looked at. Everybody does. And the box does not leave a room while there is anybody in it, so he knocks instead — every knock is meter, and he knows that." },
-      { h: 3.60, t: "Timekeeping. A roof. Dancing when she thinks nobody can see. And never once walking out of a room I was in." },
-      { h: 3.95, t: "I made four toys, Ouissy. I only ever had one idea, and it was you. Wind them if you get the chance — there is a key in the back of each one." },
-      /* and then he stops for an hour, because the second of tonight's
-         two conversations needs somewhere to happen and nothing in
-         this chapter will ever start one over the top of him */
-      { h: 4.95, t: "The brass plate on the front of that desk. I had it made in March, and I never worked out how to tell you what it was for." },
-      { h: 5.62, t: "Nothing in this shop wants to hurt you. I want to say that on the first night, while it is still true. One down. Two to go." },
+      { h: 0.00, t: "One of three. You said yes, so here is the first thing. Look at the shop tonight and nothing else." },
+      { h: 0.55, t: "The monitor draws power while it is up, and so does a shut door. That is the whole of the job, and there is more meter than there is night. Shut one anyway if something gets close \u2014 it costs you less than the other thing." },
+      { h: 1.35, t: "The four in the back are not stock. I never sold those. They walk, and that is not a fault. I built them to, and by Saturday you will be glad of it." },
+      { h: 2.05, t: "The soldier keeps time, and he has never once been late. I admired that in somebody else first. The owl comes through the ceiling, because that is how a roof works \u2014 the hatch stops it and nothing else does." },
+      { h: 2.80, t: "The ballerina stops when she is looked at. Do not watch her all night, though: you will lose the meter and she will still be there. And the box will not leave a room with anybody in it, so he knocks instead. Every knock is meter." },
+      { h: 3.55, t: "Timekeeping. A roof. Dancing when she thinks nobody can see. And never once walking out of a room I was in." },
+      { h: 4.20, t: "I made four toys, Ouissy. I only ever had one idea, and it was you. Wind them if you get the chance \u2014 there is a key in the back of each one." },
+      { h: 4.90, t: "The brass plate on the front of that desk. I had it made in March and never worked out how to tell you what it was for. Nothing in this shop wants to hurt you, by the way. I want to say that while it is still true." },
     ],
     /* NIGHT TWO. The old third and fourth: the book under the till, and
        then what the book was for. They were always one confession told
@@ -1843,22 +1835,25 @@ const NS = {
        only thing standing between the crime and the reason for it —
        which is exactly the wrong place to put a gap. */
     2: [
-      { h: 0.00, t: "You came back. I have been sitting in that chair all day not knowing whether you would — the same chair I used to sit in until four in the morning telling myself I was working." },
-      { h: 0.30, t: "Two of three. This is the one I have been dreading, so I am going to get it over with. I have started this tape four times." },
-      { h: 0.75, t: "There is a book under the till. I would rather you did not. You will, and you should." },
-      { h: 1.10, t: "Four hundred and eleven of them went out of this shop, every one to a real address, to somebody who was pleased to get it. They were bought as presents, and that part is true." },
-      { h: 1.75, t: "The tag on the bottom of each one has this shop on it. So they know the way back. I did that on purpose and I am not going to pretend otherwise." },
-      { h: 2.25, t: "Some of them have started using it." },
-      { h: 2.50, t: "If a parcel comes down that hall, it is not a delivery. Do not open the door for it. Watching one does nothing. A shut door holds them — they try the handle for a while, and then they go." },
-      { h: 3.10, t: "A toy in a house sees the house. All of it. Every night, for years. It sees who comes. It sees what gets said when the door is shut." },
-      { h: 3.55, t: "And a toy that finds its own way back to the shop it came from brings all of that with it. That is what I did. That is the whole of it." },
-      /* the hour he leaves alone, as on every night: the second
-         conversation goes here, and so does whichever of the four has
-         something to say about what she burned last night */
-      { h: 4.85, t: "Money came into our house and you never asked, and I let you not ask, every week, for fifteen years." },
-      { h: 5.20, t: "You are standing in the middle of it now. I am sorry, and that is not enough, and I know it is not enough." },
-      { h: 5.52, t: "I am not going to ask you to forgive any of it. I would like you to understand it, which is different." },
-      { h: 5.80, t: "Keep them wound tomorrow night. All four of them. They are the only ones I ever made for nothing, and I will tell you what for." },
+      /* SEVEN LINES, AND THEY ALL LAND BY TWENTY PAST FOUR.
+
+         This is the busiest night in the chapter: it owes the answers
+         to both of night one's choices, it has two conversations of
+         their own in it, and it is the only night with the bus
+         surging — and a blackout stops the tape dead while it lasts.
+         Played end to end ten times, the runs that caught a bad surge
+         lost the last four lines of the confession, which is the
+         whole point of the night. So it is seven lines instead of
+         nine, none of them past twenty past four, and the hour and a
+         half after that is hers. */
+      { h: 0.00, t: "You came back. I have been sitting in that chair all day not knowing whether you would — the same chair I used to sit in until four in the morning telling myself I was working. This is the one I have been dreading." },
+      { h: 0.70, t: "There is a book under the till. I would rather you did not. You will, and you should." },
+      { h: 1.20, t: "Four hundred and eleven went out of this shop, every one to a real address, to somebody pleased to get it. They were bought as presents. That part is true." },
+      { h: 1.80, t: "The tag on the bottom of each one has this shop on it, so they know the way back. I did that on purpose, and some of them have started using it." },
+      { h: 2.40, t: "If a parcel comes down that hall it is not a delivery. Do not open the door. Watching does nothing; a shut door holds them." },
+      { h: 3.00, t: "A toy in a house sees the house. All of it, every night, for years — who comes, and what gets said when the door is shut. And one that finds its own way back to the shop it came from brings all of that with it. That is what I did." },
+      { h: 3.60, t: "Money came into our house and you never asked, and I let you not ask, every week, for fifteen years. You are standing in the middle of it now. I am sorry, and I know that is not enough. I am not asking you to forgive it — I would like you to understand it, which is different." },
+      { h: 4.20, t: "Keep them wound tomorrow night. All four of them. They are the only ones I ever made for nothing, and I will tell you what for." },
     ],
     /* NIGHT THREE. The old fifth and sixth.
 
@@ -1874,45 +1869,74 @@ const NS = {
        picture of his own bench, and then again on the finale card, and
        then again on the last page — four goodbyes in twenty minutes,
        each one weaker than the one before. He gets one, and it is the
-       one with the film under it. Kept here is only what the last hour
-       does not already say: what he thinks he was, and the ballerina.
+       one with the film under it. Kept here is what the last hour does
+       not already say: what he thinks he was, the ballerina, and the
+       three lines where he tells her she is allowed to walk away.
+
+       AND THE LAST NIGHT IS FIVE HOURS LONG, NOT SIX.
+
+       stepClock hands the fifth hour to the film, so this night has
+       two hundred and eighty seconds in it and not three hundred and
+       thirty-six. The script written into it ran to twenty to five,
+       carried seventeen lines, and sat on top of two speeches
+       answering what she kept or burned — about twenty seconds each
+       — the knocks, and the pointing. Measured end to end, the queue
+       was an in-game hour behind by half past two and the last five
+       lines of the night were never said once.
+
+       So the seven where the four of them talk about him have gone to
+       NS.overheard, which is the system that cannot be starved, and
+       the warning has come forward to three o'clock. His own tape
+       now ends at ten to three with over a minute of clock in hand.
 
        And the warning at the end of it used to be "something is coming
        on Saturday", said on the night before Saturday. It is tonight
-       now, and they tell her eight minutes before it arrives. */
+       now, and they tell her while there is still a night left to do
+       something about it. */
     3: [
-      { h: 0.00, t: "Three. The last one, and I made this tape in the morning, which I never do." },
-      { h: 0.30, t: "They have started coming back on their own. I did not call them. Nobody called them. There is nothing left to send them anywhere, so they are doing the only thing they know." },
-      { h: 0.75, t: "Keep the four of them wound tonight. All four. There is a key in the back of each one and it takes about a second. Please." },
+      /* HE COMES BACK TO WHAT HE KEPT NOT EXPECTING.
+
+         Two lines out of the six-night build live in this one. "You
+         are still here. That is the part I keep not expecting." was
+         the third tape's, and "Tonight is the one I actually needed
+         you to reach" opened the fifth. Both went in the compression
+         and both of them are him, so they are here, in the only
+         sentence on the last night where he is allowed to be glad. */
+      { h: 0.00, t: "Three. The last one, and the one I actually needed you to reach. You are still here, and that is the part I keep not expecting." },
+      { h: 0.50, t: "They have started coming back on their own. Nobody called them. There is nothing left to send them anywhere, so they are doing the only thing they know." },
+      { h: 1.05, t: "Keep all four of them wound tonight. There is a key in the back of each one and it takes a second. Please." },
       /* and the drawing comes up here, at five to one: four of them
          standing round a woman at a desk, facing outwards. It is the
          picture the next line is the caption to, and for three nights
          he has been unable to say either of them. */
-      { h: 1.20, t: "And if one of them gets to the door before you do — let it. Do not shut it. Let it." },
-      { h: 1.50, t: "You will have worked out by now what I was, and I would like to say I was more than that. I was not. A man is the sum of what he actually did. I was also a man who made four things that will stand at a door for you, and that is on the list too." },
-      { h: 2.00, t: "If you wind her one more time before you go, she will dance. She only ever did it when she thought nobody was watching. So did you." },
-      { h: 2.30, t: "That is the end of the tape. There was more and I could not get through it." },
+      { h: 1.55, t: "And if one of them gets to the door before you do — let it. Do not shut it. Let it." },
 
-      /* AN HOUR AND A HALF OF NOTHING, AND THEN IT IS NOT HIM.
+      /* AND THEN HE LETS HER GO, WHICH IS THE WHOLE POINT OF THE
+         ENDING AND WAS MISSING FROM IT.
 
-         Half past two to half past three is the longest silence in the
-         chapter and it is there on purpose: three of the four have
-         something to say tonight about what she did with his things,
-         each of them twenty seconds long, and a twenty second speech
-         needs a twenty second hole to start in. Everything reactive in
-         this chapter waits for quiet, so a night with no quiet in it
-         is a night where the reactive things never happen. */
-      { h: 3.60, who: "cogsworth", t: "She has checked that door twice. The second time from the landing, the way she does at home." },
-      { h: 3.74, who: "marabelle", t: "You are not supposed to know what she does at home." },
-      { h: 3.88, who: "cogsworth", t: "He wrote it down. He wrote all of it down. I have read the book, same as you." },
-      { h: 4.03, who: "chime",     t: "He used to sit in that chair until four in the morning telling himself he was working." },
-      { h: 4.18, who: "jax",       t: "He was not working. He was practising what he was going to say to her." },
-      { h: 4.32, who: "marabelle", t: "He never said it." },
-      { h: 4.44, who: "jax",       t: "He built us instead. Same thing, slower." },
+         Three lines of the sixth tape said this and all three went in
+         the compression: you have done the nights, you do not owe
+         this shop anything, lock it and never come back, sell it or
+         burn it or leave it, I am not going to be here to mind.
+         Without them the last card offers her FINISH THE FIFTH ONE or
+         LEAVE IT UNDER THE SHEET and nothing anywhere has told her
+         that leaving is allowed — so one of the two endings reads as
+         her failing him rather than as her taking the thing he spent
+         his last morning making sure she had. He has to say it out
+         loud, and this is the last place he can. */
+      { h: 2.05, t: "You will have worked out by now what I was, and I was not more than that. But I was also a man who made four things that will stand at a door for you. You have done the three nights — you do not owe this shop anything. When it is light you can lock it and never come back. Sell it, burn it, leave it. I am not going to be here to mind." },
+      { h: 2.80, t: "But if you wind her one more time before you go, she will dance. She only ever did it when she thought nobody was watching. So did you. That is the end of the tape." },
 
-      { h: 4.58, who: "cogsworth", t: "Ouissy. Something is coming tonight, and it is not one of us." },
-      { h: 4.72, who: "chime",     t: "We have known since Tuesday. We did not know how to put it." },
-      { h: 4.85, who: "marabelle", t: "Keep us wound. That is all. That was always all." },
+      /* AND THE WARNING GOES WHERE IT CAN BE HEARD.
+
+         It used to be the last three lines written on the last night,
+         and being last is exactly why it was never once said: the
+         queue was an in-game hour behind by half past two and the
+         film starts at five. It is the setup for the entire last
+         hour. It does not go at the back. */
+      { h: 3.30, who: "cogsworth", t: "Ouissy. Something is coming tonight, and it is not one of us." },
+      { h: 3.60, who: "chime",     t: "We have known since Tuesday. We did not know how to put it." },
+      { h: 3.90, who: "marabelle", t: "Keep us wound. That is all. That was always all." },
     ],
   },
   /* and the ones that wait for her to do something rather than for a
@@ -2136,16 +2160,35 @@ const NS = {
      gone and the audio nominal.
      ===================================================================== */
   overheard: {
-    /* FOUR EXCHANGES, TWO NIGHTS, AND WHY NONE ON THE THIRD.
+    /* FIVE EXCHANGES, AND THE FIFTH WAS IN THE WRONG QUEUE.
 
        One a night across the four nights before they ever spoke to
-       her. There are two such nights now, so each of them holds two,
-       and the value in each one is unchanged: the first is about the
-       shop and the second is about him. The last night has none,
-       because the last night's tape IS them — ten lines of the four
-       of them talking to each other with her listening, and then the
-       last hour, which is ninety seconds more of it. A fifth exchange
-       in among that would be the third thing doing the same job.
+       her. There are two such nights now, so the first two of them
+       hold two each, and the value in each is unchanged: the first is
+       about the shop and the second is about him.
+
+       The fifth one is the four of them on the last night working out
+       what he was doing in that chair, and it was written straight
+       into NS.tapes[3] as seven lines with speakers on them. That
+       reads the same on the page and does not play the same at all,
+       because the tape is a QUEUE: it says the first unsaid line
+       whose hour has passed, one at a time, and everything reactive
+       on that night — two speeches answering what she kept or burned,
+       the knocks, the pointing — goes through the same hole. Measured
+       across a full three-night run, the queue on night three was a
+       whole in-game hour behind by half past two and never caught up,
+       and the last five lines of the night were never said. Two of
+       those were this conversation's punchline and three of them were
+       the warning that something is coming tonight, which is the
+       setup for the entire last hour. Written, voiced, unreachable.
+
+       overTick cannot be starved like that. It yields to the first
+       minute, orientation, a scare, a blackout, a door and anything
+       being said — and then, after OVER_HOLD, it goes anyway, and if
+       she is not looking at the room it comes through the wall,
+       because the one thing it may never be is unheard. That is the
+       guarantee those seven lines needed, and it is why they live
+       here now instead.
 
        `from` is the hour it can start. The second one on a night is
        held until the back half of it on purpose: two conversations
@@ -2167,8 +2210,7 @@ const NS = {
          were not in that tape talk about it, and the ballerina says
          the thing the chapter is actually about. */
       { room: "stage", from: 3.0, lines: [
-        { who: "jax",       t: "He told her what we are made out of." },
-        { who: "marabelle", t: "He told her what we are made out of. He did not tell her who we are made out of." },
+        { who: "marabelle", t: "He told her what we are made out of. He did not tell her who." },
         { who: "jax",       t: "Does she have to work that out on her own, then?" },
         { who: "marabelle", t: "She worked him out on her own. She will manage us." },
       ] },
@@ -2183,15 +2225,21 @@ const NS = {
         { who: "chime",     t: "Bulbs do not do that." },
         { who: "cogsworth", t: "No. Somebody wanted the hall dark. And it was not the hall they wanted it dark for." },
       ] },
-      /* The bus started taking bites out of the meter at midnight, in
-         front of her, for two per cent. The box is the one who notices
-         what she does with numbers, because he is the one who has been
-         counting her. */
-      { room: "party", from: 3.0, lines: [
-        { who: "jax",       t: "It took two per cent off her at midnight and she wrote it down." },
-        { who: "marabelle", t: "She writes everything down. He did that too, and it drove me to distraction." },
-        { who: "jax",       t: "Then she is going to notice what it is taking it FOR." },
-        { who: "marabelle", t: "Yes. I have been dreading that since Tuesday." },
+      /* AND THE SECOND ONE HERE IS NOW THE LAST NIGHT'S.
+
+         What was here was four lines of Jax and Marabelle noticing
+         that the bus had taken two per cent off her meter and that
+         she had written it down. It is the one exchange in the
+         chapter that is about a number on the heads-up display rather
+         than about him, her, or the shop, and the last night had to
+         give up something real to make room for itself. This is what
+         went. */
+      { room: "foyer", from: 3.0, lines: [
+        { who: "cogsworth", t: "She has checked that door twice. The second time from the landing, the way she does at home." },
+        { who: "marabelle", t: "You are not supposed to know what she does at home." },
+        { who: "cogsworth", t: "He wrote it all down. I have read the book, same as you." },
+        { who: "chime",     t: "He used to sit in that chair until four in the morning telling himself he was working." },
+        { who: "jax",       t: "He was not working. He was practising what he was going to say to her. He never said it, so he built us instead. Same thing, slower." },
       ] },
     ],
   },
@@ -2342,33 +2390,33 @@ const NS = {
   afterChoice: {
     1: {
       kept: { who: "cogsworth",
-        t: "You put the key in your coat. I watched you do it. He carried that key for fifteen years and never once used it to let anybody in, and now it is in a coat that walks out of this building at six in the morning. I have been standing here since, not knowing what to do about how much better that is." },
+        t: "You put the key in your coat. I watched you do it. He carried it fifteen years and never once used it to let anybody in, and now it walks out of this building at six in the morning. I have not worked out what to do about how much better that is." },
       burned: { who: "cogsworth",
-        t: "You left the key taped where it was. He never gave it to you, and you have decided not to take it, and I think that is the first thing the two of you have agreed about in some years." },
+        t: "You left the key taped where it was. He never gave it to you and you have decided not to take it. I think that is the first thing the two of you have agreed about in years." },
     },
     2: {
       kept: { who: "marabelle",
-        t: "You kept the chalk. So there is a piece of him in your pocket that spells out what I am in four words, and the four words are correct. I would rather you had washed the bench. I would very much rather you had washed the bench, and I am glad that you did not." },
+        t: "You kept the chalk. So there is a piece of him in your pocket that spells out what I am in four words, and the four words are correct. I would rather you had washed the bench. I am glad you did not." },
       burned: { who: "marabelle",
-        t: "You washed the bench down. Thank you. I have stood next to that sentence for eleven days being described by it, and being described is not the same as being known. He never did learn the difference, and he had every chance." },
+        t: "You washed the bench down. Thank you. I stood next to that sentence for eleven days being described by it, and being described is not the same as being known. He never did learn the difference." },
     },
     3: {
       kept: { who: "chime",
-        t: "You took the book. Four hundred and eleven doors, and eleven of them ticked in a pen that is not his. I go over the top of everything in this shop and I have never once been out of it, so I cannot tell you what is out there. I can tell you it is coming back one a night, and that you are the only one holding the list." },
+        t: "You took the book. Four hundred and eleven doors, and eleven ticked in a pen that is not his. I go over the top of everything in this shop and have never once been out of it, so I cannot tell you what is out there. Only that it is coming back one a night, and you are the one holding the list." },
       burned: { who: "chime",
-        t: "You burned the book. I could smell it from the ledge over the front door. Eleven have come back, and you have just put the only page that says where the other four hundred are on the fire. I would have done the same. Neither of us is going to be able to un-know that we did it." },
+        t: "You burned the book. I could smell it from the ledge over the front door. Eleven have come back, and the only page that says where the other four hundred are is on the fire. I would have done the same. Neither of us gets to un-know that." },
     },
     4: {
       kept: { who: "jax",
-        t: "You kept the notebook. Fifteen years of you, in his hand, dated. I am the one he made in an afternoon without looking at anything, so I am the only one in this building who is not in that book, and that is why it is me saying this. It is not a love letter and it is not evidence. It is a man taking notes because he could not make himself ask." },
+        t: "You kept the notebook. Fifteen years of you, in his hand, dated. I am the only one in this building who is not in that book, which is why it is me saying this. It is not a love letter and it is not evidence. It is a man taking notes because he could not make himself ask." },
       burned: { who: "jax",
-        t: "You burned the notebook. Good. I was not built with a delicate way of saying things, so: he should have asked you. Fifteen years, and he never once asked you. A man who watches instead of asking gets a fire, and he would have understood that better than anybody alive." },
+        t: "You burned the notebook. Good. I was not built with a delicate way of saying things, so: he should have asked you. Fifteen years and he never once asked. A man who watches instead of asking gets a fire, and he would have understood that better than anybody." },
     },
     5: {
       kept: { who: "cogsworth",
-        t: "You have the drawing. Then you have seen the middle of it, rubbed out and drawn again five times, and you know what it is we are standing round. I would like to tell you we were always that. We were not. We were four things he was practising on, and then one night he turned us to face outwards, and I have never been more glad to be somebody's second idea." },
+        t: "You have the drawing. Then you have seen the middle of it, rubbed out and drawn again five times, and you know what it is we are standing round. We were four things he was practising on, and then one night he turned us to face outwards. I have never been more glad to be somebody's second idea." },
       burned: { who: "cogsworth",
-        t: "The drawing is gone, and I find that I do not mind it. It was a plan, and we stopped being a plan some time before you got here. You do not need a piece of graph paper to tell you where I stand. I stand at the west door. I have stood at the west door every night you have been in this building." },
+        t: "The drawing is gone and I find I do not mind. It was a plan, and we stopped being a plan some time before you got here. You do not need graph paper to know where I stand. I stand at the west door, and I have every night you have been in this building." },
     },
   },
 
@@ -14474,10 +14522,24 @@ function stepReveal(dt) {
   if (G.mode !== "story" || G.phase !== "play" || G.blackout) return;
   const plan = revealsFor(G.night);
   if (!plan.length) return;
+  /* ON THE FRACTIONAL CLOCK, LIKE EVERYTHING ELSE THAT IS DUE AT A TIME.
+
+     This compared against G.hour, which is a whole number that steps
+     on the hour -- and every time in REVEAL_PLAN has a fraction on
+     it: 2.10, 4.50, 1.30, 4.15, 0.95, 3.05. So every one of them was
+     silently rounded UP to the next whole hour. The card written for
+     ten past four came due at five, and then had to find a moment
+     with nothing at a door and nothing being said inside the last
+     hour of a night that is at its busiest. Measured across a full
+     three-night run, the fourth revelation was never offered at all:
+     she lost the notebook, the choice about it, and the speech Jax
+     makes about what she did with it, and every suite stayed green
+     because they all read the plan rather than playing it. */
+  const hourNow = G.hour + (G.hourT || 0) / Math.max(1, TUNE.hourSeconds);
   let want = null;
   for (let i = 0; i < plan.length; i++) {
     if (REVEAL.done[plan[i].n]) continue;
-    if (G.hour < plan[i].at) break;      /* they come in order, always */
+    if (hourNow < plan[i].at) break;     /* they come in order, always */
     want = plan[i];
     break;
   }
@@ -15023,6 +15085,8 @@ const TAPE = {
      line gets its full reading time instead, which is what speakT was
      always meant to be. */
   up: false, spoke: false, tail: 0,
+  /* when something first stood at her door and stopped him */
+  doorAt: 0,
 };
 /* how long his words stay on screen after the voice stops */
 const TAPE_TAIL = 1.05;
@@ -15038,7 +15102,26 @@ const TAPE_TAIL = 1.05;
 
    Two and a half seconds now, and the rule is only that nothing is
    actually AT her door. He talks over the shop, which is what a man on
-   a tape in an empty building would do. */
+   a tape in an empty building would do.
+
+   AND THEN IT WAS MEASURED AGAINST THE CLOCK, WHICH IS FINITE.
+
+   A night is six fifty-six second hours and the last one is five,
+   because the film takes the sixth. Every line costs its reading
+   time, a tail and this gap, and there is one queue: his tape, the
+   things the four say about what she kept or burned, the knocks, the
+   pointing. Played end to end, nights two and three each ran out of
+   night with lines still unsaid -- and one of the lost ones was the
+   warning that something is coming tonight, which is the setup for
+   the whole last hour. Written, voiced, and never once heard.
+
+   And the answer was NOT to shorten this. Accounting for every frame
+   of the last night, eighty-two per cent of it was somebody talking
+   and fifteen seconds of it were silent. The night is not gated. It
+   is saturated -- it has more words written into it than it has
+   clock, and a horror night on which a voice is going four seconds
+   out of five has no room left in it to be frightened. Cutting the
+   gap made both faults worse. The script came down instead. */
 const TAPE_GAP = 2.5;
 
 /* the words go away, and nothing is left holding them up */
@@ -15098,7 +15181,11 @@ function tapeResume() {
 }
 
 /* is this a moment a man could speak into? */
+/* how long the tape stands aside for something at her door */
+const TAPE_DOOR_HOLD = 12;
+
 function tapeQuiet() {
+  let blocked = false;
   if (G.phase !== "play") return false;
   if (G.blackout) return false;
   if (tutorOn()) return false;
@@ -15125,9 +15212,30 @@ function tapeQuiet() {
        A toy that came to speak is excepted from a rule about being
        interrupted by toys. Everything else at that door still stops
        the tape dead. */
-    if (ch && ch.awake && ch.atDoor && !ch.talking) return false;
+    if (ch && ch.awake && ch.atDoor && !ch.talking) { blocked = true; break; }
   }
-  return true;
+  /* AND IT STOPS IT DEAD, NOT FOR EVER.
+
+     This had no bound on it at all, and on a night she is playing
+     properly there is something at one of her doors a great deal of
+     the time -- she shuts the door and it stands there and tries the
+     handle. So the whole narration simply stopped, sometimes for
+     minutes, and the lines that fell off the end of the night were
+     the ones it stopped for. Traced on night two: thirty-second
+     silences with nothing else in the queue at all, a toy at a door,
+     and five written lines lost by six o'clock.
+
+     He is a man on a tape in a drawer. He cannot hear the shop and he
+     has no way of knowing anything is out there. Holding him is a
+     presentation choice -- do not let him reminisce over the top of a
+     jack-in-the-box -- and a presentation choice that can cost the
+     night its ending is too expensive. Twelve seconds of deference,
+     and then the tape plays, which is the only thing a tape has ever
+     done. */
+  if (!blocked) { TAPE.doorAt = 0; return true; }
+  const now = perf();
+  if (!TAPE.doorAt) { TAPE.doorAt = now; return false; }
+  return now - TAPE.doorAt > TAPE_DOOR_HOLD;
 }
 
 /* `who` is one of his four rather than him.
@@ -15968,7 +16076,18 @@ const TALK = { on: false, who: null, door: null, line: null, wait: 0,
                   whether she has reached for a control since it started */
                lookT: 0, busy: false };
 const TALK_WAIT = 13;         // how long it will stand there and ask
-const TALK_COOL = 62;         // and how long the shop is left alone afterwards
+/* HOW LONG THE SHOP IS LEFT ALONE AFTER ONE OF THEM KNOCKS.
+
+   Sixty-two seconds, and two knocks a night: on the last night, which
+   is two hundred and eighty seconds long, that was a hundred and
+   twenty-four seconds -- nearly half the night -- in which nothing
+   reactive could be said at all. It was set to stop the same toy
+   holding the same doorway twice in a row with a blink between, and
+   forty seconds does that just as well -- but it was not the fault.
+   Eighty-two per cent of the last night was somebody talking, so the
+   silence between knocks is the only silence in it, and shortening it
+   only crowded the tape further. It stays. */
+const TALK_COOL = 62;
 /* A GLANCE, NOT A LOCK.
 
    Turning her head to the thing she let in was written as "while it is
@@ -16015,10 +16134,23 @@ const TALK_ASK_CAP = 18;
    asking to be let in any more -- the tape IS them, talking over her
    head and then to her directly -- and a knock in the middle of that
    is the one of them that has not noticed the others have stopped. */
+/* HOW MANY OF THEM COME TO A DOOR AND KNOCK IN A NIGHT.
+
+   Two, and one on the last night. The last night is the shortest --
+   the film takes its sixth hour -- and it carries the most: his tape,
+   the warning, and two speeches about what she kept or burned.
+   Accounting for every frame of it, eighty per cent of it was
+   somebody talking and there was no silence left in it to be
+   frightened in. A knock costs the night its question and its thank
+   you on top of the speech it carries, and on the night all four of
+   them are hunting her, one of them stopping to make conversation at
+   a door twice is the wrong picture anyway. They say it through the
+   wall tonight. */
 const TALK_PER_NIGHT = 2;
+function talksTonight() { return G.night >= NIGHTS.length ? 1 : TALK_PER_NIGHT; }
 function canKnock(it) {
   return !!(it && it.who && cast[it.who] && !G.blackout &&
-            (G.stats.talks || 0) < TALK_PER_NIGHT);
+            (G.stats.talks || 0) < talksTonight());
 }
 
 function talkStart(it) {
@@ -16344,9 +16476,59 @@ function oracleQuiet() {
   try { voiceStop(0); } catch (e) {}
 }
 
+/* IS THERE STILL ROOM IN THE NIGHT FOR THE REST OF HIS TAPE?
+
+   Everything sounding in this chapter goes through one queue, and
+   there is more reactive writing in a night than there is tape: the
+   speeches about what she kept or burned run twenty seconds each and
+   three of them can come due on one night. So on a busy night the
+   reactive queue kept cutting in front of the script, and what ran
+   out of night was always the written script.
+
+   This adds up what he has left to say -- words, tail and gap for
+   every line of tonight's tape not yet said -- and returns how many
+   seconds of night are left over once that is paid for. Below the
+   length of one more reactive line, there is no room for one, and
+   the tape takes right of way. */
+function tapeSpare() {
+  const script = (NS.tapes && NS.tapes[G.night]) || [];
+  const hourNow = G.hour + (G.hourT || 0) / Math.max(1, TUNE.hourSeconds);
+  /* the last night hands its sixth hour to the film */
+  const ends = G.night >= NIGHTS.length && G.mode === "story" ? 5 : 6;
+  const left = Math.max(1, (ends - hourNow) * TUNE.hourSeconds);
+  let owed = 0;
+  for (let i = 0; i < script.length; i++) {
+    const it = script[i];
+    if (TAPE.said[it.t]) continue;
+    owed += voxPlan(it.t).dur + TAPE_TAIL + TAPE_GAP;
+  }
+  return left - owed;
+}
+
 function tapeDue(dt) {
   if (!TAPE.on || !TAPE.opened || !NS.tapeWhen || G.phase !== "play") return;
   if (TAPE.pending || TALK.on) return;
+  /* AND HIS OWN SCRIPT HAS RIGHT OF WAY WHEN THE NIGHT IS RUNNING OUT.
+
+     Everything in here shares one queue, and there is more reactive
+     writing in a night than there is tape: the speeches about what
+     she kept or burned run twenty seconds each, and three of them can
+     come due on one night. So on the busy nights the tape fell behind
+     and the reactive queue kept cutting in front of it, and what ran
+     out of night was always the written script -- on night two, four
+     runs in ten lost the end of the confession, which is the whole
+     point of that night.
+
+     Losing a reactive line is survivable; they are answers to things,
+     and there is another hour and another night for most of them.
+     Losing the end of his tape is not. So once he is more than half
+     an hour behind and there is less than an hour and a half of night
+     left, nothing else starts until he has caught up. Which is also
+     just true: a man on a tape with the shutters coming up does not
+     wait politely for a toy to finish. */
+  /* thirty seconds is one of the longer things any of them says, plus
+     its gap. Below that, the night can no longer afford both. */
+  if (tapeSpare() < 30) return;
   /* AND NOT ONE STRAIGHT AFTER ANOTHER.
 
      Several of these come due at the same time -- they are gated by
@@ -16589,7 +16771,35 @@ function tapeTick(dt) {
     const it = script[i];
     if (it.h > hourNow) break;
     if (TAPE.said[it.t]) continue;
-    if (tapeSay(it.t, it.who)) { TAPE.opened = true; TAPE.wait = TAPE_GAP; return; }
+    if (tapeSay(it.t, it.who)) {
+      TAPE.opened = true;
+      /* AND HE TALKS FASTER WHEN HE IS BEHIND, BECAUSE THE NIGHT ENDS.
+
+         This is a strict in-order queue: the first unsaid line whose
+         hour has passed, then a fixed two and a half seconds, then
+         the next. It shares that queue with everything reactive --
+         the speeches about what she kept or burned, the knocks, the
+         pointing -- so on a busy night it falls behind, and having
+         fallen behind it had no way at all of catching up. It just
+         ran out of night with lines still in it. Measured end to end,
+         the queue on night three was a whole in-game hour behind by
+         half past two, and the last five lines written for that night
+         -- including the warning that something is coming tonight,
+         which is the setup for the whole last hour -- were never said
+         once, on any run.
+
+         Moving the hours earlier only moves where it falls behind. So
+         the gap closes in proportion to how late he is: on schedule
+         he takes his two and a half seconds, and an hour behind he
+         takes one. A man reading a tape to his wife with the night
+         running out would do exactly that, and it costs nothing on a
+         quiet night, which is the only kind that has silence in it to
+         spend. */
+      const late = hourNow - it.h;
+      TAPE.wait = late <= 0.25 ? TAPE_GAP
+                : Math.max(1.0, TAPE_GAP * (1 - clamp(late, 0, 1) * 0.6));
+      return;
+    }
   }
 }
 
@@ -22361,6 +22571,15 @@ const testHooks = {
      before it was finished */
   tapeOwed: () => (TAPE.up ? +(TAPE.spoke ? TAPE.tail : TAPE.speakT).toFixed(2) : 0),
   tapeDur: () => (TAPE.plan ? +TAPE.plan.dur.toFixed(2) : 0),
+  /* HOW LONG A LINE TAKES TO SAY, WITHOUT SAYING IT.
+
+     tapeDur only ever reported the line currently in the air, so the
+     one question nobody could ask was how many seconds of talking a
+     night has been written to carry. A night is six fifty-six second
+     hours, and the last one is five; if the script plus the things
+     that answer her come to more than that, the end of the night is
+     written and never heard, and every suite stays green. */
+  lineDur: (t) => +voxPlan(String(t || "")).dur.toFixed(2),
   /* how far into the line the CAPTION believes it is. With a recording
      there are no word boundaries to go on, so this clock is the
      subtitle: if it is already seconds in when the sound starts, the
