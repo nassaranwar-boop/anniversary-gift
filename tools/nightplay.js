@@ -14,20 +14,50 @@ let fails = 0, checks = 0;
    request, Google Fonts included — and playwright's post-click
    "waiting for scheduled navigations" then sits there until it times
    out. That is the harness, not the site. */
-async function tap(page, sel) {
-  const hit = await page.evaluate((s) => {
-    const els = Array.from(document.querySelectorAll(s.q));
-    const el = s.text ? els.find((e) => (e.textContent || '').indexOf(s.text) >= 0) : els[0];
-    if (!el) return false;
-    /* pointerdown first: the office's own buttons answer to that, the
-       way a thumb does */
-    try { el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true })); }
-    catch (e) { el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); }
-    el.click();
-    return true;
-  }, sel);
-  if (!hit) { fails++; console.log('  FAIL could not tap ' + JSON.stringify(sel)); }
-  return hit;
+/* WAIT FOR THE BUTTON, DO NOT GUESS AT A DURATION.
+
+   This used to try exactly once. The opening film is built behind a
+   phase change and "BEGIN THE SHIFT" lands a beat after the menu does,
+   so one try at the wrong moment missed it -- and because every
+   assertion after that one depends on the film being up, a single
+   missed tap reported thirteen further failures that were nothing of
+   the kind. Same trap, same fix, as everywhere else in this folder. */
+async function tap(page, sel, budget) {
+  const end = Date.now() + (budget || 8000);
+  for (;;) {
+    const hit = await page.evaluate((s) => {
+      const live = (e) => e && !e.disabled && e.offsetParent !== null;
+      let els = Array.from(document.querySelectorAll(s.q));
+      let el = s.text ? els.find((e) => (e.textContent || '').indexOf(s.text) >= 0) : els[0];
+      /* A BUTTON NAMED BY ITS WORDS IS FOUND BY ITS WORDS.
+
+         Every tap in here was written against `.ns-btn`, and the one
+         that starts a shift stopped being one: it is the door now
+         (`.ns-door.ns-btn-go`, data-go="start"), changed on purpose and
+         never brought across. The suite went on looking for a class
+         that no longer carried the words, missed it, and reported
+         thirteen failures in a game that was working perfectly. So when
+         the class misses and there are words to go on, look for the
+         words. */
+      if (!live(el) && s.text) {
+        el = Array.from(document.querySelectorAll('button'))
+          .filter(live)
+          .find((e) => (e.textContent || '').indexOf(s.text) >= 0);
+      }
+      if (!live(el)) return false;
+      /* pointerdown first: the office's own buttons answer to that, the
+         way a thumb does */
+      try { el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true })); }
+      catch (e) { el.dispatchEvent(new MouseEvent('mousedown', { bubbles: true })); }
+      el.click();
+      return true;
+    }, sel);
+    if (hit) return true;
+    if (Date.now() >= end) break;
+    await page.waitForTimeout(150);
+  }
+  fails++; console.log('  FAIL could not tap ' + JSON.stringify(sel));
+  return false;
 }
 
 function ok(name, cond, extra) {
@@ -90,17 +120,26 @@ function ok(name, cond, extra) {
   console.log('\n— how it works —');
   await tap(page, { q: '.ns-btn', text: 'HOW IT WORKS' });
   await page.waitForTimeout(300);
-  ok('rules listed', await page.locator('.ns-rules li').count() === 6);
-  ok('cast listed', await page.locator('.ns-cast li').count() === 4);
-  /* each performer carries the rule and, under it, what she will
-     actually notice on its way */
-  ok('and each one says what to do about it',
-     await page.locator('.ns-who em').count() === 4);
-  ok('and the rules fit on a card',
-     (await page.locator('.ns-rules li span').allTextContents())
+  /* IT IS NOT SIX RULES AND A DOSSIER ANY MORE.
+
+     That card was twelve paragraphs -- six rules, then four characters
+     with a what, a threat and a tell each -- and this is a gift for one
+     specific person who does not play games. It is three things now, in
+     the order she needs them: one sentence of what she does, the keys
+     drawn AS keys, and the four with one line each. Everything cut is
+     still in the game, in the night-one tutorial, which puts her hands
+     on it instead of telling her. */
+  ok('what she does, in one sentence',
+     (await page.locator('.ns-how-one').textContent()).length > 80);
+  ok('the keys are drawn as keys, not described',
+     await page.locator('.ns-kcap').count() === 4);
+  ok('and the four are named with one line each',
+     await page.locator('.ns-who2').count() === 4);
+  ok('and every one of those lines is short enough to read standing up',
+     (await page.locator('.ns-who2-what').allTextContents())
        .every(t => t.trim().length <= 90),
-     (await page.locator('.ns-rules li span').allTextContents()).map(t => t.length).join(','));
-  await tap(page, { q: '.ns-btn', text: 'BACK' });
+     (await page.locator('.ns-who2-what').allTextContents()).map(t => t.length).join(','));
+  await tap(page, { q: '.ns-btn', text: 'GOT IT' });
   await page.waitForTimeout(250);
 
   console.log('\n— his statement —');
@@ -200,16 +239,39 @@ function ok(name, cond, extra) {
   ok('and she is never asked twice', into.seen === '1');
 
   console.log('\n— night one —');
+  /* HIS STATEMENT BELONGS TO NIGHT ONE NOW, NOT TO THE FIRST PLAY.
+
+     Starting the story used to go straight to the shift card. It plays
+     the opening film first whenever the night about to begin is the
+     first one -- the statement IS the beginning of this story -- with a
+     SKIP for when she does not want it. This harness wants the shift,
+     so it takes the skip, which is what the button does. */
   await page.evaluate(() => { const w = OuissysNightShift.__night; w.route('title'); w.route('start'); });
-  await page.waitForTimeout(400);
-  /* night one is onboarded by a card taped inside the desk drawer, in
-     her hands. Nobody phones her; nobody narrates. */
-  ok('night one briefs off a found card', (await page.locator('.ns-from').textContent()).indexOf('drawer') >= 0);
-  ok('and the card is a piece of paper', await page.locator('.ns-paper p').count() >= 3);
-  ok('with a pencil note on it', await page.locator('.ns-pencil').count() === 1);
-  await tap(page, { q: '.ns-btn', text: '12:00 AM' });
-  await page.waitForTimeout(600);
+  await page.waitForTimeout(300);
+  await page.evaluate(() => {
+    const w = OuissysNightShift.__night;
+    if (w.state().phase === 'intro') w.route('introDone');
+    if (w.state().phase === 'terms') w.route('termsDone');
+  });
+  await page.waitForTimeout(500);
+  /* NIGHT ONE IS NOT BRIEFED OFF A CARD ANY MORE, AND THAT IS THE POINT.
+
+     It used to open on the shift card taped inside the desk drawer. The
+     opening film and the terms now sit in front of night one -- he asks
+     her for six nights and she says yes to them -- and putting a shift
+     card between that and the office is putting a form between a man's
+     last request and the thing he asked for. The card is still in the
+     drawer, in the game, where she found it; the brief still opens
+     every night from two onwards. */
   let st = await page.evaluate(() => OuissysNightShift.__night.state().phase);
+  ok('the terms hand her straight into the office, with no card in between',
+     st === 'play', st);
+  const card = await page.evaluate(() => {
+    const w = OuissysNightShift.__night.words().shiftCard;
+    return { from: w.title, lines: w.lines.length, pencil: !!w.pencil };
+  });
+  ok('and the shift card he taped inside the drawer is still written',
+     /drawer/i.test(card.from) && card.lines >= 4 && card.pencil, card);
   ok('shift running', st === 'play', st);
   ok('HUD visible', await page.locator('#ns-hud:not([hidden])').count() === 1);
   ok('pad visible', await page.locator('#ns-pad:not([hidden])').count() === 1);
@@ -482,11 +544,31 @@ function ok(name, cond, extra) {
   });
   await page.waitForTimeout(500);
   ok('night six ends in the finale, not a scoreboard', fin.phase === 'finale', JSON.stringify(fin));
-  const finTxt = (await page.locator('.ns-card').textContent()) || '';
-  ok('and dawn is what is on the card', /6:00 AM|dawn|light/i.test(finTxt), finTxt.slice(0, 60));
+  /* AND DAWN IS NOT A CARD ANY MORE.
+
+     Six o'clock on the last night used to be a screen of paper. It is
+     the last hour now -- eighty-nine shots in the shop, in the rooms
+     she has been sitting in all week, with the four of them in it. */
+  const film = await page.evaluate(() => {
+    const st = OuissysNightShift.__night.finaleState();
+    return { on: st.on, of: st.of, room: st.room };
+  });
+  ok('and dawn is the last hour, which plays in the shop rather than on paper',
+     film.on && film.of > 60, JSON.stringify(film));
   await shot('finale');
 
   console.log('\n— what the record keeps —');
+  /* rate a night that HAS a six o'clock card. The last one does not:
+     it is rated when she presses past his letter, which is checked
+     where that happens. */
+  await page.evaluate(() => {
+    const w = OuissysNightShift.__night, s = w.state();
+    w.route('night:5'); w.route('go'); w.midEnd();
+    const c = w.cast();
+    Object.keys(c).forEach((k) => { c[k].asleep = true; c[k].awake = false; });
+    s.hour = 5; s.power = 70; w.pump(70);
+  });
+  await page.waitForTimeout(400);
   const rec = await page.evaluate(() => {
     const w = OuissysNightShift.__night, s = w.state();
     return { rating: s.rating, stats: s.stats,
@@ -512,7 +594,18 @@ function ok(name, cond, extra) {
   ok('an empty custom night earns nothing', farm.length === 0, farm.join(','));
 
   console.log('\n— everything the story unlocks —');
-  await page.evaluate(() => { const w = OuissysNightShift.__night; w.route('title'); });
+  /* the extras are gated on the six nights being finished, and the
+     sections above this one leave the sixth in the middle of the film
+     rather than through it -- the last night is only marked when she
+     presses past the letter at the end of the last hour, which is
+     checked where that happens. This is about what the title offers
+     once it is done. */
+  await page.evaluate(() => {
+    try {
+      localStorage.setItem('ns_nights', JSON.stringify({ 1: true, 2: true, 3: true, 4: true, 5: true, 6: true }));
+    } catch (e) {}
+    OuissysNightShift.__night.route('title');
+  });
   await page.waitForTimeout(350);
   ok('custom night is offered', await page.locator('[data-go="custom"]').count() === 1);
   ok('the gallery is offered', await page.locator('[data-go="gallery"]').count() === 1);
@@ -920,11 +1013,24 @@ function ok(name, cond, extra) {
         el.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));
       },
     };
+    /* ORIENTATION IS NOT THE FIRST THING THAT HAPPENS ANY MORE.
+
+       Night one opens with the building doing tonight's damage to
+       itself, and the orientation card waits for it to stop talking
+       rather than reading out over the top of it. So the walkthrough
+       waits for the card the way she does. */
+    for (let w8 = 0; w8 < 120 && w.tutor().step < 0; w8++) {
+      await new Promise(r => setTimeout(r, 200));
+    }
     let last = null, guard = 0, rooms = ['hall','stage','party','foyer','closet'], ri = 0;
     /* requestAnimationFrame runs at about 3fps in this container and
        orientation advances on frames, so this needs a budget measured in
        frames rather than in the wall-clock seconds a person would take */
-    while (guard++ < 220 && w.tutor().step >= 0 && w.tutor().step < w.tutor().of) {
+    /* the first minute of a night runs before orientation does -- the
+       building doing tonight's damage to itself -- and in this
+       container that is eighty frames of the budget before the
+       walkthrough starts */
+    while (guard++ < 340 && w.tutor().step >= 0 && w.tutor().step < w.tutor().of) {
       const t = w.tutor();
       if (t.line !== last) { seen.push(t.line); last = t.line; if (act[t.line]) act[t.line](); }
       /* both of these have to be retried: the key is placed by the frame
@@ -998,21 +1104,66 @@ function ok(name, cond, extra) {
     Object.defineProperty(window, 'speechSynthesis', { configurable: true, get: () => stub });
     window.SpeechSynthesisUtterance = function (t) { this.text = t; };
     const w = OuissysNightShift.__night;
+    /* SILENCE IS NOT THE ONLY THING TURNED DOWN.
+
+       The suite mutes the game early and un-mutes it here with
+       silence(false) -- but voxSpeak is gated on `!muted && MIX.voice >
+       0.02`, and MIX.voice is the mixer, a different thing. With the
+       voice channel still at zero the call fell straight through to the
+       caption-only path, nothing was ever handed to the stub, and eight
+       assertions reported "0 utterances" in a chapter whose speech is
+       working. Put the channel back as well as the mute. */
+    const mixWas = w.mix().voice;
     w.silence(false);
+    w.setMix('voice', 1);
+    w.setMix('master', 1);
     w.speechReset();
-    const line = 'I made toys. That part was true.';
+    /* A LINE HE HAS NO RECORDING OF.
+
+       This used to speak "I made toys. That part was true." -- and that
+       line has since been given a real recording, so the chapter plays
+       the recording and never reaches the browser's synthesiser at all.
+       voiceWhy reported it exactly: on, has, ready, id "intro-3-1".
+       That is the chapter preferring a real voice to a synthetic one,
+       which is right, and it left this checking a path the line no
+       longer takes. So the line spoken here is one with no recording
+       behind it, which is the only way to put the synthesiser under
+       test -- and the assertion below now reads the line it actually
+       asked for rather than a remembered string. */
+    const line = 'The lathe is still warm and nobody has been in here since Tuesday.';
+    const why = w.voiceWhy(line);
     w.vox(line);
     w.speak(line);
+    /* AND WAIT FOR HIM TO START.
+
+       speak() does not hand the line over on the spot. On a cold load
+       the voice list arrives late on nearly every browser, so the
+       chapter defers a line by up to 2.6 seconds rather than let him
+       come out as a machine for the first sentence of the game -- that
+       is voiceWait, and it is deliberate. This restored the real
+       speechSynthesis and re-muted the game on the very next line, so
+       the stub was gone by the time the deferred call reached it: the
+       utterance went to the real engine, which has no voices in here,
+       and eight assertions reported "0 utterances" about a chapter
+       whose speech works. Wait for the stub to be used, up to the same
+       2.6 seconds the game allows itself. */
+    for (let i = 0; i < 40 && !said.length; i++) {
+      await new Promise((r) => setTimeout(r, 100));
+    }
     if (real) Object.defineProperty(window, 'speechSynthesis', real);
     w.silence(true);
     w.speechReset();
-    return { said, marks };
+    return { said, marks, why, mixWas, line };
   });
   ok('it is handed to the browser to say out loud', spoken.said.length === 1,
-     spoken.said.length + ' utterances');
+     spoken.said.length + ' utterances' +
+     (spoken.said.length ? '' : '  (why: ' + JSON.stringify(spoken.why) +
+      ', voice channel was ' + spoken.mixWas + ')'));
   ok('and what it is asked to say is exactly what is written',
-     spoken.said[0] && spoken.said[0].text === 'I made toys. That part was true.',
+     spoken.said[0] && spoken.said[0].text === spoken.line,
      JSON.stringify(spoken.said[0] && spoken.said[0].text));
+  ok('and it is the synthesiser being tested, not a recording',
+     spoken.why && spoken.why.has === false, JSON.stringify(spoken.why));
   ok('in English', /^en/i.test((spoken.said[0] || {}).lang || ''), (spoken.said[0] || {}).lang);
   /* Near natural pitch, a shade under natural pace. Pushing the pitch
      down to make him sound like a man is what made him sound like a
@@ -1055,9 +1206,12 @@ function ok(name, cond, extra) {
   ok('and the building gets a different one from him',
      chosen.sys && chosen.sys !== chosen.him, chosen.sys);
 
+  /* one mark per word, in order, counted off the line that was actually
+     spoken rather than off a remembered seven-word one */
   ok('and the caption walks along behind it, word by word',
-     spoken.marks.length === 7 && spoken.marks[0] === 0 &&
-     spoken.marks[6] === 6 && spoken.marks.every((m, i) => m === i),
+     spoken.marks.length === spoken.line.split(' ').length &&
+     spoken.marks.every((m, i) => m === i),
+     spoken.marks.length + ' marks for ' + spoken.line.split(' ').length + ' words: ' +
      JSON.stringify(spoken.marks));
 
   /* THE FOUR THINGS THAT MADE HIM UNLISTENABLE.
@@ -1209,11 +1363,24 @@ function ok(name, cond, extra) {
     /* the empty utterance that primes iOS is cancelled on purpose and
        has no words in it */
     return { said: log.filter(e => e.ev === 'SAY' && e.text.trim()).length,
+             /* HOW MANY LINES HE ACTUALLY DELIVERED, BY ANY ROUTE.
+
+                Counting utterances handed to speechSynthesis stopped
+                being the same question as "does he speak": the opening
+                has its own recordings now, and a recording beats a
+                synthesised voice, so the stub sees nothing and the
+                chapter is working perfectly. What matters is that every
+                line went out as sound rather than down the silent
+                caption-only path, which is what `took` and `plays`
+                record. */
+             delivered: w.said().plays.tape + w.said().plays.speech,
+             took: w.said().took,
              cut: log.filter(e => e.ev === 'CUT' && e.text.trim()).map(e =>
                e.text.slice(0, 30) + ' at ' + e.at.toFixed(1) + '/' + e.of.toFixed(1) + 's') };
   });
-  ok('the opening actually says several sentences', whole.said >= 5,
-     whole.said + ' spoken');
+  ok('the opening actually says several sentences', whole.delivered >= 5,
+     whole.delivered + ' lines delivered (' + whole.said +
+     ' of them through the synthesiser, the rest from their own takes)');
   ok('and not one of them is cut off part way through',
      whole.cut.length === 0, whole.cut.join(' | ') || 'none cut');
 
@@ -1285,6 +1452,10 @@ function ok(name, cond, extra) {
   const manners = await page.evaluate(() => {
     const w = OuissysNightShift.__night, s = w.state();
     w.route('night:4'); w.route('go');
+    /* the first minute of a night is the building doing tonight's
+       damage to itself, and nothing of his talks over it -- a harness
+       measuring his manners is not being shown the cold open */
+    w.midEnd();
     const out = {};
     /* He has the right of way now — the other way round was the bug.
        The building announces a door every time she touches one, so
@@ -1642,7 +1813,11 @@ function ok(name, cond, extra) {
      raised from the frame loop, and pump() stops the moment the phase
      stops being play */
   const given = {};
-  for (const id of ['ledger', 'last', 'cogsworth']) {
+  /* the ledger is night five's and is handed over on that night's six
+     o'clock card. The last page is night six's, and night six has no
+     six o'clock card -- it has the film, and the card after it -- so it
+     is checked at the end of the ending instead of here. */
+  for (const id of ['ledger', 'cogsworth']) {
     await page.evaluate((id) => {
       const w = OuissysNightShift.__night, s = w.state();
       try { localStorage.removeItem('ns_found'); } catch (e) {}
@@ -1661,7 +1836,6 @@ function ok(name, cond, extra) {
       OuissysNightShift.__night.finds().kept.indexOf(id) >= 0, id);
   }
   ok('the ledger is handed to her if she never found it', given.ledger === true);
-  ok('and so is the last page', given.last === true);
   ok('but an ordinary tag is still hers to find or miss', given.cogsworth === false);
 
   /* the four rooms the score has that only exist inside a shift */
@@ -1793,20 +1967,34 @@ function ok(name, cond, extra) {
     w.route('night:6'); w.route('go');
     ['cogsworth','chime','marabelle','jax'].forEach(k => { w.cast()[k].asleep = true; });
     s.hour = 5; s.power = 60; w.pump(70);
-    const asked = (document.querySelector('.ns-ask') || {}).textContent || '';
-    const btns = Array.from(document.querySelectorAll('.ns-ov-fin [data-go]')).map(b => b.dataset.go);
-    return { phase: s.phase, asked: asked.length, btns };
+    /* five o'clock on the last night is the film, and the question is
+       what the film hands her at the end of it -- so it has to be run
+       to the end rather than started. filmSeek turns the film's own
+       clock without drawing any of it. */
+    w.filmSeek(999);
+    /* what the film hands her at the end of it is his letter, read a
+       line at a time, and one way out of it */
+    const letter = document.querySelector('.ns-card-find .ns-paper');
+    const out1 = { phase: s.phase, letter: letter ? letter.textContent.length : 0,
+                   btns: Array.from(document.querySelectorAll('.ns-rv-choice [data-go]')).map(b => b.dataset.go) };
+    /* and then the card that ends the chapter: what she is left with,
+       and the page he would not let her miss */
+    w.route('finaleDone');
+    const fin = document.querySelector('.ns-card-fin');
+    out1.ending = fin ? fin.textContent.length : 0;
+    out1.gave = !!(fin && fin.querySelector('.ns-gave'));
+    out1.choices = Array.from(document.querySelectorAll('.ns-card-fin [data-go]')).map(b => b.dataset.go);
+    try { out1.six = !!JSON.parse(localStorage.getItem('ns_nights') || '{}')[6]; } catch (e) {}
+    out1.rated = !!s.rating;
+    return out1;
   });
-  ok('the last night asks her something', ends.asked > 20 && ends.phase === 'finale', JSON.stringify(ends.phase));
-  ok('and there are two ways to answer',
-     ends.btns.indexOf('endWind') >= 0 && ends.btns.indexOf('endLeave') >= 0, ends.btns.join(','));
-  for (const [go, want] of [['endWind', 'WINDS'], ['endLeave', 'LEAVES']]) {
-    await page.evaluate((g) => OuissysNightShift.__night.route(g), go);
-    await page.waitForTimeout(300);
-    const txt = await page.locator('.ns-card-fin').textContent();
-    ok('  ' + go + ' has its own ending', txt.indexOf(want) >= 0, txt.slice(0, 40));
-  }
-  await shot('ending');
+  ok('the film hands her his letter at the end of it', ends.letter > 200,
+     JSON.stringify({ letter: ends.letter, btns: ends.btns }));
+  ok('and there is one way out of it, not two', ends.btns.length === 1, ends.btns.join(','));
+  ok('and the card after it is what she is left with', ends.ending > 60, ends.ending);
+  ok('and it puts the last page in her hand, found or not', ends.gave, ends.gave);
+  ok('and pressing past it is what marks the six nights done', ends.six, ends.six);
+  ok('and the last night is rated like every other one', ends.rated, ends.rated);
 
   console.log('\n— the way out —');
   await page.evaluate(() => { const w = OuissysNightShift.__night; w.route('title'); });

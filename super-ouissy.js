@@ -58,6 +58,32 @@ window.SuperOuissy = (function () {
     /* The line under the title on the difficulty screen. */
     tagline: "a quest, three worlds, and a prince at the end",
 
+    /* WHAT SHE SAYS.
+
+       She had three faces — a raincloud on Easy, a clock on Medium, the
+       Heartbreaker herself on Hard — and between the three of them she
+       said two things in the whole game: an exclamation mark when her
+       health dropped a band, and her own score when she died. A health
+       bar with an exclamation mark over it is not a character.
+
+       Four lines each: when she notices her, when the fight turns twice,
+       and when she goes down. They are three different characters now and
+       the last line of each is the one that matters — because the thing
+       standing between them is different on every difficulty, and on Hard
+       it is heartbreak, and heartbreak conceding is worth a sentence.
+
+       They are DOM, not canvas. Six-pixel text on a 320-wide picture is
+       the same unreadable smear it was in the story scenes. */
+    bossLines: {
+      cloud: { wake: "He isn't for you.",       p1: "Turn around.",
+               p2: "You're STILL here?",        die: "...take him, then." },
+      clock: { wake: "You're late.",            p1: "Time is on my side.",
+               p2: "And you are out of it.",    die: "...keep your minutes." },
+      heart: { wake: "I have broken better.",   p1: "They all stop eventually.",
+               p2: "Why are you still standing?", die: "...then you meant it." },
+    },
+
+
     /* The how-to screen. Written for someone who has never played a
        platformer, because she has not. Each section is a heading and a
        list of [thing, what it means] rows. */
@@ -197,24 +223,24 @@ window.SuperOuissy = (function () {
       lives: 5, enemyMul: 0.72, gravityMul: 0.92, jumpMul: 1.06,
       coyoteMul: 1.7, bufferMul: 1.6, invulnMul: 1.5,
       pitSafety: true, checkpoints: true,
-      timeLimit: 0, timedPlatform: 1.6, bossSpeedMul: 0.78, bossCooldownMul: 1.35, bossExtraShot: 0,
-      bossSkin: "cloud", bossHitsPerPhase: 1, bossOpenMul: 1.4,
+      timeLimit: 0, timedPlatform: 1.6, bossSpeedMul: 0.86, bossCooldownMul: 1.2, bossExtraShot: 0,
+      bossSkin: "cloud", bossPhaseHits: [1, 1, 2], bossOpenMul: 1.28, bossRage: 0,
     },
     medium: {
       label: "Medium", blurb: "3 lives, real pits, the way it is meant to play",
       lives: 3, enemyMul: 1, gravityMul: 1, jumpMul: 1,
       coyoteMul: 1, bufferMul: 1, invulnMul: 1,
       pitSafety: false, checkpoints: true,
-      timeLimit: 0, timedPlatform: 1.1, bossSpeedMul: 1, bossCooldownMul: 1, bossExtraShot: 0,
-      bossSkin: "clock", bossHitsPerPhase: 2, bossOpenMul: 1.15,
+      timeLimit: 0, timedPlatform: 1.1, bossSpeedMul: 1.1, bossCooldownMul: 0.9, bossExtraShot: 0,
+      bossSkin: "clock", bossPhaseHits: [2, 2, 3], bossOpenMul: 1.02, bossRage: 1,
     },
     hard: {
       label: "Hard", blurb: "2 lives, a clock, more of everything sharp",
       lives: 2, enemyMul: 1.35, gravityMul: 1.08, jumpMul: 0.98,
       coyoteMul: 0.5, bufferMul: 0.5, invulnMul: 0.7,
       pitSafety: false, checkpoints: false,
-      timeLimit: [150, 170, 190], timedPlatform: 0.75, bossSpeedMul: 1.3, bossCooldownMul: 0.72, bossExtraShot: 1,
-      bossSkin: "heart", bossHitsPerPhase: 2, bossOpenMul: 1,
+      timeLimit: [150, 170, 190], timedPlatform: 0.75, bossSpeedMul: 1.42, bossCooldownMul: 0.64, bossExtraShot: 1,
+      bossSkin: "heart", bossPhaseHits: [2, 3, 3], bossOpenMul: 0.88, bossRage: 2,
     },
   };
 
@@ -2072,6 +2098,7 @@ window.SuperOuissy = (function () {
       groundY: findGroundY(grid, w, h),
       ents: ents, items: items, start: start, goal: goal,
       checks: checks, boss: boss, biome: def.biome,
+      signs: mkSigns(grid, w, h, start, goal, index),
       /* pristine copies, so the offline harness can put a level back the
          way it found it between assertions (see __soReset) */
       grid0: grid.map(function (r) { return r.slice(); }),
@@ -2082,6 +2109,131 @@ window.SuperOuissy = (function () {
   }
 
   function isSolidChar(ch) { return !!ch && SOLID.indexOf(ch) >= 0; }
+
+  /* =======================================================================
+     THE LEVEL TALKS BACK
+
+     The game has always been written in his voice — the world cards, the
+     revive cards, the whole letter at the end — but the part she spends
+     the most time in, the LEVEL, said nothing at all. Three little boards
+     on posts per world, planted on the way through, and walking past one
+     puts a line up.
+
+     Where they go is worked out rather than written down: a fraction of
+     the way from her start to the goal, then the nearest column with
+     ground under it and two tiles of air above, so editing a level's
+     layout can never leave a signpost buried in a wall or hanging over a
+     pit. They are decoration — nothing about them collides — so the worst
+     a badly-placed one can do is look silly.
+     ======================================================================= */
+  /* Nine lines, and the rule they were written to.
+
+     A sign is read at a run, in the two seconds she is standing next to
+     it, so nothing here is longer than a breath. None of them is advice
+     and none of them is a compliment — advice in a platformer is a tip,
+     and a compliment from a signpost is embarrassing. What they are is
+     things one specific person knows about one specific person, said
+     plainly, with the level underneath doing the second half of the work:
+     "the ground stops being kind about here" is about world two and it is
+     also about the year.
+
+     The three worlds are an arc. The meadow is the beginning of them. The
+     middle one is what it is actually like. The castle is the promise. */
+  var SIGN_LINES = {
+    /* EASY — the meadow, the orchard and the garden. The gentlest set, and
+       the boards know it: nothing here is chasing her. */
+    easy: [
+      ["nothing here means it. go and look at things.",
+       "you don't have to be good at this. you only have to be here.",
+       "i can see you from the next one."],
+      ["the orchard was your idea. i only built it.",
+       "take the long way round. nothing here is chasing you.",
+       "you are further in than you think you are."],
+      ["the last garden, and i planted the whole thing facing the door.",
+       "whatever you are by the time you get there is the right thing to be.",
+       "one more, and then it is just us."],
+    ],
+    /* MEDIUM — the riverside, the windmill and the hill town. The middle
+       of everything, which is what this difficulty is. */
+    medium: [
+      ["everything here is soft on purpose. one of them should be.",
+       "you start things over without making it a tragedy. i never learned how.",
+       "three of these, and then me."],
+      ["the ground stops being kind about here. that isn't a punishment, it's just further in.",
+       "i'm not worried about you. i've seen what you do with a bad week.",
+       "you're allowed to stop and look at it. it's yours."],
+      ["whatever is at the top of this, i'm on your side of it.",
+       "she isn't difficult because i wanted you to lose.",
+       "one more room, then the door, then me."],
+    ],
+    /* HARD — the forest, the ruins and the castle. She chose the worst of
+       it on purpose, and these are written to somebody who did. */
+    hard: [
+      ["you picked the hard one. i am not surprised and i am not arguing.",
+       "everything after this gets worse. going anyway is the whole skill.",
+       "the forest ends. they all do."],
+      ["somebody lived here once and then didn't. that happens. it is not the end of anything.",
+       "if you need to stop, stop. the ruins will wait. so will i.",
+       "you have done harder than this with less, and I was there."],
+      ["what is at the top of this is the worst thing i could think of. that was deliberate.",
+       "if she takes everything, i am still coming.",
+       "last door. i am behind it."],
+    ],
+  };
+  function mkSigns(grid, w, h, start, goal, index) {
+    /* his voice, but not the same nine boards on every difficulty: each one
+       is its own three places, walked by somebody who chose them */
+    var set = SIGN_LINES[(G && G.diff) || "medium"] || SIGN_LINES.medium;
+    var lines = set[Math.min(set.length - 1, index)] || [];
+    var x0 = Math.floor(start.x / T), x1 = goal ? Math.floor(goal.x / T) : w - 2;
+    var out = [];
+    if (x1 - x0 < 12) return out;
+    /* THE ROW SHE ACTUALLY WALKS ALONG.
+
+       The first version took the first standable tile scanning DOWN from
+       the sky, which is the highest perch in the column rather than the
+       floor — and it put four of the twenty-seven boards somewhere she
+       never goes: one on a ledge three rows up, one down a cellar BELOW
+       the ground, and one thirteen rows up in the open sky in Hard world
+       one. A line she cannot read is not a line.
+
+       Every column is searched for the standable row NEAREST the main
+       ground surface, and a column is only accepted if that row is the
+       ground (or within one of it). A perch is kept as a fallback, so a
+       world with no ground anywhere near the wanted spot still gets its
+       board rather than losing it. */
+    var gy = Math.round(findGroundY(grid, w, h) / T);
+    function standRow(tx) {
+      var best = -1, bestD = 1e9;
+      for (var ty = 2; ty < h; ty++) {
+        if (!isSolidChar(grid[ty][tx])) continue;
+        if (grid[ty - 1][tx] !== "." || grid[ty - 2][tx] !== ".") continue;
+        var d = Math.abs(ty - gy);
+        if (d < bestD) { bestD = d; best = ty; }
+      }
+      return best;
+    }
+    for (var i = 0; i < lines.length; i++) {
+      var want = Math.round(x0 + (x1 - x0) * (0.24 + i * 0.26));
+      var at = null, perch = null;
+      for (var dd = 0; dd < 16 && !at; dd++)
+        for (var sg = -1; sg <= 1 && !at; sg += 2) {
+          var tx = want + dd * sg;
+          if (tx <= x0 + 2 || tx >= x1 - 2) continue;
+          var ty = standRow(tx);
+          if (ty < 0) continue;
+          var cand = { x: tx * T, y: (ty - 1) * T, text: lines[i], said: false };
+          if (Math.abs(ty - gy) <= 1) at = cand;
+          else if (!perch) perch = cand;
+        }
+      at = at || perch;
+      if (!at) continue;
+      var clash = false;
+      for (var q = 0; q < out.length; q++) if (Math.abs(out[q].x - at.x) < T * 5) clash = true;
+      if (!clash) out.push(at);
+    }
+    return out;
+  }
 
   /* The row the main ground surface sits on: the one with the most tiles
      that are solid with air directly above. Worked out rather than written
@@ -2277,25 +2429,69 @@ window.SuperOuissy = (function () {
   }
 
   function mkBoss(x, y) {
-    var B = TUNE.boss, dd = DIFF[G.diff];
+    var B = TUNE.boss;
     /* how many stomps he takes is a per-set thing: the raincloud on Easy
        goes down in three, the Heartbreaker takes six */
-    var total = (dd.bossHitsPerPhase || B.hitsPerPhase) * B.phases.length;
+    var hits = bossPhaseHits(), total = 0, i;
+    for (i = 0; i < hits.length; i++) total += hits[i];
     return {
       kind: "boss", x: x - 12, y: y - 18, w: 34, h: 30, vx: 0, vy: 0,
       hp: total, hpMax: total,
       phase: 0, mode: "wait", modeT: B.phases[0].wait,
       hurt: 0, anim: 0, awake: false, onGround: true, dead: 0,
-      shots: [], face: -1, hopsLeft: 0, flash: 0,
+      shots: [], face: -1, hopsLeft: 0, flash: 0, swept2: false,
     };
   }
 
   /* Which phase his health puts him in: 0 while the top third is intact,
      then 1, then 2. Written off hp so changing hitsPerPhase just works. */
+  /* HOW LONG EACH PHASE LASTS, per difficulty and per phase.
+
+     It used to be one number for all three, which meant the only way to
+     make a fight longer was to make every phase longer — the first one
+     included, which is the gentlest and the least interesting. Written as
+     a band per phase, the extra hits can be put where the fight is worth
+     having: the last one. */
+  function bossPhaseHits() {
+    var d = DIFF[G.diff], n = TUNE.boss.phases.length;
+    if (d.bossPhaseHits) return d.bossPhaseHits;
+    var per = TUNE.boss.hitsPerPhase, out = [];
+    while (out.length < n) out.push(per);
+    return out;
+  }
+  /* Which band her damage puts him in, counted from the END: the last
+     phase is the one he is in when only that many hits are left. */
   function bossPhase(b) {
-    var per = DIFF[G.diff].bossHitsPerPhase || TUNE.boss.hitsPerPhase;
-    return clamp(TUNE.boss.phases.length - 1 - Math.floor((b.hp - 1) / per),
-                 0, TUNE.boss.phases.length - 1);
+    var hits = bossPhaseHits(), i, j, tail;
+    for (i = hits.length - 1; i > 0; i--) {
+      tail = 0;
+      for (j = i; j < hits.length; j++) tail += hits[j];
+      if (b.hp <= tail) return i;
+    }
+    return 0;
+  }
+
+  /* WHAT HE DOES IN HIS LAST PHASE, and it is the only place he does
+     anything extra at all — a boss should be at his worst when he is
+     nearly beaten, not from the first second.
+
+       0  (Easy)    nothing. He is quicker than he was and that is all.
+       1  (Medium)  one more heart in every attack of the last phase.
+       2  (Hard)    that, and the sweep comes back for her a second time.
+
+     Rage is read off the CURRENT phase, so it arrives with the last band
+     and never applies to the first two. */
+  function bossRage(b) {
+    return b.phase === TUNE.boss.phases.length - 1 ? (DIFF[G.diff].bossRage || 0) : 0;
+  }
+  /* One place decides how many hearts an attack throws and one decides how
+     many may exist at once. They have to agree, or the extra one is
+     spawned and then silently dropped by the cap. */
+  function bossShotsFor(b, sp) {
+    return sp.shots + DIFF[G.diff].bossExtraShot + (bossRage(b) >= 1 ? 1 : 0);
+  }
+  function bossShotCap(b) {
+    return TUNE.boss.maxShots + DIFF[G.diff].bossExtraShot + (bossRage(b) >= 1 ? 1 : 0);
   }
   function bossSpec(b) { return TUNE.boss.phases[b.phase]; }
 
@@ -2355,11 +2551,99 @@ window.SuperOuissy = (function () {
     }
   }
 
+  /* HER VOICE. One line, high on the stage, gone in two and a half
+     seconds, and it never stops the fight to be read. */
+  var bossSayT = 0;
+  function bossSay(key) {
+    var b = G.level && G.level.boss;
+    if (!b) return;
+    if (!b.said) b.said = {};
+    if (b.said[key]) return;
+    b.said[key] = true;
+    var set = SO.bossLines[DIFF[G.diff].bossSkin] || SO.bossLines.heart;
+    var line = set[key];
+    if (!line) return;
+    var el = $("so-boss-say");
+    if (!el) {
+      var stage = $("so-stage");
+      if (!stage) return;
+      el = document.createElement("div");
+      el.id = "so-boss-say";
+      el.className = "so-boss-say";
+      stage.appendChild(el);
+    }
+    el.textContent = line;
+    el.className = "so-boss-say";
+    void el.offsetWidth;                     /* restart the fade */
+    el.className = "so-boss-say on so-boss-" + DIFF[G.diff].bossSkin;
+    clearTimeout(bossSayT);
+    bossSayT = setTimeout(function () {
+      var e = $("so-boss-say");
+      if (e) e.className = "so-boss-say";
+    }, 2600);
+  }
+  function bossHush() {
+    clearTimeout(bossSayT);
+    var e = $("so-boss-say");
+    if (e) e.className = "so-boss-say";
+  }
+
+  /* His voice, on a board, rather than hers: same fade as the Queen's
+     lines but at the foot of the stage, where it cannot be mistaken for
+     something the thing in front of her just said. */
+  var signSayT = null;
+  function signSay(text) {
+    var el = $("so-sign-say");
+    if (!el) {
+      var stage = $("so-stage");
+      if (!stage) return;
+      el = document.createElement("div");
+      el.id = "so-sign-say";
+      stage.appendChild(el);
+    }
+    el.textContent = text;
+    el.className = "so-sign-say";
+    void el.offsetWidth;
+    el.className = "so-sign-say on";
+    clearTimeout(signSayT);
+    signSayT = setTimeout(function () {
+      var e = $("so-sign-say");
+      if (e) e.className = "so-sign-say";
+    }, 3400);
+  }
+  function signHush() {
+    clearTimeout(signSayT);
+    var e = $("so-sign-say");
+    if (e) e.className = "so-sign-say";
+  }
+
   function popText(x, y, text, colour) {
     G.floats.push({ x: x, y: y, t: text, c: colour || "#fff6c0", life: 0 });
   }
 
   function shake(amount) { G.shake = Math.max(G.shake, amount); }
+
+  /* ---- WHAT A HIT FEELS LIKE ---------------------------------------------
+
+     The Death scene has hit stop and a camera that moves when something
+     lands, and the game it lives inside had a screen shake and a puff of
+     dust. This is that toolkit, brought back to where the playing happens.
+
+     HIT STOP is the frame where everything holds — a few hundredths of a
+     second in which nothing moves and the picture is still drawn. It is
+     most of why a stomp feels like it weighed something, and taking it
+     out turns the same animation into a slide. It is deliberately tiny
+     here: this is a platformer with momentum in it, and a long freeze in
+     the middle of a jump is a bug, not a punch.
+
+     THE PUNCH is one number. Positive for something she did, negative for
+     something done to her, easing back to nothing on its own. It scales
+     the PICTURE about the middle of the screen; physics never sees it, so
+     it can never make a jump miss. */
+  function hitStop(secs) { G.freeze = Math.max(G.freeze || 0, secs); }
+  function punch(amount) {
+    if (Math.abs(amount) > Math.abs(G.punch || 0)) G.punch = amount;
+  }
 
   /* =======================================================================
      THE PLAYER
@@ -2439,7 +2723,6 @@ window.SuperOuissy = (function () {
       p.squash = 1; p.jumpsLeft = p.wing ? 1 : 0;
       if (p.vy > 200 || true) burst(p.x + p.w / 2, p.y + p.h, 4, ["#ffffff"], 30, { lift: -6, g: 260, max: .22, size: 1 });
     }
-    if (p.onGround) p.lastSafe = { x: p.x, y: p.y };
 
     /* ---- timers -------------------------------------------------------- */
     if (p.invuln > 0) p.invuln -= dt;
@@ -2460,6 +2743,14 @@ window.SuperOuissy = (function () {
     /* ---- what she is standing in --------------------------------------- */
     var hz = boxHitsHazard(p.x, p.y + 2, p.w, p.h - 2);
     if (hz && p.star <= 0) { G.lastHurtBy = "hazard"; hurtPlayer(true); }
+
+    /* THE LAST GROUND SHE STOOD ON, and the word that matters is STOOD:
+       the cloud on Easy puts her back here, and so does the revive, so a
+       spot with spikes in it is not one to remember. It is recorded after
+       the hazard test rather than before it for exactly that reason — a
+       foot on a spike used to be written down as safe ground one frame
+       before it killed her, which put both rescues back on the spikes. */
+    if (p.onGround && !hz && !p.dead) p.lastSafe = { x: p.x, y: p.y };
 
     /* ---- out of the world ---------------------------------------------- */
     if (p.y > G.level.pxH + 24) {
@@ -2509,6 +2800,7 @@ window.SuperOuissy = (function () {
           G.level.grid[ty][tx] = ".";
           burst(tx * T + 8, ty * T + 8, 14, [BIOME[G.level.biome].brick[0], BIOME[G.level.biome].brick[1], BIOME[G.level.biome].brick[2]], 90, { max: .6, size: 2 });
           addScore(TUNE.scores.block); sfx("break"); shake(3);
+          hitStop(0.03); punch(0.4);
         } else { G.bumps.push({ tx: tx, ty: ty, t: 0 }); sfx("bump"); }
       }
     }
@@ -2526,13 +2818,19 @@ window.SuperOuissy = (function () {
     if (p.big && !fatal) {              // the glow-up takes the hit for her
       setBig(p, false);
       p.invuln = TUNE.invuln * d.invulnMul;
+      hitStop(0.05); punch(-0.9);
       burst(p.x + p.w / 2, p.y + p.h / 2, 18, ["#ff9ec4", "#ffffff", "#ffd6e6"], 90, { max: .6 });
       sfx("shrink"); shake(4);
       return;
     }
     if (!fatal && p.invuln > 0) return;
 
+    /* where she actually fell, caught before the death animation throws
+       her up and off — by the time afterDeath() runs, p.x/p.y are wherever
+       the body landed, which is not the same place at all */
+    G.deathAt = { x: p.x, y: p.y };
     p.dead = 0.001; p.vy = -230; p.vx = 0; p.pose = "hurt";
+    hitStop(0.07); punch(-1.2);
     G.deaths++;
     burst(p.x + p.w / 2, p.y + p.h / 2, 20, ["#ff5f95", "#ffffff"], 100, { max: .8 });
     sfx("die"); shake(6);
@@ -2552,6 +2850,29 @@ window.SuperOuissy = (function () {
     cutsceneThen = then || null;
     G.state = "cutscene";
     if (window.__soReleaseAll) window.__soReleaseAll();
+    /* The score, the clock and the lives belong to the game, not to the
+       story, and they are hidden for the length of a scene. That used to
+       happen by itself because the only way into a scene was from play,
+       where the HUD is redrawn constantly — watching one from the ending
+       left SCORE 000000 and TIME 150 sitting on top of Death. */
+    updateHud();
+    /* THE GAME'S MUSIC STANDS DOWN. A story scene brings its own — the
+       Death scene has a whole score of its own now — and the castle's
+       cheerful little march playing underneath it was the single most
+       wrong thing about that scene. Ducked, not switched off: her own
+       preference is hers and is not touched. */
+    /* ANWAR'S THEME BELONGS TO THE SCENE HE IS IN, NOT TO EVERY DEATH.
+
+       A rescue happens every time she runs out on Hard, and putting the
+       piece written for meeting him under all of them spends it -- by the
+       time the Death scene arrives, the music that is supposed to mean HIM
+       has been the music that means "you died" a dozen times. The Death
+       scene keeps its own score and the silence that lets it start; a
+       rescue keeps what she was already listening to, at little more than
+       half speed and pulled back, which is the world holding its breath
+       rather than a new piece beginning. */
+    if (kind === "rescue") { setBgmSlow(true); bgmDuck(true); }
+    else bgmSilence(true);
     Rescue.begin(kind, opts);
   }
 
@@ -2559,6 +2880,10 @@ window.SuperOuissy = (function () {
     var then = cutsceneThen;
     cutsceneThen = null;
     G.state = "play";
+    updateHud();
+    setBgmSlow(false);
+    bgmSilence(false);
+    bgmDuck(false);
     if (then) then();
   }
 
@@ -2566,8 +2891,44 @@ window.SuperOuissy = (function () {
     return G.diff === "hard" && !!window.Rescue;
   }
 
+  /* HOW MANY TIMES IN THE SAME PLACE.
+
+     Not deaths in the level — deaths within a screen of each other. Dying
+     three times spread across a world is a world doing its job; dying
+     three times on one jump is the game being mean to her, and those are
+     the only ones worth offering anything about. */
+  function noteStuck() {
+    var dx = G.deathAt ? G.deathAt.x : (G.player ? G.player.x : 0);
+    if (Math.abs(dx - G.stuckAt) < 56) G.stuckN++;
+    else { G.stuckN = 1; G.stuckAt = dx; }
+  }
+  /* WHERE THE OFFER IS ALLOWED TO EXIST AT ALL.
+
+     The first version of this was too generous and it cost the game
+     something. Two rules put back what it took:
+
+     NOT ON HARD. Hard's definition IS "no ribbons" — that is the whole
+     difference between it and Medium. Handing one back after a few falls
+     quietly undoes the mode she chose, which is not kindness, it is
+     deciding on her behalf that she did not mean it. Easy and Medium have
+     ribbons already; there, moving one is a convenience the mode already
+     agrees with.
+
+     NOT IN THE QUEEN'S ROOM. The last fight is the point of the run and
+     there is nothing there to walk back through anyway.
+
+     And it takes FIVE falls in the same place, not three. Three is a
+     stretch being difficult. Five is a stretch being unfair. */
+  function stuckNow() {
+    if (!G.level || !G.player || !G.player.lastSafe) return false;
+    if (!DIFF[G.diff].checkpoints) return false;       /* hard keeps its word */
+    if (G.level.boss && G.level.boss.awake && !G.level.boss.dead) return false;
+    return G.stuckN >= G.handGate;
+  }
+
   function afterDeath() {
     G.lives--;
+    noteStuck();
 
     /* <= 0, not < 0. Lives counts the attempts she has left, so when it
        reaches zero there are none — but the test was < 0, which gave her
@@ -2577,8 +2938,13 @@ window.SuperOuissy = (function () {
     if (G.lives <= 0) {
       /* THE one death that leads somewhere else: the last life, taken by
          the last boss, on Hard. Anything else is an ordinary game over. */
-      if (rescuesOn() && G.lastHurtBy === "boss" && G.level.boss &&
-          G.levelIndex === worldSet().length - 1) {
+      /* It used to require the Queen to have landed the killing blow.
+         But she can just as easily be knocked into the spikes on the last
+         life, and that is still the fight ending — it just gave her a
+         plain GAME OVER instead of the scene. The condition is "she ran
+         out inside the Queen's fight" now, which is the same rule the
+         revive offer reads. */
+      if (rescuesOn() && inQueenFight()) {
         var pp = G.player;
         playCutscene("death", {
           herX: clamp(pp.x - G.cam.x, 26, VIEW.w - 90),
@@ -2589,11 +2955,39 @@ window.SuperOuissy = (function () {
       endRun(false); return;
     }
 
-    /* Hard, and she still has a life: he comes and gets her first */
+    /* SHE IS ASKED WHETHER TO BUY HER WAY BACK.
+
+       An ordinary death puts her at the start of the level, which after a
+       long climb — or in the middle of a boss fight — means walking all
+       of it again. So on any death, anywhere in the game, she can spend
+       lives to stand back up exactly where she fell instead, with the
+       level and the boss carrying every hit they have taken.
+
+       It is a choice, never something that happens to her, and it costs
+       more than it gives: five lives on Easy, three on Medium, two on
+       Hard. She has to hold more than the price for the offer to appear,
+       because paying all of it would leave nothing to be revived into. */
+    /* ...and if she has fallen in the same place three times, the offer
+       appears whether or not she can afford anything, because the thing
+       being offered costs nothing. */
+    if (canBossRevive() || stuckNow()) { offerBossRevive(); return; }
+
+    /* Hard, and she still has a life: he comes and gets her first.
+
+       AND HE PUTS HER DOWN WHERE HE PICKED HER UP. This handed off to
+       respawn(), which is the checkpoint -- and Hard has no checkpoints,
+       so it was the start of the world. That is the "sometimes he takes
+       her to the start": it happened whenever the revive offer did not
+       appear, which is most deaths, and inside the Queen's fight it meant
+       walking the whole level back to a boss that had kept none of its
+       damage. Inside that fight he stands her up where she fell, the way
+       the paid revive does. Everywhere else the checkpoint is still the
+       right answer -- it is a rescue, not a free pass. */
     if (rescuesOn()) {
       var p = G.player;
       playCutscene("rescue", { herX: clamp(p.x - G.cam.x, 30, VIEW.w - 60),
-                               herY: clamp(p.y - G.cam.y, 62, 96) }, respawn);
+                               herY: clamp(p.y - G.cam.y, 62, 96) },
+                   inQueenFight() ? reviveAtSpot : respawn);
       return;
     }
     respawn();
@@ -2611,7 +3005,16 @@ window.SuperOuissy = (function () {
     if (chose === "fight") {
       G.lives = 1;
       G.state = "play";
-      respawn();
+      /* WHERE HE PUTS HER DOWN.
+
+         It used to be respawn(), which is the start of the level on a
+         difficulty with no ribbons — and this scene only happens on Hard,
+         which is exactly that difficulty. So the one time the story says
+         he took her out of Death's hands, the game answered by marching
+         her back through the whole castle to the Queen, who was still
+         standing where she left her. He stands her up where she fell,
+         like every other way back into this fight. */
+      reviveAtSpot();
       popText(G.player.x, G.player.y - 14, "he bought you one more", "#ffd9a0");
       return;
     }
@@ -2619,10 +3022,257 @@ window.SuperOuissy = (function () {
     endRun(false);
   }
 
+  /* --- being pulled back into the fight -------------------------------
+     Every number here is the one he asked for: more than two lives to be
+     offered it at all, two spent to take it, and the fight resumed rather
+     than restarted. One of those two is the life the death itself already
+     took, so this only ever spends one more. */
+  /* She is in the Queen's fight: last world, the Queen awake and still
+     standing. Both the offer and the scene that ends the run read this,
+     so "revived until there is nothing left to spend, and then the scene"
+     is one rule rather than two that can drift apart. */
+  function inQueenFight() {
+    var b = G.level && G.level.boss;
+    return !!b && b.hp > 0 && !b.dead && b.awake &&
+           G.levelIndex === worldSet().length - 1;
+  }
+
+  /* WHAT BEING PUT BACK COSTS, PER DIFFICULTY.
+
+     This is a rule of the whole game, not of the Queen's room: any death,
+     any world. She is asked whether to spend it, and she can only be
+     asked if spending it still leaves her something to be revived into —
+     so it takes more lives than the price, never exactly the price. */
+  var REVIVE_COST = { easy: 5, medium: 3, hard: 2 };
+  function reviveCost() { return REVIVE_COST[G.diff] || 3; }
+
+  function canBossRevive() {
+    /* G.lives has already had the death taken off it, so `>= cost` here
+       means she had more than the cost when she died. */
+    return G.lives >= reviveCost();
+  }
+
+  /* Is this a place she can be stood up in — inside the level, not in a
+     wall, not on a hazard, and with something under her to land on? */
+  function reviveSpotOK(x, y, w, h) {
+    if (x < 2 || y < -8) return false;
+    if (boxHitsHazard(x, y, w, h)) return false;
+    var tx, ty;
+    for (tx = Math.floor(x / T); tx <= Math.floor((x + w - 1) / T); tx++)
+      for (ty = Math.floor(y / T); ty <= Math.floor((y + h - 1) / T); ty++)
+        if (solidAt(tx, ty)) return false;
+    /* and floor within a short drop, or she is being revived over the pit
+       that just killed her */
+    var footTx0 = Math.floor(x / T), footTx1 = Math.floor((x + w - 1) / T);
+    for (var d = 0; d <= 5; d++) {
+      var fy = Math.floor((y + h) / T) + d;
+      for (tx = footTx0; tx <= footTx1; tx++) if (solidAt(tx, fy)) return true;
+    }
+    return false;
+  }
+
+  /* where she fell, if that will hold her; otherwise either side of the
+     Queen; otherwise the start, which always works */
+  function reviveSpot() {
+    var b = G.level.boss, p = G.player, w = p.w, h = p.h, i;
+    var cands = [];
+    if (G.deathAt) cands.push({ x: G.deathAt.x, y: G.deathAt.y });
+    /* AND THE LAST GROUND SHE STOOD ON, which is the one that was missing.
+
+       "Right where you fell" is only a place if the fall left her
+       somewhere that can hold her. A pit does not: by the time the death
+       fires she is below the floor of the world, so the spot fails every
+       test and the search fell through to the start of the level — which
+       is exactly what a revive is supposed to save her from, and it is
+       what she paid lives for. Spikes do not either: that spot is a
+       hazard, so it fails too.
+
+       Those are the two commonest deaths in the game. The ledge she
+       jumped from is a real place, it is within a step of where she was
+       playing, and it is already tracked for the cloud on Easy. */
+    if (p.lastSafe) cands.push({ x: p.lastSafe.x, y: p.lastSafe.y - 2 });
+    if (b) {
+      cands.push({ x: b.x - 52, y: b.y });
+      cands.push({ x: b.x + b.w + 18, y: b.y });
+      cands.push({ x: b.x - 52, y: b.y - 16 });
+      cands.push({ x: b.x + b.w + 18, y: b.y - 16 });
+    }
+    for (i = 0; i < cands.length; i++)
+      if (reviveSpotOK(cands[i].x, cands[i].y, w, h)) return cands[i];
+
+    /* ---- AND IF NONE OF THOSE WILL HOLD HER, LOOK NEARBY ----
+
+       This used to give up and send her to the start of the world, which
+       is why "bring me back where I died" sometimes did not. The two
+       named candidates are single points, and a single point fails for
+       ordinary reasons: she died on a moving platform that has since
+       moved, or over a gap, or with her last safe ground now under a
+       hazard. One point failing is not the same as there being nowhere to
+       stand -- there is almost always floor a few steps to one side.
+
+       So before falling back, walk outwards from where she actually died,
+       a few pixels at a time, taking the first spot on either side that
+       can hold her. It searches a couple of screens at most, and it
+       prefers the nearer side, so what she gets is the place she was
+       playing rather than the top of the level. The start is still there
+       for the case where genuinely nothing else works. */
+    var from = G.deathAt || (p.lastSafe ? { x: p.lastSafe.x, y: p.lastSafe.y - 2 } : null);
+    if (from) {
+      for (var off = 8; off <= 320; off += 8) {
+        /* a little above where she was, because ground is found by
+           dropping onto it and a spot flush with a wall is not a spot */
+        for (var up = 0; up <= 48; up += 12) {
+          if (reviveSpotOK(from.x - off, from.y - up, w, h))
+            return { x: from.x - off, y: from.y - up };
+          if (reviveSpotOK(from.x + off, from.y - up, w, h))
+            return { x: from.x + off, y: from.y - up };
+        }
+      }
+    }
+    return { x: G.level.start.x + 2, y: G.level.start.y - 2 };
+  }
+
+  function offerBossRevive() {
+    G.state = "revive";
+    bgmDuck(true);
+    if (window.__soReleaseAll) window.__soReleaseAll();
+    var left = G.lives, after = G.lives - (reviveCost() - 1);
+    /* HE ONLY EXISTS ON HARD. The rescue is the Hard story and nowhere
+       else — putting "take his hand" in front of her on Easy names a
+       character that difficulty has never introduced. Easy and Medium get
+       the same mechanic in plain words. */
+    var his = rescuesOn();
+    /* WHAT THE OTHER BUTTON ACTUALLY DOES. It says START OVER, and on a
+       difficulty with ribbons that is only true until she has taken one —
+       after that it is the ribbon, not the beginning. Promising the wrong
+       one either undersells the free option or oversells the paid one,
+       and both of those are the card lying to her about a choice she is
+       spending lives on. */
+    var ribbon = null;
+    if (DIFF[G.diff].checkpoints && G.level && G.level.checks)
+      G.level.checks.forEach(function (c) { if (c.taken) ribbon = c; });
+    if (G.handCheck && (!ribbon || G.handCheck.x > ribbon.x)) ribbon = G.handCheck;
+
+    /* THE GENTLER WAY, OFFERED RATHER THAN APPLIED.
+
+       Three falls in the same spot and the card changes what it leads
+       with. It does not drop the difficulty and it does not skip the bit
+       — either of those would take the thing she is about to do away from
+       her. It moves the ribbon: a checkpoint tied on the last ground she
+       stood on safely, honoured on every difficulty including the one
+       with no checkpoints, plus the glow-up so the next go has a hit in
+       hand. It costs nothing, and saying no is a real answer — the offer
+       then holds off for another two falls rather than asking again the
+       moment she fails. */
+    var paid = canBossRevive(), hand = stuckNow();
+    var btns = "";
+    if (hand)
+      btns += '<button class="so-btn so-btn-go" id="so-hand">MOVE THE RIBBON</button>';
+    if (paid)
+      btns += '<button class="so-btn ' + (hand ? "so-btn-quiet" : "so-btn-go") + '" id="so-revive-yes">' +
+              (his ? "TAKE HIS HAND" : "BE REVIVED") + '</button>';
+    btns += '<button class="so-btn so-btn-quiet" id="so-revive-no">' +
+            (hand ? "I'VE GOT THIS" : ribbon ? "LAST RIBBON" : "START OVER") + '</button>';
+
+    overlay(
+      '<div class="so-card so-card-revive">' +
+        '<p class="so-card-kicker">' +
+          (hand ? "THIS BIT IS MEAN" : his ? "SHE IS NOT LEFT TO FALL" : "GET BACK UP") + '</p>' +
+        '<h3>' + (hand ? "Let me move the ribbon" : his ? "He can put you back" : "Be revived") + '</h3>' +
+        '<p class="so-card-note">' +
+          (hand
+            ? "Same spot, " + G.stuckN + " times now. I'll move the ribbon to the last " +
+              "safe ground you stood on, so you stop walking the easy part. " +
+              "The jump is still the jump." +
+              (paid ? " Or spend lives and stand up right where you fell." : "")
+            : "Right where you fell, with everything exactly as you left it. " +
+              (ribbon ? "Or go back to the last ribbon." : "Or start over from the beginning.")) + '</p>' +
+        (paid ? '<p class="so-revive-cost"><span>LIVES</span><b>' + left + '</b>' +
+                '<i>&rarr;</i><b>' + after + '</b></p>' : "") +
+        btns +
+      "</div>", "so-ov-card");
+
+    if ($("so-hand")) $("so-hand").addEventListener("click", function () {
+      closeOverlay();
+      var sp = G.player && G.player.lastSafe;
+      if (sp) G.handCheck = { x: sp.x, y: sp.y };
+      G.stuckN = 0;
+      G.state = "play";
+      bgmDuck(false);
+      if (rescuesOn()) playCutscene("rescue", herePos(), handRespawn);
+      else handRespawn();
+    });
+    if ($("so-revive-yes")) $("so-revive-yes").addEventListener("click", function () {
+      closeOverlay();
+      G.lives -= (reviveCost() - 1);   /* the death took the first one */
+      G.state = "play";
+      bgmDuck(false);
+      /* and he only comes on Hard, because that is the only difficulty he
+         is part of */
+      if (rescuesOn()) playCutscene("rescue", herePos(), reviveAtSpot);
+      else reviveAtSpot();
+    });
+    $("so-revive-no").addEventListener("click", function () {
+      closeOverlay();
+      /* she said she has got it. the offer stops asking for a while — a
+         card that reappears the second she fails again is not an offer,
+         it is nagging. */
+      if (hand) { G.stuckN = 0; G.handGate += 2; }
+      G.state = "play";
+      bgmDuck(false);
+      if (rescuesOn()) playCutscene("rescue", herePos(), respawn);
+      else respawn();
+    });
+  }
+
+  /* THE WAY BACK WHEN SHE TAKES IT — and everything this deliberately
+     does NOT do.
+
+     It does not hand her a glow-up. The first version did, and a free hit
+     on the stretch that has been killing her is the game doing the jump
+     for her: the stake is the whole reason the jump is worth landing.
+     It does not slow anything down, weaken anything, or lengthen the
+     clock either.
+
+     All it does is stop her re-walking five screens she has already
+     beaten to get back to the one she hasn't. The hard bit is still
+     exactly as hard, and she still has to do it. */
+  function handRespawn() {
+    respawn();
+    popText(G.player.x, G.player.y - 14, "ribbon moved. same jump.", "#ffd9a0");
+  }
+
+  function herePos() {
+    var p = G.player;
+    return { herX: clamp(p.x - G.cam.x, 30, VIEW.w - 60),
+             herY: clamp(p.y - G.cam.y, 62, 96) };
+  }
+
+  /* Like respawn(), except it does not put the fight back to the
+     beginning: the Queen keeps her damage and her phase, and the enemies
+     that were already down stay down. */
+  function reviveAtSpot() {
+    var at = reviveSpot(), d = DIFF[G.diff];
+    G.player = mkPlayer(at.x, at.y);
+    /* longer than an ordinary respawn, because she is being stood up
+       inside arm's reach of the thing that just killed her */
+    G.player.invuln = 2.2;
+    G.keys.jumpPressed = false;
+    G.camSnap = true;
+    /* the clock has to come back too, or a death by timeout revives into
+       a timer that is still on zero and kills her again on the next frame */
+    if (d.timeLimit) G.timeLeft = d.timeLimit[G.levelIndex];
+    G.state = "play";
+    popText(G.player.x, G.player.y - 14, "back on your feet", "#ffd9a0");
+  }
+
   function respawn() {
     var L = G.level, d = DIFF[G.diff];
     var at = L.start, cp = null;
     if (d.checkpoints) L.checks.forEach(function (c) { if (c.taken) cp = c; });
+    /* the one she was GIVEN counts on every difficulty, including the one
+       that has no checkpoints of its own — that is the whole offer */
+    if (G.handCheck && (!cp || G.handCheck.x > cp.x)) cp = G.handCheck;
     if (cp) at = cp;
     G.player = mkPlayer(at.x + 2, at.y - 2);
     G.player.invuln = 1.4;
@@ -2711,6 +3361,7 @@ window.SuperOuissy = (function () {
       defeat(e, false);
       p.vy = -(G.keys.jump ? TUNE.stompBoost : TUNE.stompVel);
       p.squash = 1.2;
+      hitStop(0.045); punch(0.5);
       return;
     }
     G.lastHurtBy = "enemy";
@@ -2757,6 +3408,7 @@ window.SuperOuissy = (function () {
      ======================================================================= */
   function collectHeart(x, y) {
     G.hearts++;
+    G.heartsEver++;
     G.meter++;
     addScore(TUNE.scores.heart);
     burst(x, y, 8, ["#ff5f95", "#ffd6e6", "#ffffff"], 70, { max: .45, size: 1 });
@@ -2774,6 +3426,12 @@ window.SuperOuissy = (function () {
       burst(x, y, 30, ["#ff5f95", "#fff6a8", "#ffffff", "#ffd6e6"], 130, { max: 1 });
       shake(5);
       sfx("fanfare");
+      /* THE BIGGEST MOMENT IN THE GAME THAT IS NOT A BOSS. Twenty hearts,
+         and until now it was a burst and a noise. It holds the frame, the
+         picture leans in, and the music grows a second voice for as long
+         as the sparkle lasts — filling the meter does not only hand her a
+         life, it changes what the game sounds like. */
+      hitStop(0.09); punch(1.3);
     }
   }
 
@@ -2881,6 +3539,8 @@ window.SuperOuissy = (function () {
     if (!b.awake) {
       if (Math.abs(p.x - b.x) < B.wake) {
         b.awake = true; sfx("bossWake"); shake(6);
+        bgmFollow();                  /* and the room changes key */
+        bossSay("wake");
         b.mode = "wait"; b.modeT = bossSpec(b).wait;
       }
       stepBossShots(dt);
@@ -2929,12 +3589,28 @@ window.SuperOuissy = (function () {
          cracks after a hop never fires for it. It leaves them where it
          stops instead, which is also the fairer place for them. */
       if (sp.name === "sweep") {
-        var n = sp.shots + DIFF[G.diff].bossExtraShot;
+        var n = bossShotsFor(b, sp);
         for (var i = 0; i < n; i++)
           bossShoot(b, b.x + b.w / 2, b.y + b.h - 7,
                     (i % 2 ? 1 : -1) * TUNE.boss.shotSpeed * DIFF[G.diff].bossSpeedMul, 0, false);
         sfx("bossLand"); shake(5);
         burst(b.x + b.w / 2, b.y + b.h, 14, ["#ffd166", "#ffffff"], 100, { max: .5 });
+      }
+      /* HE COMES BACK FOR HER. On Hard, and only in his last phase, the
+         sweep is two passes rather than one: he stops, turns to wherever
+         she landed, and runs it again.
+
+         It is the same wind-up at the same length before the second pass —
+         never a shortened one — so it stays a thing she reads and jumps
+         rather than a thing that happens to her. Once per sweep, and the
+         flag clears when the loop comes back round, so it cannot chain. */
+      if (sp.name === "sweep" && bossRage(b) >= 2 && !b.swept2) {
+        b.swept2 = true;
+        b.mode = "tell"; b.modeT = sp.tell;
+        b.vx = 0;
+        sfx("bossHop"); shake(3);
+        burst(b.x + b.w / 2, b.y + b.h, 12, ["#ffffff", "#ff9ec4"], 50, { g: 120, max: .5, lift: 6 });
+        return;
       }
       /* the opening never shrinks with difficulty; a gentler set may
          lengthen it, which is how Easy's boss is made kinder */
@@ -2942,6 +3618,7 @@ window.SuperOuissy = (function () {
       b.vx = 0;
     } else {
       b.mode = "wait"; b.modeT = sp.wait * cd;
+      b.swept2 = false;
     }
   }
 
@@ -2953,7 +3630,7 @@ window.SuperOuissy = (function () {
     } else if (sp.name === "rain") {
       /* he rears and throws a fixed spread — the same three arcs every time,
          so the way through them is something she can learn */
-      var n = sp.shots + DIFF[G.diff].bossExtraShot;
+      var n = bossShotsFor(b, sp);
       for (var i = 0; i < n; i++) {
         bossShoot(b, b.x + b.w / 2, b.y + 4,
                   (-1 + (2 * i) / Math.max(1, n - 1)) * 70 * mul, -190, true);
@@ -2982,7 +3659,7 @@ window.SuperOuissy = (function () {
     shake(7); sfx("bossLand");
     burst(b.x + b.w / 2, b.y + b.h, 18, ["#ffffff", "#ff9ec4"], 120, { max: .5 });
     if (b.mode === "attack" && (sp.name === "hop" || sp.name === "sweep") && b.hopsLeft >= 0) {
-      var n = sp.shots + DIFF[G.diff].bossExtraShot;
+      var n = bossShotsFor(b, sp);
       for (var i = 0; i < n; i++) {
         var dir = i % 2 ? 1 : -1;
         bossShoot(b, b.x + b.w / 2, b.y + b.h - 7, dir * TUNE.boss.shotSpeed * DIFF[G.diff].bossSpeedMul, 0, false);
@@ -2996,7 +3673,7 @@ window.SuperOuissy = (function () {
   /* One place where a projectile can come into existence, so the cap can
      never be worked around by adding another attack later. */
   function bossShoot(b, x, y, vx, vy, arc) {
-    if (b.shots.length >= TUNE.boss.maxShots + DIFF[G.diff].bossExtraShot) return;
+    if (b.shots.length >= bossShotCap(b)) return;
     b.shots.push({ x: x, y: y, vx: vx, vy: vy, arc: !!arc, life: 0 });
   }
 
@@ -3038,13 +3715,17 @@ window.SuperOuissy = (function () {
       b.hp--; b.hurt = 1.1;
       if (fromAbove) p.vy = -TUNE.stompBoost;
       shake(8); sfx("bossHit");
+      hitStop(0.075); punch(0.95);
       burst(b.x + b.w / 2, b.y + 8, 22, ["#ffffff", "#ff5f95", "#ffd166"], 130, { max: .8 });
 
       if (b.hp <= 0) {
         b.dead = 0.001; b.shots.length = 0;
+        bgmFollow();                  /* her tune comes back */
+        bossSay("die");
         addScore(TUNE.scores.boss);
         popText(b.x, b.y - 10, "+" + TUNE.scores.boss, "#fff6a8");
         sfx("bossDie"); shake(12);
+        hitStop(0.16); punch(1.6);
         G.level.goal.open = true;
         return;
       }
@@ -3055,9 +3736,11 @@ window.SuperOuissy = (function () {
         b.shots.length = 0;
         b.flash = 1;
         b.mode = "open"; b.modeT = 1;
+        b.swept2 = false;
         b.vx = 0;
         shake(10); sfx("bossWake");
         popText(b.x, b.y - 18, "!", "#fff6a8");
+        bossSay(b.phase >= 2 ? "p2" : "p1");
       } else {
         b.mode = "open"; b.modeT = Math.max(b.modeT, 0.7);
       }
@@ -3072,6 +3755,15 @@ window.SuperOuissy = (function () {
   function stepGoal(dt) {
     var L = G.level, p = G.player;
     if (p.dead || p.winT) return;
+
+    if (L.signs) L.signs.forEach(function (sn) {
+      if (sn.said) return;
+      if (p.x + p.w > sn.x - 6 && p.x < sn.x + T + 6 &&
+          p.y + p.h > sn.y - 6 && p.y < sn.y + T + 12) {
+        sn.said = true;
+        signSay(sn.text);
+      }
+    });
 
     L.checks.forEach(function (c) {
       if (c.taken) return;
@@ -3123,14 +3815,30 @@ window.SuperOuissy = (function () {
      ======================================================================= */
   function step(dt) {
     if (G.state !== "play") return;
+    /* the held frame. Time does not pass, the shake still settles, and
+       the picture is still painted — which is what makes it read as
+       weight rather than as a hitch. */
+    if (G.freeze > 0) {
+      G.freeze -= dt;
+      G.shake = Math.max(0, G.shake - dt * 14);
+      return;
+    }
     G.elapsed += dt;
 
     var d = DIFF[G.diff];
     if (d.timeLimit && G.timeLeft > 0) {
       G.timeLeft -= dt;
-      if (G.timeLeft <= 30 && !G.warned) { G.warned = true; sfx("hurry"); }
+      if (G.timeLeft <= 30 && !G.warned) { G.warned = true; sfx("hurry"); bgmFollow(); }
       if (G.timeLeft <= 0) { G.timeLeft = 0; hurtPlayer(true); }
     }
+
+    /* THE MUSIC FOLLOWS THE GAME, every frame, rather than being switched
+       by whichever piece of code happens to remember. It is two string
+       comparisons and it returns immediately when nothing has changed —
+       and it means the tune can never be left behind by a path nobody
+       thought of: a boss killed from a debug hook, a level skipped, a
+       clock set by a cheat. The room always sounds like where she is. */
+    bgmFollow();
 
     stepPlayer(dt);
     stepEnemies(dt);
@@ -3145,6 +3853,10 @@ window.SuperOuissy = (function () {
     }
     G.shake = Math.max(0, G.shake - dt * 26);
     if (G.meterFlash > 0) G.meterFlash -= dt;
+    if (G.punch) {
+      G.punch -= G.punch * Math.min(1, dt * 7);
+      if (Math.abs(G.punch) < 0.004) G.punch = 0;
+    }
     moveCamera(dt);
     updateHud();
   }
@@ -3172,12 +3884,31 @@ window.SuperOuissy = (function () {
     var c = cv.getContext("2d");
     c.imageSmoothingEnabled = false;
     var L = G.level;
-    if (!L) { paintMenuScene(c, t); return; }
+    if (!L) {
+      paintMenuScene(c, t);
+      /* A story scene can be watched from the menus, where there is no
+         level to draw it over. Without this it stepped, and spoke, and
+         was never painted. */
+      if (G.state === "cutscene" && window.Rescue && Rescue.active()) Rescue.paint(c, t);
+      return;
+    }
 
     /* the shake is applied to the camera only for drawing, never to physics */
     var sh = G.shake;
     var ox = Math.round(G.cam.x + (sh ? (Math.random() - .5) * sh : 0));
     var oy = Math.round(G.cam.y + (sh ? (Math.random() - .5) * sh : 0));
+    /* and so is the punch: the whole picture leans in a little on
+       something she landed and pulls back on something that landed on
+       her, about the middle of the screen */
+    var zoomed = false;
+    if (G.punch) {
+      var pz = 1 + (G.punch > 0 ? 0.045 : 0.03) * G.punch;
+      c.save();
+      c.translate(VIEW.w / 2, VIEW.h * 0.56);
+      c.scale(pz, pz);
+      c.translate(-VIEW.w / 2, -VIEW.h * 0.56);
+      zoomed = true;
+    }
 
     /* ---- 1. the backdrop, three layers at three speeds ------------------
        The parallax layers are offset vertically, which leaves a strip of
@@ -3212,6 +3943,7 @@ window.SuperOuissy = (function () {
     /* ---- 3. everything in the world ------------------------------------- */
     drawGoal(c, ox, oy, t);
     L.checks.forEach(function (ck) { drawCheck(c, ck, ox, oy, t); });
+    if (L.signs) L.signs.forEach(function (sn) { drawSign(c, sn, ox, oy, t); });
     L.items.forEach(function (it) { drawItem(c, it, ox, oy); });
     L.ents.forEach(function (e) { e.kind === "mover" ? drawMover(c, e, ox, oy) : drawEnemy(c, e, ox, oy); });
     drawBoss(c, ox, oy, t);
@@ -3231,6 +3963,9 @@ window.SuperOuissy = (function () {
       c.fillStyle = f.c; c.fillText(f.t, f.x - ox, f.y - oy);
       c.restore();
     });
+
+    /* out of the punch before anything that has a camera of its own */
+    if (zoomed) c.restore();
 
     /* the story module paints over the frozen world it interrupted */
     if (G.state === "cutscene" && window.Rescue && Rescue.active()) Rescue.paint(c, t);
@@ -3437,6 +4172,21 @@ window.SuperOuissy = (function () {
     else c.drawImage(ART.power[it.type][k % 2], dx - 1, dy - 1 + bobY);
   }
 
+  /* a board on a post, with a heart on it. it goes dull once it has said
+     its line, so she can see at a glance which ones she has read. */
+  function drawSign(c, sn, ox, oy, t) {
+    var dx = Math.round(sn.x - ox), dy = Math.round(sn.y - oy);
+    if (dx < -24 || dx > VIEW.w + 24) return;
+    var done = sn.said;
+    px(c, dx + 7, dy + 7, 2, 9, "#5c3f28");
+    px(c, dx + 5, dy + 15, 6, 1, "#4a3220");
+    px(c, dx + 1, dy + 1, 14, 8, done ? "#a8865a" : "#e8c98d");
+    px(c, dx + 1, dy + 1, 14, 1, done ? "#c2a274" : "#fff0cf");
+    px(c, dx + 1, dy + 8, 14, 1, "#6d5031");
+    heart(c, dx + 8, dy + 5, 2, done ? "#b07d8e" : "#ff5f95");
+    if (!done) px(c, dx + 7, dy - 2 - (Math.sin(t * 3) > 0 ? 1 : 0), 2, 2, "#fff6a8");
+  }
+
   function drawCheck(c, ck, ox, oy, t) {
     var dx = Math.round(ck.x - ox), dy = Math.round(ck.y - oy);
     if (dx < -30 || dx > VIEW.w + 30) return;
@@ -3562,6 +4312,83 @@ window.SuperOuissy = (function () {
      ======================================================================= */
   function $(id) { return document.getElementById(id); }
 
+  /* =======================================================================
+     THE LIFT
+
+     Any card taller than the stage has to be scrolled, and nothing said
+     so. The browser's own scroll bar is no help: on a phone it is
+     invisible until you are already scrolling, which is exactly the
+     moment it stopped being needed, and it looks like a piece of the
+     browser rather than a piece of this.
+
+     So it is drawn. A groove down the left, clear of the buttons, with a
+     gold handle on it that shows how much there is and where she is in
+     it — and it can be dragged, or the groove pressed, to go there.
+     ======================================================================= */
+  var liftDrag = null;
+  function ensureLift() {
+    var st = $("so-stage");
+    if (!st) return null;
+    var el = $("so-lift");
+    if (el) return el;
+    el = document.createElement("div");
+    el.id = "so-lift"; el.className = "so-lift";
+    el.innerHTML = '<div class="so-lift-bar" id="so-lift-bar"></div>';
+    st.appendChild(el);
+
+    /* dragging the handle, and pressing the groove to jump there */
+    var grab = function (e) {
+      var ov = $("so-overlay");
+      if (!ov) return;
+      var r = el.getBoundingClientRect(), bar = $("so-lift-bar");
+      var br = bar.getBoundingClientRect();
+      /* pressing the groove above or below the handle moves it under the
+         finger first, so a drag can start from anywhere on it */
+      var off = (e.clientY >= br.top && e.clientY <= br.bottom) ? e.clientY - br.top : br.height / 2;
+      liftDrag = { r: r, h: br.height, off: off };
+      el.classList.add("grabbed");
+      if (el.setPointerCapture && e.pointerId != null) el.setPointerCapture(e.pointerId);
+      move(e);
+      e.preventDefault();
+    };
+    var move = function (e) {
+      if (!liftDrag) return;
+      var ov = $("so-overlay");
+      if (!ov) return;
+      var span = liftDrag.r.height - liftDrag.h;
+      var k = span > 0 ? clamp((e.clientY - liftDrag.r.top - liftDrag.off) / span, 0, 1) : 0;
+      ov.scrollTop = k * (ov.scrollHeight - ov.clientHeight);
+      updateLift();
+    };
+    var drop = function () { liftDrag = null; el.classList.remove("grabbed"); };
+    el.addEventListener("pointerdown", grab);
+    el.addEventListener("pointermove", move);
+    el.addEventListener("pointerup", drop);
+    el.addEventListener("pointercancel", drop);
+    /* a turn of the phone changes how much there is to read */
+    window.addEventListener("resize", updateLift);
+    return el;
+  }
+  function updateLift() {
+    var el = ensureLift(), ov = $("so-overlay");
+    if (!el || !ov) return;
+    var room = ov.scrollHeight - ov.clientHeight;
+    /* a couple of pixels of overflow is rounding, not a page of reading */
+    var need = ov.classList.contains("on") && room > 6;
+    el.classList.toggle("on", need);
+    if (!need) return;
+    /* Nothing to measure any more: the bar lives at the far right edge
+       of the stage, which CSS pins on its own. It is cleared here in
+       case an older layout left an inline `left` on it. */
+    if (el.style.left) el.style.left = "";
+    var bar = $("so-lift-bar");
+    var frac = ov.clientHeight / ov.scrollHeight;
+    var hPct = Math.max(14, Math.min(92, frac * 100));
+    var tPct = (room > 0 ? ov.scrollTop / room : 0) * (100 - hPct);
+    bar.style.height = hPct + "%";
+    bar.style.top = tPct + "%";
+  }
+
   function overlay(html, cls) {
     var ov = $("so-overlay");
     if (!ov) return;
@@ -3578,8 +4405,17 @@ window.SuperOuissy = (function () {
        last overlay happened to be scrolled to */
     ov.scrollTop = 0;
     ov.setAttribute("aria-hidden", "false");
+    /* the card is measured after the browser has laid it out, not while it
+       is still a string */
+    if (!ov._lift) { ov.addEventListener("scroll", updateLift); ov._lift = true; }
+    updateLift();
+    requestAnimationFrame(updateLift);
+    setTimeout(updateLift, 90);
   }
   function closeOverlay() {
+    stopEndingArt();
+    var lf = $("so-lift");
+    if (lf) lf.classList.remove("on");
     var ov = $("so-overlay");
     if (!ov) return;
     var st = $("so-stage"), scr = $("screen-ouissy");
@@ -3596,6 +4432,94 @@ window.SuperOuissy = (function () {
     try { return JSON.parse(localStorage.getItem(BEST_KEY) || "{}") || {}; } catch (e) { return {}; }
   }
   function saveBest(b) { try { localStorage.setItem(BEST_KEY, JSON.stringify(b)); } catch (e) {} }
+
+  /* =======================================================================
+     HEARTS THAT BUY MOMENTS
+
+     Hearts have only ever been score. You collect them for six worlds and
+     the number goes up and that is the end of their story — and in a game
+     about the two of them, a heart being worth 200 points is a strange
+     thing for a heart to be worth.
+
+     So they buy something now, and deliberately not an advantage: ten of
+     them buy a MOMENT, which is a real one, written down. They are kept
+     between runs, so the pile is hers and grows whatever difficulty she
+     plays, and once they have all been read they can be read again for
+     free rather than the button turning into a locked door.
+     ======================================================================= */
+  var MOMENT_COST = 10;
+  var MOM_KEY = "so-moments-v1";
+  /* THREE PILES, NOT ONE.
+
+     A difficulty is its own three worlds, its own boss and now its own
+     score; the letters were the only thing that repeated. Twenty-four of
+     them instead of eight, and which pile she is reading depends on where
+     she is reading it — so going back for Hard is not going back over the
+     same post.
+
+     They are not three sets of the same thing either. Easy is the small
+     domestic stuff, the noticing. Medium is the year, and what it took.
+     Hard is the ones that cost something to say. */
+  var MOMENTS = {
+    easy: [
+      "you hum when you're concentrating. you have no idea that you do it.",
+      "the first time you laughed at something I said, I went back over it all evening trying to work out which part did it, so I could do it again.",
+      "you fall asleep mid-sentence and wake up finishing it. I have never told you this. I'm telling you now.",
+      "you always take the seat facing the door. I always take the one facing you.",
+      "somebody asked me what you're like and I started with the way you say my name and had to stop.",
+      "you say \"five minutes\" the way other people say \"no\".",
+      "I have a list of your small faces. the one just before you say something you know is funny is my favourite.",
+      "you make ordinary days feel worth remembering, which is a thing I did not know a person could do to a Tuesday.",
+    ],
+    medium: [
+      "you do the thing where you're tired and you have gone quiet and you still ask how my day was.",
+      "the day everything went wrong, you were the only part of it that didn't.",
+      "I keep the voice notes. all of them. even the ones that are four seconds of you saying you'll call back.",
+      "we have had entire conversations across a room without saying anything and both been right.",
+      "you apologise for taking up space in rooms you are holding together.",
+      "there is a week I only got through because you kept texting like nothing was wrong.",
+      "you remember what I said I wanted months after I had forgotten saying it.",
+      "I have stopped being surprised by you and started being proud of you. it is the better feeling.",
+    ],
+    hard: [
+      "I was not going to be the sort of person who needed anyone. you did not argue with that. you just stayed.",
+      "there was a night I did not want to talk to anybody and I still wanted to talk to you. that was when I knew.",
+      "I have been loved carefully before. you are the first person who was not careful about it.",
+      "if you ever wonder whether you are too much — you are exactly enough, and I have done the measuring.",
+      "I am not a brave person. you are the one thing I have never once hesitated about.",
+      "the worst thing I have ever imagined is an ordinary Tuesday with you not in it.",
+      "you did not fix me. you sat with me until I stopped needing fixing. those are not the same and I know which one is harder.",
+      "whatever I turn out to be, the good half of it has your fingerprints on it.",
+    ],
+  };
+  function moments() { return MOMENTS[G && G.diff] || MOMENTS.medium; }
+  /* the pile she has read is per-difficulty too, or finishing Easy would
+     quietly mark Hard's letters as already seen */
+  function momKey() { return MOM_KEY + "-" + ((G && G.diff) || "medium"); }
+
+  function loadMoments() {
+    try { return JSON.parse(localStorage.getItem(momKey()) || "[]") || []; } catch (e) { return []; }
+  }
+  function saveMoments(a) { try { localStorage.setItem(momKey(), JSON.stringify(a)); } catch (e) {} }
+  /* the next one she has not read, or — once she has read them all — one
+     at random, because a pile of letters you are allowed to reopen is
+     nicer than a pile you are finished with */
+  function nextMoment() {
+    var read = loadMoments(), M = moments();
+    for (var i = 0; i < M.length; i++) if (read.indexOf(i) < 0) return i;
+    return Math.floor(Math.random() * M.length);
+  }
+  /* ONCE SHE HAS READ THEM ALL, READING IS FREE.
+
+     Ten hearts buy a letter she has not seen. Charging her ten again for a
+     random repeat of one she already owns is not a purchase, it is a slot
+     machine — she pays the same price for strictly less. When the pile is
+     complete it is hers: the button stays, says so, and costs nothing. */
+  function allRead() {
+    var read = loadMoments(), M = moments();
+    for (var i = 0; i < M.length; i++) if (read.indexOf(i) < 0) return false;
+    return true;
+  }
   function bestFor(diff) {
     var b = loadBest()[diff];
     return b || { score: 0, time: 0, hearts: 0, cleared: false };
@@ -3604,8 +4528,18 @@ window.SuperOuissy = (function () {
   /* ---- 1. the difficulty select ---------------------------------------- */
   function showDifficulty() {
     G.state = "menu";
+    /* the old tune, under the title screen — her preference is hers and is
+       not overridden, it is only honoured somewhere it never used to be */
+    var mw = true;
+    try { mw = localStorage.getItem("so_bgm") !== "0"; } catch (e) {}
+    if (mw) { setBgm(true); bgmFollow(); } else stopBgm();
     var saved = "medium";
-    try { saved = localStorage.getItem(DIFF_KEY) || "medium"; } catch (e) {}
+    /* EASY IS WHERE A FIRST GO STARTS. The card opened on medium, which is
+       a choice made for her by a default rather than by her -- and the one
+       difficulty that asks least of somebody who has never held these
+       controls is the one that should be lit when she arrives. Anything
+       she has actually chosen before still wins. */
+    try { saved = localStorage.getItem(DIFF_KEY) || "easy"; } catch (e) {}
     var cards = ["easy", "medium", "hard"].map(function (k) {
       var d = DIFF[k], b = bestFor(k);
       return '<button class="so-diff-card' + (k === saved ? " sel" : "") + '" data-so-diff="' + k + '">' +
@@ -3742,14 +4676,26 @@ window.SuperOuissy = (function () {
           '<button class="so-btn so-btn-go" id="so-resume">RESUME</button>' +
           '<button class="so-btn" id="so-restart">RESTART WORLD</button>' +
           '<button class="so-btn" id="so-bgm">MUSIC: ' + (G.bgmOn ? "ON" : "OFF") + "</button>" +
-          '<button class="so-btn so-btn-quiet" id="so-quit">QUIT TO HUB</button>' +
+          '<button class="so-btn so-btn-quiet" id="so-quit">BACK TO MENU</button>' +
         "</div>", "so-ov-card");
       $("so-resume").addEventListener("click", function () { togglePause(false); });
       $("so-restart").addEventListener("click", function () { closeOverlay(); startLevel(G.levelIndex); });
       $("so-bgm").addEventListener("click", function () {
         setBgm(!G.bgmOn); $("so-bgm").textContent = "MUSIC: " + (G.bgmOn ? "ON" : "OFF");
       });
-      $("so-quit").addEventListener("click", quitToHub);
+      /* BACK TO THE GAME'S OWN MENU, NOT OUT OF THE GAME. Leaving the
+         chapter altogether is a long way to go for someone who only
+         wanted a different world or a different difficulty, and it is not
+         what a pause menu anywhere else does. The title card is where the
+         worlds and the three difficulties are, so that is where this
+         goes; the way out of the chapter is still the hub button on the
+         title card itself. */
+      $("so-quit").addEventListener("click", function () {
+        closeOverlay();
+        bgmDuck(false);
+        if (window.__soReleaseAll) window.__soReleaseAll();
+        showDifficulty();
+      });
       Array.prototype.forEach.call(document.querySelectorAll("[data-so-setdiff]"), function (b) {
         b.addEventListener("click", function () {
           var k = b.getAttribute("data-so-setdiff");
@@ -3757,7 +4703,14 @@ window.SuperOuissy = (function () {
           G.diff = k;
           try { localStorage.setItem(DIFF_KEY, k); } catch (e) {}
           G.lives = DIFF[k].lives;
-          closeOverlay(); startLevel(G.levelIndex);
+          /* A DIFFERENT DIFFICULTY IS A DIFFERENT RUN. Changing it in the
+             middle of world three dropped her into world three of the new
+             one -- a place she had not reached on that setting, with a
+             score and a clock from a run that no longer exists. It starts
+             where that difficulty starts. */
+          G.levelIndex = 0;
+          G.score = 0;
+          closeOverlay(); startLevel(0);
         });
       });
     } else if (G.state === "paused") {
@@ -3789,13 +4742,53 @@ window.SuperOuissy = (function () {
           (timeBonus ? row("TIME BONUS", "+" + timeBonus) : "") +
           row("SCORE", pad(G.score, 6)) +
         "</div>" +
+        '<div class="so-moment-slot" id="so-moment-slot"></div>' +
+        '<div class="so-moment-buy" id="so-moment-buy"></div>' +
         '<button class="so-btn so-btn-go" id="so-next">' + (last ? "TO THE CASTLE" : "NEXT WORLD") + "</button>" +
       "</div>", "so-ov-card");
     function row(a, b) { return '<div class="so-res-row"><span>' + a + "</span><b>" + b + "</b></div>"; }
+    renderMomentBuy();
     $("so-next").addEventListener("click", function () {
       closeOverlay();
       if (last) showEnding();
       else { G.levelIndex++; startLevel(G.levelIndex); }
+    });
+  }
+
+  /* the buy button, redrawn every time she spends, so the count on it is
+     never the count from before the last one */
+  function renderMomentBuy() {
+    var host = $("so-moment-buy");
+    if (!host) return;
+    var free = allRead();
+    if (!free && G.hearts < MOMENT_COST) {
+      host.innerHTML = '<p class="so-moment-none">' +
+        (G.hearts ? G.hearts + " hearts. " + MOMENT_COST + " buys a moment." : "") + "</p>";
+      return;
+    }
+    host.innerHTML = '<button class="so-btn so-btn-quiet so-moment-btn" id="so-moment">' +
+      (free ? "READ ONE AGAIN"
+            : "A MOMENT &middot; " + MOMENT_COST +
+              ' <svg class="gl gl-life" aria-hidden="true"><use href="#ic-px-heart"/></svg>') +
+      "</button><p class=\"so-moment-none\">" +
+      (free ? "you have all of them" : "you have " + G.hearts) + "</p>";
+    $("so-moment").addEventListener("click", function () {
+      if (!free) {
+        if (G.hearts < MOMENT_COST) return;
+        G.hearts -= MOMENT_COST;
+      }
+      var i = nextMoment(), read = loadMoments();
+      if (read.indexOf(i) < 0) { read.push(i); saveMoments(read); }
+      var slot = $("so-moment-slot");
+      if (slot) {
+        slot.innerHTML = '<p class="so-moment-text">' + moments()[i] + "</p>";
+        slot.className = "so-moment-slot";
+        void slot.offsetWidth;
+        slot.className = "so-moment-slot on";
+      }
+      sfx("heart");
+      updateHud();
+      renderMomentBuy();
     });
   }
 
@@ -3810,35 +4803,54 @@ window.SuperOuissy = (function () {
         '<p class="so-card-note">she is not giving up. she just needs a run-up.</p>' +
         '<div class="so-res">' +
           '<div class="so-res-row"><span>SCORE</span><b>' + pad(G.score, 6) + "</b></div>" +
-          '<div class="so-res-row"><span>HEARTS</span><b>' + G.hearts + "</b></div>" +
+          '<div class="so-res-row"><span>HEARTS</span><b>' + G.heartsEver + "</b></div>" +
         "</div>" +
         '<button class="so-btn so-btn-go" id="so-again">TRY THIS WORLD AGAIN</button>' +
         '<button class="so-btn" id="so-easier">CHANGE DIFFICULTY</button>' +
-        '<button class="so-btn so-btn-quiet" id="so-over-quit">QUIT TO HUB</button>' +
+        '<button class="so-btn so-btn-quiet" id="so-over-quit">BACK TO MENU</button>' +
       "</div>", "so-ov-card");
     $("so-again").addEventListener("click", function () {
       closeOverlay(); G.lives = DIFF[G.diff].lives; bgmDuck(false); startLevel(G.levelIndex);
     });
     $("so-easier").addEventListener("click", function () { bgmDuck(false); showDifficulty(); });
-    $("so-over-quit").addEventListener("click", quitToHub);
+    /* the same as the pause card: losing a run is not a reason to be put
+       out of the chapter altogether. The title card is where the worlds
+       and the difficulties are, and the way out of the chapter is the hub
+       button there. */
+    $("so-over-quit").addEventListener("click", function () {
+      closeOverlay();
+      bgmDuck(false);
+      if (window.__soReleaseAll) window.__soReleaseAll();
+      showDifficulty();
+    });
   }
 
   /* ---- 7. the ending: the castle, and him in it -------------------------- */
-  function showEnding() {
+  /* `again` is the ending coming BACK — after watching a scene from it,
+     say. The run has already been saved and the fanfare has already
+     played; doing either a second time would overwrite a better score
+     with this same one and blare at her for walking back into a room she
+     never left. */
+  function showEnding(again) {
     G.state = "ending";
-    setBgm(false);
+    /* NOT SILENCE. The ending used to switch the music off, which is a
+       strange way to end anything: three worlds and a boss and then a
+       held breath with nothing under it. It plays the tune the whole game
+       has been an arrangement of, slowly, with a third sung over it — and
+       it plays ONCE and stops rather than looping behind her reading. */
+    if (G.bgmOn) { bgmPlay("win"); setBgm(true); } else stopBgm();
     /* remember the run */
     var all = loadBest(), b = all[G.diff] || { score: 0, time: 0, hearts: 0, cleared: false };
     var total = G.elapsed;
     if (G.score > b.score) b.score = G.score;
     if (!b.time || total < b.time) b.time = total;
-    if (G.hearts > b.hearts) b.hearts = G.hearts;
+    if (G.heartsEver > b.hearts) b.hearts = G.heartsEver;
     b.cleared = true;
     all[G.diff] = b; saveBest(all);
     if (window.markSuperOuissyDone) window.markSuperOuissyDone();
 
     overlay(
-      '<div class="so-end">' +
+      '<div class="so-end' + (again ? "" : " playing") + '">' +
         '<div class="so-end-art" id="so-end-art"></div>' +
         '<p class="so-end-kicker">' + SO.ending.kicker + "</p>" +
         '<div class="so-end-lines">' + endingLines().map(function (l) { return "<p>" + l + "</p>"; }).join("") + "</div>" +
@@ -3846,7 +4858,7 @@ window.SuperOuissy = (function () {
         '<p class="so-end-sign">' + SO.ending.signOff + "</p>" +
         '<div class="so-res so-end-res">' +
           '<div class="so-res-row"><span>FINAL SCORE</span><b>' + pad(G.score, 6) + "</b></div>" +
-          '<div class="so-res-row"><span>HEARTS</span><b>' + G.hearts + "</b></div>" +
+          '<div class="so-res-row"><span>HEARTS</span><b>' + G.heartsEver + "</b></div>" +
           '<div class="so-res-row"><span>TOTAL TIME</span><b>' + fmtTime(total) + "</b></div>" +
           '<div class="so-res-row"><span>DIFFICULTY</span><b>' + DIFF[G.diff].label + "</b></div>" +
         "</div>" +
@@ -3855,8 +4867,27 @@ window.SuperOuissy = (function () {
           '<div class="so-menu-actions">' + endActions() + "</div>" +
         "</div>" +
       "</div>", "so-ov-end");
-    startEndingArt($("so-end-art"));
-    sfx("victory");
+    startEndingArt($("so-end-art"), !!again);
+    /* the scene is skippable from its first frame: anywhere on the overlay,
+       any key. she has just finished the game — nothing here gets to hold
+       her hostage for nine seconds. */
+    if (!again) {
+      /* "anywhere, any key" — and the key half of that was a lie. A keydown
+         listener on a DIV only ever fires if that div has focus, and an
+         overlay nobody has clicked never does, so the keyboard did nothing
+         at all. The key listener goes on the document, and takes itself off
+         again the moment the scene is over so it cannot swallow anything
+         later. */
+      var ov = document.querySelector(".so-ov-end");
+      var go = function () { if (endSkip) endSkip(); };
+      if (ov) ov.addEventListener("pointerdown", go);
+      endKeySkip = function (e) {
+        if (e && (e.metaKey || e.ctrlKey || e.altKey)) return;
+        go();
+      };
+      document.addEventListener("keydown", endKeySkip);
+    }
+    if (!again) sfx("victory");
     wireEndActions();
   }
 
@@ -3891,6 +4922,19 @@ window.SuperOuissy = (function () {
     }
     html += '<button class="so-btn' + (nxt ? "" : " so-btn-go") + '" id="so-end-again">' +
             "PLAY " + DIFF[G.diff].label.toUpperCase() + " AGAIN</button>";
+    /* NO DOOR STRAIGHT TO THE SCENE ANY MORE.
+
+       There used to be an ANWAR vs DEATH button here, and another in the
+       pause menu. They were scaffolding: the scene only happens if the
+       Queen takes her last life on Hard, which made it the hardest thing
+       in the game to ever see, and a way in was needed to check that it
+       worked at all. It works.
+
+       What a shortcut costs is the thing itself. That scene is the
+       reward for having lost the whole run to her, in the last room, on
+       the hardest difficulty — and a button that hands it over on request
+       turns the worst moment in the game into a menu item. It is reached
+       by getting there now, which is the only way it ever meant anything. */
     html += '<button class="so-btn so-btn-quiet" id="so-end-title">TITLE SCREEN</button>';
     html += '<button class="so-btn so-btn-quiet" id="so-end-quit">BACK TO THE GAMES</button>';
     return html;
@@ -3924,76 +4968,265 @@ window.SuperOuissy = (function () {
 
   /* The last picture: a lit castle doorway, Ouissy, and him waiting. */
   var endRaf = null;
-  function startEndingArt(host) {
+  /* =======================================================================
+     THE ENDING, AS A SCENE
+
+     It used to be a picture. A 240x120 loop that started with her already
+     most of the way across the courtyard and him already standing in the
+     doorway, both of them drawn at the same instant the wall of text they
+     belong to appeared underneath. Three worlds, a boss, and the last
+     thing the game says to her arrives as a background image.
+
+     It is directed now. Nine seconds, on a timeline, with the text held
+     back until they have actually met. She walks in out of the dark. The
+     sun comes up because she is crossing, not because a clock said so.
+     He comes out to meet her rather than waiting to be arrived at. The
+     camera pushes in on the two of them and the letterbox opens, and only
+     then does anything ask her to read.
+
+     And it is skippable from the first frame, because the one thing worse
+     than no scene is a scene you cannot get out of.
+     ======================================================================= */
+  var END_BEAT = { dawn: 1.0, walk: 4.6, pause: 5.8, meet: 7.4, bloom: 9.2 };
+  var endSkip = null, endSeek = null, endKeySkip = null, endT = 0;
+  /* WHICH SCENE IS THE LIVE ONE.
+
+     showEnding can be reached over and over — PLAY AGAIN, TITLE SCREEN and
+     back, going off to watch the Death scene and returning — and each one
+     called startEndingArt, which started ANOTHER requestAnimationFrame
+     loop without stopping the last. Nothing cancelled them, so they all
+     kept running for the rest of the session, painting into canvases that
+     had been thrown away and fighting over the scene's clock. Every loop
+     stamps itself with a run number and the moment a newer one exists it
+     stops asking for frames. */
+  var endRunId = 0, endLive = 0, endHold = null;
+
+  function hex(s) { return [parseInt(s.substr(1, 2), 16), parseInt(s.substr(3, 2), 16), parseInt(s.substr(5, 2), 16)]; }
+  function mixHex(a, b, k) {
+    var A = hex(a), B = hex(b), o = "#";
+    for (var i = 0; i < 3; i++) {
+      var v = Math.round(A[i] + (B[i] - A[i]) * k).toString(16);
+      o += v.length < 2 ? "0" + v : v;
+    }
+    return o;
+  }
+  var END_NIGHT = [{ p: 0, c: "#0b0718" }, { p: .42, c: "#160d28" }, { p: .78, c: "#241338" }, { p: 1, c: "#3a1c40" }];
+  var END_DAWN  = [{ p: 0, c: "#2a1a4e" }, { p: .42, c: "#6a2a63" }, { p: .78, c: "#c8536f" }, { p: 1, c: "#ffb07a" }];
+  function endSky(c, k) {
+    var stops = [];
+    for (var i = 0; i < END_NIGHT.length; i++)
+      stops.push({ p: END_NIGHT[i].p, c: mixHex(END_NIGHT[i].c, END_DAWN[i].c, k) });
+    ditherSky(c, 0, 0, 240, 120, stops);
+  }
+  function ease(k) { return k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k); }
+  function seg(t, a, b) { return ease((t - a) / (b - a)); }
+
+  /* him: eight pixels of coat, a face, and hair that has never once been
+     tidy. Drawn from the feet up so both of them stand on the same line. */
+  function paintHim(c, x, foot, lean) {
+    var y = foot - 14;
+    px(c, x, y, 8, 14, "#3d5a8a");
+    px(c, x, y, 8, 2, "#5a7ab0");
+    px(c, x + (lean > 0 ? 8 : -1), y + 5, 1, 5, "#3d5a8a");   /* the arm he is reaching with */
+    blob(c, x + 4, y - 4, 5, 5, ["#ffd9c4", "#f0b096", "#d8967c", "#c07f66"]);
+    px(c, x, y - 9, 9, 3, "#3a2a22");
+    px(c, x + 2, y - 4, 1, 1, "#3d2340"); px(c, x + 6, y - 4, 1, 1, "#3d2340");
+    px(c, x + 3, y - 1, 3, 1, "#3d2340");
+  }
+
+  function startEndingArt(host, instant) {
     if (!host) return;
+    stopEndingArt();
+    endHold = null;                  /* a new scene never inherits a pin */
+    var myRun = ++endRunId;
+    endLive++;
     var s = spriteCanvas(240, 120), c = s.ctx;
     host.innerHTML = ""; host.appendChild(s.c);
-    var t0 = 0;
+    var t0 = 0, skipped = !!instant, shown = !!instant;
+    var GROUND = 108;
+
+    /* tapping anywhere gets her out of it. it does not cut to black — it
+       runs the timeline forward to the moment they are together, which is
+       the only frame of this anybody would be sad to miss. */
+    endSkip = function () {
+      /* NOT "if (skipped) return" any more. The old guard marked the skip
+         used even when it could not act — before the first frame t0 is
+         still zero, so a tap in that instant did nothing AND turned the
+         skip off for good. Skipping twice is harmless; being unable to
+         skip is not. */
+      endHold = null;
+      t0 = performance.now() - END_BEAT.bloom * 1000;
+      skipped = true;
+      reveal();
+    };
+    /* harness only: put the scene at a given second and let it carry on
+       from there. A directed nine seconds cannot be checked by opening it
+       and looking a moment later — this browser stalls its frame clock and
+       then catches up, so "a moment later" is sometimes two seconds in. */
+    endSeek = function (secs) { t0 = performance.now() - secs * 1000; endT = secs; };
+
+    function reveal() {
+      if (shown) return;
+      shown = true;
+      dropKeySkip();
+      var card = host.parentNode;
+      if (card && card.classList) card.classList.remove("playing");
+    }
+
     function frame(now) {
+      if (myRun !== endRunId) { endLive--; return; }   /* a newer scene has it */
       endRaf = requestAnimationFrame(frame);
-      if (!t0) t0 = now;
-      var t = (now - t0) / 1000;
-      var P = BIOME.castle;
-      ditherSky(c, 0, 0, 240, 120, P.sky);
+      if (!t0) t0 = now - (instant ? END_BEAT.bloom * 1000 : 0);
+      /* endHold is the harness pinning the scene at one instant. This
+         browser's frame clock jumps whole seconds at a time, so "seek to
+         half a second and look" can land three seconds later and read a
+         frame the test was not asking about. */
+      var t = endT = endHold != null ? endHold : (now - t0) / 1000;
+      if (t >= END_BEAT.meet) reveal();
+
+      /* ---- where everybody is, this frame ---------------------------- */
+      var dawn = seg(t, END_BEAT.dawn, END_BEAT.bloom * 0.92);
+      var wk = seg(t, END_BEAT.dawn, END_BEAT.walk);
+      var her = -18 + wk * 96;                                  /* -18 -> 78 */
+      var moving = wk > 0 && wk < 1;
+      var himOut = seg(t, END_BEAT.pause, END_BEAT.meet);
+      var him = 118 - himOut * 12;                              /* 118 -> 106 */
+      if (himOut > 0) her = 78 + himOut * 10;                   /* 78 -> 88 */
+      var together = t >= END_BEAT.meet;
+      var doorLit = ease((t - 2.2) / 1.2);
+
+      /* ---- the camera -------------------------------------------------
+         One number does all of it. k goes nought to one as the push comes
+         in and settles back to a half once they are together, and the zoom
+         and the point the frame is held on both ride it — so the camera
+         cannot end up magnifying a corner of the sky, which is exactly
+         what a separately-driven zoom and focus did on the first try. */
+      var k = seg(t, END_BEAT.pause - 1.2, END_BEAT.meet) - seg(t, END_BEAT.meet, END_BEAT.bloom) * 0.5;
+      var zoom = 1 + k * 1.1;
+      var fx = 120 + (100 - 120) * k + (together ? Math.sin(t * 0.4) * 1.5 : 0);
+      var fy = 60 + (94 - 60) * k;
+
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      endSky(c, dawn);
+      c.save();
+      c.translate(120, 60);
+      c.scale(zoom, zoom);
+      c.translate(-fx, -fy);
+
+      /* stars, going out as the sun comes up */
       var rnd = seeded("endsky");
       for (var i = 0; i < 50; i++) {
         var sx = rnd() * 240, sy = rnd() * 60;
-        if (Math.sin(t * 2 + sx) > -0.4) px(c, sx, sy, 1, 1, "#ffe9c8");
+        if (Math.sin(t * 2 + sx) > -0.4 + dawn * 1.4) px(c, sx, sy, 1, 1, "#ffe9c8");
       }
-      /* the castle */
-      px(c, 40, 34, 160, 76, "#6b4f80");
-      px(c, 40, 34, 160, 2, "#8a68a4");
+      /* the sun itself, coming up over the battlements in the gap between
+         two towers. it is drawn before the castle so the wall hides its
+         bottom half — which is the whole point of a sunrise. */
+      if (dawn > 0.08) {
+        var sunY = 32 - dawn * 16;
+        c.save(); c.globalAlpha = Math.min(1, dawn * 2.2);
+        blob(c, 166, sunY, 11, 11, ["#fff3c0", "#ffd980", "#ffb45f", "#ff8f52"]);
+        c.restore();
+      }
+
+      /* ---- the castle -------------------------------------------------
+         The wall runs wider than the frame does at rest, because the camera
+         pushes in on the doorway and a close-up that finds the edge of the
+         building and a band of dithered sky behind it reads as a mistake. */
+      var stone = mixHex("#3a2450", "#6b4f80", dawn), lit = mixHex("#4a3060", "#8a68a4", dawn);
+      px(c, 20, 34, 200, 76, stone);
+      px(c, 20, 34, 200, 2, lit);
       for (var tw = 0; tw < 3; tw++) {
         var tx = 44 + tw * 74;
-        px(c, tx, 18, 26, 92, "#7d5590");
-        px(c, tx, 18, 2, 92, "#a97fbe");
-        px(c, tx - 3, 12, 32, 6, "#a97fbe");
-        for (var cr = 0; cr < 32; cr += 7) px(c, tx - 3 + cr, 6, 4, 6, "#a97fbe");
+        px(c, tx, 18, 26, 92, mixHex("#3f2856", "#7d5590", dawn));
+        px(c, tx, 18, 2, 92, lit);
+        px(c, tx - 3, 12, 32, 6, lit);
+        for (var cr = 0; cr < 32; cr += 7) px(c, tx - 3 + cr, 6, 4, 6, lit);
+        /* a ribbon on every tower, because she put them there */
+        if (dawn > 0.4) px(c, tx + 11, 12 - Math.abs(Math.sin(t * 2 + tw)) * 2, 4, 5, "#ff5f95");
       }
-      /* windows, warm */
-      for (var wx = 56; wx < 190; wx += 22)
+      /* windows waking up one at a time, left to right, as she crosses.
+         the count is measured rather than assumed, so the wall can get
+         wider without the last few never lighting. */
+      var wxs = [];
+      for (var wx = 34; wx < 206; wx += 22) if (wx < 104 || wx > 136) wxs.push(wx);
+      var wi = 0, wn = wxs.length * 2;
+      for (var wq = 0; wq < wxs.length; wq++)
         for (var wy = 46; wy < 86; wy += 24) {
-          var lit = Math.sin(t * 1.4 + wx * 0.3 + wy) > -0.5;
-          px(c, wx, wy, 6, 9, lit ? "#ffcf6a" : "#4d375e");
-          if (lit) px(c, wx, wy, 6, 2, "#fff0b0");
+          var on = wk * wn > wi++;
+          px(c, wxs[wq], wy, 6, 9, on ? "#ffcf6a" : "#3a2748");
+          if (on) px(c, wxs[wq], wy, 6, 2, "#fff0b0");
         }
-      /* the doorway, wide open */
-      px(c, 108, 74, 26, 36, "#3d2340");
-      px(c, 110, 76, 22, 34, "#ffd8a0");
-      for (var a2 = 0; a2 < 12; a2++) px(c, 110 + a2, 74 - Math.round(Math.sqrt(144 - (a2 - 11) * (a2 - 11))), 24 - a2 * 2, 3, "#ffd8a0");
 
-      /* him, waiting in the light */
-      var pb = Math.sin(t * 2) > 0 ? 0 : 1;
-      px(c, 116, 88 + pb, 8, 14, "#3d5a8a");           // his coat
-      px(c, 116, 88 + pb, 8, 2, "#5a7ab0");
-      blob(c, 120, 84 + pb, 5, 5, ["#ffd9c4", "#f0b096", "#d8967c", "#c07f66"]);
-      px(c, 116, 79 + pb, 9, 3, "#3a2a22");             // his hair
-      px(c, 118, 84 + pb, 1, 1, "#3d2340"); px(c, 122, 84 + pb, 1, 1, "#3d2340");
-      px(c, 119, 87 + pb, 3, 1, "#3d2340");
+      /* ---- the doorway ----------------------------------------------- */
+      px(c, 108, 74, 26, 36, "#2a1730");
+      if (doorLit > 0) {
+        px(c, 110, 76, 22, 34, mixHex("#2a1730", "#ffd8a0", doorLit));
+        for (var a2 = 0; a2 < 12; a2++)
+          px(c, 110 + a2, 74 - Math.round(Math.sqrt(144 - (a2 - 11) * (a2 - 11))), 24 - a2 * 2, 3,
+             mixHex("#2a1730", "#ffd8a0", doorLit));
+        /* the light he is standing in, spilling out onto the stones */
+        c.save(); c.globalAlpha = 0.18 * doorLit;
+        px(c, 100, 104, 42, 6, "#ffd8a0");
+        c.restore();
+      }
 
-      /* her, arriving */
-      var walk = Math.min(1, t / 3.2);
-      var ox2 = 20 + walk * 76;
-      var img = walk < 1 ? OUISSY.run.small[Math.floor(t * 8) % 4] : OUISSY.win.small[0];
-      c.drawImage(img, Math.round(ox2), 88 - (walk < 1 ? 0 : Math.abs(Math.sin(t * 3)) * 3));
+      /* ---- the courtyard they are standing on ------------------------- */
+      var floor = mixHex("#241636", "#4e3356", dawn);
+      px(c, 0, GROUND, 240, 120 - GROUND, floor);
+      px(c, 0, GROUND, 240, 1, mixHex("#32204a", "#6b4a6e", dawn));
+      for (var fs = 0; fs < 240; fs += 16) px(c, fs, GROUND + 3, 1, 120 - GROUND - 3, mixHex("#1d1230", "#3f2a48", dawn));
 
-      /* hearts rising between them once she is there */
-      if (walk >= 1) {
+      /* ---- the two of them ------------------------------------------- */
+      c.save(); c.globalAlpha = 0.25;
+      px(c, Math.round(her) + 3, GROUND - 1, 10, 2, "#1d1230");
+      if (doorLit > 0.25) px(c, Math.round(him), GROUND - 1, 8, 2, "#1d1230");
+      c.restore();
+      if (doorLit > 0.25) paintHim(c, Math.round(him), GROUND, himOut > 0 ? -1 : 0);
+      var img = moving || himOut > 0 && !together
+        ? OUISSY.run.small[Math.floor(t * 8) % 4]
+        : together ? OUISSY.win.small[0] : OUISSY.idle.small[Math.floor(t * 3) % 4];
+      var bounce = together ? Math.abs(Math.sin(t * 3)) * 3 : 0;
+      c.drawImage(img, Math.round(her), GROUND - 18 - bounce);
+
+      /* hearts, once there is a reason for them */
+      if (together) {
         for (var h2 = 0; h2 < 7; h2++) {
-          var hp = (t * 0.5 + h2 / 7) % 1;
-          heart(c, 104 + Math.sin(hp * 7 + h2) * 8, 100 - hp * 60, 3 - hp * 1.6,
+          var hp = ((t - END_BEAT.meet) * 0.5 + h2 / 7) % 1;
+          heart(c, 99 + Math.sin(hp * 7 + h2) * 8, GROUND - 8 - hp * 54, 3 - hp * 1.6,
                 ["#ff5f95", "#ffd166", "#ffffff"][h2 % 3]);
         }
       }
-      /* falling sparkles over the whole scene */
-      for (var k2 = 0; k2 < 30; k2++) {
-        var kx = (k2 * 53) % 240, ky = ((t * (14 + k2 % 7) + k2 * 31) % 130);
-        px(c, kx, ky, 1, 1, Math.sin(t * 6 + k2) > 0 ? "#fff6a8" : "#ffd6e6");
+      /* sparkles over everything, once the sun is up enough to catch them */
+      if (dawn > 0.3) {
+        for (var k2 = 0; k2 < 30; k2++) {
+          var kx = (k2 * 53) % 240, ky = ((t * (14 + k2 % 7) + k2 * 31) % 130);
+          px(c, kx, ky, 1, 1, Math.sin(t * 6 + k2) > 0 ? "#fff6a8" : "#ffd6e6");
+        }
       }
+      c.restore();
+
+      /* ---- the letterbox, and the dark she walks out of --------------- */
+      var bars = Math.round(14 * (1 - seg(t, END_BEAT.meet, END_BEAT.bloom)));
+      if (bars > 0) { px(c, 0, 0, 240, bars, "#000"); px(c, 0, 120 - bars, 240, bars, "#000"); }
+      var fade = 1 - ease(t / END_BEAT.dawn);
+      if (fade > 0.01) { c.save(); c.globalAlpha = fade; px(c, 0, 0, 240, 120, "#000"); c.restore(); }
     }
     endRaf = requestAnimationFrame(frame);
   }
-  function stopEndingArt() { if (endRaf) cancelAnimationFrame(endRaf); endRaf = null; }
+  function dropKeySkip() {
+    if (!endKeySkip) return;
+    document.removeEventListener("keydown", endKeySkip);
+    endKeySkip = null;
+  }
+  function stopEndingArt() {
+    /* the cancelled loop never gets another frame, so it can never count
+       itself out — it is counted out here instead */
+    if (endRaf) { cancelAnimationFrame(endRaf); if (endLive > 0) endLive--; }
+    endRaf = null; endSkip = null; endSeek = null;
+    endRunId++;                       /* every loop still out there is stale */
+    dropKeySkip();
+  }
 
   /* =======================================================================
      THE HUD
@@ -4158,26 +5391,592 @@ window.SuperOuissy = (function () {
     });
   }
 
-  /* ---- the background music: a short chiptune loop, written as note
-          numbers so you can retune it without touching the player ------- */
-  /* One bar is 8 steps. Numbers are semitones from C4 and null is a rest.
+  /* ---- THE SCORE ---------------------------------------------------------
 
-     null, not 0. The rest used to be written as 0 and voice() tested the
-     note with `if (!note)`, which meant every C — the root — was thrown
-     away as silence. The bass is mostly roots, so what actually played was
-     a line of fifths with the tonic missing under it. */
-  var BGM = {
-    lead: [
-      12, null, 16, null, 19, null, 16, null,  14, null, 17, null, 21, null, 17, null,
-      12, null, 16, null, 19, 12,   24, null,  21, 19,   16, null, 14, null, 12, null,
-    ],
-    bass: [
-      0, null, 7, null, 0, null, 7, null,   2, null, 9, null, 2, null, 9, null,
-      0, null, 7, null, 0, null, 7, null,   5, null, 0, null, 7, null, 7, null,
-    ],
-    tempo: 0.14,
+     The game used to have ONE tune: a thirty-two step loop, a square lead
+     and a triangle bass, playing identically in world one, world two,
+     world three and all the way through the Queen. It switched off at the
+     ending. The side story had thirteen movements and the game it lives
+     inside had a jingle.
+
+     This is a proper chiptune score, and the word chiptune is the point:
+     the Death scene is orchestral because it is a film, and this is a
+     platformer, so it keeps its square wave. What travels between them is
+     not the instruments — it is the TUNE.
+
+     HER THEME is the four notes this game has opened on since the first
+     day: root, third, fifth, third. Every world here is an arrangement of
+     it. World two is the same figure with the gaps filled in. World three
+     is the same figure in the relative minor, which is what the last
+     climb sounds like. The Queen is that minor version taken faster and
+     given a chromatic tail. The ending is the original, slow, with a
+     third sung over the top of it. And in the Death scene, which is the
+     other side of this same game, it is the same four notes again with
+     the third flattened.
+
+     Nobody will ever notice. Everybody will feel it.
+
+     WRITTEN AS STRINGS, because a hundred and ninety numbers in square
+     brackets is not something a person can read or fix. A dot is a rest,
+     a bar line is ignored, and a number is semitones from C4 — the same
+     units the old loop used, so the tuning did not change under anyone.
+     ---------------------------------------------------------------------- */
+  function pat(s) {
+    return s.split("|").join(" ").trim().split(/\s+/).map(function (tok) {
+      return tok === "." ? null : parseInt(tok, 10);
+    });
+  }
+  /* drums: K kick, S snare, h hat, t tom, . nothing */
+  function dpat(s) {
+    return s.split("|").join(" ").trim().split(/\s+/);
+  }
+
+  /* THREE SCORES, NOT ONE.
+
+     Every difficulty is its own three worlds with its own boss, and the
+     music was the only thing about them that was identical — play Easy and
+     then go back for Hard and you hear the same five tunes twice.
+
+     They are three arrangements of the same four notes, because the motif
+     is the point, but they are not the same piece of music. EASY is slower
+     and wider, major, with a lilt, sixths over the top and a drum that
+     mostly stays out of the way — a morning. MEDIUM is the one the game
+     has always had: square, brisk, four to the floor. HARD is faster,
+     minor, with a sixteenth-note bass that never stops and a chromatic
+     line falling through it. */
+  /* ---- ONE RHYTHM PER WORLD, SHARED BY ALL THREE DIFFICULTIES ----
+
+     A world should feel like the same place whichever difficulty she is
+     playing it on, and the thing that carries a place is the rhythm, not
+     the tune. So the drums belong to the WORLD: easy, medium and hard all
+     play world one on the same pattern, with their own melodies and their
+     own tempo over the top. What changes with difficulty is the music;
+     what stays is the ground under it.
+
+     And the three are deliberately nothing like each other, because the
+     three worlds are not:
+
+       ONE is morning, and it breathes -- kick, space, snare, space. Four
+       to the bar with air between, the pattern you can walk to.
+
+       TWO leans forward. Three, three, two: the oldest way there is of
+       making a straight bar feel like it is already moving, which is what
+       the world does the whole way through.
+
+       THREE is the last of them and it does not let up -- kick and hat
+       together, the snare early, and no gap anywhere you could rest in. */
+  /* ---- AND THE PACE BELONGS TO THE WORLD TOO ----
+
+     "Why is hard still so fast" -- because it was. Tempo is seconds per
+     step, so smaller is quicker, and it read: world one 0.105 on easy,
+     0.088 on medium, 0.076 on hard. Hard ran thirty-eight per cent faster
+     than easy through the same place, and its victory fanfare, at 0.086
+     against 0.19, went past at more than twice the speed. That is
+     difficulty expressed as tempo, which is the cheapest way to do it and
+     the one that makes a tune feel rushed instead of hard.
+
+     If a world is the same place on every difficulty -- which is the whole
+     point of sharing the rhythm -- then it moves at the same pace on every
+     difficulty as well. These are easy's figures, because easy's were the
+     ones that worked. What changes with difficulty is what is played over
+     that pace, not how fast the ground goes by. */
+  var PACE = { w1: 0.105, w2: 0.095, w3: 0.088, boss: 0.080, win: 0.19 };
+
+  var RHYTHM = {
+    w1: dpat(
+      "K . . . h . . . S . . . h . . . |" +
+      "K . . . h . . . S . . . h . . . |" +
+      "K . . . h . . . S . . . h . . . |" +
+      "K . . . h . . . S . . h . h . h"),
+    w2: dpat(
+      "K . . K . . S . K . . K . . S . |" +
+      "K . . K . . S . K . . K . . S h |" +
+      "K . . K . . S . K . . K . . S . |" +
+      "K . h K . h S . t . t . t . S ."),
+    w3: dpat(
+      "K . h . K h S . K . h . S . S h |" +
+      "K . h . K h S . K . h . S . S h |" +
+      "K . h . K h S . K . h . S . S h |" +
+      "K . h . K h S . t t t t S . S ."),
   };
-  var bgmTimer = null, bgmStep = 0, bgmGain = null;
+
+  var SCORES = {};
+  SCORES.medium = {
+    /* WORLD ONE — morning. The theme, plain, with room around it. */
+    w1: {
+      /* WHERE EASY CLIMBS, THIS FALLS. Easy's morning opens by rising
+         through the chord; this one starts at the top and comes down, and
+         only turns upward in the third bar. Same room, same pace, opposite
+         shape -- which is what makes it another tune rather than the same
+         one in different clothes. */
+      tempo: PACE.w1,
+      lead: pat(
+        "21  .  . 21  .  . 19  .  . 16  .  . 12  .  .  . |" +
+        "19  .  . 19  .  . 17  .  . 14  .  . 11  .  .  . |" +
+        "16  .  . 12  .  . 16  .  . 19  .  . 21  .  .  . |" +
+        "19  .  . 21  .  . 24  .  .  .  .  .  .  .  .  ."),
+      harm: pat(
+        " .  .  .  .  .  .  . 24  .  .  .  .  .  .  .  . |" +
+        " .  .  .  .  .  .  . 21  .  .  .  .  .  .  .  . |" +
+        " .  .  .  .  .  .  . 26  .  .  .  .  .  .  .  . |" +
+        " .  .  .  .  .  .  . 19  .  .  .  .  .  .  .  ."),
+      bass: pat(
+        " 5  .  .  .  .  . 12  .  .  .  .  .  5  .  .  . |" +
+        " 2  .  .  .  .  .  9  .  .  .  .  .  2  .  .  . |" +
+        " 0  .  .  .  .  .  7  .  .  .  .  .  0  .  .  . |" +
+        " 7  .  .  .  .  .  7  .  .  .  .  .  0  .  .  ."),
+      drum: RHYTHM.w1,
+    },
+
+    /* WORLD TWO — the same tune with the gaps filled in and the ground
+       moving under it. */
+    w2: {
+      /* it leans forward like the world does, but it leans by falling --
+         the line comes down where easy's went up. */
+      tempo: PACE.w2,
+      lead: pat(
+        "19  .  . 17  .  . 16  .  . 17  .  . 19  .  .  . |" +
+        "21  .  . 19  .  . 17  .  . 19  .  . 21  .  .  . |" +
+        "16  .  . 19  .  . 24  .  . 21  .  . 19  .  .  . |" +
+        "17  .  . 16  .  . 14  .  . 12  .  .  .  .  .  ."),
+      harm: pat(
+        " .  .  .  7  .  .  .  .  . 12  .  .  .  .  .  . |" +
+        " .  .  .  9  .  .  .  .  . 14  .  .  .  .  .  . |" +
+        " .  .  .  4  .  .  .  .  . 11  .  .  .  .  .  . |" +
+        " .  .  .  7  .  .  .  .  .  0  .  .  .  .  .  ."),
+      bass: pat(
+        " 0  .  .  .  7  .  .  .  0  .  .  .  7  .  .  . |" +
+        " 9  .  .  .  4  .  .  .  9  .  .  .  4  .  .  . |" +
+        " 5  .  .  .  0  .  .  .  5  .  .  .  0  .  .  . |" +
+        " 7  .  .  .  2  .  .  .  0  .  .  .  0  .  .  ."),
+      drum: RHYTHM.w2,
+    },
+
+    /* WORLD THREE — the same four notes in the relative minor, which is
+       what the last climb sounds like, and it finds its way back to the
+       major on the last bar because she is nearly there. */
+    w3: {
+      /* it rocks between two notes for half its length and then climbs
+         once, where easy's arcs up and down in every bar */
+      tempo: PACE.w3,
+      lead: pat(
+        "24  .  . 21  .  . 24  .  . 21  .  . 24  .  .  . |" +
+        "21  .  . 19  .  . 21  .  . 19  .  . 21  .  .  . |" +
+        "16  .  . 17  .  . 19  .  . 21  .  . 24  .  .  . |" +
+        "26  .  . 24  .  .  .  .  . 21  .  .  .  .  .  ."),
+      harm: pat(
+        " .  .  .  . 12  .  .  .  .  .  . 16  .  .  .  . |" +
+        " .  .  .  .  9  .  .  .  .  .  . 14  .  .  .  . |" +
+        " .  .  .  .  7  .  .  .  .  .  . 12  .  .  .  . |" +
+        " .  .  .  .  5  .  .  .  .  .  .  0  .  .  .  ."),
+      bass: pat(
+        " 0  .  .  .  7  .  .  . 12  .  .  .  7  .  .  . |" +
+        " 9  .  .  .  4  .  .  . 16  .  .  .  4  .  .  . |" +
+        " 7  .  .  .  2  .  .  . 14  .  .  .  2  .  .  . |" +
+        " 5  .  .  .  0  .  .  .  0  .  .  .  0  .  .  ."),
+      drum: RHYTHM.w3,
+    },
+
+    /* THE QUEEN. Her tune, minor, faster than she can think, with a
+       chromatic tail that falls away under it. */
+    boss: {
+      tempo: PACE.boss,
+      lead: pat(
+        " 9 . 9 . 12 . 16 . 12 . 9 . 16 . 12 . |" +
+        " 8 . 8 . 11 . 15 . 11 . 8 . 15 . 11 . |" +
+        " 9 . 9 . 12 . 16 . 21 . 20 . 19 . 18 . |" +
+        "17 . 16 . 15 . 14 . 13 . 12 . 11 . 10 ."),
+      harm: pat(
+        /* the same fault, worse: three bars on one note and then silence.
+           A boss should sound like something circling you, so it circles
+           -- up a fourth, back, up a fifth, and down a semitone into the
+           bar line, which is the part that makes it feel like a threat. */
+        " .  .  .  . 21  . 26  . 21  .  . 24 21 .  .  . |" +
+        " .  .  .  . 20  . 25  . 20  .  . 23 20 .  .  . |" +
+        " .  .  .  . 21  . 26  . 24  .  . 28 24 .  .  . |" +
+        " .  .  .  . 23  . 22  . 21  .  . 20 21 .  .  ."),
+      bass: pat(
+        /* it was root and fifth and nothing else, which under a boss is a
+           pump rather than a threat. It walks down to the flat six and
+           leans on the five now, which is what makes the bar want to
+           resolve. */
+        " 0  .  .  7  0  .  .  7  8  .  .  7  0  .  .  . |" +
+        "-2  .  .  5 -2  .  .  5  6  .  .  5 -2  .  .  . |" +
+        " 0  .  .  7  0  .  . 12  8  .  .  3  8  .  .  . |" +
+        " 7  .  . 14  7  .  . 10  0  .  .  7  0  .  .  ."),
+      drum: dpat(
+        "K . h K . h K . S . h K . h S . |" +
+        "K . h K . h K . S . h K . h S . |" +
+        "K . h K . h K . S . h K . h S . |" +
+        "K . t t t . K . S . t t t t t t"),
+    },
+
+    /* AND THE END OF IT. The tune it started on, slow, with a third over
+       the top — the only place in the game where anything sings with it. */
+    win: {
+      tempo: PACE.win,
+      lead: pat(
+        "12 .  .  . 16 .  .  . 19 .  .  . 16 .  .  . |" +
+        "17 .  .  . 21 .  .  . 24 .  .  . 21 .  .  . |" +
+        "19 .  .  . 16 .  .  . 12 .  .  . 14 .  .  . |" +
+        "16 .  .  .  .  .  .  . 12 .  .  .  .  .  .  ."),
+      harm: pat(
+        "16 .  .  . 19 .  .  . 24 .  .  . 19 .  .  . |" +
+        "21 .  .  . 24 .  .  . 28 .  .  . 24 .  .  . |" +
+        "24 .  .  . 19 .  .  . 16 .  .  . 17 .  .  . |" +
+        "19 .  .  .  .  .  .  . 16 .  .  .  .  .  .  ."),
+      bass: pat(
+        /* a flag tune should sound like it is going somewhere, and root
+           and fifth twice a bar sounds like it has arrived and stopped.
+           Up to the four, round the six, and home. */
+        " 0  .  7  .  0  .  7  .  5  .  0  .  5  .  7  . |" +
+        " 5  .  0  .  5  .  0  .  9  .  5  .  9  .  0  . |" +
+        " 7  .  2  .  7  .  2  .  0  .  7  .  0  .  7  . |" +
+        " 5  .  7  .  0  .  .  .  0  .  .  .  .  .  .  ."),
+      drum: dpat(
+        ". . . . . . . . . . . . . . . . |" +
+        ". . . . . . . . . . . . . . . . |" +
+        ". . . . . . . . . . . . . . . . |" +
+        ". . . . . . . . . . . . . . . ."),
+    },
+  };
+
+  /* ---- EASY: morning, unhurried. Longer notes, a lilt, sixths over the
+     top, and a drum that mostly stays out of the way. ------------------- */
+  SCORES.easy = {
+    w1: {
+      tempo: PACE.w1,
+      lead: pat(
+        "12  .  . 16  .  . 19  .  . 16  .  . 19  .  .  . |" +
+        "14  .  . 17  .  . 21  .  . 17  .  . 14  .  .  . |" +
+        "12  .  . 16  .  . 19  .  . 24  .  . 21  .  .  . |" +
+        "19  .  . 16  .  . 14  .  . 12  .  .  .  .  .  ."),
+      harm: pat(
+        " .  .  .  .  .  .  . 24  .  .  .  .  .  .  .  . |" +
+        " .  .  .  .  .  .  . 26  .  .  .  .  .  .  .  . |" +
+        " .  .  .  .  .  .  . 28  .  .  .  .  .  .  .  . |" +
+        " .  .  .  .  .  .  . 24  .  .  .  .  .  .  .  ."),
+      bass: pat(
+        " 0  .  .  .  .  .  7  .  .  .  .  .  0  .  .  . |" +
+        " 2  .  .  .  .  .  9  .  .  .  .  .  2  .  .  . |" +
+        " 5  .  .  .  .  . 12  .  .  .  .  .  5  .  .  . |" +
+        " 7  .  .  .  .  .  7  .  .  .  .  .  0  .  .  ."),
+      drum: RHYTHM.w1,
+    },
+    w2: {
+      tempo: PACE.w2,
+      lead: pat(
+        "12  . 14 16  . 17 19  . 17 16  .  . 14  .  .  . |" +
+        "14  . 16 17  . 19 21  . 19 17  .  . 16  .  .  . |" +
+        "16  . 19 21  . 24 21  . 19 16  .  . 19  .  .  . |" +
+        "17  . 16 14  . 12 11  . 12  .  .  .  .  .  .  ."),
+      harm: pat(
+        " .  .  .  7  .  .  .  .  . 12  .  .  .  .  .  . |" +
+        " .  .  .  9  .  .  .  .  . 14  .  .  .  .  .  . |" +
+        " .  .  . 12  .  .  .  .  . 16  .  .  .  .  .  . |" +
+        " .  .  .  7  .  .  .  .  .  7  .  .  .  .  .  ."),
+      bass: pat(
+        " 0  .  .  .  7  .  .  .  0  .  .  .  7  .  .  . |" +
+        " 2  .  .  .  9  .  .  .  2  .  .  .  9  .  .  . |" +
+        " 5  .  .  . 12  .  .  .  5  .  .  . 12  .  .  . |" +
+        " 7  .  .  .  7  .  .  .  0  .  .  .  0  .  .  ."),
+      drum: RHYTHM.w2,
+    },
+    w3: {
+      tempo: PACE.w3,
+      lead: pat(
+        "12  .  . 19  .  . 16  .  . 21  .  . 19  .  .  . |" +
+        "14  .  . 21  .  . 17  .  . 24  .  . 21  .  .  . |" +
+        "16  .  . 24  .  . 19  .  . 26  .  . 24  .  .  . |" +
+        "21  .  . 19  .  . 16  .  . 12  .  .  .  .  .  ."),
+      harm: pat(
+        " .  .  .  . 12  .  .  .  .  .  . 16  .  .  .  . |" +
+        " .  .  .  . 14  .  .  .  .  .  . 17  .  .  .  . |" +
+        " .  .  .  . 16  .  .  .  .  .  . 19  .  .  .  . |" +
+        " .  .  .  . 12  .  .  .  .  .  . 12  .  .  .  ."),
+      bass: pat(
+        " 0  .  .  .  7  .  .  . 12  .  .  .  7  .  .  . |" +
+        " 2  .  .  .  9  .  .  . 14  .  .  .  9  .  .  . |" +
+        " 5  .  .  . 12  .  .  . 17  .  .  . 12  .  .  . |" +
+        " 7  .  .  .  7  .  .  .  0  .  .  .  0  .  .  ."),
+      drum: RHYTHM.w3,
+    },
+    /* the raincloud: cross, not frightening */
+    boss: {
+      tempo: PACE.boss,
+      lead: pat(
+        "12  . 12  . 15  . 12  .  . 17  . 15  . 12  .  . |" +
+        "10  . 10  . 14  . 10  .  . 15  . 14  . 10  .  . |" +
+        "12  . 12  . 15  . 19  .  . 17  . 15  . 12  .  . |" +
+        "17  . 15  . 14  . 12  .  . 10  .  .  .  .  .  ."),
+      harm: pat(
+        " .  .  .  . 19  .  .  .  .  .  . 19  .  .  .  . |" +
+        " .  .  .  . 17  .  .  .  .  .  . 17  .  .  .  . |" +
+        " .  .  .  . 19  .  .  .  .  .  . 22  .  .  .  . |" +
+        " .  .  .  . 17  .  .  .  .  .  .  .  .  .  .  ."),
+      bass: pat(
+        " 0  . 12  .  0  .  7  .  0  . 12  .  0  .  7  . |" +
+        "-2  . 10  . -2  .  5  . -2  . 10  . -2  .  5  . |" +
+        " 0  . 12  .  0  .  7  .  5  . 17  .  5  . 12  . |" +
+        " 7  . 19  .  7  . 14  .  0  . 12  .  0  .  0  ."),
+      drum: dpat(
+        "K . h . S . h . K . h . S . h . |" +
+        "K . h . S . h . K . h . S . h . |" +
+        "K . h . S . h . K . h . S . h . |" +
+        "K . h . S . h . K . t t t . S ."),
+    },
+    /* her theme, but it opens on the fifth and comes DOWN to the root —
+       finishing Easy should not sound like finishing Medium */
+    win: {
+      tempo: PACE.win,
+      lead: pat(
+        "19  .  .  . 24  .  .  . 21  .  .  . 19  .  .  . |" +
+        "16  .  .  . 19  .  .  . 21  .  .  . 24  .  .  . |" +
+        "26  .  .  . 24  .  .  . 21  .  .  . 19  .  .  . |" +
+        "16  .  .  .  .  .  .  . 12  .  .  .  .  .  .  ."),
+      harm: pat(
+        "24  .  .  . 28  .  .  . 26  .  .  . 24  .  .  . |" +
+        "21  .  .  . 24  .  .  . 26  .  .  . 28  .  .  . |" +
+        "31  .  .  . 28  .  .  . 26  .  .  . 24  .  .  . |" +
+        "21  .  .  .  .  .  .  . 16  .  .  .  .  .  .  ."),
+      bass: pat(
+        " 0  .  .  .  .  .  .  .  7  .  .  .  .  .  .  . |" +
+        " 5  .  .  .  .  .  .  .  0  .  .  .  .  .  .  . |" +
+        " 7  .  .  .  .  .  .  .  5  .  .  .  .  .  .  . |" +
+        " 7  .  .  .  .  .  .  .  0  .  .  .  .  .  .  ."),
+      drum: dpat(
+        "K . . . . . . . h . . . . . . . |" +
+        "K . . . . . . . h . . . . . . . |" +
+        "K . . . . . . . h . . . . . . . |" +
+        "K . . . . . . . h . . . . . . ."),
+    },
+  };
+
+  /* ---- HARD: faster, minor, and the bass never stops. ----------------- */
+  /* ---- HARD: A DIFFERENT PIECE, NOT A FASTER ONE ----
+
+     What was here was the medium score played quicker. Same contour, same
+     root-and-fifth bass, and a harmony line that held ONE note for a
+     whole bar -- 24, 24, 24, 24 -- which is a drone, not a harmony. That
+     is why it felt rushed rather than hard: nothing new was happening,
+     it was just happening sooner.
+
+     So hard is its own music. It is in the minor with a flattened
+     seventh, the accents fall off the beat instead of on it, the harmony
+     ANSWERS the lead in the gaps rather than sitting under it, and the
+     bass walks a real progression -- i, flat seven, flat six, five --
+     instead of pumping the root. It is more intense than medium because
+     more is going on, not because the clock is faster. */
+  SCORES.hard = {
+    /* WORLD ONE — the hook. Rest on the downbeat, hit on the way to it. */
+    w1: {
+      /* IT SITS STILL AND THEN JUMPS. Three bars of one note, a leap of a
+         fifth and a sixth, then one long fall the whole way back down.
+         Easy's line is an arc in every bar and medium's is a descent;
+         this is neither, which is the point -- 89 per cent of its moves
+         used to go the same direction as easy's, and a tune that rises
+         and falls with another tune IS that tune. */
+      tempo: PACE.w1,
+      lead: pat(
+        "12  .  . 12  .  . 12  .  . 19  .  . 22  .  .  . |" +
+        "10  .  . 10  .  . 10  .  . 17  .  . 20  .  .  . |" +
+        "22  .  . 20  .  . 19  .  . 17  .  . 15  .  .  . |" +
+        "14  .  . 12  .  . 10  .  . 12  .  .  .  .  .  ."),
+      harm: pat(
+        " .  .  .  .  .  .  . 24  .  .  .  .  .  .  .  . |" +
+        " .  .  .  .  .  .  . 22  .  .  .  .  .  .  .  . |" +
+        " .  .  .  .  .  .  . 27  .  .  .  .  .  .  .  . |" +
+        " .  .  .  .  .  .  . 19  .  .  .  .  .  .  .  ."),
+      bass: pat(
+        " 0  .  .  .  .  .  7  .  .  .  .  .  0  .  .  . |" +
+        "10  .  .  .  .  .  5  .  .  .  .  . 10  .  .  . |" +
+        " 8  .  .  .  .  .  3  .  .  .  .  .  8  .  .  . |" +
+        " 7  .  .  .  .  .  2  .  .  .  .  .  0  .  .  ."),
+      drum: RHYTHM.w1,
+    },
+    /* WORLD TWO — three, three, two. The oldest trick there is for making
+       a straight bar feel like it is leaning forward. */
+    w2: {
+      /* the flat seventh under it the whole way, which is what makes a
+         bar want to fall forward without being hurried */
+      tempo: PACE.w2,
+      lead: pat(
+        "15  .  . 19  .  . 22  .  . 19  .  . 15  .  .  . |" +
+        "14  .  . 17  .  . 20  .  . 17  .  . 14  .  .  . |" +
+        "15  .  . 19  .  . 24  .  . 22  .  . 19  .  .  . |" +
+        "20  .  . 19  .  . 17  .  . 15  .  .  .  .  .  ."),
+      harm: pat(
+        " .  .  .  3  .  .  .  .  . 10  .  .  .  .  .  . |" +
+        " .  .  .  2  .  .  .  .  .  8  .  .  .  .  .  . |" +
+        " .  .  .  3  .  .  .  .  . 12  .  .  .  .  .  . |" +
+        " .  .  .  7  .  .  .  .  .  0  .  .  .  .  .  ."),
+      bass: pat(
+        " 0  .  .  . 10  .  .  .  0  .  .  . 10  .  .  . |" +
+        "-2  .  .  .  8  .  .  . -2  .  .  .  8  .  .  . |" +
+        " 0  .  .  .  8  .  .  .  0  .  .  .  8  .  .  . |" +
+        " 7  .  .  .  3  .  .  .  0  .  .  .  0  .  .  ."),
+      drum: RHYTHM.w2,
+    },
+    /* WORLD THREE — the floor giving way. A chromatic walk down, and a
+       turnaround that lands somewhere you did not expect. */
+    w3: {
+      /* IT TRUDGES. Easy's world three turns out to be a zigzag itself,
+         so the zigzag I tried here agreed with it two thirds of the time
+         -- a tune that rises and falls with another tune IS that tune,
+         whatever its notes are. This one holds each note for two steps
+         and leans down: nothing else in the game stands still, so nothing
+         else can agree with it. For the last world on the hardest setting
+         it should sound like something that will not be hurried. */
+      tempo: PACE.w3,
+      lead: pat(
+        "26  .  . 26  .  . 24  .  . 24  .  . 22  .  .  . |" +
+        "22  .  . 20  .  . 20  .  . 19  .  . 19  .  .  . |" +
+        "17  .  . 17  .  . 22  .  . 22  .  . 19  .  .  . |" +
+        "19  .  . 15  .  . 15  .  .  .  .  .  .  .  .  ."),
+      harm: pat(
+        " .  .  .  .  7  .  .  .  .  .  . 12  .  .  .  . |" +
+        " .  .  .  .  5  .  .  .  .  .  . 10  .  .  .  . |" +
+        " .  .  .  .  8  .  .  .  .  .  . 15  .  .  .  . |" +
+        " .  .  .  .  7  .  .  .  .  .  .  0  .  .  .  ."),
+      bass: pat(
+        " 0  .  .  .  7  .  .  . 12  .  .  .  7  .  .  . |" +
+        "10  .  .  .  5  .  .  . 17  .  .  .  5  .  .  . |" +
+        " 8  .  .  .  3  .  .  . 15  .  .  .  3  .  .  . |" +
+        " 7  .  .  .  2  .  .  .  0  .  .  .  0  .  .  ."),
+      drum: RHYTHM.w3,
+    },
+    /* THE BOSS — an ostinato you cannot get out of your head, and a
+       stabbing line over the top of it that refuses to line up with it. */
+    boss: {
+      tempo: PACE.boss,
+      lead: pat(
+        " .  . 24  .  . 24  . 23  .  . 24  .  . 27  .  . |" +
+        " .  . 22  .  .  22  . 20  .  . 22  .  . 26  .  . |" +
+        " .  . 24  .  . 27  . 29  .  . 27  .  . 24  .  . |" +
+        "23  . 22  . 20  . 19  .  .  . 19  .  .  .  .  ."),
+      harm: pat(
+        "12  .  .  . 15  .  .  . 12  .  .  . 15  .  .  . |" +
+        "10  .  .  . 14  .  .  . 10  .  .  . 14  .  .  . |" +
+        "12  .  .  . 15  .  .  . 20  .  .  . 19  .  .  . |" +
+        "15  .  .  . 14  .  .  . 12  .  .  . 12  .  .  ."),
+      bass: pat(
+        " 0  0  .  0  8  .  0  .  0  0  .  0  7  .  0  . |" +
+        "-2 -2  . -2  6  . -2  . -2 -2  . -2  5  . -2  . |" +
+        " 0  0  .  0  8  .  0  .  3  3  .  3 10  .  3  . |" +
+        " 8  8  .  8  7  .  7  .  0  0  .  0  0  .  0  ."),
+      drum: dpat(
+        "K  . h K  . h S  . K  . h K  . h S  . |" +
+        "K  . h K  . h S  . K  . h K  . h S  . |" +
+        "K  . h K  . h S  . K  . h K  . h S  h |" +
+        "K  . t  . t  . S  . t t t t S  . S  ."),
+    },
+    /* THE FLAG — eight bars of relief, and the last one lifts rather
+       than lands, because there is always another world. */
+    win: {
+      tempo: PACE.win,
+      lead: pat(
+        "12  . 16  . 19  .  .  . 24  .  .  . 19  .  .  . |" +
+        "17  . 21  . 24  .  .  . 28  .  .  . 24  .  .  . |" +
+        "19  . 24  . 28  .  . 31  .  . 28  . 24  . 19  . |" +
+        "16  . 19  . 24  .  .  .  .  .  .  .  .  .  .  ."),
+      harm: pat(
+        " .  . 12  .  . 16  .  .  . 19  .  .  . 16  .  . |" +
+        " .  . 14  .  . 17  .  .  . 21  .  .  . 17  .  . |" +
+        " .  . 16  .  . 19  .  .  . 24  .  .  . 19  .  . |" +
+        " .  . 12  .  . 16  .  . 19  .  .  .  .  .  .  ."),
+      bass: pat(
+        " 0  .  7  .  0  .  7  .  5  .  0  .  5  .  7  . |" +
+        " 5  .  0  .  5  .  0  . 10  .  5  . 10  .  0  . |" +
+        " 7  .  2  .  7  .  2  .  0  .  7  .  0  .  7  . |" +
+        " 5  .  7  .  0  .  .  .  0  .  .  .  .  .  .  ."),
+      drum: dpat(
+        "K  . h  . S  . h  . K  . h  . S  . h h |" +
+        "K  . h  . S  . h  . K  . h  . S  . h h |" +
+        "K  . h  . S  . h  . K  . h  . S  . t t |" +
+        "K  . h  . S  .  .  . K  .  .  .  .  .  .  ."),
+    },
+  };
+
+  /* ---- AND THE MENU KEEPS THE OLD ONE. -------------------------------
+
+     This is the tune the whole game used to be: thirty-two steps, a square
+     lead and a triangle bass, no harmony and no drums at all. It is thin,
+     and that is the point — it is what the game sounded like before any of
+     this, so the title screen is the plainest thing in it and every world
+     she starts is an arrival somewhere better. It is the same on all three
+     difficulties, because a menu is a menu. */
+  var MENU_TUNE = {
+    tempo: 0.14,
+    lead: pat("12 . 16 . 19 . 16 . 14 . 17 . 21 . 17 . |" +
+              "12 . 16 . 19 12 24  . 21 19 16  . 14 . 12 ."),
+    harm: pat(" . . .  . .  . .  .  .  .  .  .  . .  . . |" +
+              " . . .  . .  . .  .  .  .  .  .  . .  . ."),
+    bass: pat(" 0 . 7  . 0  . 7  .  2  .  9  .  2 .  9 . |" +
+              " 0 . 7  . 0  . 7  .  5  .  0  .  7 .  7 ."),
+    drum: dpat(". . . . . . . . . . . . . . . . |" +
+               ". . . . . . . . . . . . . . . ."),
+  };
+  ["easy", "medium", "hard"].forEach(function (d) { SCORES[d].menu = MENU_TUNE; });
+  /* the notes themselves, so "it feels rushed" can be checked against
+     what is actually written rather than argued about */
+  if (typeof window !== "undefined") window.__soScores = function () { return SCORES; };
+
+  /* the set she is actually playing. Medium is the fallback, because a
+     missing tune must never be an exception inside an audio callback. */
+  function score() { return SCORES[G && G.diff] || SCORES.medium; }
+
+  /* The clock running out does not get a tune of its own: it gets THIS
+     tune, faster, with the hat on every step. A different piece of music
+     under thirty seconds would be a different level; the same one, hurried,
+     is the same level running out of time. */
+  var HURRY = 0.78;
+
+  /* `BGM` is whatever is playing. It is kept as a name because the audio
+     harness reads BGM.lead and BGM.bass to count the tune. */
+  var BGM = SCORES.medium.w1;
+  /* HALF SPEED, FOR WHEN THE STORY TAKES OVER FOR A MOMENT. A rescue is
+     not long enough to be worth a piece of music of its own, and silence
+     under it was worse than either -- so what is already playing simply
+     slows down and steps back. */
+  var SLOW = 1.7;
+  var bgmSlow = false;
+  var bgmTimer = null, bgmStep = 0, bgmGain = null, bgmName = "w1", bgmRush = false, bgmSet = null;
+  var bgmNoise = null;
+
+  /* which tune belongs to where she is standing */
+  function bgmFor() {
+    /* no level means a menu, and the menu has its own plain little loop */
+    if (!G || !G.level || G.state === "menu") return "menu";
+    var b = G.level.boss;
+    if (b && b.awake && !b.dead) return "boss";
+    return "w" + Math.min(3, (G.levelIndex || 0) + 1);
+  }
+  /* switch tunes without stopping the music: the step resets so the new
+     one starts at its own downbeat rather than halfway through a bar */
+  function bgmPlay(name, rush) {
+    var S = score();
+    if (S[name] === undefined) return;
+    rush = !!rush;
+    /* THE SET COUNTS, NOT JUST THE NAME. "w1" means a different piece of
+       music on each difficulty now, so comparing names alone made this
+       return early when she quit an Easy run and started a Hard one — the
+       tune is still called w1, so it kept playing Easy's. */
+    if (bgmName === name && bgmRush === rush && bgmSet === S) return;
+    bgmName = name; bgmRush = rush; bgmSet = S;
+    BGM = S[name];
+    bgmStep = 0;
+    if (bgmTimer) {
+      clearInterval(bgmTimer);
+      bgmTimer = setInterval(tickBgm, bgmBeat());
+    }
+  }
+  /* called whenever the world she is in might have changed under her */
+  function bgmFollow() {
+    if (!G.bgmOn) return;
+    var d = DIFF[G.diff];
+    var rush = !!(d && d.timeLimit && G.timeLeft > 0 && G.timeLeft <= 30 && G.state === "play");
+    bgmPlay(bgmFor(), rush);
+  }
 
   function setBgm(on) {
     G.bgmOn = on;
@@ -4188,14 +5987,48 @@ window.SuperOuissy = (function () {
        node from a dead context connects to nothing and plays silence
        while every timer keeps happily ticking. */
     if (!bgmGain || bgmGain.context !== c) {
-      bgmGain = c.createGain(); bgmGain.gain.value = 0.055; bgmGain.connect(c.destination);
+      bgmGain = c.createGain(); bgmGain.connect(c.destination);
+      bgmNoise = null;
     }
+    /* and it is set from the state every time, not only when the node is
+       new -- a rebuilt node used to come back at full volume through a
+       hush, and an old one kept whatever the last writer left on it */
+    applyBgmGain();
     if (bgmTimer) return;
     bgmStep = 0;
-    bgmTimer = setInterval(tickBgm, BGM.tempo * 1000);
+    bgmTimer = setInterval(tickBgm, bgmBeat());
+  }
+  function bgmBeat() {
+    return BGM.tempo * (bgmRush ? HURRY : 1) * (bgmSlow ? SLOW : 1) * 1000;
+  }
+  /* the tune does not restart -- it carries on from the step it was on,
+     just wider apart, so it reads as the same music slowing down rather
+     than as a different one starting */
+  function setBgmSlow(on) {
+    on = !!on;
+    if (on === bgmSlow) return;
+    bgmSlow = on;
+    if (bgmTimer) { clearInterval(bgmTimer); bgmTimer = setInterval(tickBgm, bgmBeat()); }
   }
   function stopBgm() { if (bgmTimer) clearInterval(bgmTimer); bgmTimer = null; }
-  function bgmDuck(on) { if (bgmGain) bgmGain.gain.value = on ? 0.014 : 0.055; }
+  /* ONE PLACE DECIDES HOW LOUD THE MUSIC IS.
+
+     There were two switches writing the same gain and neither knew about
+     the other: a duck for an overlay, at 0.014, and a hush for a cutscene,
+     at nought. Whoever wrote last won, and nothing ever recomputed it from
+     the state -- so a duck that was never lifted left the music at a
+     fortieth of its volume for the rest of the session while every sound
+     effect stayed exactly as loud as it should be, which is precisely the
+     complaint. The two paths out of the pause card that do not resume --
+     RESTART WORLD, and changing difficulty -- both closed the overlay and
+     started a level without lifting the duck. */
+  var bgmHushed = false, bgmDucked = false;
+  var BGM_FULL = 0.055, BGM_DUCK = 0.014;
+  function bgmLevel() { return bgmHushed ? 0 : (bgmDucked ? BGM_DUCK : BGM_FULL); }
+  function applyBgmGain() { if (bgmGain) bgmGain.gain.value = bgmLevel(); }
+  function bgmDuck(on) { bgmDucked = !!on; applyBgmGain(); }
+  /* All the way down, for as long as something else owns the sound. */
+  function bgmSilence(on) { bgmHushed = !!on; applyBgmGain(); }
 
   function tickBgm() {
     var c = actx(); if (!c || !bgmGain) return;
@@ -4204,11 +6037,64 @@ window.SuperOuissy = (function () {
        leaving music that is playing as far as the code is concerned and
        silent as far as she is concerned. Hold the step until it wakes. */
     if (c.state !== "running") return;
-    var i = bgmStep % BGM.lead.length;
-    voice(c, BGM.lead[i], "square", 0, BGM.tempo * 0.9, .5);
-    voice(c, BGM.bass[i], "triangle", -24, BGM.tempo * 1.6, .8);
+    var n = BGM.lead.length, i = bgmStep % n;
+    voice(c, BGM.lead[i], "square", 0, BGM.tempo * 1.6, .42);
+    /* THE HARMONY LAYER IS THE REWARD. It is silent until the love meter
+       is full, and while she is sparkling the tune has a second voice in
+       it — so filling the meter does not only hand her a life, it changes
+       what the game sounds like. */
+    if (G && G.player && G.player.star > 0) voice(c, BGM.harm[i], "square", 0, BGM.tempo * 1.4, .2);
+    voice(c, BGM.bass[i], "triangle", -24, BGM.tempo * 2.2, .7);
+    hit(c, BGM.drum[i]);
+    if (bgmRush && i % 2 === 1) hit(c, "h");
     bgmStep++;
+    /* a tune that ends rather than loops: the ending plays once and then
+       lets the room be quiet */
+    if (bgmName === "win" && bgmStep >= n) stopBgm();
   }
+
+  /* the kit: three noises with different shapes, which is all a chiptune
+     drum machine has ever been */
+  function hit(c, k) {
+    if (!k || k === ".") return;
+    try {
+      if (k === "K") {
+        var o = c.createOscillator(), g = c.createGain(), t = c.currentTime;
+        o.type = "sine";
+        o.frequency.setValueAtTime(150, t);
+        o.frequency.exponentialRampToValueAtTime(48, t + 0.09);
+        g.gain.setValueAtTime(0.22, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.13);
+        o.connect(g); g.connect(bgmGain);
+        o.start(t); o.stop(t + 0.15);
+        return;
+      }
+      if (k === "t") {
+        var to = c.createOscillator(), tg = c.createGain(), tt = c.currentTime;
+        to.type = "triangle";
+        to.frequency.setValueAtTime(260, tt);
+        to.frequency.exponentialRampToValueAtTime(110, tt + 0.12);
+        tg.gain.setValueAtTime(0.18, tt);
+        tg.gain.exponentialRampToValueAtTime(0.0001, tt + 0.16);
+        to.connect(tg); tg.connect(bgmGain);
+        to.start(tt); to.stop(tt + 0.18);
+        return;
+      }
+      if (!bgmNoise || bgmNoise.sampleRate !== c.sampleRate) {
+        bgmNoise = c.createBuffer(1, (c.sampleRate * 0.3) | 0, c.sampleRate);
+        var d = bgmNoise.getChannelData(0);
+        for (var j = 0; j < d.length; j++) d[j] = Math.random() * 2 - 1;
+      }
+      var s = c.createBufferSource(), f = c.createBiquadFilter(), ng = c.createGain(), nt = c.currentTime;
+      s.buffer = bgmNoise;
+      f.type = "highpass"; f.frequency.value = k === "S" ? 1800 : 7000;
+      ng.gain.setValueAtTime(k === "S" ? 0.11 : 0.035, nt);
+      ng.gain.exponentialRampToValueAtTime(0.0001, nt + (k === "S" ? 0.12 : 0.04));
+      s.connect(f); f.connect(ng); ng.connect(bgmGain);
+      s.start(nt); s.stop(nt + 0.16);
+    } catch (e) {}
+  }
+
   function voice(c, note, type, shift, dur, vol) {
     if (note === null || note === undefined) return;   // 0 is a note, not a rest
     try {
@@ -4403,7 +6289,7 @@ window.SuperOuissy = (function () {
   function beginRun() {
     closeOverlay();
     G.lives = DIFF[G.diff].lives;
-    G.score = 0; G.hearts = 0; G.deaths = 0; G.elapsed = 0;
+    G.score = 0; G.hearts = 0; G.heartsEver = 0; G.deaths = 0; G.elapsed = 0;
     G.meter = 0; G.meterFlash = 0;
     G.levelIndex = 0; G.levelStats = [];
     var want = true;
@@ -4413,7 +6299,19 @@ window.SuperOuissy = (function () {
   }
 
   function startLevel(i) {
+    /* A LEVEL THAT IS STARTING IS NEVER DUCKED. The duck belongs to an
+       overlay, and by here the overlay is gone -- but RESTART WORLD and
+       the difficulty buttons came straight through without lifting it, so
+       the music came back at a fortieth of its volume and stayed there.
+       Lifting it here covers every way into a level, including any added
+       later, rather than relying on each button to remember. */
+    bgmDuck(false);
     if (window.__soReleaseAll) window.__soReleaseAll();
+    bossHush(); signHush();
+    /* being stuck is a property of a stretch, not of a run: a new world
+       starts her at nought deaths in the same place and at the first
+       offer again */
+    G.stuckAt = -999; G.stuckN = 0; G.handGate = 5; G.handCheck = null;
     G.levelIndex = i;
     G.level = buildLevel(i);
     G.player = mkPlayer(G.level.start.x + 2, G.level.start.y - 2);
@@ -4428,6 +6326,14 @@ window.SuperOuissy = (function () {
     G.keys = freshKeys();
     moveCamera(1);
     updateHud();
+    /* OUT OF THE MENU FIRST. bgmFollow asks where she is, and "the menu"
+       is one of the answers now — so calling it while the state still says
+       menu (which it does, because the title screen is what she came from)
+       picked the title's thin little loop and then played it through the
+       whole world. The card sets this a line later anyway; it is set here
+       so the question is asked about the right place. */
+    G.state = "card";
+    bgmFollow();                      /* each world has its own arrangement */
     showLevelCard();
   }
 
@@ -4496,7 +6402,15 @@ window.SuperOuissy = (function () {
     G = {
       diff: "medium", state: "menu", level: null, levelIndex: 0,
       lives: 3, score: 0, hearts: 0, deaths: 0, elapsed: 0,
-      meter: 0, meterFlash: 0, lastHurtBy: null,
+      stuckAt: -999, stuckN: 0, handGate: 5, handCheck: null,
+      /* two different numbers that both used to be one. G.hearts is the
+         PURSE — what she can spend on a moment. heartsEver is what she
+         COLLECTED, which is what the results, the ending and the saved
+         best are actually about: reading a letter should not quietly
+         reduce the record of how many hearts she found. */
+      heartsEver: 0,
+      meter: 0, meterFlash: 0, lastHurtBy: null, deathAt: null,
+      freeze: 0, punch: 0,
       levelStartT: 0, levelStartHearts: 0, levelStartDeaths: 0,
       timeLeft: 0, warned: false, poleBonus: 0, levelStats: [],
       player: mkPlayer(0, 0), parts: [], floats: [], bumps: [],
@@ -4569,9 +6483,18 @@ window.SuperOuissy = (function () {
   /* Drive the music by hand. setInterval is throttled hard in a background
      or headless tab, so counting notes off the wall clock measures the
      browser rather than the tune. */
+  /* how loud the game's own music is right now — a story scene is meant
+     to take it all the way down and give it back afterwards */
+  window.__soBgmLevel = function () { return bgmGain ? bgmGain.gain.value : null; };
   window.__soBgmSteps = function (n) { for (var i = 0; i < n; i++) tickBgm(); };
+  window.__soBgmName = function () { return bgmName + (bgmRush ? "+rush" : ""); };
+  window.__soBgmPlay = function (n, r) { bgmPlay(n, r); };
   window.__soBgmBar = function () {
-    return { steps: BGM.lead.length,
+    return { steps: BGM.lead.length, tempo: BGM.tempo,
+             /* the melody itself, so a harness can prove two tunes are two
+                tunes rather than the same one at a different speed */
+             tune: BGM.lead.join(",") ,
+             drumSteps: BGM.drum.length,
              leadNotes: BGM.lead.filter(function (v) { return v !== null; }).length,
              bassNotes: BGM.bass.filter(function (v) { return v !== null; }).length,
              bassRoots: BGM.bass.filter(function (v) { return v === 0; }).length };
@@ -4586,7 +6509,46 @@ window.SuperOuissy = (function () {
 
   /* --- putting her somewhere --- */
   window.__soGoLevel = function (i) { startLevel(i); };
-  window.__soShowEnding = function () { showEnding(); };
+  /* The world card holds the game on a REAL timer, so a harness that calls
+     __soGoLevel and then pumps is pumping nothing at all — every assertion
+     after it passes or fails for the wrong reason. This is the card's own
+     ending, called early. */
+  window.__soSkipCard = function () {
+    if (G.state !== "card") return G.state;
+    closeOverlay(); G.state = "play"; G.camSnap = true;
+    return G.state;
+  };
+  window.__soShowEnding = function (again) { showEnding(!!again); };
+  window.__soEndT = function () { return endT; };
+  window.__soEndLive = function () { return endLive; };
+  window.__soEndCan = function () { return !!endSkip; };
+  /* harness only: pin the scene at one second, or pass nothing to let it
+     run on from wherever it was pinned */
+  window.__soEndHold = function (secs) {
+    if (secs == null) { if (endHold != null && endSeek) endSeek(endHold); endHold = null; }
+    else endHold = secs;
+    return endHold;
+  };
+  window.__soEndSeek = function (secs) { if (endSeek) endSeek(secs); return endT; };
+  window.__soSigns = function () { return (G && G.level && G.level.signs) || []; };
+  window.__soFinish = function () { finishLevel(); };
+  window.__soStuck = function (n) {
+    if (n != null) { G.stuckN = n; G.stuckAt = G.player ? G.player.x : 0; }
+    return { n: G.stuckN, gate: G.handGate, check: G.handCheck };
+  };
+  /* "give her n hearts" — the purse AND the tally, the way collecting
+     them would, so a harness can tell spending apart from never having had
+     them */
+  window.__soSetHearts = function (n) {
+    G.hearts = n;
+    G.heartsEver = Math.max(G.heartsEver, n);
+    updateHud();
+  };
+  window.__soHeartsEver = function () { return G.heartsEver; };
+  window.__soMoments = function () {
+    return { read: loadMoments(), total: moments().length, cost: MOMENT_COST,
+             key: momKey(), all: moments() };
+  };
   window.__soTele = function (tx, ty) {
     if (!G || !G.level) return;
     G.player.x = tx * T;
@@ -4607,10 +6569,10 @@ window.SuperOuissy = (function () {
      between assertions, so one that had wandered across the map would be
      standing on the spot the next test teleported her to. */
   window.__soReset = function () {
-    var keep = { score: G.score, hearts: G.hearts, deaths: G.deaths };
+    var keep = { score: G.score, hearts: G.hearts, heartsEver: G.heartsEver, deaths: G.deaths };
     G.player = mkPlayer(G.level.start.x + 2, G.level.start.y - 2);
     G.lives = DIFF[G.diff].lives;
-    G.score = keep.score; G.hearts = keep.hearts; G.deaths = keep.deaths;
+    G.score = keep.score; G.hearts = keep.hearts; G.heartsEver = keep.heartsEver; G.deaths = keep.deaths;
     G.state = "play";
     G.keys = freshKeys();
     /* pickups she took and blocks she opened stay taken and opened
@@ -4619,6 +6581,8 @@ window.SuperOuissy = (function () {
     L.grid = L.grid0.map(function (r) { return r.slice(); });
     L.items = L.items0.map(function (o) { return Object.assign({}, o); });
     L.checks.forEach(function (c) { c.taken = false; });
+    if (L.signs) L.signs.forEach(function (sn) { sn.said = false; });
+    G.stuckAt = -999; G.stuckN = 0; G.handGate = 5; G.handCheck = null;
     if (L.goal) L.goal.open = false;
     G.bumps.length = 0;
     G.level.ents.forEach(function (e) {
@@ -4638,31 +6602,88 @@ window.SuperOuissy = (function () {
     if (patch) for (var k in patch) G.player[k] = patch[k];
     var p = G.player;
     return { x: p.x, y: p.y, vy: p.vy, big: p.big, star: p.star, wing: p.wing,
-             jumpsLeft: p.jumpsLeft, onGround: p.onGround, dead: p.dead };
+             boost: p.boost, jumpsLeft: p.jumpsLeft, onGround: p.onGround, dead: p.dead,
+             invuln: p.invuln, riding: !!p.riding };
   };
   window.__soSetTime = function (t) { G.timeLeft = t; };
+  /* the pause menu is a real menu with real doors in it, so a harness
+     needs to be able to open it */
+  window.__soPause = function (force) { togglePause(force); };
+  /* so a suite can stand in world two or three without playing to it */
+  window.__soSetWorld = function (i) { startLevel(i); return G.levelIndex; };
+  /* A harness testing the revive offer has to arrive at the death holding
+     more lives than the offer costs, and playing well enough to have
+     collected them is not something a test can do. */
+  window.__soLives = function (n) { if (n !== undefined) G.lives = n; return G.lives; };
   window.__soBossSet = function (patch) { var b = G.level.boss; if (b) { for (var k in patch) b[k] = patch[k]; b.phase = bossPhase(b); } };
+  /* what his last phase is doing that the first two are not */
+  window.__soRage = function () { var b = G.level.boss; return b ? bossRage(b) : 0; };
   window.__soBoss = function () {
     var b = G.level.boss; if (!b) return null;
     return { hp: b.hp, hpMax: b.hpMax, phase: b.phase, mode: b.mode,
-             modeT: +b.modeT.toFixed(2), shots: b.shots.length, awake: b.awake, dead: b.dead };
+             modeT: +b.modeT.toFixed(2), shots: b.shots.length, awake: b.awake, dead: b.dead,
+             hurt: b.hurt, swept2: !!b.swept2 };
   };
   window.__soEnemies = function () {
     return G.level.ents.filter(function (e) { return e.kind === "enemy"; })
       .map(function (e) { return { type: e.type, x: Math.round(e.x), y: Math.round(e.y),
                                    vx: Math.round(e.vx), alive: e.alive }; });
   };
+  /* everything that moves and is not an enemy: the three kinds of platform */
+  window.__soMovers = function () {
+    return G.level.ents.filter(function (e) { return e.kind === "mover"; })
+      .map(function (e, i) {
+        return { i: i, type: e.type, x: e.x, y: e.y, dx: e.dx, dy: e.dy,
+                 homeX: e.homeX, homeY: e.homeY, span: e.span, w: e.w, h: e.h,
+                 on: e.on, fade: e.fade, timer: e.timer, hold: e.hold,
+                 riding: G.player.riding === e };
+      });
+  };
+  /* stand her on top of one, the way landing on it would */
+  window.__soRide = function (i) {
+    var ms = G.level.ents.filter(function (e) { return e.kind === "mover"; });
+    var m = ms[i];
+    if (!m) return null;
+    G.player.x = m.x + m.w / 2 - G.player.w / 2;
+    G.player.y = m.y - G.player.h;
+    G.player.vx = 0; G.player.vy = 0;
+    G.camSnap = true;
+    return { x: m.x, y: m.y };
+  };
   window.__soCam = function () { return { x: Math.round(G.cam.x), y: Math.round(G.cam.y) }; };
+  /* the shape of the level under her: a test that wants "somewhere in the
+     middle of this world" should not have to hard-code a tile. */
+  window.__soLevelBox = function () {
+    var L = G.level;
+    return { w: L.w, h: L.h, startX: L.start.x, startY: L.start.y };
+  };
   window.__soDiffFlag = function (k) { return DIFF[G.diff][k]; };
+  /* harness only: look at another difficulty's score and letters without
+     starting a whole run on it */
+  window.__soPeekDiff = function (d) { var was = G.diff; G.diff = d; return was; };
   window.__soGoalTile = function () { return Math.round(G.level.goal.x / T); };
+  /* Kill her outright, whatever the difficulty. Dropping her down a pit
+     only works where pits are lethal — Easy has `pitSafety` and catches
+     her — so a harness testing a rule that spans all three needs a door
+     that does not care which one it is on. */
+  window.__soKill = function () { G.lastHurtBy = "boss"; hurtPlayer(true); };
   window.__soKillBoss = function () {
     if (G.level.boss) { G.level.boss.hp = 0; G.level.boss.dead = 0.001; G.level.goal.open = true; }
   };
   /* stand her on the nearest live enemy, or on the boss, so a stomp can be
      tested without simulating a person's timing */
-  window.__soAboveEnemy = function () {
-    var e = G.level.ents.filter(function (x) { return x.kind === "enemy" && x.alive; })
-      .sort(function (a, b) { return Math.abs(a.x - G.player.x) - Math.abs(b.x - G.player.x); })[0];
+  /* with no argument: the nearest one, which is what every existing caller
+     wants. with one: that index into __soEnemies(), so a harness can name
+     the kind it is testing rather than hoping the nearest is the right one. */
+  window.__soAboveEnemy = function (idx) {
+    var e;
+    if (idx != null) {
+      e = G.level.ents.filter(function (x) { return x.kind === "enemy"; })[idx];
+      if (e && !e.alive) e = null;
+    } else {
+      e = G.level.ents.filter(function (x) { return x.kind === "enemy" && x.alive; })
+        .sort(function (a, b) { return Math.abs(a.x - G.player.x) - Math.abs(b.x - G.player.x); })[0];
+    }
     if (!e) return null;
     G.player.x = e.x + e.w / 2 - G.player.w / 2;
     G.player.y = e.y - G.player.h - 10;
@@ -4682,6 +6703,13 @@ window.SuperOuissy = (function () {
      were when a test was written. Nine world maps exist now and they will
      keep being edited; a suite that hard-codes tile 21 is a suite that
      breaks every time a level moves. */
+  window.__soGroundY = function () { return G.level.groundY / T; };
+  window.__soSolid = function (tx, ty) { return solidAt(tx, ty); };
+  /* the raw character, so a harness can tell a wall from a one-way ledge —
+     "is there anything to stand on under this block" is a question only
+     the grid can answer, and solidAt alone answers it wrongly */
+  window.__soTile = function (tx, ty) { return tileAt(tx, ty); };
+  window.__soStand = function (tx, ty) { return solidAt(tx, ty) || oneWayAt(tx, ty); };
   window.__soFindTile = function (ch) {
     var L = G.level, hits = [];
     for (var y = 0; y < L.h; y++)
@@ -4705,6 +6733,11 @@ window.SuperOuissy = (function () {
   window.G_keys = function () { return G.keys; };
   window.OUISSY_FRAMES = function (pose, size) { return OUISSY[pose][size]; };
   window.G_setLives = function (n) { G.lives = n; };
+  /* G.diff is only ever set by picking a card on the title screen, so a
+     harness that calls __soGoLevel directly was quietly always on Medium
+     — and every Hard-only rule it thought it was testing was switched
+     off. Set it before starting the level. */
+  window.G_setDiff = function (d) { if (DIFF[d]) { G.diff = d; G.lives = DIFF[d].lives; } };
   /* end her the way the boss would, without having to lose the fight */
   window.__soDieToBoss = function () {
     G.lives = 0;
@@ -4756,7 +6789,7 @@ window.SuperOuissy = (function () {
     if (!G) return null;
     return {
       state: G.state, world: G.levelIndex + 1, diff: G.diff, lives: G.lives,
-      score: G.score, hearts: G.hearts, deaths: G.deaths,
+      score: G.score, hearts: G.hearts, heartsEver: G.heartsEver, deaths: G.deaths,
       x: Math.round(G.player.x / T), y: Math.round(G.player.y / T),
       onGround: G.player.onGround, big: G.player.big,
       bgmOn: G.bgmOn, bgmRunning: bgmTimer !== null,
@@ -4833,5 +6866,43 @@ window.SuperOuissy = (function () {
     return arr[Math.min(k || 0, arr.length - 1)];
   }
 
-  return { start: start, stop: stop, frame: ouissyFrame, pause: function () { if (G && G.state === "play") togglePause(); } };
+  /* EVERY MENU THE GAME CAN PUT UP, REACHABLE FROM A TEST.
+
+     tools/sofit.js could only get at four of the eight by clicking --
+     the title, the how-to, the world card and the pause -- so the four
+     that only appear at the end of a run, or when a boss has just
+     killed her, were never looked at. Those are exactly the long ones,
+     which are exactly the ones that scroll. */
+  function showMenu(which) {
+    if (!G) return false;
+    /* EVERY CARD EXCEPT THE FIRST TWO HAPPENS DURING A RUN. The title and
+       the how-to are what she sees before one starts; the world card, the
+       pause, the revive, the results, the game over and the ending all
+       appear over a world that exists, with her lives and her score on
+       them. Opening one on an empty game measures a card she can never
+       see -- and worse, the world card's own timer then hands the loop a
+       "play" state with no level under it, which is a throw. So put the
+       game where the card really lives first. */
+    if (which !== "title" && which !== "howto") {
+      if (!G.level) startLevel(G.levelIndex || 0);
+      closeOverlay();
+      G.state = "play";
+    }
+    switch (which) {
+      case "title":   showDifficulty(); return true;
+      case "howto":   showHowTo(function () {}); return true;
+      case "world":   showLevelCard(function () {}); return true;
+      case "pause":   togglePause(true); return true;
+      case "revive":  offerBossRevive(); return true;
+      case "cleared": finishLevel(); return true;
+      case "over":    endRun(false); return true;
+      case "won":     endRun(true); return true;
+      case "ending":  showEnding(false); return true;
+      default: return false;
+    }
+  }
+  return { start: start, stop: stop, frame: ouissyFrame,
+           pause: function () { if (G && G.state === "play") togglePause(); },
+           __menu: showMenu,
+           __menus: ["title","howto","world","pause","revive","cleared","over","won","ending"] };
 })();

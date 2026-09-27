@@ -18,7 +18,28 @@ const { chromium } = require('playwright-core');
     document.getElementById('screen-scrapbook').classList.add('active');
     Scrapbook.start();
     await new Promise(r=>setTimeout(r,3000));
-    const card = document.querySelector('.sb-w-ourvideo');
+    /* and turn to the spread the clip is actually on, or there is no shown
+       page carrying it and every measurement below is taken off a hidden
+       one. Scrapbook.goTo walks there in one step. */
+    var onShown = function () {
+      return document.querySelector(['leftpage','rightpage','solo']
+        .map(function (c) { return '#sb-spread .sb-page.' + c + ' .sb-w-ourvideo'; })
+        .join(', '));
+    };
+    for (var i = 0; i < 40 && !onShown(); i++) {
+      Scrapbook.next();
+      await new Promise(r=>setTimeout(r,420));
+    }
+    await new Promise(r=>setTimeout(r,1400));
+    /* Every page lives in the spread all the time; only the one or two she
+       is looking at wear a slot class and have a layout box at all. Taking
+       the first .sb-w-ourvideo in the document takes the one on a hidden
+       page, and everything measured off it comes back 0x0 -- which is what
+       having no box means, not a button that has collapsed. Prefer the card
+       on the spread that is actually shown. */
+    const SHOWN = ['leftpage','rightpage','solo']
+      .map(c => '#sb-spread .sb-page.' + c + ' .sb-w-ourvideo').join(', ');
+    const card = document.querySelector(SHOWN) || document.querySelector('.sb-w-ourvideo');
     if (!card) return { found:false };
     const v = card.querySelector('video');
     // give the metadata a chance
@@ -32,7 +53,17 @@ const { chromium } = require('playwright-core');
              hasPosterClass: card.classList.contains('hasposter'),
              posterImage: poster && getComputedStyle(poster).backgroundImage.slice(0,60),
              mountPresent: !!card.querySelector('.sb-ov-mount'),
-             sprockets: card.querySelectorAll('.sb-ov-holes i').length,
+             /* the sprockets are gone on purpose: there is no film anywhere
+                else in this album, so a strip of it here was the one piece
+                of borrowed art on the page. What replaced it is a leaf of
+                the book's own paper with an aperture cut through it, so
+                what there is to check is the window and its chamfer. */
+             window: !!card.querySelector('.sb-ov-window'),
+             chamfer: card.querySelector('.sb-ov-window')
+               ? getComputedStyle(card.querySelector('.sb-ov-window')).paddingTop : 'none',
+             /* and that the control is on the mat rather than in the
+                picture, which is the whole reason it was moved */
+             playOnMat: !!(card.querySelector('.sb-ov-mount > .sb-vid-play')),
              playButton: btn ? Math.round(bb.width)+'x'+Math.round(bb.height)+' visible='+(getComputedStyle(btn).display!=='none') : 'MISSING',
              caption: (card.querySelector('.sb-vid-cap')||{}).textContent,
              slateHidden: getComputedStyle(card.querySelector('.sb-vid-empty')).display === 'none',

@@ -6,6 +6,702 @@ branch → main → /root).
 
 **Passcode to enter the site: 2207**
 
+> **Ouissy's Night Shift is not on this branch.** The whole site WITH
+> the game -- `night-shift.js`, the recorded voice lines in `voice/`,
+> its hub card, its screen and its half of the stylesheet -- is at
+> commit `1bbdbe0bdc14`, which is the second parent of the merge that
+> brought everything else here. Nothing of it is lost even with every
+> other branch deleted; to get it back as a branch:
+>
+>     git checkout -b night-shift 1bbdbe0bdc14
+>
+> (A tag would have been tidier. This session's git gateway refuses to
+> create one -- it allows a branch update and answers 403 to anything
+> else -- so the SHA is written down instead.)
+>
+> It came off main in one commit, so it goes back in one: revert the
+> commit called "Take the night shift off main" and merge that
+> commit's tree back in. `tools/mainshape.js` is the check that taking
+> it out left the rest of the site whole, and the night-shift suites in
+> `tools/` need the game's files to run against.
+>
+> One thing deliberately stays: the keepsake board still has its page,
+> drawn in pixels like the other four. That board is what the book
+> contains rather than what is currently playable -- the comment above
+> `badges` has said so since before the chapter existed -- and it is a
+> picture, not a way in.
+
+## Session log — read this first if you are picking this up
+
+The newest entry is at the top. Each one says what was asked, what
+landed, what is half-done and what the next session should do first.
+**Add a new entry every session.** Anything not written down here is
+lost when the container is reclaimed.
+
+### 2026-09-20 — everything on main, and the last two faults were the harness's
+
+**Asked for:** merge it all to main so the other branches can go; then
+leave no mistake.
+
+**IT IS ALL ON MAIN.** `main` is the whole site with the landscape
+work, minus the night-shift chapter (see the note at the top of this
+file for where the game is and how to bring it back). Seven branches
+are ancestors of main and safe to delete; this session's git gateway
+answers 403 to a branch deletion, so they have to go from the GitHub
+page by hand.
+
+**THE GATE WAS NEVER OFF THE SCREEN.** `sidebyside` measured the
+landscape gate card 11px below a 740x360 window and 13px below an
+844x390 one, and it is not: the gate probe, `gatefit` and `landplay`
+all put the same card comfortably inside. The suite was reading it
+about a second and a half after the book handed over, while the card
+was still coming in from `scale(.97)` over .95s -- at four frames a
+second that animation has barely started. The wait the other screens
+already had is a function now, and the gate's inventory -- taken
+BEFORE the passcode, so it had never been down that path -- calls it
+too. It waits for the box it is about to measure to be the same box
+twice: no list of what is animated, and it still works for a card
+`fitCard` has legitimately scaled.
+
+**"KEY 7 WOULD NOT TAKE A PRESS"** was the 3D book. Its render loop
+runs until the climax ends and it disposes itself; until then the
+keypad is competing with WebGL for every one of those four frames a
+second, and the press waits out its six seconds -- on a different key
+each run. `sidebyside` now calls `skipBookIntro` (the scene's own
+teardown, which it runs a moment later anyway) before typing.
+`tools/_keyprobe.js` is the probe that settled it: every key clean, on
+screen, nothing over it, nothing animating it.
+
+**A harness for an absent chapter says so now.** `newplayer` died on
+`OuissysNightShift is not defined` and came up in the sweep as "NO
+RESULT: } Node.js v22.22.2", which reads like a broken site. It skips
+like `cardfit` and the rest.
+
+**The sweep, all of it green:** regress PASS, buttons 16, landscape
+15, gate no errors, gatefit 28, bookfit 24, sofit 193, apocfit 111,
+sidebyside 158, landplay 259, revisit 6, smooth 14, panels 48,
+readable 30, bigscreen 313, mainshape 34, codecheck 7, enginecheck 3 --
+0 failed in every one.
+
+**Next session:** the book's composition and details (the one task
+still open), and the seven dead branches if he has not deleted them.
+
+### 2026-09-19c — the gate lying down, the big screens, and the faults you have to read for
+
+**Asked for:** a full detailed sweep of the code for mistakes; whether
+the site fills every big screen in every browser; the games played
+again at iPad and PC sizes as well as landscape phone; and then, from a
+photograph of the gate sideways, "it looks so ugly -- I want it
+aesthetically pleasing and perfect".
+
+**THE GATE LIES DOWN NOW.** The sheet is a portrait 400:700 page whose
+width comes from the height left over, and sideways there is almost
+none: 183 points of card in an 844 point screen, six per cent of the
+window, the twelve coins at their 44px floor. Sideways it is a
+landscape sheet: writing and code field in the left half, keypad in the
+right, a fold down the middle, the plaque over both. 581x332, 59% of
+the window, keys at 66px. Four things to know if you touch it:
+
+- The gold frame is two rules and four corner sprays in an SVG whose
+  viewBox is the upright sheet, so it crops rather than reshapes. There
+  is a SECOND arrangement in the markup now, 700x400, out of the same
+  <defs>.
+- Do not `display:none` the upright frame to hide it. Its <defs> holds
+  the gradient and the ornament for BOTH arrangements, and hiding the
+  SVG takes the paint servers down with it: every stroke resolves to
+  url(#gGold) and paints nothing. Only its drawn children go
+  (`.gate-frame:not(.gate-frame-wide) > :not(defs)`).
+- Everything inside is in cqh sideways, not cqw. The card is a size
+  container and its width trebled; in cqw the heading came out at 36
+  points.
+- The keypad is 64cqh so that four rows exactly fill the sheet's 86cqh
+  of inner height. At 67 the bottom row sat on the drawn border.
+
+Three blocks of short-screen rescue came out with it -- they existed to
+claw the keys back to 44px on a 340 point window, and there is nothing
+left to rescue.
+
+**THE SITE NOW FILLS A BIG SCREEN.** The gate's sheet is capped at 360
+points and the hub's board at 620: a reading measure on a laptop, a
+postage stamp on a monitor. Measured: the hub used 41% of a 1280x800
+window, 26% of a 1440p one, 5% of a 4K one. `fitCard` grows as well as
+shrinks now, above 1400x860, capped at half again -- and what grows is
+the whole COMPOSITION (.gate, .hub-wrap, .ks-wrap), not the card inside
+it, because a transform is drawn and not laid out and a card scaled on
+its own grows out from under its own title.
+
+**THE TWO NEW STATIC SUITES.** `tools/codecheck.js` reads the files for
+what no browser test can see: duplicate ids, duplicate object keys,
+elements asked for that are never made, unanswered data-go, stray
+console.log, and CSS rules overwritten by a later copy of themselves.
+It found the gate written twice under the same media query, the
+apocalypse's quiet narrator set twice, a cutscene wash set and unset,
+and the retired cats -- four PNGs still fetched on every visit to draw
+nothing, with thirteen rules and three @keyframes behind them.
+`tools/enginecheck.js` is the honest answer to "every browser": one
+engine in this container, so it reads what the site leans on and
+reports the oldest Safari and Firefox that has it. The headline is
+container queries and cqw/cqh, used 2104 times: Safari 16, Firefox 110.
+
+**TWO HARNESS LESSONS, both expensive:**
+
+- `getAnimations().finished` never settles here, because half the
+  site's animations are infinite. Do not await it.
+- This container paints about four frames a second, so a .95s entrance
+  animation is still on its FIRST keyframe two and a half seconds in.
+  Measuring inside it is how one window reported 349x610 on one run and
+  343x595 on the next with an identical stylesheet. Wait for the
+  transform to come to rest, or use a clock longer than the animation.
+
+**Where things are:** everything is on `site-with-night-shift`; main is
+that minus the game. Merging the branch into main is clean -- git keeps
+main's deletion of night-shift.js and voice/ and takes the rest.
+
+### 2026-09-19b — everything in one branch, main without the game, and the phone on its side
+
+**Asked for:** collect the night shift out of every branch, make it
+stable and verify it end to end as a new player; put the whole site
+with the game in ONE new branch and delete the others; take the game
+off main until he wants it back; then a deep sweep of the site, and
+make the landscape phone an exact smaller iPad/PC in every game and
+every screen — nothing lagging, nothing out of place, every button on
+the screen, working, and not hidden under anything.
+
+**Where the code lives now.** Three facts, and nothing else is true:
+
+- `site-with-night-shift` — the whole site INCLUDING Ouissy's Night
+  Shift. This is the branch to work on the game in.
+- `main` — the whole site WITHOUT it: no `night-shift.js`, no `voice/`
+  (16MB of recorded lines), no hub card, no screen, no stylesheet for
+  it. One commit, so bringing it back is one revert plus a merge.
+  `tools/mainshape.js` is the check that taking it out left the rest
+  whole.
+- The five old branches are gone. Every one of them was proved to be
+  fully contained in `site-with-night-shift` before it was deleted.
+
+**What was actually wrong, all of it found by measuring:**
+
+1. **The last card of the chapter said `undefined`.** `NS` had two
+   top-level keys called `kept` — the line about whether she kept the
+   terms, and the six-things ending — and the later one silently ate
+   the earlier one. `tools/dupkeys.js` now fails a check instead of
+   printing "undefined" on screen; it found a second pair on the same
+   run (two test hooks called `bed()`, so `tools/nightaudio.js` asking
+   for the room tone was quietly reading the talking state).
+
+2. **The plan of the shop sat on top of the RIGHT DOOR key** at
+   844x390 and 740x360. The rule that lowers it belongs to portrait,
+   where the pad is below the stage; it was in a `max-width:900px,
+   orientation:portrait` block, and the comma is an OR.
+
+3. **Both endings were off the bottom of the last card**, at every
+   landscape size. A transform is drawn, not laid out: the card's box
+   is still 495px tall, so it is laid out from the top of a 390px
+   overlay and scaling it about its CENTRE moves the middle of a box
+   that starts above the screen to the middle of one that ends below
+   it. `fitCard` pins an overflowing card to the top now — which also
+   lets it stay bigger, 0.72 where it was 0.58 — and where even the
+   floor is not enough the card scrolls with its buttons stuck to the
+   bottom of the scroll (`.fit-scroll`).
+
+4. **Nothing ever ran the site's fitter except turning the phone.**
+   Arriving at 360 points of height, which is how everyone actually
+   arrives, left a card unfitted: the gate's UNLOCK plate hung off the
+   bottom at 740x360. `showScreen` fits what it just put up now, and so
+   does `load`.
+
+5. **The site fitter was looking for classes that do not exist.**
+   `.hub-inner`, `.ancient-card`, `.ks-card` as a container — only
+   `.gate-card` was ever real, so it was a no-op on every screen but
+   the gate. It is `.gate-card, .hub-wrap, .ks-wrap` now.
+
+6. **Super Ouissy's touch pad was hidden from assistive technology for
+   its whole life** — `aria-hidden="true"` written once in the markup
+   and never updated, on the only controls that game has on a phone.
+
+7. **`__apClear()` forced `G.state = "play"` whatever was going on**,
+   and on the title card — no level, so no `G.player` — the frame loop
+   then walked into `updatePlayer` and threw on every frame for as long
+   as the tab was open.
+
+**The suites that found them, and what they know now:**
+
+- `tools/cardfit.js` — all 14 cards the chapter can put up, at three
+  landscape sizes, 219 checks. It reads the controls from the whole
+  chapter rather than the overlay, so the shift and the monitor are
+  checked the same way a card is, and it waits for a screen with
+  something to press rather than a flat 700ms. Two of its drivers were
+  lying to it: `route('quit')` hands the page back to the hub, so
+  everything after the pause menu was being measured inside a hidden
+  screen and read zero.
+- `tools/sidebyside.js` — desktop, iPad and two landscape phones, 180
+  checks. Every control the laptop has, on the screen, uncovered, and
+  its middle in the same place on the card it belongs to. A control at
+  the 44px touch floor cannot scale with the layout, so it is counted
+  and shown rather than failed.
+- `tools/landplay.js` — all five games PLAYED on a landscape phone, 150
+  checks. Every press is checked twice: `elementFromPoint` says nothing
+  is over it, and the game's own state says the press arrived.
+- `tools/mainshape.js` — main without the game: four ways in, all four
+  open and run, nothing asks for a file that is gone, nothing throws.
+
+**Four things to know before driving these games from a harness**, all
+paid for this session:
+
+- The kart racer has NO throttle and NO pad on glass. It drives itself
+  and the whole picture is the wheel; the steering zone listens for
+  TOUCH events, not pointers; and the countdown does not count under
+  software rendering, so step it to the green with `__RACE_DEBUG().step`.
+- The apocalypse's stick is not a button: a thumb anywhere on the left
+  of the picture below the HUD becomes it, and that first touch is what
+  puts USE and CREEP on screen — they are `pointer-events:none` until
+  then, on purpose.
+- The adventure holds its choices back, hushed and genuinely disabled,
+  until the two of them have finished talking; a line is up for 2.9s.
+- The gate's keys answer `pointerdown`, not `.click()`, and the right
+  code turns the page to the SCRAPBOOK, not the hub.
+
+**The one thing that could not be done from in here.** The five old
+branches are still on GitHub. This session's git gateway answers **403
+Forbidden** to `git-receive-pack` for a ref DELETION — an ordinary push
+goes through, a delete does not, and the rule in this environment is to
+report a 403 rather than route around it. So they were proved contained
+first (every one of them is an ancestor of `site-with-night-shift`,
+which means deleting them loses nothing at all) and then left alone:
+
+    claude/book-polish-smoothness
+    claude/long-way-round-review-3oisr9
+    claude/ouissy-apocalypse-rebuild-401o1w
+    claude/phone-landscape-fit-qz8krt
+    claude/wick-cogs-horror-game-1i25wl
+    claude/website-perf-zoom-fixes-3lqveu
+
+Two clicks each in the GitHub branches page, or one `git push origin
+--delete <branch>` from anywhere the gateway allows it. Check
+containment again first if any time has passed:
+`git merge-base --is-ancestor origin/<branch> origin/site-with-night-shift`.
+
+**What is left:** nothing else from this ask. The long-standing one is
+still task #12, polishing the book's composition — do not start it
+unless he asks.
+
+### 2026-09-15d — the nights, played through, several times each
+
+**Asked for:** the same thing as the entry below — every fault in the
+early nights, no exceptions, checked and rechecked until the script is
+logical and the game follows it.
+
+**Where it is:** the entry below fixed what could be seen by looking at
+one moment at a time — where somebody stood, what a camera saw, what a
+caption said. This one found what can only be seen by playing a night
+from midnight to six and then reading it back, which is what
+`tools/scriptcheck.js` does: nights one to five, as whole playthroughs,
+several times over, with a competent player's hands on it. Seven
+faults, every one of them in how the writing is DELIVERED rather than
+in the writing itself — which is why nothing ever crashed and no suite
+had ever gone red. A line that is never said and a line that is said
+twice both look exactly like a working game from the inside.
+
+1. **AFTER THE FIRST THING SHE FOUND, HE NEVER SPOKE AGAIN.** The
+   biggest one by a long way. `revealCard` switches the tape system off
+   — quite right, the shift has stopped and she is reading a page —
+   and `closeReveal` never switched it back on. So from the moment she
+   picks up the first thing he left her, at about three in the morning,
+   on every night from the second one, the rest of the night he wrote
+   for her is silent. `tapeTick` returns on its first line and there is
+   simply no voice in the building. Three hours of tape a night, gone,
+   on any playthrough that found anything — which is all of them.
+
+2. **A KNOCK LANDED ON TOP OF A SENTENCE.** His lines queue: they go
+   into `TAPE.pending` and wait for a quiet moment. A toy coming to her
+   door to ask did not — `talkStart` said the question the instant it
+   was called. Measured on night two: his first words of the shift,
+   "You came back. I have been sitting here all day...", were on screen
+   for one tenth of a second before Cogsworth knocked over them. She
+   never read the line, and `tapeSay` marks a line said whether or not
+   anybody read it, so she never got it again either.
+
+3. **AND THE GREETING WAS CUT OFF HALF A SECOND AFTER IT WENT UP.** The
+   other end of the same trade. "Thank you." when she opens the door is
+   a line with a reading time; the line the toy came for replaced it at
+   0.55s regardless.
+
+4. **AND HE TALKED OVER A TOY STANDING IN HER DOORWAY.** `tapeQuiet`
+   excepts a toy that came to speak from the rule about not being
+   talked over — otherwise it would stand at that door all night
+   waiting for a gap its own presence was closing. That exception is
+   for the toy's sake and it was being spent on him. Cogsworth got his
+   question out, a tape started while he waited for an answer, and the
+   "Thank you." landed thirteen seconds after the thing it was thanking
+   her for.
+
+5. **THE ANSWER TO HER ONE REAL CHOICE REPEATED EVERY NIGHT.** She
+   keeps or burns one of his things at three every morning, and the
+   night after, the one it costs the most tells her what it made of
+   that. Once. It was guarded by tonight's record only, so from the
+   night after her first choice it arrived every night for the rest of
+   the week — and by night four there were three of them queued up
+   doing it.
+
+6. **AND SO DID THE FIVE FIRST-TIME LINES.** `firstDoor`, `firstCam`,
+   `firstWind`, `firstParcel`, `firstHeld` — five lines that explain a
+   thing she has just done for the first time. The note over the one
+   that fires `firstHeld` says "once, and never again — after that it
+   is simply how the shop works". "I told you. Let them." arrived on
+   the second, third and fourth nights of a measured playthrough, each
+   time as though it had never been said.
+
+7. **HIS VOICE CARRIED ON UNDERNEATH THE FOUR THINGS THAT STOP HIM.**
+   `tapeOff` took the words off the screen and never touched the
+   speakers, so a line that started two seconds before something
+   reached her finished its sentence about the kettle over the top of
+   the jumpscare. Same for the found page, the terms and the last hour
+   — the four moments in the chapter that most need silence.
+
+**AND THE TEST HOOKS LIED.** `dueNow` answers "what is due at this
+night and this hour, given what has been said tonight" — and several
+kinds of line are once in a playthrough rather than once in a night, so
+its answer depended on whatever the page had happened to play before
+the question was asked. It states the whole record now, and clears the
+air before it asks, because an oracle that waits for a voice to finish
+is answering a different question.
+
+**THE NEW SUITE** (`tools/scriptcheck.js`, 40 checks at three
+playthroughs). A run is a PLAYTHROUGH — nights one to five, in order,
+in a page of its own — because several of these promises are about the
+week and not about Tuesday. Seven rules per night: right night, up the
+clock, once a shift, nothing before the night it opens on, the exchange
+in full and in order, nothing longer than ninety-five seconds of
+silence, and no line cut off by the one after it. Two across the week:
+a line carrying a deadline arrives by it whether or not she earned it,
+and a line that promises to happen once does not happen twice. And
+three before a frame is drawn, because a line in this chapter is
+identified BY ITS WORDS everywhere — `TAPE.said`, the once-ever record
+and the voice manifest are all keyed on the sentence — so two entries
+with the same words in them are one line, and saying either silences
+the other. `DUMP=1`
+prints each night as a transcript, which is the thing to read before
+touching any of this: it is the chapter as she hears it.
+
+**Two things it had to learn to be honest about.** A run must READ THE
+CARDS — a find stops the shift and waits for a button, and a harness
+that never presses one stops dead at three in the morning and reports
+the remaining three hours as missing dialogue. And it must abort
+`voice/`: the takes play on the wall clock, the suite drives six hours
+of night in a couple of real seconds, and one eleven-second recording
+is otherwise still sounding three game-hours later, so everything that
+waits for the air to be free waits for ever. Both of those looked
+exactly like game faults first.
+
+**Green on**, every one of them re-run against the finished tree:
+scriptcheck 40 (three playthroughs), storycheck 114, endcheck 47,
+overcheck 42, midcheck 67, camcheck 13, geomcheck 12, saycheck 11,
+revealcheck 7, castcheck 9, linecheck 5, oncecheck 4, seamcheck 34,
+nightbeats green.
+
+**NEXT:** nights five and six have never had a transcript read end to
+end by a person — scriptcheck plays five now but night six is the last
+hour and belongs to `endcheck`. And the frame still draws 398–487 calls
+(`tools/_cost.js`); nobody has measured the chapter on his actual
+phone.
+
+### 2026-09-15c — he played the early nights again, and every fault he saw
+
+**Asked for:** the first nights have problems — cameras, dialogue,
+characters stuck on a wall. Fix every one, check repeatedly, do not stop
+until the script is logical and the game follows it with no mistakes.
+
+**Where it is:** every fault found is fixed, each with a suite that goes
+red without the fix. Four new suites, six new tools. One thing is NOT
+done and cannot be done from here: see the voice note at the bottom.
+
+**CHARACTERS STANDING IN THINGS** (`tools/geomcheck.js`, 12 checks).
+Every figure is placed by name and nothing had ever checked what is at
+that position.
+  - **The soldier stood inside the barrel organ**, every night, on the
+    show stage. Three plinths at x = -2, 0 and +2; the note above them
+    says the middle one is bare so the empty one reads; the anchor was
+    on the first one, sharing a coordinate with the organ to two
+    decimals.
+  - **The owl stood inside the repair stand** in its own home room —
+    again the exact coordinate the prop is placed at.
+  - Three more spots were a fifth of a metre into a wall, a display
+    case or whatever is on her desk.
+  - **Marabelle and Jax shared two spots in the party room and the same
+    doorway**, so on any night both were about they stood inside one
+    another. Their party routes are separated now; the doorway cannot
+    be (both are right-door performers) so whoever arrives second
+    stands beside the first. Twelve pairs of routes name the same spot
+    once the three parcels are counted; all twelve are staged and
+    measured.
+  - The fallback spot table gave the owl and the jester the same spot
+    while claiming "so two of them never share one". Four of them and
+    three spots is a table that cannot be written correctly, so it is
+    not a table any more — the room is asked which spot is free.
+
+**CAMERAS** (`tools/camcheck.js`, 13 checks). The camera system itself
+is sound — every number maps to one room, pressing it puts that room on
+the glass, nothing leaks. What was wrong was where people stood:
+  - **`hall/near` was cut off at the chest by its own camera** — the
+    soldier at his closest station, one step from her left door, at the
+    single moment in the night she most needs to look at him. His feet
+    projected 38 degrees off the axis of a lens with 31 to give.
+  - Four more spots were cropped the same way. All six moved, and the
+    check is now a real frustum test rather than an angle against the
+    field of view.
+
+**DIALOGUE** (`tools/saycheck.js` 11, `tools/oncecheck.js` 4,
+`tools/linecheck.js` 5).
+  - **The speaker's name was wiped one frame after every line any of
+    the four ever said.** The per-word highlighter walked every child of
+    the caption writing className, and the name chip is a child. Same
+    bug lit every word one position late and never lit the last word.
+    Anwar has no name chip, so his lines were correct — which is why
+    nobody caught it.
+  - **The first-time lines happened every night.** "You are still here.
+    He said you would be." — the first words spoken to her by anything
+    in that building — arrived at 12:16 on night two, night three and
+    night four. The guard was emptied at every midnight because it is
+    also what stops a line repeating inside one shift. There is a
+    record that survives the night now, cleared when the story is.
+  - **It never got to ask.** If the door was already open when one of
+    them came to the door — which is the normal state of a door —
+    `talkTick` resolved the whole trade on the frame after the ask went
+    up. What the player saw was one frame of the question and then
+    "Thank you.", thanking her for a door she had not decided anything
+    about. The question is asked before the answer counts.
+  - **The overheard exchanges flickered** clear/muffled/muffled/clear
+    as she swept cameras. Losing the picture is now a ratchet.
+  - Each of the four has two ways of asking and **only ever used the
+    first**, because the index came off a counter reset at midnight.
+  - The annunciator said "CAMERA ZERO 5" where everything else spells
+    its numbers out.
+
+**NEXT:** the fourteen overheard lines added yesterday and nothing else
+are still unrendered — `tools/linecheck.js` reports exactly which. Run
+"Anwar's voice" from the Actions tab on this branch, then castcheck,
+then merge to main.
+
+### 2026-09-15b — the first minute of a night, and the four of them talking to each other
+
+**Asked for:** pick up the unfinished night-shift work, finish it
+properly on the branch it was already on, and do not leave a mess.
+
+**Where it is:** the two items the entry below left open are DONE. The
+branch is green on storycheck, endcheck, seamcheck, cuecheck, castcheck,
+nightbeats, midcheck and overcheck.
+
+1. **DONE — the midnight beat, on all six nights.** It was in the tree
+   as `wip: the first minute of a night` and had never been watched. Six
+   nights, each one opening with the building doing tonight's damage to
+   itself in front of her before the clock starts. Four things were
+   wrong with it and all four were found by looking at it rather than at
+   the code:
+   - **The lines walked away from the machinery.** The beats ran on a
+     stopwatch, the annunciator reads one line at a time and holds each
+     for as long as it takes to say, so the two drifted apart and the
+     gap grew with every beat. Measured on night two: the monitor came
+     up on the workshop a second and a half before "SHIFT TWO OF SIX"
+     was read out. A beat now waits for the annunciator to be free and
+     then for its own gap, so the written rhythm survives and a sound
+     and the sentence about it land in the same frame.
+   - **Two nights announced a fault that had already happened.** The
+     hall was dark at t=0.1 on night three, five and a half seconds
+     before the scene said the lights went. On the night a fault first
+     appears the night now starts without it and the beat is what does
+     it; every night after that it is on from the start.
+   - **Night five could leave a door shut.** The self-test closed on a
+     beat and opened on a `setTimeout` guarded on the scene still
+     running — so if the beat ended first, she started the night with
+     the east door shut, the meter draining, and nothing saying why.
+     The opening is its own beat now.
+   - **The building announced the scene it was about to act out**
+     ("DOOR TWO: ACTUATOR DEGRADED", 1.6s before night five's own
+     opening line). A fault the beat demonstrates is not also announced
+     in advance.
+2. **DONE — `tools/midcheck.js`,** 67 checks. It holds, it ends, it
+   hands the desk back with the monitor down and no door shut, the
+   machinery and the sentence are in step, the fault it announces has
+   not already happened, and a custom night gets none of it. Verified
+   both ways: put the stopwatch or the early fault back and seven go red.
+3. **DONE — the four overheard talking to each other, nights one to
+   four** (`NS.overheard`). Everything they said on those nights was
+   said TO her; the only place they were ever people was the last hour
+   of night six. Now each of the first four nights carries one exchange
+   between two of them — about the shop, about him, about each other,
+   and not about her. She gets it clear if she is watching that room on
+   a live picture, and through the wall if she is not, so it rewards
+   sweeping without ever being missable.
+   Three real faults came out of building it, all of the same shape as
+   ones this chapter has paid for before — an unbounded wait on a flag
+   another system stops maintaining:
+   - a scene that waited on `TAPE.up` waited for ever once the tape tick
+     was switched off, which `revealCard` does at three in the morning;
+   - the same for a queued line of his that nothing was left to drain;
+   - and he talked over his own toys, because the yielding was checked
+     in a step that runs before the one that starts his next line.
+4. **DONE — `tools/overcheck.js`,** 42 checks, and
+   `tools/voicesheet.js` now harvests the fourteen new lines (270 in
+   total, up from 256). **`voice/RENDER` is bumped to 2026-09-15c and
+   the workflow has not been run yet** — see the note below; until it
+   is, those fourteen lines fall back to the browser's own engine.
+5. NEXT: run "Anwar's voice" from the Actions tab on this branch, then
+   `tools/castcheck.js` again, then merge to `main`.
+6. THEN: the frame still draws 398-487 calls (`tools/_cost.js`). Nobody
+   has measured the chapter on his actual phone; do that before taking a
+   knife to a working renderer.
+
+### 2026-09-19 — the last fault from that sweep, and everything on main
+
+**One more thing from playing it as a new player.** Night one armed two
+things that speak through the same annunciator: the first minute of the
+night (the building doing tonight's damage to itself) and the first card
+of orientation, which is read out loud the same way. Both were armed in
+`beginNight`, so from t=0 a new player got two voices at once for eight
+seconds, as the first thing the chapter ever says to them. The card is
+armed at the start now and shown when the cold open finishes -- both
+ways out of it, the scene ending and a suite cutting it short.
+
+**The whole tree, re-run in one sequential pass:** nightplay 221,
+storycheck 114, scriptcheck 40 (three playthroughs of each night),
+midcheck 67, endcheck 47, seamcheck 34 clean seams, cuecheck 5 over 27
+cues, castcheck 9.
+
+**Note for whoever is next:** two incarnations of this session were
+alive at once during the container restarts, and both pushed. If the
+working tree ever looks like it is missing work that is on the branch,
+`git fetch` and compare before assuming -- and never resolve a stash
+conflict with `git checkout --theirs .`, which in that state means the
+stash and quietly reverted 938 lines of somebody else's commits here.
+It was caught by running a suite that failed on a missing hook.
+
+**Pushed to `main`.**
+
+### 2026-09-15 — what a player actually hit, measured and fixed
+
+**Asked for:** he played the early nights and reported three things --
+the dialogue lags and stays on screen after he has stopped talking, or
+does not read at all; some of the toys stop doing anything; and the
+camera faces one way while there is something at the other door. Play it
+like somebody who has never seen it, sweep in detail, fix what is there.
+
+**The harness that found all of it:** `tools/newplayer.js`. Every other
+suite drives the shift with `pump`, which takes the frame loop, the
+renderer, the audio and the real clock out of it -- right for checking a
+rule, useless for finding these. This one sits in the chair, lets the
+page's own loop run in real time, moves a mouse the way a hand does, and
+writes down what it sees every tenth of a second.
+
+**Fixed, all of them measured before and after:**
+
+1. **His words stayed up ten seconds after he stopped.** The caption
+   timer was the whole estimated length of the line plus a tail, and it
+   only ran down WHILE NOTHING WAS SPEAKING -- so a take that really
+   played held it at full and the words served their sentence again in
+   silence. Night one, measured: fifteen seconds on screen, nine and a
+   half of them after the voice had gone. Now: while a voice sounds they
+   stay, a second after it stops they go, and a line with no take at all
+   gets its full reading time instead.
+2. **A toy could stop being anywhere.** Every phase of a door-talk waits
+   for the shop to be quiet, and quiet means nothing else at her door --
+   while `stepCast` skips anything that is talking. A second toy
+   arriving mid-sentence suspended the first one indefinitely: frozen in
+   her doorway for the rest of the night. Each phase has a deadline now,
+   with a backstop behind all three.
+3. **The camera faced the wrong wall, twice over.** The head-turn toward
+   the thing she let in lasted the whole conversation (ten seconds of
+   not being able to see the other door -- a defence she cannot use). It
+   is a glance now: 3.5s, released the instant anything else is at a
+   door or she touches a control. And the five keys sit across the
+   bottom of the same stage the mouse aims the view with, so reaching
+   for the left door button turned her away from the right one and left
+   her there. Hovering a control no longer aims anything.
+4. **One of them held her doorway for 25 seconds** in two talks with a
+   blink between them, because three of the four's lines come due at
+   once by the middle of night three. A minute of quiet between them.
+5. **Sixteen lines had never been recorded.** Every one of the four can
+   come to a door and ask to be let in -- and not one of those lines was
+   in `tools/voicesheet.js`, so the render had never seen them. An
+   unrendered line does not fail; it comes out of the browser's own
+   engine or out of nothing. That is what "sometimes it does not read"
+   was. All 256 lines are rendered now.
+6. **`tools/nightplay.js` is green again** -- 221 checks, the suite that
+   plays the chapter with real clicks. It had drifted a long way from
+   the chapter, because it lives on main and the chapter has had
+   sessions of work on a branch. Fixing it re-validated the how-it-works
+   card, night one's flow through the film and the terms, the finds, the
+   tutorial, the whole ending path and the unlocks.
+7. **`filmSeek` could hang on a playing take** -- it runs the film's
+   clock inside one turn of JavaScript, so the audio clock never moves
+   and a take that was playing stayed playing. It cuts the take per step
+   now.
+
+**Left open / next:**
+
+- The voice re-render triggered by `voice/RENDER` (2026-09-15b) has to
+  land before `tools/castcheck.js` passes: the render that gave the
+  asking a voice moved two pairs of characters within a semitone of each
+  other (the owl against her, the first one he ever sold against the
+  tape). The pitches are changed in `tools/voicesheet.js`; run castcheck
+  once the Action has committed the takes.
+- **A frame draws 398-487 calls** (measured, `tools/_cost.js`; the
+  simulation itself is 0.04-0.18ms a frame, so the cost is all drawing).
+  That is the one candidate left for "it lags" on a real device, and it
+  would mean merging static room geometry by material. Nobody has
+  measured the chapter on his actual phone yet; do that before taking a
+  knife to a working renderer.
+- The three items below this entry (the midnight beat, the first-night
+  script, pushing to main) are still open.
+
+### 2026-09-14 — more first-night scenes, a bigger score for night six
+
+**Asked for:** more scenes and more script in the first nights; more
+music, written to the emotional changes in night six; notes in the
+README every session; and a push to `main` if the session is cut off.
+
+**Where it is:** IN PROGRESS.
+
+1. **DONE — seven new cues and six new themes for the last hour.**
+   `siege` used to run for eighteen shots and carry a negotiation, a
+   power failure, the first of the four dying and its eulogy; `alone`
+   carried the arrival of the antagonist and a man putting a woman
+   under a floor. Now: **plea** (two voices taking turns — the only
+   conversation in the film where both sides want something),
+   **hollow** (the phrase stopped one note short of home, and nothing
+   finishes it), **waltz** (three against four, so the dance never
+   agrees with the attack under it), **march** (the tick on every other
+   step, in perfect time until it isn't), **older** (the shop's own
+   music box a third of a semitone flatter every pass), **vow** (the
+   vigil's fifths, and every fourth bar the third arrives), **ashes**
+   (the warm phrase in thirds, slower than it has ever been played,
+   four seconds before the detonation). 22 cue changes across the film,
+   up from 16. seamcheck is 34 seams, up from 26.
+2. **DONE — `tools/cuecheck.js`,** a new suite. seamcheck can only tell
+   you two cues do not clash; it passes a handover into silence. This
+   renders all 27 cues offline and measures level, peak and onsets, so
+   a silent cue, a clipping cue and a cue that shouts over the film are
+   all failures. It immediately found `siege` peaking at 1.007 — the
+   loudest cue in the chapter was clipping, by a hair, for four
+   minutes. Trimmed to 0.922.
+3. NEXT: a midnight beat for every night — the building does the thing
+   that changed about tonight, in front of her, before the clock
+   starts.
+4. THEN: more script in nights one to four — the four overheard talking
+   to each other (which until now only happened on night five), and
+   more lines that answer something she did.
+5. THEN: storycheck/endcheck/seamcheck/cuecheck green, push, and run
+   the voice workflow for any new spoken line.
+
+**Anything new that is spoken needs the voice render.** Lines are silent
+until `.github/workflows/voice.yml` ("Anwar's voice") is run from the
+Actions tab on the branch the lines are on; it renders every line
+`tools/voicesheet.js --json` can see and commits the audio and a fresh
+`voice/manifest.json`. Nothing fails without it — the chapter just falls
+back to the browser's own speech engine and the printed text.
+
+**Branch:** work happens on `claude/website-perf-zoom-fixes-3lqveu`;
+`main` is what Vercel deploys.
+
 ## Files
 
 ```

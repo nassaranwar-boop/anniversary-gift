@@ -1,6 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+     <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-2HEZ2747S8"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-2HEZ2747S8');
+</script>
 <meta charset="UTF-8" />
 <!-- No maximum-scale and no user-scalable=no: those forced a scale the
      page never asked for and blocked pinch entirely. Double-tap zoom is
@@ -65,14 +74,14 @@
 <title>For My Love</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="style.css?v=322">
+<link rel="stylesheet" href="style.css?v=323">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Silkscreen:wght@400;700&family=VT323&family=Rye&family=Pixelify+Sans:wght@400;500;600&family=Press+Start+2P&family=Playfair+Display:ital,wght@0,600;0,700;1,500;1,600&family=Fredoka:wght@500;600;700&family=Poppins:wght@400;500;600;700&family=Caveat:wght@600;700&family=Great+Vibes&display=swap" rel="stylesheet">
 <!-- defer, not a plain tag. three.js is the biggest single file here and
      in the head it blocked the parser for its whole download, so nothing
      was painted until it had arrived. defer fetches it just as early and
      runs it after the document is parsed — and deferred scripts still run
      in the order they are written, so book-scene.js below still finds it. -->
-<script defer src="vendor/three.bundle.js?v=322"></script>
+<script defer src="vendor/three.bundle.js?v=323"></script>
 
 </head>
 <body>
@@ -544,6 +553,46 @@
           </g>
         </svg>
 
+        <!-- 2b. THE SAME FRAME, FOR THE SHEET LYING DOWN.
+
+             The ornament above lives in a 400x700 viewBox and is drawn
+             with the sheet, so on a card of another shape it is cropped
+             rather than reshaped. Sideways the card is 700x400 and the
+             gold is drawn here instead -- the same two rules, the same
+             corner sprays and the same band, out of the same <defs> as
+             the upright one, so there is one ornament in this file and
+             two arrangements of it. Hidden unless the phone is on its
+             side. -->
+        <svg class="gate-frame gate-frame-wide" viewBox="0 0 700 400" aria-hidden="true">
+          <rect class="gate-rule-o" x="26" y="24" width="648" height="352" rx="6"/>
+          <rect class="gate-rule-i" x="33" y="31" width="634" height="338" rx="4"/>
+          <!-- TWO SPRAYS, NOT FOUR, AND ONLY ON THE SIDE WITH THE
+               WRITING ON IT.
+
+               They are drawn at about 100 units across -- a quarter of
+               the upright sheet's width, and a third of this one's
+               HEIGHT -- so at full size they climbed into the seal. At
+               a bit over half size they sit in the corners properly;
+               but the right-hand pair had nowhere to sit at all, since
+               the keypad fills that half of the sheet to the frame and
+               a spray behind a coin is a smudge. So the letter side is
+               decorated and the keypad side is plain paper, which is
+               what those two halves are. -->
+          <g class="gate-flour">
+            <use href="#gFlour" transform="translate(38,36) scale(.58)"/>
+            <use href="#gFlour" transform="translate(38,364) scale(.58,-.58)"/>
+          </g>
+          <!-- and the band runs outward from behind the seal, which
+               sideways is over the middle of the LEFT half rather than
+               the middle of the sheet. Only the top pair: the bottom of
+               that half is the Unlock plate, and a band behind a plate
+               is a band nobody sees. -->
+          <g class="gate-flour gate-flour-band">
+            <use href="#gBand" transform="translate(204,52) scale(.82)"/>
+            <use href="#gBand" transform="translate(204,52) scale(-.82,.82)"/>
+          </g>
+        </svg>
+
         <!-- 3. what she uses -->
         <div class="gate-body">
 
@@ -727,12 +776,6 @@
           <span class="hub-name">Ouissy at the Apocalypse</span>
           <span class="hub-desc">The world ends. You come and find me anyway</span>
         </button>
-        <button class="hub-card" id="hub-card-nightshift" data-chapter="nightshift">
-          <span class="hub-badge" id="hub-badge-nightshift"><svg class="gl gl-tick" aria-hidden="true"><use href="#ic-px-tick"/></svg></span>
-          <span class="hub-art hub-art-nightshift" aria-hidden="true"><svg class="hub-scene" viewBox="0 0 96 32" preserveAspectRatio="xMidYMid slice" aria-hidden="true" shape-rendering="crispEdges"><rect x="0" y="0" width="47" height="3" fill="#0e0b09"/><rect x="47" y="0" width="1" height="2" fill="#3a2f22"/><rect x="48" y="0" width="48" height="3" fill="#0e0b09"/><rect x="47" y="2" width="1" height="1" fill="#ffcf7a"/><rect x="0" y="3" width="46" height="1" fill="#0e0b09"/><rect x="46" y="3" width="1" height="1" fill="#ffcf7a"/><rect x="47" y="3" width="1" height="1" fill="#fff0c4"/><rect x="48" y="3" width="1" height="1" fill="#ffcf7a"/><rect x="49" y="3" width="47" height="1" fill="#0e0b09"/><rect x="0" y="4" width="45" height="1" fill="#0e0b09"/><rect x="45" y="4" width="5" height="1" fill="#ffcf7a"/><rect x="50" y="4" width="46" height="1" fill="#0e0b09"/><rect x="0" y="5" width="22" height="1" fill="#241c16"/><rect x="22" y="5" width="10" height="1" fill="#2a211a"/><rect x="32" y="5" width="6" height="1" fill="#33281d"/><rect x="38" y="5" width="8" height="1" fill="#3e3022"/><rect x="46" y="5" width="3" height="1" fill="#ffcf7a"/><rect x="49" y="5" width="8" height="1" fill="#3e3022"/><rect x="57" y="5" width="6" height="1" fill="#33281d"/><rect x="63" y="5" width="10" height="1" fill="#2a211a"/><rect x="73" y="5" width="23" height="1" fill="#241c16"/><rect x="0" y="6" width="1" height="18" fill="#241c16"/><rect x="1" y="6" width="16" height="2" fill="#332619"/><rect x="17" y="6" width="1" height="1" fill="#241c16"/><rect x="18" y="6" width="11" height="1" fill="#2a211a"/><rect x="29" y="6" width="7" height="1" fill="#33281d"/><rect x="36" y="6" width="11" height="1" fill="#3e3022"/><rect x="47" y="6" width="1" height="1" fill="#ffcf7a"/><rect x="48" y="6" width="11" height="1" fill="#3e3022"/><rect x="59" y="6" width="7" height="1" fill="#33281d"/><rect x="66" y="6" width="11" height="1" fill="#2a211a"/><rect x="77" y="6" width="2" height="1" fill="#241c16"/><rect x="79" y="6" width="16" height="2" fill="#332619"/><rect x="95" y="6" width="1" height="18" fill="#241c16"/><rect x="17" y="7" width="10" height="1" fill="#2a211a"/><rect x="27" y="7" width="8" height="1" fill="#33281d"/><rect x="35" y="7" width="25" height="1" fill="#3e3022"/><rect x="60" y="7" width="8" height="1" fill="#33281d"/><rect x="68" y="7" width="11" height="1" fill="#2a211a"/><rect x="1" y="8" width="2" height="20" fill="#332619"/><rect x="3" y="8" width="12" height="2" fill="#5e4a30"/><rect x="15" y="8" width="2" height="20" fill="#332619"/><rect x="17" y="8" width="4" height="4" fill="#2a211a"/><rect x="21" y="8" width="4" height="1" fill="#0e0b09"/><rect x="25" y="8" width="3" height="4" fill="#33281d"/><rect x="28" y="8" width="4" height="1" fill="#0e0b09"/><rect x="32" y="8" width="3" height="1" fill="#33281d"/><rect x="35" y="8" width="4" height="1" fill="#0e0b09"/><rect x="39" y="8" width="19" height="4" fill="#3e3022"/><rect x="58" y="8" width="4" height="1" fill="#0e0b09"/><rect x="62" y="8" width="3" height="4" fill="#33281d"/><rect x="65" y="8" width="4" height="1" fill="#0e0b09"/><rect x="69" y="8" width="1" height="1" fill="#33281d"/><rect x="70" y="8" width="2" height="1" fill="#2a211a"/><rect x="72" y="8" width="4" height="1" fill="#0e0b09"/><rect x="76" y="8" width="3" height="4" fill="#2a211a"/><rect x="79" y="8" width="2" height="20" fill="#332619"/><rect x="81" y="8" width="12" height="1" fill="#3f4650"/><rect x="93" y="8" width="2" height="20" fill="#332619"/><rect x="21" y="9" width="4" height="1" fill="#c8564a"/><rect x="28" y="9" width="4" height="1" fill="#e6b7cd"/><rect x="32" y="9" width="2" height="1" fill="#33281d"/><rect x="34" y="9" width="1" height="1" fill="#3e3022"/><rect x="35" y="9" width="4" height="1" fill="#8ea9c6"/><rect x="58" y="9" width="4" height="1" fill="#b46fd0"/><rect x="65" y="9" width="4" height="1" fill="#c8a24a"/><rect x="69" y="9" width="2" height="1" fill="#33281d"/><rect x="71" y="9" width="1" height="1" fill="#2a211a"/><rect x="72" y="9" width="4" height="1" fill="#7f9a5e"/><rect x="81" y="9" width="12" height="2" fill="#2a2f33"/><rect x="3" y="10" width="12" height="1" fill="#4a3a26"/><rect x="21" y="10" width="1" height="1" fill="#c8564a"/><rect x="22" y="10" width="1" height="1" fill="#0e0b09"/><rect x="23" y="10" width="2" height="1" fill="#c8564a"/><rect x="28" y="10" width="1" height="1" fill="#e6b7cd"/><rect x="29" y="10" width="1" height="1" fill="#0e0b09"/><rect x="30" y="10" width="2" height="1" fill="#e6b7cd"/><rect x="32" y="10" width="3" height="2" fill="#33281d"/><rect x="35" y="10" width="1" height="1" fill="#8ea9c6"/><rect x="36" y="10" width="1" height="1" fill="#0e0b09"/><rect x="37" y="10" width="2" height="1" fill="#8ea9c6"/><rect x="58" y="10" width="1" height="1" fill="#b46fd0"/><rect x="59" y="10" width="1" height="1" fill="#0e0b09"/><rect x="60" y="10" width="2" height="1" fill="#b46fd0"/><rect x="65" y="10" width="1" height="1" fill="#c8a24a"/><rect x="66" y="10" width="1" height="1" fill="#0e0b09"/><rect x="67" y="10" width="2" height="1" fill="#c8a24a"/><rect x="69" y="10" width="3" height="2" fill="#33281d"/><rect x="72" y="10" width="1" height="1" fill="#7f9a5e"/><rect x="73" y="10" width="1" height="1" fill="#0e0b09"/><rect x="74" y="10" width="2" height="1" fill="#7f9a5e"/><rect x="3" y="11" width="6" height="1" fill="#4a3a26"/><rect x="9" y="11" width="2" height="1" fill="#c8564a"/><rect x="11" y="11" width="4" height="1" fill="#4a3a26"/><rect x="21" y="11" width="4" height="1" fill="#c8564a"/><rect x="28" y="11" width="4" height="1" fill="#e6b7cd"/><rect x="35" y="11" width="4" height="1" fill="#8ea9c6"/><rect x="58" y="11" width="4" height="1" fill="#b46fd0"/><rect x="65" y="11" width="4" height="1" fill="#c8a24a"/><rect x="72" y="11" width="4" height="1" fill="#7f9a5e"/><rect x="81" y="11" width="12" height="1" fill="#3f4650"/><rect x="3" y="12" width="4" height="6" fill="#4a3a26"/><rect x="7" y="12" width="5" height="6" fill="#0f0b08"/><rect x="12" y="12" width="3" height="6" fill="#4a3a26"/><rect x="17" y="12" width="1" height="1" fill="#2a211a"/><rect x="18" y="12" width="32" height="1" fill="#3a2c1f"/><rect x="50" y="12" width="20" height="2" fill="#161c1e"/><rect x="70" y="12" width="8" height="1" fill="#3a2c1f"/><rect x="78" y="12" width="1" height="1" fill="#2a211a"/><rect x="81" y="12" width="12" height="2" fill="#2a2f33"/><rect x="17" y="13" width="4" height="1" fill="#2a211a"/><rect x="21" y="13" width="17" height="1" fill="#33281d"/><rect x="38" y="13" width="12" height="1" fill="#3e3022"/><rect x="70" y="13" width="4" height="1" fill="#33281d"/><rect x="74" y="13" width="5" height="1" fill="#2a211a"/><rect x="17" y="14" width="5" height="2" fill="#2a211a"/><rect x="22" y="14" width="18" height="1" fill="#33281d"/><rect x="40" y="14" width="10" height="1" fill="#3e3022"/><rect x="50" y="14" width="2" height="9" fill="#161c1e"/><rect x="52" y="14" width="16" height="2" fill="#4a9a8a"/><rect x="68" y="14" width="2" height="9" fill="#161c1e"/><rect x="70" y="14" width="3" height="2" fill="#33281d"/><rect x="73" y="14" width="6" height="2" fill="#2a211a"/><rect x="81" y="14" width="12" height="1" fill="#3f4650"/><rect x="22" y="15" width="12" height="1" fill="#33281d"/><rect x="34" y="15" width="8" height="1" fill="#3e2718"/><rect x="42" y="15" width="5" height="1" fill="#33281d"/><rect x="47" y="15" width="1" height="1" fill="#3e3022"/><rect x="48" y="15" width="2" height="1" fill="#33281d"/><rect x="81" y="15" width="12" height="2" fill="#2a2f33"/><rect x="17" y="16" width="6" height="1" fill="#2a211a"/><rect x="23" y="16" width="11" height="1" fill="#33281d"/><rect x="34" y="16" width="1" height="1" fill="#3e2718"/><rect x="35" y="16" width="1" height="1" fill="#7a5c36"/><rect x="36" y="16" width="6" height="1" fill="#3e2718"/><rect x="42" y="16" width="8" height="2" fill="#33281d"/><rect x="52" y="16" width="16" height="1" fill="#2f6f66"/><rect x="70" y="16" width="2" height="1" fill="#33281d"/><rect x="72" y="16" width="7" height="1" fill="#2a211a"/><rect x="17" y="17" width="7" height="1" fill="#2a211a"/><rect x="24" y="17" width="10" height="1" fill="#33281d"/><rect x="34" y="17" width="8" height="1" fill="#3e2718"/><rect x="52" y="17" width="1" height="1" fill="#2f6f66"/><rect x="53" y="17" width="14" height="1" fill="#3f8478"/><rect x="67" y="17" width="1" height="1" fill="#2f6f66"/><rect x="70" y="17" width="1" height="1" fill="#33281d"/><rect x="71" y="17" width="8" height="1" fill="#2a211a"/><rect x="81" y="17" width="12" height="1" fill="#3f4650"/><rect x="3" y="18" width="3" height="1" fill="#4a3a26"/><rect x="6" y="18" width="7" height="1" fill="#0f0b08"/><rect x="13" y="18" width="2" height="1" fill="#4a3a26"/><rect x="17" y="18" width="8" height="1" fill="#2a211a"/><rect x="25" y="18" width="9" height="1" fill="#33281d"/><rect x="34" y="18" width="1" height="6" fill="#7a5c36"/><rect x="35" y="18" width="6" height="1" fill="#e8c9a8"/><rect x="41" y="18" width="2" height="4" fill="#3e2718"/><rect x="43" y="18" width="7" height="5" fill="#33281d"/><rect x="52" y="18" width="2" height="1" fill="#2f6f66"/><rect x="54" y="18" width="4" height="1" fill="#7fe0c8"/><rect x="58" y="18" width="10" height="1" fill="#2f6f66"/><rect x="70" y="18" width="9" height="6" fill="#2a211a"/><rect x="81" y="18" width="12" height="2" fill="#2a2f33"/><rect x="3" y="19" width="4" height="4" fill="#4a3a26"/><rect x="7" y="19" width="5" height="1" fill="#0f0b08"/><rect x="12" y="19" width="3" height="4" fill="#4a3a26"/><rect x="17" y="19" width="10" height="1" fill="#2a211a"/><rect x="27" y="19" width="7" height="1" fill="#33281d"/><rect x="35" y="19" width="1" height="1" fill="#e8c9a8"/><rect x="36" y="19" width="1" height="1" fill="#2a1a22"/><rect x="37" y="19" width="1" height="1" fill="#e8c9a8"/><rect x="38" y="19" width="1" height="1" fill="#2a1a22"/><rect x="39" y="19" width="2" height="1" fill="#e8c9a8"/><rect x="52" y="19" width="1" height="1" fill="#2f6f66"/><rect x="53" y="19" width="1" height="1" fill="#3f8478"/><rect x="54" y="19" width="1" height="1" fill="#7fe0c8"/><rect x="55" y="19" width="1" height="1" fill="#173a34"/><rect x="56" y="19" width="1" height="1" fill="#7fe0c8"/><rect x="57" y="19" width="1" height="1" fill="#173a34"/><rect x="58" y="19" width="9" height="1" fill="#3f8478"/><rect x="67" y="19" width="1" height="1" fill="#2f6f66"/><rect x="7" y="20" width="1" height="1" fill="#0f0b08"/><rect x="8" y="20" width="1" height="1" fill="#ffb347"/><rect x="9" y="20" width="1" height="1" fill="#0f0b08"/><rect x="10" y="20" width="1" height="1" fill="#ffb347"/><rect x="11" y="20" width="1" height="1" fill="#0f0b08"/><rect x="17" y="20" width="12" height="1" fill="#2a211a"/><rect x="29" y="20" width="5" height="1" fill="#33281d"/><rect x="35" y="20" width="6" height="1" fill="#e8c9a8"/><rect x="52" y="20" width="2" height="1" fill="#2f6f66"/><rect x="54" y="20" width="4" height="2" fill="#7fe0c8"/><rect x="58" y="20" width="10" height="1" fill="#2f6f66"/><rect x="81" y="20" width="12" height="1" fill="#3f4650"/><rect x="7" y="21" width="5" height="2" fill="#0f0b08"/><rect x="17" y="21" width="15" height="1" fill="#2a211a"/><rect x="32" y="21" width="2" height="1" fill="#33281d"/><rect x="35" y="21" width="2" height="1" fill="#e8c9a8"/><rect x="37" y="21" width="1" height="1" fill="#e88fae"/><rect x="38" y="21" width="3" height="1" fill="#e8c9a8"/><rect x="52" y="21" width="1" height="1" fill="#2f6f66"/><rect x="53" y="21" width="1" height="1" fill="#3f8478"/><rect x="58" y="21" width="9" height="1" fill="#3f8478"/><rect x="67" y="21" width="1" height="1" fill="#2f6f66"/><rect x="81" y="21" width="12" height="2" fill="#2a2f33"/><rect x="17" y="22" width="17" height="1" fill="#2a211a"/><rect x="35" y="22" width="7" height="1" fill="#e88fae"/><rect x="42" y="22" width="1" height="2" fill="#3e2718"/><rect x="52" y="22" width="16" height="1" fill="#2f6f66"/><rect x="3" y="23" width="1" height="5" fill="#4a3a26"/><rect x="4" y="23" width="11" height="2" fill="#0f0b08"/><rect x="17" y="23" width="15" height="1" fill="#2a211a"/><rect x="32" y="23" width="2" height="2" fill="#e8c9a8"/><rect x="35" y="23" width="7" height="1" fill="#c05f86"/><rect x="43" y="23" width="4" height="1" fill="#2a211a"/><rect x="47" y="23" width="1" height="1" fill="#33281d"/><rect x="48" y="23" width="2" height="1" fill="#2a211a"/><rect x="50" y="23" width="20" height="2" fill="#161c1e"/><rect x="81" y="23" width="12" height="1" fill="#3f4650"/><rect x="0" y="24" width="1" height="3" fill="#2e241b"/><rect x="17" y="24" width="15" height="1" fill="#2e241b"/><rect x="34" y="24" width="7" height="1" fill="#c05f86"/><rect x="41" y="24" width="2" height="1" fill="#3e2718"/><rect x="43" y="24" width="7" height="1" fill="#2e241b"/><rect x="70" y="24" width="9" height="1" fill="#2e241b"/><rect x="81" y="24" width="2" height="3" fill="#c8564a"/><rect x="83" y="24" width="10" height="2" fill="#2a2f33"/><rect x="95" y="24" width="1" height="3" fill="#2e241b"/><rect x="4" y="25" width="5" height="2" fill="#0f0b08"/><rect x="9" y="25" width="1" height="2" fill="#c8564a"/><rect x="10" y="25" width="5" height="2" fill="#0f0b08"/><rect x="17" y="25" width="7" height="2" fill="#2e241b"/><rect x="24" y="25" width="11" height="2" fill="#4a382a"/><rect x="35" y="25" width="6" height="2" fill="#c05f86"/><rect x="41" y="25" width="1" height="1" fill="#3e2718"/><rect x="42" y="25" width="16" height="1" fill="#3f6a62"/><rect x="58" y="25" width="4" height="2" fill="#161c1e"/><rect x="62" y="25" width="12" height="2" fill="#4a382a"/><rect x="74" y="25" width="5" height="2" fill="#2e241b"/><rect x="41" y="26" width="5" height="1" fill="#4a382a"/><rect x="46" y="26" width="12" height="1" fill="#33544e"/><rect x="83" y="26" width="10" height="1" fill="#171b1e"/><rect x="0" y="27" width="1" height="1" fill="#15100c"/><rect x="4" y="27" width="11" height="1" fill="#0f0b08"/><rect x="17" y="27" width="7" height="2" fill="#2c2118"/><rect x="24" y="27" width="11" height="1" fill="#3a2c20"/><rect x="35" y="27" width="6" height="1" fill="#2a1a22"/><rect x="41" y="27" width="33" height="1" fill="#3a2c20"/><rect x="74" y="27" width="5" height="1" fill="#15100c"/><rect x="81" y="27" width="12" height="1" fill="#171b1e"/><rect x="95" y="27" width="1" height="1" fill="#15100c"/><rect x="0" y="28" width="17" height="2" fill="#15100c"/><rect x="24" y="28" width="50" height="1" fill="#2e2219"/><rect x="74" y="28" width="22" height="4" fill="#15100c"/><rect x="17" y="29" width="7" height="1" fill="#241b13"/><rect x="24" y="29" width="3" height="2" fill="#2e2219"/><rect x="27" y="29" width="1" height="2" fill="#120e0b"/><rect x="28" y="29" width="9" height="1" fill="#ffe4ad"/><rect x="37" y="29" width="6" height="2" fill="#120e0b"/><rect x="43" y="29" width="31" height="2" fill="#2e2219"/><rect x="0" y="30" width="24" height="2" fill="#15100c"/><rect x="28" y="30" width="9" height="1" fill="#ffcf5a"/><rect x="24" y="31" width="50" height="1" fill="#2e2219"/></svg></span>
-          <span class="hub-name">Ouissy&rsquo;s Night Shift</span>
-          <span class="hub-desc">Six hours, two doors and one charge. Don't blink</span>
-        </button>
         <button class="hub-card" id="hub-card-race" data-chapter="race">
           <span class="hub-badge" id="hub-badge-race"><svg class="gl gl-tick" aria-hidden="true"><use href="#ic-px-tick"/></svg></span>
           <span class="hub-art hub-art-race" aria-hidden="true"><svg class="hub-scene" viewBox="0 0 96 32" preserveAspectRatio="xMidYMid slice" aria-hidden="true" shape-rendering="crispEdges"><rect x="0" y="0" width="96" height="4" fill="#f2836a"/><rect x="0" y="4" width="96" height="3" fill="#ff9d72"/><rect x="0" y="7" width="72" height="1" fill="#ff9d72"/><rect x="72" y="7" width="1" height="1" fill="#fff2c6"/><rect x="73" y="7" width="23" height="1" fill="#ff9d72"/><rect x="0" y="8" width="69" height="1" fill="#ffc48c"/><rect x="69" y="8" width="7" height="1" fill="#fff2c6"/><rect x="76" y="8" width="20" height="1" fill="#ffc48c"/><rect x="0" y="9" width="68" height="2" fill="#ffc48c"/><rect x="68" y="9" width="9" height="3" fill="#fff2c6"/><rect x="77" y="9" width="19" height="2" fill="#ffc48c"/><rect x="0" y="11" width="10" height="1" fill="#ffc48c"/><rect x="10" y="11" width="1" height="1" fill="#3f7d5c"/><rect x="11" y="11" width="19" height="1" fill="#ffc48c"/><rect x="30" y="11" width="1" height="1" fill="#3f7d5c"/><rect x="31" y="11" width="37" height="1" fill="#ffc48c"/><rect x="77" y="11" width="11" height="1" fill="#ffc48c"/><rect x="88" y="11" width="1" height="1" fill="#3f7d5c"/><rect x="89" y="11" width="7" height="1" fill="#ffc48c"/><rect x="0" y="12" width="7" height="1" fill="#ffdcae"/><rect x="7" y="12" width="7" height="1" fill="#3f7d5c"/><rect x="14" y="12" width="14" height="1" fill="#ffdcae"/><rect x="28" y="12" width="5" height="1" fill="#3f7d5c"/><rect x="33" y="12" width="34" height="1" fill="#ffdcae"/><rect x="67" y="12" width="11" height="1" fill="#fff2c6"/><rect x="78" y="12" width="7" height="1" fill="#ffdcae"/><rect x="85" y="12" width="7" height="1" fill="#3f7d5c"/><rect x="92" y="12" width="4" height="1" fill="#ffdcae"/><rect x="0" y="13" width="6" height="1" fill="#ffdcae"/><rect x="6" y="13" width="9" height="1" fill="#3f7d5c"/><rect x="15" y="13" width="12" height="1" fill="#ffdcae"/><rect x="27" y="13" width="7" height="1" fill="#3f7d5c"/><rect x="34" y="13" width="34" height="1" fill="#ffdcae"/><rect x="68" y="13" width="9" height="1" fill="#fff2c6"/><rect x="77" y="13" width="7" height="1" fill="#ffdcae"/><rect x="84" y="13" width="9" height="1" fill="#3f7d5c"/><rect x="93" y="13" width="3" height="1" fill="#ffdcae"/><rect x="0" y="14" width="5" height="1" fill="#4f8f6a"/><rect x="5" y="14" width="11" height="1" fill="#3f7d5c"/><rect x="16" y="14" width="10" height="1" fill="#4f8f6a"/><rect x="26" y="14" width="9" height="1" fill="#3f7d5c"/><rect x="35" y="14" width="48" height="1" fill="#4f8f6a"/><rect x="83" y="14" width="11" height="1" fill="#3f7d5c"/><rect x="94" y="14" width="2" height="1" fill="#4f8f6a"/><rect x="0" y="15" width="6" height="1" fill="#4f8f6a"/><rect x="6" y="15" width="9" height="1" fill="#3f7d5c"/><rect x="15" y="15" width="12" height="1" fill="#4f8f6a"/><rect x="27" y="15" width="7" height="1" fill="#3f7d5c"/><rect x="34" y="15" width="50" height="1" fill="#4f8f6a"/><rect x="84" y="15" width="9" height="1" fill="#3f7d5c"/><rect x="93" y="15" width="3" height="1" fill="#4f8f6a"/><rect x="0" y="16" width="7" height="1" fill="#4f8f6a"/><rect x="7" y="16" width="7" height="1" fill="#3f7d5c"/><rect x="14" y="16" width="14" height="1" fill="#4f8f6a"/><rect x="28" y="16" width="5" height="1" fill="#3f7d5c"/><rect x="33" y="16" width="52" height="1" fill="#4f8f6a"/><rect x="85" y="16" width="7" height="1" fill="#3f7d5c"/><rect x="92" y="16" width="4" height="1" fill="#4f8f6a"/><rect x="0" y="17" width="44" height="1" fill="#5f9e57"/><rect x="44" y="17" width="1" height="1" fill="#e8556b"/><rect x="45" y="17" width="6" height="1" fill="#8e8172"/><rect x="51" y="17" width="1" height="1" fill="#e8556b"/><rect x="52" y="17" width="44" height="1" fill="#5f9e57"/><rect x="0" y="18" width="42" height="1" fill="#5f9e57"/><rect x="42" y="18" width="1" height="1" fill="#e8556b"/><rect x="43" y="18" width="4" height="1" fill="#8e8172"/><rect x="47" y="18" width="2" height="2" fill="#fff6e2"/><rect x="49" y="18" width="4" height="1" fill="#8e8172"/><rect x="53" y="18" width="1" height="1" fill="#e8556b"/><rect x="54" y="18" width="42" height="1" fill="#5f9e57"/><rect x="0" y="19" width="39" height="1" fill="#5f9e57"/><rect x="39" y="19" width="1" height="1" fill="#e8556b"/><rect x="40" y="19" width="7" height="1" fill="#8e8172"/><rect x="49" y="19" width="7" height="1" fill="#8e8172"/><rect x="56" y="19" width="1" height="1" fill="#e8556b"/><rect x="57" y="19" width="39" height="1" fill="#5f9e57"/><rect x="0" y="20" width="32" height="2" fill="#5f9e57"/><rect x="32" y="20" width="8" height="2" fill="#6b4326"/><rect x="40" y="20" width="19" height="1" fill="#8e8172"/><rect x="59" y="20" width="1" height="1" fill="#e8556b"/><rect x="60" y="20" width="36" height="1" fill="#5f9e57"/><rect x="40" y="21" width="17" height="1" fill="#8e8172"/><rect x="57" y="21" width="6" height="2" fill="#33241c"/><rect x="63" y="21" width="33" height="1" fill="#5f9e57"/><rect x="0" y="22" width="30" height="1" fill="#4f8c49"/><rect x="30" y="22" width="2" height="1" fill="#e8556b"/><rect x="32" y="22" width="8" height="3" fill="#f6d8bc"/><rect x="40" y="22" width="6" height="2" fill="#8e8172"/><rect x="46" y="22" width="4" height="3" fill="#fff6e2"/><rect x="50" y="22" width="7" height="3" fill="#8e8172"/><rect x="63" y="22" width="1" height="1" fill="#8e8172"/><rect x="64" y="22" width="2" height="1" fill="#e8556b"/><rect x="66" y="22" width="30" height="1" fill="#4f8c49"/><rect x="0" y="23" width="27" height="1" fill="#4f8c49"/><rect x="27" y="23" width="2" height="1" fill="#e8556b"/><rect x="29" y="23" width="3" height="1" fill="#8e8172"/><rect x="57" y="23" width="6" height="3" fill="#d8ab86"/><rect x="63" y="23" width="4" height="1" fill="#8e8172"/><rect x="67" y="23" width="2" height="1" fill="#e8556b"/><rect x="69" y="23" width="27" height="1" fill="#4f8c49"/><rect x="0" y="24" width="24" height="1" fill="#4f8c49"/><rect x="24" y="24" width="2" height="1" fill="#e8556b"/><rect x="26" y="24" width="4" height="1" fill="#8e8172"/><rect x="30" y="24" width="2" height="1" fill="#f27ba4"/><rect x="40" y="24" width="2" height="1" fill="#f27ba4"/><rect x="42" y="24" width="4" height="1" fill="#8e8172"/><rect x="63" y="24" width="7" height="1" fill="#8e8172"/><rect x="70" y="24" width="2" height="1" fill="#e8556b"/><rect x="72" y="24" width="24" height="1" fill="#4f8c49"/><rect x="0" y="25" width="22" height="1" fill="#4f8c49"/><rect x="22" y="25" width="2" height="1" fill="#e8556b"/><rect x="24" y="25" width="6" height="1" fill="#8e8172"/><rect x="30" y="25" width="12" height="4" fill="#f27ba4"/><rect x="42" y="25" width="13" height="2" fill="#8e8172"/><rect x="55" y="25" width="2" height="1" fill="#5fb0d6"/><rect x="63" y="25" width="2" height="1" fill="#5fb0d6"/><rect x="65" y="25" width="7" height="1" fill="#8e8172"/><rect x="72" y="25" width="2" height="1" fill="#e8556b"/><rect x="74" y="25" width="22" height="1" fill="#4f8c49"/><rect x="0" y="26" width="19" height="1" fill="#4f8c49"/><rect x="19" y="26" width="2" height="1" fill="#e8556b"/><rect x="21" y="26" width="9" height="1" fill="#8e8172"/><rect x="55" y="26" width="10" height="3" fill="#5fb0d6"/><rect x="65" y="26" width="10" height="1" fill="#8e8172"/><rect x="75" y="26" width="2" height="1" fill="#e8556b"/><rect x="77" y="26" width="19" height="1" fill="#4f8c49"/><rect x="0" y="27" width="16" height="1" fill="#4f8c49"/><rect x="16" y="27" width="3" height="1" fill="#e8556b"/><rect x="19" y="27" width="11" height="1" fill="#8e8172"/><rect x="42" y="27" width="3" height="2" fill="#8e8172"/><rect x="45" y="27" width="6" height="4" fill="#fff6e2"/><rect x="51" y="27" width="4" height="2" fill="#8e8172"/><rect x="65" y="27" width="12" height="1" fill="#8e8172"/><rect x="77" y="27" width="3" height="1" fill="#e8556b"/><rect x="80" y="27" width="16" height="1" fill="#4f8c49"/><rect x="0" y="28" width="13" height="1" fill="#4f8c49"/><rect x="13" y="28" width="3" height="1" fill="#e8556b"/><rect x="16" y="28" width="14" height="1" fill="#8e8172"/><rect x="65" y="28" width="15" height="1" fill="#8e8172"/><rect x="80" y="28" width="3" height="1" fill="#e8556b"/><rect x="83" y="28" width="13" height="1" fill="#4f8c49"/><rect x="0" y="29" width="10" height="1" fill="#4f8c49"/><rect x="10" y="29" width="3" height="1" fill="#e8556b"/><rect x="13" y="29" width="16" height="1" fill="#8e8172"/><rect x="29" y="29" width="4" height="3" fill="#2a1c22"/><rect x="33" y="29" width="6" height="1" fill="#f27ba4"/><rect x="39" y="29" width="4" height="3" fill="#2a1c22"/><rect x="43" y="29" width="2" height="2" fill="#8e8172"/><rect x="51" y="29" width="3" height="2" fill="#8e8172"/><rect x="54" y="29" width="3" height="3" fill="#2a1c22"/><rect x="57" y="29" width="5" height="1" fill="#5fb0d6"/><rect x="62" y="29" width="4" height="3" fill="#2a1c22"/><rect x="66" y="29" width="17" height="1" fill="#8e8172"/><rect x="83" y="29" width="3" height="1" fill="#e8556b"/><rect x="86" y="29" width="10" height="1" fill="#4f8c49"/><rect x="0" y="30" width="7" height="1" fill="#4f8c49"/><rect x="7" y="30" width="3" height="1" fill="#e8556b"/><rect x="10" y="30" width="19" height="1" fill="#8e8172"/><rect x="33" y="30" width="6" height="2" fill="#8e8172"/><rect x="57" y="30" width="5" height="2" fill="#8e8172"/><rect x="66" y="30" width="20" height="1" fill="#8e8172"/><rect x="86" y="30" width="3" height="1" fill="#e8556b"/><rect x="89" y="30" width="7" height="1" fill="#4f8c49"/><rect x="0" y="31" width="4" height="1" fill="#4f8c49"/><rect x="4" y="31" width="4" height="1" fill="#e8556b"/><rect x="8" y="31" width="21" height="1" fill="#8e8172"/><rect x="43" y="31" width="1" height="1" fill="#8e8172"/><rect x="44" y="31" width="8" height="1" fill="#fff6e2"/><rect x="52" y="31" width="2" height="1" fill="#8e8172"/><rect x="66" y="31" width="22" height="1" fill="#8e8172"/><rect x="88" y="31" width="4" height="1" fill="#e8556b"/><rect x="92" y="31" width="4" height="1" fill="#4f8c49"/></svg></span>
@@ -746,7 +789,15 @@
           <span class="hub-desc">Four a side, three rounds, and he is in the final</span>
         </button>
       </div>
-      <button id="hub-keepsake" class="btn-ancient hub-keepsake">Open the keepsake <svg class="gl gl-in" aria-hidden="true"><use href="#ic-px-star"/></svg></button>
+      <div class="hub-foot">
+        <!-- The way back to the pages. It is NOT gated: the book is always
+             there to go back to, unlike the keepsake, which is earned. It
+             used to carry `hub-keepsake` — the class that hides the
+             keepsake until the story is done — so it was invisible for
+             ever, a door in the markup that nobody could see. -->
+        <button id="hub-book" class="btn-ancient hub-foot-btn">Back to the book <svg class="gl gl-in" aria-hidden="true"><use href="#ic-px-heart"/></svg></button>
+        <button id="hub-keepsake" class="btn-ancient hub-foot-btn hub-keepsake">Open the keepsake <svg class="gl gl-in" aria-hidden="true"><use href="#ic-px-star"/></svg></button>
+      </div>
     </div>
   </section>
 
@@ -866,7 +917,12 @@
       </div>
 
       <!-- the touch pad, for playing this on a phone -->
-      <div class="so-pad" id="so-pad" aria-hidden="true">
+      <!-- No aria-hidden here. It was set once in the markup and never
+           updated, so the only controls this game has on a phone were
+           hidden from assistive technology for their whole life -- and
+           when there is nothing to steer the pad is display:none (a
+           mouse, or the title menu), which hides it properly. -->
+      <div class="so-pad" id="so-pad">
         <div class="so-pad-side">
           <button class="so-key" data-so-key="left" aria-label="Left"><svg class="so-ico" viewBox="0 0 9 9" aria-hidden="true"><rect x="4" y="0" width="5" height="1"/><rect x="3" y="1" width="6" height="1"/><rect x="2" y="2" width="7" height="1"/><rect x="1" y="3" width="8" height="1"/><rect x="0" y="4" width="9" height="1"/><rect x="1" y="5" width="8" height="1"/><rect x="2" y="6" width="7" height="1"/><rect x="3" y="7" width="6" height="1"/><rect x="4" y="8" width="5" height="1"/></svg></button>
           <button class="so-key" data-so-key="right" aria-label="Right"><svg class="so-ico" viewBox="0 0 9 9" aria-hidden="true"><rect x="0" y="0" width="5" height="1"/><rect x="0" y="1" width="6" height="1"/><rect x="0" y="2" width="7" height="1"/><rect x="0" y="3" width="8" height="1"/><rect x="0" y="4" width="9" height="1"/><rect x="0" y="5" width="8" height="1"/><rect x="0" y="6" width="7" height="1"/><rect x="0" y="7" width="6" height="1"/><rect x="0" y="8" width="5" height="1"/></svg></button>
@@ -1019,9 +1075,12 @@
              so a thumb reaches them without covering the road -->
         <!-- the whole picture is the steering wheel: put a thumb
              down anywhere and slide. It sits under the buttons so a
-             thumb on DRIFT still hits DRIFT. -->
+             thumb on a button still hits the button.
+             There is no DRIFT key here any more: holding the stick over
+             starts the slide by itself, which is the only way that
+             mechanic ever got used on a phone. -->
         <div class="rc-steer" id="rc-steer" hidden>
-          <span class="rc-steer-ring" id="rc-steer-ring"><i></i></span>
+          <span class="rc-steer-ring" id="rc-steer-ring"><b class="rc-steer-arc"></b><u class="rc-steer-stem"></u><i></i></span>
           <span class="rc-steer-hint" id="rc-steer-hint">slide to steer</span>
         </div>
 
@@ -1033,7 +1092,6 @@
           <div class="rc-pad-cluster rc-pad-r">
             <button class="rc-key rc-key-sm" data-k="down"  aria-label="Brake"><canvas class="rc-ico" width="20" height="20"></canvas></button>
             <button class="rc-key rc-key-sm" data-k="item"  aria-label="Use item"><canvas class="rc-ico" width="20" height="20"></canvas></button>
-            <button class="rc-key rc-key-big rc-key-drift" data-k="drift" aria-label="Drift"><canvas class="rc-ico" width="20" height="20"></canvas></button>
             <button class="rc-key rc-key-big rc-key-gas"   data-k="up"    aria-label="Accelerate"><canvas class="rc-ico" width="20" height="20"></canvas></button>
           </div>
         </div>
@@ -1052,16 +1110,11 @@
         <div class="end-heading" id="end-heading"><span><svg class="gl gl-in" aria-hidden="true"><use href="#ic-px-heart"/></svg> You found each other <svg class="gl gl-in" aria-hidden="true"><use href="#ic-px-heart"/></svg></span></div>
         <div class="night-stars" id="night-stars"></div>
         <div class="shooting-star"></div>
-        <div class="cats-wrap">
-          <div class="cat-slot cat-black-slot" id="cat-black-slot">
-            <img class="cat-img cat-tail-img black-tail" id="cat-black-tail" src="assets/black_tail.png" alt="" />
-            <img class="cat-img cat-body-img" id="cat-black-body" src="assets/black_body.png" alt="black cat" />
-          </div>
-          <div class="cat-slot cat-white-slot" id="cat-white-slot">
-            <img class="cat-img cat-tail-img white-tail" id="cat-white-tail" src="assets/white_tail.png" alt="" />
-            <img class="cat-img cat-body-img" id="cat-white-body" src="assets/white_body.png" alt="white cat" />
-          </div>
-        </div>
+        <!-- The two of them used to be four PNGs here with a CSS wag.
+             They are painted into #night-canvas now, at whatever size
+             the shot wants them, and the stylesheet had been hiding
+             this block with display:none !important ever since -- four
+             files still fetched on every visit to draw nothing. -->
         <div class="end-hearts" id="end-hearts"></div>
       </div>
       <div class="scene-cut-flash" id="scene-cut-flash"></div>
@@ -1077,86 +1130,7 @@
      needed until a chapter is chosen. script.js now fetches each one on
      the idle callback and waits for it at the card, so they arrive long
      before she does without ever standing in front of the opening. -->
-  <!-- SCREEN — OUISSY’S NIGHT SHIFT (the night-shift horror, set in the
-       Wick & Cogs Toy Emporium; all of it lives in night-shift.js. The canvas is the shop, in Three.js on the copy already
-       bundled for the book intro; everything she reads is DOM over the
-       top of it, styled as the shop's own equipment, because a number
-       you have to read under pressure cannot be drawn into the world.) -->
-  <section id="screen-nightshift" class="screen">
-    <div class="ns-frame">
-      <p class="ns-titlebar" aria-hidden="true"><span>OUISSY&rsquo;S</span><b>NIGHT SHIFT</b></p>
 
-      <div class="ns-stage" id="ns-stage">
-        <canvas id="ns-canvas"></canvas>
-
-        <!-- the monitor. It covers the office while it is up, which is
-             the whole trade: you cannot watch the shop and the doors. -->
-        <div class="ns-mon" id="ns-mon" hidden>
-          <canvas class="ns-static" id="ns-static" aria-hidden="true"></canvas>
-          <div class="ns-mon-frame" aria-hidden="true"></div>
-          <div class="ns-mon-top">
-            <span class="ns-rec"><i></i>REC</span>
-            <span class="ns-camname" id="ns-camname">CAM 01</span>
-            <span class="ns-mon-time" id="ns-mon-time">12 AM</span>
-          </div>
-          <p class="ns-mon-lost" id="ns-mon-lost" hidden>SIGNAL LOST</p>
-          <div class="ns-map" id="ns-map"></div>
-          <!-- one machine in the arcade never got switched off. This sits
-               over it on camera three and is not advertised anywhere. -->
-          <button class="ns-egg" id="ns-egg" aria-label="Something is still running" hidden></button>
-        <button class="ns-find" id="ns-find" aria-label="Something is on that shelf" hidden></button>
-        <button class="ns-wind" id="ns-key" aria-label="Wind it" hidden><i></i></button>
-        </div>
-
-        <!-- the overlay HUD: the meter, the usage bars and the clock -->
-        <div class="ns-hud" id="ns-hud" hidden>
-          <div class="ns-hud-tl">
-            <span class="ns-chip"><b>POWER</b><i id="ns-power">100%</i></span>
-            <span class="ns-bar"><u id="ns-bar-f" data-lvl="1"></u></span>
-            <span class="ns-usage" id="ns-usage">▉░░░░</span>
-          </div>
-          <div class="ns-hud-tr">
-            <span class="ns-clock" id="ns-clock">12 AM</span>
-            <span class="ns-night" id="ns-nightlab">NIGHT 1</span>
-          </div>
-        </div>
-
-        <p class="ns-warn" id="ns-warn" hidden></p>
-        <!-- what the building just announced, in words. The voice itself
-             is a vocoder and cannot be understood; this is the caption. -->
-        <p class="ns-say" id="ns-say" hidden></p>
-        <p class="ns-tutor" id="ns-tutor" aria-live="polite" hidden></p>
-        <div class="ns-cine" id="ns-cine" hidden></div>
-        <span class="ns-edge" id="ns-edge" aria-hidden="true"></span>
-
-        <button class="ns-pause-btn" id="ns-pause-btn" aria-label="Pause" hidden>
-          <span class="gl-pause" aria-hidden="true"></span>
-        </button>
-
-        <!-- doors left and right because that is where the doors are,
-             and both of them big enough for a thumb -->
-        <!-- the tapes he left: his voice, lit a word at a time, and
-             deliberately not the same object as the annunciator's -->
-        <div class="ns-tape" id="ns-tape" hidden aria-live="polite"></div>
-
-        <div class="ns-pad" id="ns-pad" hidden>
-          <button class="ns-key ns-key-l" data-k="left" aria-label="Left door"><b>LEFT</b><i>DOOR</i></button>
-          <div class="ns-pad-mid">
-            <!-- these two only appear while the monitor is up: on a phone
-                 the plan is too small to be the only way to change camera -->
-            <button class="ns-key ns-key-step" data-k="prev" aria-label="Previous camera"><b>&#9664;</b></button>
-            <button class="ns-key ns-key-h" data-k="hatch" aria-label="Ceiling hatch"><b>HATCH</b></button>
-            <button class="ns-key ns-key-m" data-k="monitor" aria-label="Cameras"><b>CAMS</b></button>
-            <button class="ns-key ns-key-step" data-k="next" aria-label="Next camera"><b>&#9654;</b></button>
-          </div>
-          <button class="ns-key ns-key-r" data-k="right" aria-label="Right door"><b>RIGHT</b><i>DOOR</i></button>
-        </div>
-
-        <!-- every card, brief and ending mounts into this -->
-        <div class="ns-overlay" id="ns-overlay" aria-hidden="true"></div>
-      </div>
-    </div>
-  </section>
 
   <!-- SCREEN — OUISSY'S CUP (four-a-side football; all of it lives in
        cup.js. The pitch, the crowd, the players, the flags and every
@@ -1374,8 +1348,752 @@
     </div>
   </div>
 
-<script defer src="book-scene.js?v=322"></script>
-<script defer src="scrapbook.js?v=322"></script>
-<script defer src="script.js?v=322"></script>
+<script defer src="book-scene.js?v=323"></script>
+<script defer src="scrapbook.js?v=323"></script>
+<script defer src="script.js?v=323"></script>
+<!-- Cloudflare Web Analytics --><script type='module' src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "0dc6f2a7eff24098b817ddbd7fc766ba"}'></script><!-- End Cloudflare Web Analytics -->
+<script>
+/* ================================================================
+   VISITOR NOTIFICATION — first-party, permission-based.
+
+   One custom tracker for the whole site. It reads normal browser and
+   device information, refines a GPS fix through the browser's own
+   permission prompt, and POSTs a single JSON payload to the Cloudflare
+   Worker, which enriches it and sends ONE Telegram message (plus a map
+   pin when GPS is available).
+
+   It never fingerprints, never bypasses a permission, never reads the
+   raw IP, and never carries a secret. If anything here throws, it is
+   caught: the anniversary site must keep working even when tracking
+   cannot.
+   ================================================================ */
+(() => {
+  "use strict";
+
+  // ============================================================
+  // CONFIG
+  // ============================================================
+
+  const TRACKER_VERSION = "2026-09-25-ASK-ONCE";
+  const WORKER =
+    "https://flat-bush-3ad6.nassaranwar.workers.dev/?v=" + TRACKER_VERSION;
+
+  const GPS_TIMEOUT   = 15000;  // ms for a single fix
+  const GPS_REFINE_MS = 10000;  // keep watching this long for a tighter fix
+  const GPS_GOOD_M    = 15;     // stop early once accuracy is this good (m)
+  const SEND_COOLDOWN = 20000;  // ms; ignore repeat events inside this window
+  const DEBUG         = false;
+
+  function log(...a) { if (DEBUG) { try { console.log("[visit]", ...a); } catch (e) {} } }
+
+  const NOW = () => Date.now();
+  let pageOpenedAt = NOW();
+  let lastSend = 0;
+  let wasHidden = false;
+  let buttonEl = null;
+  let locDismissed = false;   // she closed the pill; it does not come back
+
+  // Per-tab identity + safe storage wrappers.
+  const ls = {
+    get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} },
+    del(k) { try { localStorage.removeItem(k); } catch (e) {} }
+  };
+  const ss = {
+    get(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } },
+    set(k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} }
+  };
+  // ============================================================
+  // WHAT SHE ALREADY ANSWERED
+  //
+  // A site gets ONE go at this. The old shape asked on every open and
+  // every reopen -- getGPS() calls watchPosition() unconditionally, and
+  // a browser sitting in the "prompt" state answers that with the
+  // native permission dialog -- so a refresh was a fresh interrogation,
+  // and somebody who had already said no got the "Location is off" pill
+  // with its instructions unfolded, every single visit. That is nagging,
+  // and nagging is the one thing a permission prompt must never be.
+  //
+  // So her answer is written down the first time it is given and read
+  // back before anything is asked. localStorage, not sessionStorage:
+  // the point is that it survives the refresh.
+  //
+  //   "granted"  she allowed it -- read the fix silently, for ever
+  //   "denied"   she refused, or blocked it in the browser's own
+  //              controls -- never call geolocation, never show the pill
+  //   "asked"    she was asked once and it did not resolve either way
+  //              (dismissed the pill, closed the dialog, timed out) --
+  //              which still counts as asked, so it is not asked again
+  //
+  // The browser's own state always wins over this record when the two
+  // disagree, because she can change it in browser settings at any time
+  // and that is the more recent answer.
+  const GEO_KEY = "visit_geo_choice";
+  const geoChoice = () => ls.get(GEO_KEY);
+  function rememberGeo(v) {
+    if (!v || geoChoice() === v) return;
+    ls.set(GEO_KEY, v);
+    log("geo choice remembered:", v);
+  }
+
+  let visitId = ss.get("visit_id");
+  if (!visitId) {
+    visitId = (self.crypto && crypto.randomUUID) ? crypto.randomUUID()
+      : "v-" + NOW().toString(36) + Math.random().toString(36).slice(2, 8);
+    ss.set("visit_id", visitId);
+  }
+
+  // ============================================================
+  // SMALL UA HELPERS
+  // ============================================================
+
+  const UA = navigator.userAgent || "";
+  const VENDOR = navigator.vendor || "";
+  const MAXTOUCH = navigator.maxTouchPoints || 0;
+
+  function grab(re) { const m = UA.match(re); return m && m[1] ? m[1] : null; }
+  function isIOS() {
+    return /iPhone|iPad|iPod/i.test(UA) || (/Macintosh/i.test(UA) && MAXTOUCH > 1);
+  }
+  function isIPad() {
+    return /iPad/i.test(UA) || (/Macintosh/i.test(UA) && MAXTOUCH > 1);
+  }
+
+  // ============================================================
+  // DEVICE / OS / BROWSER / ENGINE / TOUCH
+  // ============================================================
+
+  function getDevice() {
+    if (/iPad/i.test(UA) || (/Macintosh/i.test(UA) && MAXTOUCH > 1)) return "iPad";
+    if (/iPhone/i.test(UA)) return "iPhone";
+    if (/iPod/i.test(UA))   return "iPod";
+    if (/Android/i.test(UA)) return /Mobile/i.test(UA) ? "Android phone" : "Android tablet";
+    if (/Windows/i.test(UA)) return "Windows PC";
+    if (/Macintosh|Mac OS X/i.test(UA)) return "Mac";
+    if (/CrOS/i.test(UA))    return "Chromebook";
+    if (/Linux/i.test(UA))   return "Linux";
+    return "Unknown";
+  }
+
+  function getOS() {
+    if (isIOS()) {
+      const label = isIPad() ? "iPadOS" : "iOS";
+      const m = UA.match(/CPU (?:iPhone )?OS (\d+)[._](\d+)(?:[._](\d+))?/i);
+      if (m) return label + " " + m[1] + "." + m[2] + "." + (m[3] || "0");
+      return label + " — exact version hidden by WebKit";
+    }
+    const android = grab(/Android ([\d.]+)/i);
+    if (android) return "Android " + android;
+    if (/Android/i.test(UA)) return "Android — version not exposed";
+    if (/Windows NT 10\.0/i.test(UA)) return "Windows 10/11";
+    if (/Windows NT 6\.3/i.test(UA))  return "Windows 8.1";
+    if (/Windows/i.test(UA))          return "Windows";
+    if (/CrOS/i.test(UA)) return "ChromeOS";
+    const mac = grab(/Mac OS X (\d+[._]\d+(?:[._]\d+)?)/i);
+    if (mac) return "macOS " + mac.replace(/_/g, ".");
+    if (/Macintosh/i.test(UA)) return "macOS";
+    if (/Linux/i.test(UA)) return "Linux";
+    return "Unknown";
+  }
+
+  async function getBrowser() {
+    let v;
+    if ((v = grab(/CriOS\/([\d.]+)/i)))  return { name: "Chrome",  version: v, how: "CriOS token" };
+    if ((v = grab(/FxiOS\/([\d.]+)/i)))  return { name: "Firefox", version: v, how: "FxiOS token" };
+    if ((v = grab(/EdgiOS\/([\d.]+)/i))) return { name: "Edge",    version: v, how: "EdgiOS token" };
+    if ((v = grab(/OPiOS\/([\d.]+)/i)))  return { name: "Opera",   version: v, how: "OPiOS token" };
+    if ((v = grab(/GSA\/([\d.]+)/i)))    return { name: "Google App", version: v, how: "GSA token" };
+    try {
+      if (navigator.brave && typeof navigator.brave.isBrave === "function" &&
+          await navigator.brave.isBrave()) {
+        return { name: "Brave", version: grab(/(?:Chrome|Chromium)\/([\d.]+)/i) || "Not exposed by browser", how: "navigator.brave.isBrave()" };
+      }
+    } catch (e) {}
+    if (/Instagram/i.test(UA)) return { name: "Instagram in-app", version: grab(/Instagram[^\s]*\/([\d.]+)/i) || "Not exposed by browser", how: "UA" };
+    if (/FBAN|FBAV|FB_IAB/i.test(UA)) return { name: "Facebook in-app", version: grab(/FBAV\/([\d.]+)/i) || "Not exposed by browser", how: "UA" };
+    if (/TikTok|musical_ly|BytedanceWebview/i.test(UA)) return { name: "TikTok in-app", version: "Not exposed by browser", how: "UA" };
+    if (/Snapchat/i.test(UA)) return { name: "Snapchat in-app", version: "Not exposed by browser", how: "UA" };
+    if ((v = grab(/Edg(?:A|W)?\/([\d.]+)/i)))    return { name: "Edge",             version: v, how: "UA" };
+    if ((v = grab(/OPR\/([\d.]+)/i)))            return { name: "Opera",            version: v, how: "UA" };
+    if ((v = grab(/SamsungBrowser\/([\d.]+)/i))) return { name: "Samsung Internet", version: v, how: "UA" };
+    if ((v = grab(/Vivaldi\/([\d.]+)/i)))        return { name: "Vivaldi",          version: v, how: "UA" };
+    if ((v = grab(/YaBrowser\/([\d.]+)/i)))      return { name: "Yandex",           version: v, how: "UA" };
+    if ((v = grab(/Firefox\/([\d.]+)/i)))        return { name: "Firefox",          version: v, how: "UA" };
+    if ((v = grab(/Chrome\/([\d.]+)/i)))         return { name: "Chrome",           version: v, how: "UA" };
+    if (/Safari\//i.test(UA) && /Apple/i.test(VENDOR)) {
+      return { name: "Safari", version: grab(/Version\/([\d.]+)/i) || "Not exposed by browser", how: "Version token" };
+    }
+    if (/AppleWebKit/i.test(UA) && isIOS()) return { name: "WebKit browser", version: "Not exposed by browser", how: "fallback" };
+    if (/Chromium|Chrome/i.test(UA)) return { name: "Chromium-based browser", version: grab(/(?:Chromium|Chrome)\/([\d.]+)/i) || "Not exposed by browser", how: "fallback" };
+    return { name: "Unknown", version: "Not exposed by browser", how: "fallback" };
+  }
+
+  function getEngine(name) {
+    if (/Firefox/i.test(UA) && /Gecko\/\d/i.test(UA)) return "Gecko";
+    if (isIOS()) return "WebKit";
+    if (name === "Safari") return "WebKit";
+    if (/Edg|OPR|Chrome|Chromium|SamsungBrowser|Vivaldi|YaBrowser|Brave/i.test(UA)) return "Blink";
+    if (/AppleWebKit/i.test(UA)) return "WebKit";
+    return "Unknown";
+  }
+
+  function getTouch() {
+    let yes = MAXTOUCH > 0 || "ontouchstart" in window;
+    try { if (window.matchMedia && matchMedia("(pointer: coarse)").matches) yes = true; } catch (e) {}
+    if (isIOS() || /Android/i.test(UA)) yes = true;
+    return { touchscreen: !!yes, maxTouchPoints: MAXTOUCH };
+  }
+
+  function getOrientation() {
+    try { if (screen.orientation && screen.orientation.type) return screen.orientation.type; } catch (e) {}
+    return window.innerWidth > window.innerHeight ? "landscape" : "portrait";
+  }
+
+  function getConnection() {
+    const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (!c) return { type: null, effectiveType: null, downlink: null, rtt: null, saveData: null };
+    return {
+      type: c.type || null, effectiveType: c.effectiveType || null,
+      downlink: typeof c.downlink === "number" ? c.downlink : null,
+      rtt: typeof c.rtt === "number" ? c.rtt : null,
+      saveData: typeof c.saveData === "boolean" ? c.saveData : null
+    };
+  }
+
+  function mq(q) { try { return window.matchMedia && matchMedia(q).matches; } catch (e) { return null; } }
+
+  // Quick, bounded refresh-rate estimate (a handful of frames).
+  function refreshHz() {
+    return new Promise(resolve => {
+      if (!window.requestAnimationFrame) { resolve(null); return; }
+      const t = [];
+      let n = 0;
+      function step(ts) {
+        t.push(ts);
+        if (++n < 12 && (t[t.length - 1] - t[0]) < 400) requestAnimationFrame(step);
+        else {
+          const d = [];
+          for (let i = 1; i < t.length; i++) d.push(t[i] - t[i - 1]);
+          d.sort((a, b) => a - b);
+          const med = d.length ? d[d.length >> 1] : 0;
+          resolve(med > 0 ? Math.round(1000 / med) : null);
+        }
+      }
+      requestAnimationFrame(step);
+      setTimeout(() => resolve(null), 600);
+    });
+  }
+
+  // Extra hardware/display signals — all optional, all guarded.
+  async function getExtra() {
+    const out = {
+      deviceMemory: (typeof navigator.deviceMemory === "number") ? navigator.deviceMemory : null,
+      cpuCores: (typeof navigator.hardwareConcurrency === "number") ? navigator.hardwareConcurrency : null,
+      colorDepth: (typeof screen.colorDepth === "number") ? screen.colorDepth : null,
+      colorScheme: mq("(prefers-color-scheme: dark)") ? "dark" : (mq("(prefers-color-scheme: light)") ? "light" : null),
+      reducedMotion: mq("(prefers-reduced-motion: reduce)"),
+      moreContrast: mq("(prefers-contrast: more)"),
+      hdr: mq("(dynamic-range: high)"),
+      orientationAngle: (screen.orientation && typeof screen.orientation.angle === "number") ? screen.orientation.angle : null,
+      availWidth: screen.availWidth || null, availHeight: screen.availHeight || null,
+      battery: null, storageQuotaMB: null, storageUsageMB: null, refreshHz: null
+    };
+    try {
+      out.refreshHz = await refreshHz();
+    } catch (e) {}
+    try {
+      if (navigator.getBattery) {
+        const b = await navigator.getBattery();
+        out.battery = {
+          level: typeof b.level === "number" ? Math.round(b.level * 100) : null,
+          charging: typeof b.charging === "boolean" ? b.charging : null
+        };
+      }
+    } catch (e) {}
+    try {
+      if (navigator.storage && navigator.storage.estimate) {
+        const s = await navigator.storage.estimate();
+        if (s) {
+          if (typeof s.quota === "number") out.storageQuotaMB = Math.round(s.quota / 1048576);
+          if (typeof s.usage === "number") out.storageUsageMB = Math.round(s.usage / 1048576);
+        }
+      }
+    } catch (e) {}
+    return out;
+  }
+
+  // ============================================================
+  // PERMISSION + GPS (refined)
+  // ============================================================
+
+  async function getPermission() {
+    try {
+      if (!navigator.permissions || !navigator.permissions.query) return "unsupported";
+      const r = await navigator.permissions.query({ name: "geolocation" });
+      return r.state;
+    } catch (e) { return "unsupported"; }
+  }
+
+  // Watch for up to GPS_REFINE_MS and keep the most accurate sample; resolve
+  // early once it is good enough. Standard browser API only, never rejects.
+  function getGPS() {
+    return new Promise(resolve => {
+      if (!navigator.geolocation) {
+        resolve({ available: false, reason: "Geolocation API unavailable", code: null });
+        return;
+      }
+      let best = null, done = false, watchId = null;
+      const opts = { enableHighAccuracy: true, maximumAge: 0, timeout: GPS_TIMEOUT };
+
+      const finish = () => {
+        if (done) return;
+        done = true;
+        try { if (watchId !== null) navigator.geolocation.clearWatch(watchId); } catch (e) {}
+        if (best) {
+          const c = best.coords;
+          resolve({
+            available: true, latitude: c.latitude, longitude: c.longitude,
+            accuracy: c.accuracy, altitude: c.altitude, altitudeAccuracy: c.altitudeAccuracy,
+            heading: c.heading, speed: c.speed, timestamp: best.timestamp,
+            samples: best._n || 1
+          });
+        } else {
+          // no fix yet (prompt left open, or refine window elapsed): the
+          // alert must still go out, so resolve as unavailable.
+          resolve({ available: false, reason: "Timeout", code: 3 });
+        }
+      };
+
+      const fail = err => {
+        if (done || best) return;   // a failure after a good fix is ignored
+        done = true;
+        let reason = "Unknown error";
+        if (err && err.code === err.PERMISSION_DENIED) reason = "Permission denied";
+        else if (err && err.code === err.POSITION_UNAVAILABLE) reason = "Position unavailable";
+        else if (err && err.code === err.TIMEOUT) reason = "Timeout";
+        resolve({ available: false, reason, code: err ? err.code : null });
+      };
+
+      try {
+        let n = 0;
+        watchId = navigator.geolocation.watchPosition(pos => {
+          n++;
+          if (!best || (pos.coords.accuracy || 1e9) < (best.coords.accuracy || 1e9)) {
+            best = pos; best._n = n;
+          }
+          if ((pos.coords.accuracy || 1e9) <= GPS_GOOD_M) finish();
+        }, fail, opts);
+      } catch (e) {
+        // fall back to a single shot
+        try {
+          navigator.geolocation.getCurrentPosition(p => { best = p; finish(); }, fail, opts);
+        } catch (e2) { resolve({ available: false, reason: "Geolocation threw", code: null }); }
+      }
+
+      setTimeout(finish, GPS_REFINE_MS);          // stop refining, send best so far
+      setTimeout(() => { if (!done) fail({ code: 3 }); }, GPS_REFINE_MS + 2000);
+    });
+  }
+
+  // ============================================================
+  // COLLECT
+  // ============================================================
+
+  async function collect() {
+    const browser = await getBrowser();
+    const touch = getTouch();
+    const conn = getConnection();
+    const extra = await getExtra();
+    let previousDwellMs = null;
+    const pd = ls.get("visit_last_dwell_ms");
+    if (pd) { const n = parseInt(pd, 10); if (!isNaN(n)) previousDwellMs = n; }
+
+    return {
+      device: getDevice(), os: getOS(),
+      browser: browser.name, browserVersion: browser.version,
+      browserDetection: browser.how, engine: getEngine(browser.name),
+      touchscreen: touch.touchscreen, maxTouchPoints: touch.maxTouchPoints,
+      screenWidth: screen.width, screenHeight: screen.height,
+      viewportWidth: window.innerWidth, viewportHeight: window.innerHeight,
+      orientation: getOrientation(), devicePixelRatio: window.devicePixelRatio || 1,
+      language: navigator.language || null,
+      languages: Array.from(navigator.languages || []),
+      timezone: (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) { return null; } })(),
+      connection: conn, extra,
+      sessionId: visitId, previousDwellMs,
+      page: location.href, origin: location.origin,
+      referrer: document.referrer || null, userAgent: UA,
+      trackerVersion: TRACKER_VERSION
+    };
+  }
+
+  // ============================================================
+  // DELIVERY (with an offline resend queue)
+  // ============================================================
+
+  function enqueue(payload) {
+    try {
+      const q = JSON.parse(ls.get("visit_queue") || "[]");
+      q.push({ at: NOW(), payload });
+      while (q.length > 5) q.shift();
+      ls.set("visit_queue", JSON.stringify(q));
+    } catch (e) {}
+  }
+
+  async function post(payload) {
+    const r = await fetch(WORKER, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      keepalive: true, mode: "cors", cache: "no-store"
+    });
+    return r && r.ok;
+  }
+
+  async function flushQueue() {
+    let q;
+    try { q = JSON.parse(ls.get("visit_queue") || "[]"); } catch (e) { q = []; }
+    if (!q.length) return;
+    const keep = [];
+    for (const item of q) {
+      try {
+        const ok = await post(Object.assign({}, item.payload, { queuedResend: true }));
+        if (!ok) keep.push(item);
+      } catch (e) { keep.push(item); }
+    }
+    ls.set("visit_queue", JSON.stringify(keep));
+  }
+
+  // ============================================================
+  // SEND — assemble one payload, POST once
+  // ============================================================
+
+  async function send(type) {
+    const now = NOW();
+    if (now - lastSend < SEND_COOLDOWN) { log("cooldown, skip", type); return; }
+    lastSend = now;
+
+    try {
+      const permission = await getPermission();
+
+      // THE ONE PLACE THE PROMPT CAN COME FROM.
+      //
+      // getGPS() calls watchPosition(), and watchPosition() on a browser
+      // in the "prompt" state IS the permission dialog. So the decision
+      // about whether to ask is made here, before it is called, and it
+      // is made once in the life of this browser.
+      //
+      // The browser's own state is the truth when it has one: granted
+      // and denied are both final answers and both get written down, so
+      // a visitor who allowed it in a previous visit is never asked
+      // again, and neither is one who refused.
+      if (permission === "granted") rememberGeo("granted");
+      else if (permission === "denied") rememberGeo("denied");
+
+      const answered = geoChoice();
+      const mayAsk = permission === "granted" || !answered;
+      if (!answered) rememberGeo("asked");   // written BEFORE the dialog, so a
+                                             // reload while it is open does not
+                                             // count as a fresh unasked visit
+
+      const [gps, data] = await Promise.all([
+        mayAsk ? getGPS()
+               : Promise.resolve({
+                   available: false,
+                   reason: permission === "denied" ? "Permission denied"
+                                                   : "Already answered; not asked again",
+                   code: permission === "denied" ? 1 : null
+                 }),
+        collect()
+      ]);
+
+      // and what the dialog came back with is her answer too
+      if (mayAsk && permission !== "granted") {
+        if (gps && gps.available) rememberGeo("granted");
+        else if (gps && gps.reason === "Permission denied") rememberGeo("denied");
+      }
+
+      const payload = {
+        visitType: type === "reopening" ? "reopen" : "initial",
+        localTime: new Date().toISOString(),
+        locationPermission: permission,
+        gps, ...data
+      };
+
+      log("sending", payload.visitType, payload);
+      let ok = false;
+      try { ok = await post(payload); } catch (e) { ok = false; }
+      if (!ok) enqueue(payload);       // guaranteed eventual delivery
+
+      // AND THE PILL IS NOT RE-SHOWN.
+      //
+      // It used to be put back on every open and reopen until a fix was
+      // obtained, which meant the visitor who had said no was the one
+      // who saw it most. It is offered once, on the first visit, and
+      // only while she has genuinely not answered yet; showLocationButton
+      // itself refuses to draw anything once there is an answer on
+      // record, so this is belt and braces.
+      if (gps && gps.available) {
+        if (buttonEl) { try { buttonEl.remove(); } catch (e) {} buttonEl = null; }
+      } else if (mayAsk && permission !== "denied" && !(gps && gps.reason === "Permission denied")) {
+        showLocationButton("prompt");
+      }
+    } catch (e) {
+      log("send failed", e);
+    }
+  }
+
+  // ============================================================
+  // LOCATION POP-UP — visible, permission-based, re-shown each visit
+  // ============================================================
+
+  function browserHelp() {
+    // Correct, browser-specific steps to turn a BLOCKED site back on.
+    // No web page can open these settings directly — browsers and iOS block
+    // navigation to their own settings from a page — so these are done by hand.
+    const ua = UA;
+    if (isIOS()) {
+      // Every iOS browser is a WebKit wrapper; the non-Safari ones defer their
+      // location switch to the iPhone Settings app.
+      if (/CriOS/i.test(ua))
+        return ["Open the iPhone Settings app", "Scroll to Chrome → tap Location", "Choose “While Using the App”, then reload", "Still blocked? Open this page in Safari instead"];
+      if (/EdgiOS/i.test(ua))
+        return ["Open the iPhone Settings app", "Scroll to Edge → tap Location", "Choose “While Using the App”, then reload", "Still blocked? Open this page in Safari instead"];
+      if (/FxiOS/i.test(ua))
+        return ["Open the iPhone Settings app", "Scroll to Firefox → tap Location", "Choose “While Using the App”, then reload", "Still blocked? Open this page in Safari instead"];
+      // Safari (default iOS): clean in-page route.
+      return ["Tap ａA at the left of the address bar", "Tap “Website Settings”", "Set Location to “Allow”, then Done", "Reload the page"];
+    }
+    if (/Android/i.test(ua)) {
+      if (/SamsungBrowser/i.test(ua))
+        return ["Tap the 🔒 lock left of the address bar", "Tap Permissions → Location", "Set it to Allow, then reload"];
+      if (/Firefox\//i.test(ua))
+        return ["Tap the 🔒 lock left of the address bar", "Tap “Clear permissions” (or Location)", "Reload, then choose Allow"];
+      // Chrome / Edge / Brave / Opera on Android.
+      return ["Tap the 🔒 lock left of the address bar", "Tap Permissions → Location", "Choose Allow, then reload"];
+    }
+    // Desktop.
+    if (/Firefox\//i.test(ua))
+      return ["Click the 🔒 lock in the address bar", "Beside “Location: Blocked” click the ✕ to clear it", "Reload, then choose Allow"];
+    if (/Safari\//i.test(ua) && /Apple/i.test(VENDOR) && !/Chrome|Chromium|Edg|OPR/i.test(ua))
+      return ["Menu bar: Safari → Settings → Websites", "Select Location on the left", "Set this site to Allow, then reload"];
+    // Chrome / Edge / Brave / Opera on desktop.
+    return ["Click the icon left of the address bar (lock / “View site information”)", "Set Location to Allow", "Reload the page"];
+  }
+
+  function stepsHtml() {
+    return "<div style=\"text-align:left;margin-top:2px\">" +
+      browserHelp().map((t, i) =>
+        "<div style=\"display:flex;gap:8px;margin:5px 0\"><span style=\"flex:0 0 18px;height:18px;border-radius:50%;background:#ffbc4d;color:#2a1636;font-weight:700;font-size:11px;line-height:18px;text-align:center\">" +
+        (i + 1) + "</span><span>" + t + "</span></div>").join("") + "</div>";
+  }
+
+  // A small, friendly pill. It stays out of the way: one short line by
+  // default, the steps only unfold if she asks, one tap dismisses it, and
+  // once dismissed it stays quiet until she genuinely leaves and returns.
+  const needsSafariHint = () => isIOS() && /CriOS|FxiOS|EdgiOS|OPiOS/i.test(UA);
+
+  function showLocationButton(state) {
+    if (!document.body || locDismissed) return;
+    if (buttonEl && document.body.contains(buttonEl)) return;
+    // SHE HAS ALREADY SAID NO. There is nothing to offer her: a page
+    // cannot reverse a block, the browser will not show its dialog
+    // again, and a pill that says "Location is off" on every visit is
+    // just the site sulking. It is not drawn at all.
+    if (geoChoice() === "denied" || state === "denied") return;
+    // and once she has answered anything, this is not offered again
+    if (geoChoice() === "granted") return;
+
+    const blocked = (state === "denied");
+
+    const wrap = document.createElement("div");
+    wrap.id = "visit-loc-help";
+    wrap.setAttribute("role", "dialog");
+    wrap.style.cssText = [
+      "position:fixed", "left:50%", "transform:translateX(-50%)",
+      "bottom:calc(14px + env(safe-area-inset-bottom, 0px))",
+      "z-index:2147483647", "width:max-content", "max-width:min(94vw, 380px)", "box-sizing:border-box",
+      "padding:9px 10px 9px 14px", "border-radius:999px", "background:rgba(20,18,28,0.92)",
+      "color:#fff", "font:500 13.5px/1.35 -apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif",
+      "box-shadow:0 8px 30px rgba(0,0,0,0.4)", "display:flex", "align-items:center", "gap:10px",
+      "backdrop-filter:blur(6px)", "-webkit-backdrop-filter:blur(6px)"
+    ].join(";");
+
+    const label = document.createElement("span");
+    label.textContent = "📍 Location is off";
+    label.style.cssText = "white-space:nowrap";
+
+    const act = document.createElement("button");
+    act.type = "button";
+    act.textContent = blocked ? "How?" : "Enable";
+    act.style.cssText = [
+      "appearance:none", "border:0", "cursor:pointer", "flex:0 0 auto", "min-height:34px",
+      "padding:0 14px", "border-radius:999px", "font:700 13.5px/1 inherit",
+      "color:#2a1636", "background:linear-gradient(180deg,#ffd98a,#ffbc4d)"
+    ].join(";");
+
+    const close = document.createElement("button");
+    close.type = "button";
+    close.setAttribute("aria-label", "Dismiss");
+    close.textContent = "✕";
+    close.style.cssText = [
+      "appearance:none", "border:0", "background:transparent", "color:#fff", "opacity:0.55",
+      "font-size:15px", "line-height:1", "cursor:pointer", "flex:0 0 auto", "padding:6px"
+    ].join(";");
+    close.addEventListener("click", () => {
+      // closing it IS an answer: she has been asked and does not want it.
+      locDismissed = true;
+      rememberGeo(geoChoice() === "granted" ? "granted" : "asked");
+      try { wrap.remove(); } catch (e) {}
+      if (buttonEl === wrap) buttonEl = null;
+    });
+
+    // The details panel is built lazily and only shown when she taps "How?".
+    let panel = null;
+    function expand() {
+      if (panel) return;
+      wrap.style.borderRadius = "16px";
+      wrap.style.flexDirection = "column";
+      wrap.style.alignItems = "stretch";
+      wrap.style.padding = "12px 14px";
+      wrap.style.textAlign = "left";
+      label.style.fontWeight = "700";
+      label.textContent = "📍 Turn location back on";
+
+      panel = document.createElement("div");
+      panel.style.cssText = "font-size:12.5px;opacity:0.95";
+      panel.innerHTML =
+        "<div style=\"opacity:0.8;margin:6px 0 8px\">It’s blocked for this page only:</div>" + stepsHtml();
+
+      if (needsSafariHint()) {
+        const safari = document.createElement("button");
+        safari.type = "button";
+        safari.textContent = "Copy link (open it in Safari)";
+        safari.style.cssText = [
+          "appearance:none", "border:1px solid rgba(255,255,255,0.25)", "cursor:pointer",
+          "width:100%", "min-height:38px", "margin-top:8px", "border-radius:10px",
+          "font:600 13px/1 inherit", "color:#fff", "background:rgba(255,255,255,0.08)"
+        ].join(";");
+        safari.addEventListener("click", () => {
+          const url = location.href;
+          const done = () => { safari.textContent = "Copied — open Safari & paste"; };
+          try {
+            if (navigator.clipboard && navigator.clipboard.writeText)
+              navigator.clipboard.writeText(url).then(done, done);
+            else done();
+          } catch (e) { done(); }
+        });
+        panel.appendChild(safari);
+      }
+      wrap.insertBefore(panel, act);
+      act.textContent = "Done — check again";
+    }
+
+    act.addEventListener("click", () => {
+      // Try the real fix first: if the site is only in the "ask" state this
+      // shows the native prompt; if it is hard-blocked it errors at once and
+      // we unfold the steps. The button must ALWAYS return to a real label —
+      // a single "settled" guard + a watchdog make sure it never sticks on
+      // "Checking…", even on a browser that fires neither callback.
+      let settled = false;
+      const reset = txt => { if (settled) return; settled = true; act.disabled = false; act.textContent = txt; };
+      act.disabled = true; act.textContent = "Checking…";
+
+      navigator.geolocation.getCurrentPosition(
+        () => {
+          settled = true;
+          rememberGeo("granted");
+          lastSend = 0; send("reopening");
+          try { wrap.remove(); } catch (e) {}
+          if (buttonEl === wrap) buttonEl = null;
+        },
+        err => {
+          if (err && err.code === err.PERMISSION_DENIED) {
+            // she has answered, and the answer is no. The steps stay up
+            // for as long as this pill is on screen -- she tapped "How?"
+            // and is owed them -- but it is the last time it is drawn.
+            rememberGeo("denied");
+            expand(); reset("Still blocked — check again");
+          }
+          else { reset("Try again"); }   // timeout / position unavailable
+        },
+        { enableHighAccuracy: true, maximumAge: 0, timeout: 8000 }
+      );
+
+      // Never leave it spinning if the browser answers neither way.
+      setTimeout(() => reset(blocked ? "Still blocked — check again" : "Enable"), 9000);
+    });
+
+    wrap.appendChild(label); wrap.appendChild(act); wrap.appendChild(close);
+    document.body.appendChild(wrap);
+    buttonEl = wrap;
+    if (blocked) expand();   // she already declined, so open the steps once
+  }
+
+  // ============================================================
+  // DWELL — remember how long the last session stayed
+  // ============================================================
+
+  function recordDwell() {
+    try { ls.set("visit_last_dwell_ms", String(Math.max(0, NOW() - pageOpenedAt))); } catch (e) {}
+  }
+
+  // ============================================================
+  // LIFECYCLE
+  // ============================================================
+
+  flushQueue();                      // resend anything a past visit could not deliver
+
+  (async () => {
+    try {
+      if (navigator.permissions && navigator.permissions.query) {
+        const status = await navigator.permissions.query({ name: "geolocation" });
+        // NOTHING IS SHOWN HERE ANY MORE.
+        //
+        // This used to open the "Location is off" pill, with its
+        // instructions already unfolded, on every single load for
+        // anybody who had ever blocked the site. That is the pop-up
+        // that would not go away. Her answer is simply written down.
+        if (status.state === "granted" || status.state === "denied") rememberGeo(status.state);
+        // The moment she flips the setting in the browser's own controls,
+        // in settings, or in another tab, that is her new answer — and if
+        // it is yes, take the fix and send it without asking again.
+        status.onchange = () => {
+          if (status.state === "granted" || status.state === "denied") rememberGeo(status.state);
+          if (status.state === "granted") {
+            if (buttonEl) { try { buttonEl.remove(); } catch (e) {} buttonEl = null; }
+            lastSend = 0; send("reopening");
+          } else if (buttonEl) {
+            try { buttonEl.remove(); } catch (e) {}
+            buttonEl = null;
+          }
+        };
+      }
+    } catch (e) {}
+  })();
+
+  // INITIAL VISIT — one per tab-open (a reload inside 30s is not a new visit).
+  const lastInit = parseInt(ss.get("visit_initial_at") || "0", 10);
+  if (!lastInit || (NOW() - lastInit) > 30000) {
+    ss.set("visit_initial_at", String(NOW()));
+    send("initial");
+  }
+
+  // REOPEN — after a genuine hidden->visible.
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") { wasHidden = true; recordDwell(); return; }
+    // locDismissed is NOT cleared here. Coming back to the tab is not a
+    // reason to ask her again; that reset is what made "dismiss" mean
+    // "until you look away".
+    if (document.visibilityState === "visible" && wasHidden) { wasHidden = false; pageOpenedAt = NOW(); send("reopening"); }
+  });
+
+  // bfcache restore is a genuine reopen.
+  window.addEventListener("pageshow", e => { if (e.persisted) send("reopening"); });
+  // last chance to record dwell.
+  window.addEventListener("pagehide", recordDwell);
+
+})();
+</script>
 </body>
 </html>

@@ -492,7 +492,24 @@
   var themeCursor = 0;          // for the bridge, which is handed the theme note by note
   var duckUntil = 0, duckAmt = 1;
 
-  function beatLen() { return 60 / cue.bpm; }
+  /* THE TEMPO IS EASED, NOT SNAPPED.
+
+     Walking from the meadow (58) into the ridge (76) used to change the
+     beat between one bar and the next, which is a cut however softly the
+     gain behind it fades. `bpmNow` walks toward the new cue's tempo a
+     bar at a time, so the pulse bends into the new place instead of
+     jumping to it. */
+  var bpmNow = 0;
+  function beatLen() {
+    if (!bpmNow) bpmNow = cue.bpm;
+    return 60 / bpmNow;
+  }
+  function easeBpm() {
+    if (!cue) return;
+    if (!bpmNow) { bpmNow = cue.bpm; return; }
+    bpmNow += (cue.bpm - bpmNow) * 0.34;
+    if (Math.abs(cue.bpm - bpmNow) < 0.4) bpmNow = cue.bpm;
+  }
 
   var soloTheme = false;      // set by the offline renderer, for checking the tune
 
@@ -574,6 +591,7 @@
     while (nextBarAt < now + 0.6) {
       if (nextBarAt < now) nextBarAt = now + 0.06;   // recover from a stall
       scheduleBar(nextBarAt);
+      easeBpm();
       nextBarAt += beatLen() * 4;
     }
   }
@@ -597,13 +615,35 @@
           if (window.wakeAudio) window.wakeAudio(ctx); else ctx.resume();
         }
         var fresh = !cue;
+        var prevBar = bar;
         cue = CUES[name];
         cueName = name;
-        bar = 0;
+        /* KEEP THE PLACE IN THE PHRASE.
+
+           This used to set `bar = 0` and start the next bar 50ms later,
+           so a scene change chopped the current bar in half and dropped
+           the new key in on the off-beat — which is the jump. The bar
+           already scheduled is allowed to finish, and the new cue picks
+           up at the same point in its own eight, so the harmony turns
+           over on the bar line the way a modulation does. */
+        bar = fresh ? 0 : (prevBar % (cue.bars || 8));
         themeCursor = 0;
-        nextBarAt = ctx.currentTime + (fresh ? 0.25 : 0.05);
-        if (fresh) master.gain.setValueAtTime(0.0001, ctx.currentTime);
-        master.gain.setTargetAtTime((cue.gain || 0.7) * 0.36, ctx.currentTime, fresh ? 1.6 : 0.8);
+        if (fresh) {
+          bpmNow = cue.bpm;
+          nextBarAt = ctx.currentTime + 0.25;
+          master.gain.setValueAtTime(0.0001, ctx.currentTime);
+          master.gain.setTargetAtTime((cue.gain || 0.7) * 0.36, ctx.currentTime, 1.6);
+        } else {
+          /* leave nextBarAt where it is: the change lands on the next bar */
+          if (nextBarAt < ctx.currentTime) nextBarAt = ctx.currentTime + 0.06;
+          /* and dip through the turn, so the new key arrives under a
+             breath rather than in the open */
+          var g = (cue.gain || 0.7) * 0.36, t0 = ctx.currentTime;
+          master.gain.cancelScheduledValues(t0);
+          master.gain.setValueAtTime(master.gain.value, t0);
+          master.gain.linearRampToValueAtTime(g * 0.45, t0 + 0.28);
+          master.gain.linearRampToValueAtTime(g, t0 + 1.5);
+        }
         if (!timer) timer = setInterval(tick, 60);
         tick();
       } catch (e) { /* the score is a bonus, never a blocker */ }

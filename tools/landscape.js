@@ -107,6 +107,11 @@ const SCREENS = ['gate', 'hub', 'keepsake', 'end'];
     for (const [scr, starter] of [['apoc', 'startApocalypse'], ['race', 'startSuperOuissyRace'],
                                  ['ouissy', 'startSuperOuissy'],
                                  ['nightshift', 'startNightShift']]) {
+      /* a chapter this tree does not have is skipped, not failed */
+      if (!(await page.evaluate((n) => !!document.getElementById('screen-' + n), scr))) {
+        console.log('  ' + label + ': ' + scr + ' is not in this tree');
+        continue;
+      }
       await page.evaluate(([n, s]) => { showScreen(n); if (window[s]) window[s](); }, [scr, starter]);
       /* the night shift is fetched on demand and then builds nine rooms
          before it sizes anything, so it needs longer than the others */

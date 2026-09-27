@@ -182,8 +182,10 @@ window.Scrapbook = (function () {
        room on page one, the ride home on the last page, her cold hands --
        and says the plain thing rather than the clever one. */
     letter: {
-      from: "You",
-      to:   "My Love",
+      /* it read "FROM You / FOR My Love", which puts her name on the
+         sending end of a letter she is being given */
+      from: "Him",
+      to:   "Her",
       lead: "My love,",
       body: "I am not good at saying this out loud, so I built it instead. " +
             "Every photograph in here is one I could not stand to lose — " +
@@ -529,6 +531,206 @@ window.Scrapbook = (function () {
 
   /* Bookcloth. A fine linen weave with the slub and mottling of a real
      bound cover, so the book reads as an object rather than a colour. */
+  /* =======================================================================
+     THE TABLE THE BOOK IS LYING ON
+
+     The hub and the keepsake are a wall: a garland hung across the top,
+     scrollwork in the corners, a ruled border, things pinned to it. That is
+     right for a menu you stand in front of and wrong for this screen,
+     because a book is not on a wall. It is lying open on a surface in front
+     of you, and the whole room follows from that one fact.
+
+     So this screen gets a table rather than a wall, and it is built out of
+     the same materials the book itself is painted with -- the same tex()
+     canvases, the same warm cream and rose. Nothing here is dark: the
+     brightest thing on the screen is the cloth, the book sits on it, and
+     the only shading anywhere is the little the book's own shadow casts.
+     ===================================================================== */
+
+  /* The cloth. It tiles, so the pitch of the weave has to divide the tile
+     and no slub may cross an edge, or the seam draws a grid across the
+     whole screen at exactly the size of this canvas. */
+  function tableLinen(seed, base, warp, weft, slubHi, slubLo) {
+    return tex(240, 240, function (ctx, W, H) {
+      var r = rnd(seed);
+      ctx.fillStyle = base; ctx.fillRect(0, 0, W, H);
+      /* The contrast here is the whole difference between linen and scan
+         lines. At a tenth of an alpha the warp is a fabric you have to look
+         for; at a third it is a stripe across the screen, and both cloths
+         striping in step turns the whole table into a grid. Weft is drawn
+         at half the warp's strength, because a weave read from above is
+         never symmetrical. */
+      for (var x = 0; x < W; x += 4) {
+        ctx.fillStyle = warp.replace("$", (0.10 + r() * 0.13).toFixed(3));
+        ctx.fillRect(x, 0, 2, H);
+        ctx.fillStyle = weft.replace("$", (0.016 + r() * 0.022).toFixed(3));
+        ctx.fillRect(x + 2, 0, 2, H);
+      }
+      for (var y = 0; y < H; y += 4) {
+        ctx.fillStyle = warp.replace("$", (0.055 + r() * 0.085).toFixed(3));
+        ctx.fillRect(0, y, W, 2);
+        ctx.fillStyle = weft.replace("$", (0.012 + r() * 0.018).toFixed(3));
+        ctx.fillRect(0, y + 2, W, 2);
+      }
+      /* the odd thicker thread, kept a clear margin inside the tile */
+      for (var i = 0; i < 110; i++) {
+        ctx.fillStyle = r() > 0.5 ? slubHi : slubLo;
+        var sx = 8 + r() * (W - 34), sy = 8 + r() * (H - 34);
+        if (r() > 0.5) ctx.fillRect(sx, sy, 2, 6 + r() * 16);
+        else ctx.fillRect(sx, sy, 6 + r() * 16, 2);
+      }
+    });
+  }
+
+  /* The table itself, and the runner laid across it. The table was cream to
+     begin with and the cream fought the runner: two unrelated colours meeting
+     on a hard edge, with the book a third thing again on top. It is a pink
+     one step deeper than the runner now -- same family, same hue, a shade
+     down -- so the three surfaces read as one arrangement getting lighter
+     towards the book rather than as a stripe laid over a different cloth. */
+  function clothCream(seed) {
+    return tableLinen(seed, "#e7c1bd", "rgba(255,246,243,$)", "rgba(170,116,112,$)",
+                      "rgba(255,247,244,0.26)", "rgba(166,112,108,0.055)");
+  }
+  function clothRose(seed) {
+    return tableLinen(seed, "#f2d3cf", "rgba(255,246,242,$)", "rgba(186,124,124,$)",
+                      "rgba(255,247,244,0.24)", "rgba(178,116,116,0.06)");
+  }
+
+  /* A pencil, lying down. Drawn along the box so a CSS rotation is the only
+     thing that decides which way it points. */
+  function pencilArt(w) {
+    var h = Math.round(w * 0.17);
+    return tex(w, h, function (ctx, W, H) {
+      var body = W * 0.62, tipL = W * 0.17;
+      var y0 = H * 0.24, y1 = H * 0.76, mid = H * 0.5;
+      /* the barrel, with the two facets of a hexagonal pencil */
+      var g = ctx.createLinearGradient(0, y0, 0, y1);
+      g.addColorStop(0, "#f2cf86"); g.addColorStop(0.34, "#e8bf6c");
+      g.addColorStop(0.52, "#d8a94f"); g.addColorStop(1, "#bf8c3c");
+      ctx.fillStyle = g;
+      ctx.fillRect(tipL, y0, body, y1 - y0);
+      ctx.fillStyle = "rgba(255,246,214,0.5)";
+      ctx.fillRect(tipL, y0 + (y1 - y0) * 0.16, body, (y1 - y0) * 0.16);
+      /* the sharpened cone and the graphite */
+      ctx.fillStyle = "#f0e0c4";
+      ctx.beginPath();
+      ctx.moveTo(tipL, y0); ctx.lineTo(tipL, y1);
+      ctx.lineTo(W * 0.02, mid); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#5c5048";
+      ctx.beginPath();
+      ctx.moveTo(W * 0.06, y0 + (y1 - y0) * 0.30);
+      ctx.lineTo(W * 0.06, y1 - (y1 - y0) * 0.30);
+      ctx.lineTo(W * 0.02, mid); ctx.closePath(); ctx.fill();
+      /* ferrule and rubber */
+      ctx.fillStyle = "#cbb8a6";
+      ctx.fillRect(tipL + body, y0, W * 0.10, y1 - y0);
+      ctx.fillStyle = "rgba(255,255,255,0.35)";
+      ctx.fillRect(tipL + body, y0, W * 0.10, (y1 - y0) * 0.22);
+      ctx.fillStyle = "#e79aa4";
+      ctx.beginPath();
+      ctx.moveTo(tipL + body + W * 0.10, y0);
+      ctx.lineTo(W - 1, y0 + (y1 - y0) * 0.14);
+      ctx.lineTo(W - 1, y1 - (y1 - y0) * 0.14);
+      ctx.lineTo(tipL + body + W * 0.10, y1);
+      ctx.closePath(); ctx.fill();
+    });
+  }
+
+  /* A paperclip, and it has to be one continuous piece of wire or it reads
+     as a hook with a line next to it. So the path is walked the way the
+     wire is actually bent: up the right rail, over the top, down the left
+     rail, round the bottom, and back up the short inner rail. Drawn
+     upright; whichever way it lies on the table is a rotation. */
+  function clipArt(w) {
+    var W = w, H = Math.round(w * 2.3);
+    return tex(W, H, function (ctx) {
+      var lw = W * 0.15;
+      var x0 = lw / 2 + 1, x1 = W - lw / 2 - 1;
+      var cx = (x0 + x1) / 2, r = (x1 - x0) / 2;
+      var yTop = lw / 2 + r + 1, yBot = H - lw / 2 - r - 1;
+      var xi = x0 + (x1 - x0) * 0.62;
+      var cx2 = (x0 + xi) / 2, r2 = (xi - x0) / 2;
+
+      function wire() {
+        ctx.beginPath();
+        ctx.moveTo(x1, yBot - r * 0.30);
+        ctx.lineTo(x1, yTop);
+        ctx.arc(cx, yTop, r, 0, Math.PI, true);      /* over the top */
+        ctx.lineTo(x0, yBot);
+        ctx.arc(cx2, yBot, r2, Math.PI, 0, false);   /* round the bottom */
+        ctx.lineTo(xi, yTop + r * 0.55);
+        ctx.stroke();
+      }
+      ctx.lineCap = "round"; ctx.lineJoin = "round";
+      /* the shadow the wire drops on the cloth, then the wire, then the
+         light running along the top of it */
+      ctx.save(); ctx.translate(lw * 0.22, lw * 0.30);
+      ctx.strokeStyle = "rgba(150,116,102,0.26)"; ctx.lineWidth = lw; wire();
+      ctx.restore();
+      ctx.strokeStyle = "#c9b4a4"; ctx.lineWidth = lw; wire();
+      ctx.save(); ctx.translate(-lw * 0.16, -lw * 0.18);
+      ctx.strokeStyle = "rgba(255,252,246,0.62)"; ctx.lineWidth = lw * 0.34; wire();
+      ctx.restore();
+    });
+  }
+
+  /* The ring a warm cup leaves. Nothing but two soft bands of stain -- it
+     is the one mark on this table that says somebody has been sitting at
+     it for a while. */
+  function cupRing(w) {
+    return tex(w, w, function (ctx, W) {
+      var c = W / 2;
+      var g = ctx.createRadialGradient(c, c, W * 0.31, c, c, W * 0.47);
+      g.addColorStop(0, "rgba(176,132,96,0)");
+      g.addColorStop(0.42, "rgba(172,126,90,0.20)");
+      g.addColorStop(0.70, "rgba(164,118,84,0.13)");
+      g.addColorStop(1, "rgba(164,118,84,0)");
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, W);
+      ctx.strokeStyle = "rgba(158,112,78,0.16)";
+      ctx.lineWidth = W * 0.018;
+      ctx.beginPath(); ctx.arc(c, c, W * 0.40, 0.3, 5.6); ctx.stroke();
+    });
+  }
+
+  /* A photo mount corner, off the page and lying loose on the cloth. Kraft
+     paper rather than the near-black the ones in the book are cut from:
+     these are meant to be found, not to hold anything down. */
+  /* A photo mount corner, off the page and lying loose on the cloth. A plain
+     triangle at this size reads as a triangle and nothing else, so it is
+     built the way the paper ones are: a square of kraft with two flaps
+     folded in over the front, which leaves the little diagonal pocket a
+     print slides into and a visible fold down each side. */
+  function looseCorner(w) {
+    return tex(w, w, function (ctx, W) {
+      function sheet(a, b, c, g0, g1) {
+        var g = ctx.createLinearGradient(0, 0, W, W);
+        g.addColorStop(0, g0); g.addColorStop(1, g1);
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(c[0], c[1]);
+        ctx.closePath(); ctx.fill();
+      }
+      /* the back of the square, showing along the outer edges */
+      sheet([0, 0], [W, 0], [0, W], "#e9d6ba", "#cdb08b");
+      /* the two flaps folded forward, meeting on the diagonal */
+      sheet([0, 0], [W * 0.94, 0], [0, W * 0.10], "#f3e4c9", "#dcc7a2");
+      sheet([0, 0], [0, W * 0.94], [W * 0.10, 0], "#efdec1", "#d3bb95");
+      /* the fold down each side catches the light */
+      ctx.strokeStyle = "rgba(255,252,242,0.75)";
+      ctx.lineWidth = Math.max(1, W * 0.035);
+      ctx.beginPath();
+      ctx.moveTo(W * 0.90, 0); ctx.lineTo(0, 0); ctx.lineTo(0, W * 0.90);
+      ctx.stroke();
+      /* and the pocket the print goes into is the shaded diagonal */
+      ctx.strokeStyle = "rgba(132,102,64,0.28)";
+      ctx.lineWidth = Math.max(1, W * 0.045);
+      ctx.beginPath();
+      ctx.moveTo(W * 0.90, 0.5); ctx.lineTo(0.5, W * 0.90);
+      ctx.stroke();
+    });
+  }
+
   function bookCloth(seed, base, warp, weft) {
     return tex(360, 460, function (ctx, W, H) {
       var r = rnd(seed);
@@ -849,49 +1051,98 @@ window.Scrapbook = (function () {
      same cream label, same off-centre sheen -- and the play triangle
      pressed into the label the way a monogram is. It is unmistakably a
      button and it is unmistakably from this book. */
-  function playRecord(size) {
+  /* THE PLAY STUD.
+
+     What was here was a wine record with grooves, a cream label and a
+     pressed triangle. As an object it belonged -- there are records on
+     these pages -- but as a control at sixty points across it rendered as
+     a purple bullseye: the grooves moire into rings at that size and a
+     label at forty-six per cent of the radius makes a target. Sat on a
+     dusty pink page next to a pressed flower it read as a widget from a
+     video site wearing a costume, which is the one thing it was built not
+     to be.
+
+     A brad instead -- the same pearl-and-brass fastener that holds the
+     flower down in the corner of this very page. Brass collar, pearl
+     face with the light off to one side, and the play mark engraved into
+     it in plum rather than printed on it. It is small because a brad is
+     small; it is the page's own hardware rather than a piece of a player. */
+  function playStud(size) {
     return tex(size, size, function (ctx, W) {
       var r = W / 2;
-      /* the disc */
-      ctx.fillStyle = "#5b2434";
+
+      /* the brass collar, lit from the top left the way everything else on
+         these pages is */
+      var br = ctx.createLinearGradient(W * 0.18, 0, W * 0.84, W);
+      br.addColorStop(0,    "#f3e0ad");
+      br.addColorStop(0.30, "#cfa85a");
+      br.addColorStop(0.58, "#a07c36");
+      br.addColorStop(0.82, "#d8b871");
+      br.addColorStop(1,    "#7d5f27");
+      ctx.fillStyle = br;
       ctx.beginPath(); ctx.arc(r, r, r * 0.985, 0, 6.29); ctx.fill();
-      /* grooves */
-      ctx.strokeStyle = "rgba(255,232,222,0.075)";
-      ctx.lineWidth = 1;
-      for (var i = r * 0.40; i < r * 0.96; i += 2.6) {
-        ctx.beginPath(); ctx.arc(r, r, i, 0, 6.29); ctx.stroke();
+
+      /* a milled edge: short ticks round the collar, barely there */
+      ctx.strokeStyle = "rgba(60,38,10,0.30)";
+      ctx.lineWidth = Math.max(1, r * 0.015);
+      for (var a = 0; a < 6.28; a += 6.28 / 48) {
+        ctx.beginPath();
+        ctx.moveTo(r + Math.cos(a) * r * 0.985, r + Math.sin(a) * r * 0.985);
+        ctx.lineTo(r + Math.cos(a) * r * 0.895, r + Math.sin(a) * r * 0.895);
+        ctx.stroke();
       }
-      /* the light coming across it, off centre so it reads as lacquer */
-      var g = ctx.createLinearGradient(W * 0.12, 0, W * 0.86, W);
-      g.addColorStop(0, "rgba(255,236,226,0.20)");
-      g.addColorStop(0.42, "rgba(255,236,226,0)");
-      g.addColorStop(0.78, "rgba(255,236,226,0.11)");
-      g.addColorStop(1, "rgba(0,0,0,0.10)");
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(r, r, r * 0.985, 0, 6.29); ctx.fill();
-      /* the rim */
-      ctx.strokeStyle = "rgba(255,226,214,0.30)"; ctx.lineWidth = Math.max(1, r * 0.018);
-      ctx.beginPath(); ctx.arc(r, r, r * 0.975, 0, 6.29); ctx.stroke();
-      /* the label */
-      ctx.fillStyle = "#f2ddd2";
-      ctx.beginPath(); ctx.arc(r, r, r * 0.46, 0, 6.29); ctx.fill();
-      ctx.strokeStyle = "rgba(122,52,70,0.30)"; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(r, r, r * 0.46, 0, 6.29); ctx.stroke();
-      /* the triangle, pressed into it -- nudged right of centre because a
-         play mark centred on its bounding box always reads as leaning back */
-      var t = r * 0.235, cx = r + t * 0.16;
-      ctx.fillStyle = "#5c2438";
-      ctx.beginPath();
-      ctx.moveTo(cx + t, r);
-      ctx.lineTo(cx - t * 0.72, r - t * 0.92);
-      ctx.lineTo(cx - t * 0.72, r + t * 0.92);
-      ctx.closePath();
-      /* a little roundness on the corners, the way a stamped mark has */
-      ctx.lineJoin = "round"; ctx.lineWidth = Math.max(1.5, r * 0.05);
-      ctx.strokeStyle = "#5c2438"; ctx.stroke(); ctx.fill();
-      /* the spindle hole, through the middle of the mark's own shoulder */
-      ctx.fillStyle = "rgba(60,18,32,0.75)";
-      ctx.beginPath(); ctx.arc(r, r, r * 0.038, 0, 6.29); ctx.fill();
+
+      /* the seat the pearl is pressed into */
+      ctx.fillStyle = "rgba(52,32,10,0.55)";
+      ctx.beginPath(); ctx.arc(r, r, r * 0.80, 0, 6.29); ctx.fill();
+
+      /* THE PEARL. Two lights, not one: a small hard highlight up at the
+         top left where the source is, and a wide soft return low right
+         bouncing back off the paper. One highlight alone reads as plastic. */
+      var pe = ctx.createRadialGradient(r * 0.72, r * 0.66, r * 0.05,
+                                        r, r, r * 0.78);
+      pe.addColorStop(0,    "#fffdf8");
+      pe.addColorStop(0.30, "#fbeee2");
+      pe.addColorStop(0.62, "#f0dccb");
+      pe.addColorStop(0.86, "#dcc3b2");
+      pe.addColorStop(1,    "#c7a998");
+      ctx.fillStyle = pe;
+      ctx.beginPath(); ctx.arc(r, r, r * 0.755, 0, 6.29); ctx.fill();
+
+      var back = ctx.createRadialGradient(r * 1.26, r * 1.30, r * 0.02,
+                                          r * 1.26, r * 1.30, r * 0.62);
+      back.addColorStop(0, "rgba(255,238,226,0.55)");
+      back.addColorStop(1, "rgba(255,238,226,0)");
+      ctx.fillStyle = back;
+      ctx.beginPath(); ctx.arc(r, r, r * 0.755, 0, 6.29); ctx.fill();
+
+      /* the shadow the collar casts onto the pearl at the top */
+      var sh = ctx.createLinearGradient(0, r * 0.25, 0, r * 1.05);
+      sh.addColorStop(0, "rgba(92,56,34,0.30)");
+      sh.addColorStop(1, "rgba(92,56,34,0)");
+      ctx.fillStyle = sh;
+      ctx.beginPath(); ctx.arc(r, r, r * 0.755, 0, 6.29); ctx.fill();
+
+      /* THE MARK, ENGRAVED. Cut into the pearl rather than laid on top: a
+         dark face with a hairline of light along its lower edge, which is
+         what makes a groove read as a groove. Nudged right of centre,
+         because a play mark centred on its bounding box always leans back. */
+      var t = r * 0.30, cx = r + t * 0.14;
+      function mark(dx, dy) {
+        ctx.beginPath();
+        ctx.moveTo(cx + t + dx, r + dy);
+        ctx.lineTo(cx - t * 0.70 + dx, r - t * 0.90 + dy);
+        ctx.lineTo(cx - t * 0.70 + dx, r + t * 0.90 + dy);
+        ctx.closePath();
+      }
+      ctx.lineJoin = "round";
+      ctx.strokeStyle = "rgba(255,250,242,0.75)";
+      ctx.lineWidth = Math.max(1, r * 0.035);
+      mark(0, r * 0.035); ctx.stroke();
+      ctx.fillStyle = "#6b2a3e";
+      ctx.strokeStyle = "#6b2a3e";
+      ctx.lineWidth = Math.max(1.2, r * 0.05);
+      mark(0, 0); ctx.stroke(); ctx.fill();
     });
   }
 
@@ -1687,7 +1938,14 @@ window.Scrapbook = (function () {
       { k: "bigtype", text: W.p1big, left: 68, top: 6, size: 16, vertical: true, colour: "rgba(255,255,255,.22)" },
       { k: "photo", n: 1, style: "polaroid", left: 26, top:  5, w: 36.1, rot: -6, tape: "top" },
       { k: "photo", n: 2, style: "snapshot", left: 14, top: 44, w: 37.7, rot:  4, tape: "corner" },
-      { k: "photo", n: 3, style: "corners",  left: 38, top: 66, w: 38, rot: -3 },
+      /* This was the one bare print in the whole spread — held by four
+         black corners, straight onto the paper, while every other
+         photograph across both pages sits on a card. It was the first
+         thing the eye found and the reason the left page read as
+         unfinished. `washed` is the same 4/3 as `corners`, so nothing
+         moves; it simply has a mount now, and a warmer one than the two
+         above it so the three are not the same card three times. */
+      { k: "photo", n: 3, style: "washed",   left: 38, top: 66, w: 38, rot: -3 },
       { k: "sticker", art: "rose",    left: 73, top: 54, w: 24, rot: -8 },
       { k: "sticker", art: "lips",    left: 60, top: 44, w: 19, rot: 14 },
       { k: "sticker", art: "vinyl8",  left: 70, top: 82, w: 26, rot: 0 },
@@ -1783,7 +2041,14 @@ window.Scrapbook = (function () {
 
     /* ---- 5 · the record ------------------------------------------ */
     { paper: "rose", pieces: [
-      { k: "typecol", text: "Th", left: -1, top: 3, w: 14 },
+      /* This said "Th", which is "The" with the e knocked off -- a
+         truncation, not a word, repeated seven times down the outer
+         edge of the page in type big enough to read. The facing page
+         already runs "The" down its edge, so the same word again
+         would have been the safe fix and the dull one. This page is
+         the record, the dancing and "i am a lucky girl" curved round
+         the vinyl, so it gets that page's own word. */
+      { k: "typecol", text: "lucky", left: -1, top: 3, w: 14 },
       /* A 56-wide record hanging off the left edge with the clock on top of
          it put this page's weight fifteen points to that side -- the most
          lopsided page in the book by a factor of three. The record is the
@@ -1965,6 +2230,48 @@ window.Scrapbook = (function () {
     32:[32,19], 33:[28,34], 34:[351,34],
   };
 
+  /* =====================================================================
+     THE GRADE ON A PRINT
+
+     PHOTO_TINT above colours the CARD a print is mounted on. This colours
+     the PRINT, and it exists because of page 8.
+
+     That spread is one night in one red room, and the right-hand page
+     reads as it: four prints, all of them deep in the light of the place.
+     The three of her on the left were the same night and did not match —
+     flatter, greyer, a stop cooler — so the two pages looked like two
+     different evenings with a gutter between them.
+
+     Nothing here retouches a photograph. It is the grade a print gets in
+     a darkroom: a little more of the colour that was already in the room,
+     a little more separation between the lit side of a face and the dark
+     one. Anything not named here is left exactly as it was shot, which is
+     the default and should stay the default — this is for a page whose
+     photographs have to agree with each other, not a look for the book.
+     ===================================================================== */
+  var PHOTO_GRADE = {
+    /* Page 8 was shot in a room lit entirely red, and the camera did what
+       a camera does: it gave back three photographs drowned in it. Skin
+       came out orange and a cream jumper came out orange, which is not
+       what the room looked like to anybody standing in it.
+
+       The first attempt at this went the wrong way — it pushed the red
+       further to "match the page", and made them worse. This pulls the
+       cast back out instead: less of the colour the sensor over-read, a
+       little more light, a little more contrast to put the shadows back.
+       It is white balance, which is the correction these were always
+       going to need, not a look.
+
+       Photo 1 barely gets any. Its red is a red curtain that was really
+       there, behind a face that was already lit properly — correcting it
+       as hard as the other two only made it grey. */
+    1: "saturate(.90) brightness(1.03) contrast(1.02)",
+    /* 2 and 3 are the two the light drowned: an orange wall, an orange
+       sofa and an orange jumper that is actually cream */
+    2: "saturate(.64) brightness(1.09) contrast(1.04) hue-rotate(9deg)",
+    3: "saturate(.60) brightness(1.10) contrast(1.05) hue-rotate(10deg)",
+  };
+
   /* the back cover is its own thing, not a page of collage */
   var BACK = { title: "the end.", line1: "until next time,", line2: "— love, always •", line3: "xoxo" };
 
@@ -2109,6 +2416,9 @@ window.Scrapbook = (function () {
       wrap.style.setProperty("--ph-h", pt[0]);
       wrap.style.setProperty("--ph-s", pt[1] + "%");
     }
+    /* and the print's own grade, where one is set */
+    var pg = PHOTO_GRADE[mem.n];
+    if (pg) wrap.style.setProperty("--ph-grade", pg);
     var mount = el("sb-photo-mount");
     var inner = el("sb-photo-inner");
 
@@ -2748,7 +3058,7 @@ window.Scrapbook = (function () {
     var c = el("sb-w sb-w-bouquet");
     c.innerHTML =
       '<p class="sb-w-title">My Love’s bouquet</p>' +
-      '<p class="sb-w-kicker">FROM YOU</p>' +
+      '<p class="sb-w-kicker">FROM HIM</p>' +
       '<div class="sb-bq-stage"></div>';
     c.querySelector(".sb-bq-stage").appendChild(buildBouquetSVG());
     return c;
@@ -2870,6 +3180,14 @@ window.Scrapbook = (function () {
   /* ---- the memory map ---- */
   var MAP_SLOT = 31;          /* the map pins use slots 31..34 */
   var MAP_TEX = null;
+  /* half the pin's minimum width, and its full minimum height: the two
+     distances a centred, bottom-anchored pin can hang outside its map */
+  /* Half the pin's widest, and its full height plus its little tail: the
+     two distances a centred, bottom-anchored pin can hang outside its map.
+     They were 19 and 40, measured against a pin that has since grown a tail
+     and a shadow, and photographs were still crossing the frame. */
+  var PIN_EDGE = 26, PIN_TOP = 52;
+
   function buildMapCard(big) {
     if (!MAP_TEX) MAP_TEX = marrakechMap(800, 600);
     var c = el("sb-w sb-w-map" + (big ? " big" : ""));
@@ -2893,10 +3211,22 @@ window.Scrapbook = (function () {
       e.stopPropagation(); zoom = Math.max(1, zoom - 0.25); applyZoom();
     });
 
+    /* THE PIN HAS TO STAY ON THE MAP.
+
+       A pin is placed by percentage and centred on its point, so half of it
+       hangs to the left of that point. That was fine while a pin was ten per
+       cent of the map; it is not fine now that it has a 44px floor under it
+       so a thumb can hit it, because on a small map 22px is a long way and a
+       pin at x=2% ends up off the left-hand edge of the screen entirely.
+
+       So the anchor is clamped to the span the pin can occupy without
+       leaving the map. It moves a pin near an edge by a few pixels, which
+       nobody will ever notice, and it keeps every one of them tappable,
+       which they will. */
     SB.map.pins.forEach(function (pin, i) {
       var b = el("sb-map-pin", "button");
-      b.style.left = pin.x + "%";
-      b.style.top = pin.y + "%";
+      b.style.left = "clamp(" + PIN_EDGE + "px, " + pin.x + "%, calc(100% - " + PIN_EDGE + "px))";
+      b.style.top = "clamp(" + PIN_TOP + "px, " + pin.y + "%, calc(100% - 4px))";
       b.style.animationDelay = (i * 0.45) + "s";
       b.setAttribute("aria-label", pin.title);
       var mem = photoAt(MAP_SLOT + i);
@@ -2926,13 +3256,28 @@ window.Scrapbook = (function () {
   function buildOurVideoCard() {
     var V = SB.ourVideo;
     var c = el("sb-w sb-w-ourvideo");
-    /* A print in the book, not a player dropped on top of one. The same
-       cream mount every photo on these pages sits in, with the sprocket
-       edges the film cells use, so it reads as a strip of film someone
-       taped down rather than a black rectangle waiting for a video. */
+    /* AN APERTURE CUT INTO A LEAF OF THE ALBUM'S OWN PAPER.
+
+       Two things this could not be. Not the cream filmstrip it was: there
+       is no film anywhere else in this book, so one strip of sprocket
+       clipart on a page of pressed flowers and cut photographs is the
+       thing that reads as borrowed. And not a taped print either, however
+       well that matches -- that is the photographs' language, and it is
+       already spoken on every page. Saying it again here would make the
+       one moving thing in the album the one thing indistinguishable from
+       everything around it.
+
+       So: a leaf of the book's own blush paper with a window cut through
+       it, and the clip living behind the window rather than pasted on the
+       front. The cut edge is chamfered, and the four faces of the chamfer
+       take the light differently -- brightest along the top, darkest along
+       the bottom -- which is what says the paper has thickness and the
+       picture is underneath it. The brad that starts it is pinned into the
+       mat below the window, not laid over the two of them, so nothing ever
+       sits on anybody's face. */
     c.innerHTML =
       '<div class="sb-ov-mount">' +
-        '<div class="sb-ov-holes a"><i></i><i></i><i></i><i></i><i></i><i></i></div>' +
+        '<div class="sb-ov-window">' +
         '<div class="sb-vid-frame">' +
           '<div class="sb-ov-poster"></div>' +
           '<div class="sb-ov-veil"></div>' +
@@ -2944,7 +3289,7 @@ window.Scrapbook = (function () {
             "</div>" +
           "</div>" +
         "</div>" +
-        '<div class="sb-ov-holes b"><i></i><i></i><i></i><i></i><i></i><i></i></div>' +
+        "</div>" +
       "</div>" +
       '<p class="sb-vid-cap">' + V.caption + "</p>";
 
@@ -2967,7 +3312,7 @@ window.Scrapbook = (function () {
        tap is the gesture that loads the video if nothing else has. */
     var btn = el("sb-vid-play", "button");
     btn.setAttribute("aria-label", "Play our video");
-    /* the record sticker, and the word beside it in her handwriting */
+    /* the brad, and the word beside it */
     btn.innerHTML =
       '<span class="sb-ov-ring" aria-hidden="true">' +
         '<span class="sb-ov-pulse"></span>' +
@@ -2977,9 +3322,13 @@ window.Scrapbook = (function () {
     var discImg = btn.querySelector(".sb-ov-disc-img");
     if (discImg) {
       if (STICK.playDisc) discImg.src = STICK.playDisc;
-      else { STICK.playDisc = playRecord(200); discImg.src = STICK.playDisc; }
+      else { STICK.playDisc = playStud(220); discImg.src = STICK.playDisc; }
     }
-    frame.appendChild(btn);
+    /* ON THE MAT, NOT IN THE WINDOW. Appended to the frame it could only
+       ever be positioned against the picture, which on a clip of two
+       people means it is on two people however low it is pushed. The
+       paper's foot is where it belongs, so that is where it is hung. */
+    c.querySelector(".sb-ov-mount").appendChild(btn);
 
     /* THE TRANSPORT.
 
@@ -4105,11 +4454,59 @@ window.Scrapbook = (function () {
     pageW = pageH * 0.75;
   }
 
-  /* where the spine sits, relative to the middle of the book */
-  function spineOffset(idx) {
-    if (perView === 1 || !views[idx]) return 0;
-    if (views[idx].length === 2) return 0;
-    return idx === 0 ? -pageW / 2 : pageW / 2;
+  /* WHERE THE FOLD IS INSIDE THE BOOK'S OWN BOX.
+
+     0.5 is the middle -- an open spread, hinged down the centre. A single
+     page is a cover: the front cover's fold is its right-hand edge, the
+     back cover's is its left, exactly as they are in a real book. This is
+     a fraction of the box rather than a number of pixels because the box
+     changes width the instant a turn starts, and the fold has to be found
+     again in the new one. */
+  function spineFrac(idx) {
+    if (perView === 1 || !views[idx]) return 0.5;
+    if (views[idx].length === 2) return 0.5;
+    /* Which edge is the hinge, read off the leaf the turn actually uses:
+       opening the front cover, leaf A is hinged LEFT (aHingeRight is false
+       for a forward turn), so the closed front cover's spine is its left
+       edge. Closing the back cover, leaf B is hinged RIGHT, so the back
+       cover's spine is its right edge. I had these the other way round at
+       first, which made the book slide half a page too far. */
+    return idx === 0 ? 0 : 1;
+  }
+
+  /* THE BOOK HAS TO SIT ON THE TABLE, NOT FLOAT OVER IT.
+
+     A drop shadow under a rectangle is not the same thing as contact. What
+     reads as an object resting on a surface is two shadows at once: a tight
+     dark one right at the edge where no light gets in at all, and a wide
+     soft one further out. And when a leaf comes up off the block the book
+     is momentarily taller, so both of them should spread and soften -- which
+     is exactly what --flip-lift already measures, sixty times a second, for
+     free. It is a registered property with inherits:false, so writing it
+     here costs nothing: there is no subtree under this element to
+     invalidate, because there is nothing under it at all. */
+  function bookShade() {
+    var book = document.getElementById("sb-book");
+    if (!book) return null;
+    var sh = book.querySelector(".sb-book-shade");
+    if (!sh) {
+      sh = el("sb-book-shade");
+      sh.setAttribute("aria-hidden", "true");
+      /* TWO SHADOWS, AND ONLY THEIR OPACITY MOVES.
+
+         The first version had one shadow and grew its blur radius with the
+         lift, which is the expensive way to be right: a blur radius that
+         changes is a layer the compositor has to rasterise again on every
+         frame, and eight turns went from 1930ms of main thread to 4501ms.
+         So the two states are built as two layers with fixed blurs -- the
+         tight contact shadow and the wide soft one -- and the lift only
+         cross-fades between them. Opacity is a compositor property; it
+         costs nothing to animate. */
+      sh.appendChild(el("sb-shade-near", "span"));
+      sh.appendChild(el("sb-shade-far", "span"));
+      book.insertBefore(sh, book.firstChild);
+    }
+    return sh;
   }
 
   function applySize() {
@@ -4123,6 +4520,12 @@ window.Scrapbook = (function () {
     outer.style.setProperty("--page-w", pageW + "px");
     outer.style.setProperty("--book-shift", "0px");
     outer.classList.toggle("single", perView === 1 || !wide);
+
+    var sh = bookShade();
+    if (sh) {
+      sh.style.height = pageH + "px";
+      sh.style.width = (wide ? pageW * 2 : pageW) + "px";
+    }
   }
 
   function renderView() {
@@ -4173,6 +4576,8 @@ window.Scrapbook = (function () {
       b:     document.getElementById("sb-leaf-b"),
       spread: document.getElementById("sb-spread"),
       spine: document.querySelector("#screen-scrapbook .sb-spine"),
+      shadeNear: document.querySelector("#screen-scrapbook .sb-shade-near"),
+      shadeFar:  document.querySelector("#screen-scrapbook .sb-shade-far"),
     };
   }
 
@@ -4208,7 +4613,18 @@ window.Scrapbook = (function () {
 
   function stripCount() {
     if (stripPref === null) {
-      var small = window.matchMedia && window.matchMedia("(max-width: 760px)").matches;
+      /* A PHONE ON ITS SIDE IS STILL A PHONE.
+
+         This asked one question -- is the window narrower than 760px --
+         and a phone held sideways is 844 wide and 390 tall, so it
+         answered no and took the full eighteen strips. On a screen that
+         also runs at three device pixels to the CSS pixel, which is the
+         most expensive combination there is, and the one this book is
+         most likely to be read on. Height is asked as well now, which is
+         what actually distinguishes a phone lying down from an iPad. */
+      var mq = window.matchMedia;
+      var small = !!mq && (mq("(max-width: 760px)").matches ||
+                           mq("(max-height: 560px)").matches);
       /* Higher than it was, for two reasons. The strips now span 144% of
          the page rather than 100%, so the same count would be a coarser
          cut; and he said the turn still reads as sliding panels, which is
@@ -4216,7 +4632,17 @@ window.Scrapbook = (function () {
          and the fewer of them there are the more each one shows. The
          tuner below still takes them away on a device that cannot afford
          them. */
-      stripPref = small ? 13 : 18;
+      /* START LOW ON A PHONE AND LET IT CLIMB.
+
+         The tuner below moves in both directions -- it takes strips away
+         when a settle runs slow and adds them back when one runs fast --
+         but it can only do that AFTER a turn has been measured. Starting
+         at thirteen meant the first turns on a slow phone were the worst
+         ones she would ever see, which are also the ones that decide
+         whether the book feels good. Starting at eleven costs almost
+         nothing to look at, and a phone that can afford more is handed
+         more within a couple of turns. */
+      stripPref = small ? 11 : 18;
     }
     return stripPref;
   }
@@ -4327,6 +4753,21 @@ window.Scrapbook = (function () {
       mImgs[q].loading = "eager";
       mImgs[q].decoding = "sync";
     }
+    /* AND NOTHING THAT FETCHES RIDES ON A TURNING SHEET.
+
+       The page this copies carries a <video> pointing at an 8.4MB clip, and
+       a media element begins loading as soon as it is in the document. Every
+       strip is a copy of this master, thirteen of them per leaf, so a turn
+       was firing fresh requests for that file: measured, one request while
+       the book was being built, none at all while it sat still for twenty
+       seconds, and seventeen more across ten turns.
+
+       Nobody can watch a clip on a sheet halfway through bending, and the
+       poster frame is already painted underneath it, so the media comes out
+       of the master once rather than out of each of its thirteen copies.
+       The real element on the real page is untouched and still plays. */
+    var mLive = master.querySelectorAll("video, iframe, audio");
+    for (var mi = 0; mi < mLive.length; mi++) mLive[mi].remove();
 
     for (var i = 0; i < STRIPS; i++) {
       var startPct = first + i * d;        /* where this strip begins */
@@ -4582,10 +5023,26 @@ window.Scrapbook = (function () {
   }
 
   /* place every strip on the cylinder, and light it by how it faces us */
+  /* How the bend is shared out along the sheet, as a multiple of the
+     average. High at the binding, trailing away to a fore-edge that is
+     nearly flat -- and normalised so the average over the sheet is 1,
+     which is what keeps the total turn the same as the plain arc's.
+
+       integral of (0.40 + 1.55 * e^-2.5u) du over 0..1
+         = 0.40 + 1.55 * (1 - e^-2.5) / 2.5 = 0.40 + 0.5691 = 0.9691
+     so dividing by that leaves a mean of exactly 1. */
+  var CURVE_NORM = 0.40 + 1.55 * (1 - Math.exp(-2.5)) / 2.5;
+  function curveProfile(u) {
+    if (u < 0) u = 0; else if (u > 1) u = 1;
+    return (0.40 + 1.55 * Math.exp(-2.5 * u)) / CURVE_NORM;
+  }
+
   function layoutLeaf(leaf, A, kappa, W, hingeRight) {
     if (!leaf || leaf.dataset.empty) return;
     var strips = leaf.children, n = strips.length;
     if (!n) return;
+    /* the walk along the bent part of the sheet, carried strip to strip */
+    var wa = A, wx = 0, wz = 0, ws = 0;
     var span = 1 + BLEED / 100;
     var d = (W * span) / n;
     var s0 = -W * (BLEED / 100);          /* measured from the hinge, both ways */
@@ -4601,12 +5058,43 @@ window.Scrapbook = (function () {
         aTan = A;
         x = s * Math.cos(A);
         z = s * Math.sin(A);
+        /* and the walk along the bent part starts from the hinge itself */
+        wa = A; wx = 0; wz = 0; ws = 0;
       } else if (Math.abs(kappa) < 1e-6) {
         aTan = A; x = s * Math.cos(A); z = s * Math.sin(A);
       } else {
-        aTan = A - kappa * s;
-        x = (Math.sin(A) - Math.sin(A - kappa * s)) / kappa;
-        z = (Math.cos(A - kappa * s) - Math.cos(A)) / kappa;
+        /* PAPER IS NOT BENT THE SAME ALL THE WAY ALONG. THAT IS THE WHOLE
+           DIFFERENCE BETWEEN PAPER AND SHEET METAL.
+
+           This used to be a circular arc -- one curvature, constant from
+           the spine to the fore-edge, with a closed form for x and z. A
+           constant curvature is exactly what a bent strip of thin metal
+           does, and it is why the turn read as metal however carefully it
+           was shaded.
+
+           A sheet held at one edge does something else. It is stiff, so
+           the curvature is not free to be uniform: it piles up near the
+           binding, where the sheet is held and cannot go anywhere, and
+           runs out towards the fore-edge, which is nearly straight and
+           just trails. CURVE below is that profile, and it is normalised
+           so the sheet still turns through the same total angle as before
+           -- the silhouette is the same size, the bend inside it is not.
+
+           There is no closed form for a varying curvature, so the shape
+           is walked: each strip adds its own little arc to the one
+           before. The loop already runs in order, so this costs one
+           multiply and two trig calls more than the closed form did. */
+        while (ws < s - 1e-9) {
+          var stepLen = Math.min(d, s - ws);
+          var u = (ws + stepLen * 0.5) / W;          /* midpoint of this step */
+          var kHere = kappa * curveProfile(u);
+          var aMid = wa - kHere * stepLen * 0.5;     /* midpoint tangent */
+          wx += stepLen * Math.cos(aMid);
+          wz += stepLen * Math.sin(aMid);
+          wa -= kHere * stepLen;
+          ws += stepLen;
+        }
+        aTan = wa; x = wx; z = wz;
       }
       var st = strips[i];
       st.style.transform =
@@ -4618,7 +5106,16 @@ window.Scrapbook = (function () {
          to the next one's — the joins then match and the light reads as
          one continuous curve. */
       var sEnd = s + d;
-      var aEnd = sEnd <= 0 ? A : A - kappa * sEnd;
+      /* the tangent at this strip's far end, on the same varying curve --
+         this is what makes the shading joins line up along the sheet */
+      var aEnd;
+      if (sEnd <= 0) aEnd = A;
+      else if (Math.abs(kappa) < 1e-6) aEnd = A;
+      else {
+        var s2 = Math.max(0, s), a2 = (s <= 0 ? A : aTan);
+        var mid = ((s2 + sEnd) * 0.5) / W;
+        aEnd = a2 - kappa * curveProfile(mid) * (sEnd - s2);
+      }
       var st2 = (st._shade || st).style;
       st2.setProperty("--d0", shadeAt(aTan).toFixed(3));
       st2.setProperty("--d1", shadeAt(aEnd).toFixed(3));
@@ -4638,6 +5135,27 @@ window.Scrapbook = (function () {
     if (!e.a || !e.outer) return;
     flip.p = p;
 
+    /* THE SWAP, on the frame the sheet is standing on its edge -- the one
+       instant in a turn when it is side-on over the gutter and the book
+       can change width without it being seen. The leaves change over here
+       anyway, and by now the slide below has carried the hinge to where
+       the wider book wants it, so the swap is exact.
+
+       IT GOES BOTH WAYS. A turn is not a one-way trip: she can drag the
+       cover half open, change her mind, and push it back. This used to
+       latch -- once past halfway the book kept the shape it was heading
+       for, so dragging back closed left the cover flattening down onto a
+       book that was still standing open, and letting go snapped it. The
+       shape follows the sheet wherever the sheet goes. */
+    if (!flip.sameShape) {
+      var want = p >= 0.5;
+      if (want !== flip.swapped) {
+        flip.swapped = want;
+        e.outer.style.width = (want ? flip.w1 : flip.w0) + "px";
+        e.outer.classList.toggle("single", want ? flip.singleTo : flip.singleFrom);
+      }
+    }
+
     var half = p < 0.5;
     /* The width of the sheet itself, not of the book's half. The boards
        overhang the text block, so the leaf is narrower than pageW by that
@@ -4650,7 +5168,17 @@ window.Scrapbook = (function () {
        the curvature peaks past the middle rather than at it, and it goes a
        little deeper than it used to now that the crest highlight has
        something to run along. */
-    var bend = Math.sin(Math.PI * Math.pow(p, 0.82));
+    /* The sheet is straight at either end and bent in between -- but it
+       does not go perfectly flat the instant it arrives, and it is not
+       perfectly flat the instant it leaves. A sheet lifted off a block
+       starts curling before it has turned at all, and it is still
+       carrying a little bend when it lands, which then relaxes out. So
+       the envelope never quite reaches zero at the ends: there is a
+       floor under it that a flat arc does not have, and that floor is
+       most of what stops the page reading as a rigid plate that happens
+       to be rotating. */
+    var bend = 0.10 + 0.90 * Math.sin(Math.PI * Math.pow(p, 0.82));
+    if (p <= 0.001 || p >= 0.999) bend = 0;
     /* 0.95 was the original depth and it is as far as this construction
        goes cleanly: the sheet is cut into flat strips, so every joint is a
        kink, and past about this curvature the kinks open into seams you
@@ -4687,13 +5215,22 @@ window.Scrapbook = (function () {
        @property { inherits: false } in the stylesheet, which tells the
        engine there is no subtree to invalidate in the first place. Same
        for --book-shift, which is read by the very element it is set on. */
-    if (e.spine) {
-      e.spine.style.setProperty("--flip-lift", Math.sin(Math.PI * p).toFixed(4));
-    }
-    if (flip.shift) {
-      e.outer.style.setProperty("--book-shift",
-        (flip.shift * (1 - p)).toFixed(2) + "px");
-    }
+    var lift = Math.sin(Math.PI * p).toFixed(4);
+    if (e.spine) e.spine.style.setProperty("--flip-lift", lift);
+    /* written on the two layers themselves, not on their parent: the
+       property is registered inherits:false, which is what makes it free,
+       and what makes it free is also what stops it reaching a child */
+    if (e.shadeNear) e.shadeNear.style.setProperty("--flip-lift", lift);
+    if (e.shadeFar) e.shadeFar.style.setProperty("--flip-lift", lift);
+    /* The hinge walks to its new place over the FIRST half, while the
+       book is still narrow. Once the width has swapped it is already
+       there, so the shift is zero for the rest of the turn. Written every
+       frame, not only when there is a slide, so a turn that needs none
+       still clears the one the turn before it left behind. */
+    var slide = (flip.swapped || flip.sameShape || flip.foldTo === undefined)
+      ? 0
+      : (flip.foldTo - flip.foldFrom) * Math.min(1, p * 2);
+    e.outer.style.setProperty("--book-shift", slide.toFixed(2) + "px");
   }
 
   function beginTurn(dir) {
@@ -4757,18 +5294,70 @@ window.Scrapbook = (function () {
     if (scr) scr.classList.add("sb-turning");
     e.outer.classList.add("flipping");
     e.outer.classList.toggle("flip-back", dir < 0);
-    /* The book takes its new width at once, and slides so the spine
-       stays exactly where it was — otherwise opening the cover drags the
-       whole book sideways under the turning sheet. */
     var toWide = perView === 2 && views[flip.to].length === 2;
-    flip.shift = spineOffset(flip.from) - spineOffset(flip.to);
+    /* THE BOOK MUST NOT CHANGE WIDTH WHILE YOU CAN SEE IT HAPPEN.
+
+       This is what the lurch on the covers actually was, and pinning the
+       fold -- which is what I tried first -- does not touch it.
+
+       The book took its new width on the FIRST frame of the turn. Touch a
+       closed cover and it doubled instantly: at a thousand pixels wide,
+       from 315..685 to 315..1055, which is fifty-five pixels off the side
+       of the screen, and then it slid back in over the rest of the turn.
+       The half it had just grown into was bare board, because the page
+       that belongs there rides on the second leaf and does not appear
+       until halfway. So you saw the book jump out the wrong way, show a
+       slab of nothing, and gather itself up. It was never the slide that
+       was wrong; it was when the width changed.
+
+       The sheet is already swapped at halfway -- leaf A carries the front
+       of the page up to p=0.5, leaf B carries its back down from there.
+       That is the one instant in a turn when the sheet stands edge-on
+       over the gutter, and so the only instant the book can change width
+       without it being seen. The width, the gutter's class and the slide
+       all move there together, with the fold held still across the swap
+       so nothing jumps: the first half of the turn is the book exactly as
+       it was, and the second half carries it to where it is going while
+       the cover comes down over it.
+
+       None of this is per frame. One width write and one forced layout,
+       at one point in the turn. */
+    e.outer.style.setProperty("--book-shift", "0px");
     /* the board overhang holds still for the whole turn -- renderView is
        what changes it, and that runs once the turn is over */
     flip.W = Math.max(1, pageW -
       (parseFloat(getComputedStyle(e.outer).getPropertyValue("--board-x")) || 0));
     e.outer.style.setProperty("--page-w", pageW + "px");
-    e.outer.style.width = (toWide ? pageW * 2 : pageW) + "px";
-    e.outer.classList.toggle("single", perView === 1 || !toWide);
+    /* everything the halfway swap will need, measured while the book is
+       still standing in the shape it started in */
+    flip.w1 = (toWide ? pageW * 2 : pageW);
+    flip.singleTo = (perView === 1 || !toWide);
+    flip.w0 = e.outer.getBoundingClientRect().width;
+    flip.singleFrom = e.outer.classList.contains("single");
+    flip.fracFrom = spineFrac(flip.from);
+    flip.fracTo = spineFrac(flip.to);
+    /* WHERE THE HINGE IS NOW, AND WHERE IT IS GOING.
+
+       The spine has to move: closed, it is at one edge of a centred book;
+       open, it is the middle of a wider one. Half a page, whatever we do.
+       What matters is WHEN. Sliding it after the width change means
+       sliding a book that is now twice as wide, and it hangs off the side
+       of the screen for the whole second half of the turn.
+
+       So the slide happens FIRST, while the book is still narrow and has
+       room to move -- it walks across during the first half of the turn,
+       arriving exactly as the sheet reaches its edge and the width swaps.
+       After that the shift is zero and the book is already home. It never
+       leaves the screen and there is nothing left to catch up. */
+    var r0 = e.outer.getBoundingClientRect();          /* shift is 0 here */
+    var mid = r0.left + r0.width / 2;                  /* the layout's centre */
+    flip.foldFrom = r0.left + r0.width * flip.fracFrom;
+    flip.foldTo = (mid - flip.w1 / 2) + flip.w1 * flip.fracTo;
+    flip.shift = 0;
+    /* a turn between two views of the same shape has nothing to swap */
+    flip.sameShape = Math.abs(flip.w0 - flip.w1) < 0.5 &&
+                     flip.singleTo === flip.singleFrom;
+    flip.swapped = false;
     setFlipProgress(0);
     return true;
   }
@@ -4781,7 +5370,10 @@ window.Scrapbook = (function () {
     if (e.outer) {
       e.outer.classList.remove("flipping", "flip-back");
       e.outer.style.removeProperty("--flip-p");
+      e.outer.style.removeProperty("--book-shift");
       if (e.spine) e.spine.style.removeProperty("--flip-lift");
+      if (e.shadeNear) e.shadeNear.style.removeProperty("--flip-lift");
+      if (e.shadeFar) e.shadeFar.style.removeProperty("--flip-lift");
     }
     var scr = document.getElementById("screen-scrapbook");
     if (scr) scr.classList.remove("sb-turning");
@@ -4790,20 +5382,47 @@ window.Scrapbook = (function () {
     renderView();
   }
 
+  /* HOW LONG A SHEET TAKES TO LIE DOWN.
+
+     The turn used to run on a symmetric ease -- the same cubic in as out
+     -- over at most 640ms. Symmetric is the tell: it means the sheet
+     takes as long to get going as it takes to stop, and nothing with
+     weight does that. A page you let go of picks up quickly, goes over,
+     and then takes a long time to settle, because the last part of the
+     movement is air and the sheet's own stiffness rather than the hand.
+
+     This is that curve -- cubic-bezier(.28,.72,.18,1), solved for x by
+     bisection because there is no closed form -- over a duration long
+     enough to read as paper and short enough not to be a wait. */
+  function bezEase(x1, y1, x2, y2) {
+    function cx(t, a, b) {
+      var mt = 1 - t;
+      return 3 * mt * mt * t * a + 3 * mt * t * t * b + t * t * t;
+    }
+    return function (x) {
+      if (x <= 0) return 0;
+      if (x >= 1) return 1;
+      var lo = 0, hi = 1, t = x;
+      for (var i = 0; i < 18; i++) {
+        t = (lo + hi) * 0.5;
+        if (cx(t, x1, x2) < x) lo = t; else hi = t;
+      }
+      return cx(t, y1, y2);
+    };
+  }
+  var PAPER_EASE = bezEase(0.28, 0.72, 0.18, 1);
+
   function settle(to, done) {
     var from = flip.p;
     var dist = Math.abs(to - from);
-    var dur = Math.max(280, Math.min(640, dist * 620));
+    var dur = Math.max(420, Math.min(940, dist * 880));
     var t0 = null, frames = 0;
     turning = true;
     (function step(now) {
       if (t0 === null) t0 = now;
       frames++;
       var k = Math.min(1, (now - t0) / dur);
-      /* paper does not snap — it decelerates long and settles */
-      var eased = k < 0.5
-        ? 4 * k * k * k
-        : 1 - Math.pow(-2 * k + 2, 3) / 2;
+      var eased = PAPER_EASE(k);
       setFlipProgress(from + (to - from) * eased);
       if (k < 1) requestAnimationFrame(step);
       else {
@@ -4901,6 +5520,9 @@ window.Scrapbook = (function () {
     var jobs = [];
     function job(fn) { jobs.push(fn); }
 
+    /* the table goes down before anything is laid on it */
+    job(buildTableSurface);
+
     job(function () { PAPER.rose   = crumpled("#b9707f", "rgba(255,226,232,0.32)", "rgba(76,20,36,0.34)", 3); });
     job(function () { PAPER.rose2  = crumpled("#a96274", "rgba(252,220,228,0.28)", "rgba(66,16,32,0.36)", 31); });
     job(function () { PAPER.mauve  = crumpled("#8d6480", "rgba(240,220,238,0.26)", "rgba(46,14,38,0.36)", 11); });
@@ -4975,7 +5597,7 @@ window.Scrapbook = (function () {
        the "8" still reads. */
     job(function () { STICK.vinyl8   = vinyl(190, { body: "#2a1119", label: "#f6e7dc", text: "8" }); });
     job(function () { STICK.vinylRose= vinyl(230, { body: "#5b2434", label: "#f2ddd2", text: "" }); });
-    job(function () { STICK.playDisc = playRecord(200); });
+    job(function () { STICK.playDisc = playStud(220); });
     job(function () { STICK.vinylLtd = vinyl(200, { body: "#3a1d28", label: "#f2e4d6", text: "" }); });
     job(function () { STICK.lipInk   = lipStamp(120, "#8e3b50"); });
     job(function () { STICK.rose     = chromeRose(150); });
@@ -4989,7 +5611,33 @@ window.Scrapbook = (function () {
     job(function () { STICK.filmCam  = filmCam(300); });
 
     job(function () { buildBook(); built = true; renderView(); });
+    /* the props last, so the stickers they borrow already exist */
+    job(buildTableProps);
+
     return jobs;
+  }
+
+  /* WARMING, AS OPPOSED TO BUILDING.
+
+     Everything above except the last two jobs is paper: canvases drawn
+     and encoded, with no opinion about how many pages are on screen or
+     which one she is looking at. That part can be made before she asks
+     for the book at all. The last two cannot -- buildBook lays out the
+     spread and calls renderView, and both of those depend on perView,
+     which start() works out from the window it is actually opening in.
+
+     So warming queues the paper and stops one short of the book. It
+     leaves the drawn sheets in PAPER, STICK and PAGE_PAPER, where
+     buildJobs' own jobs would have put them, and marks them done so
+     they are not drawn twice. */
+  var warmed = false;
+
+  function warmJobs() {
+    var all = buildJobs();
+    /* hold back the two that need a laid-out book */
+    var tail = all.splice(all.length - 2, 2);
+    all.push(function () { warmed = true; });
+    return { paper: all, tail: tail };
   }
 
   /* the two the cover cannot wait for */
@@ -5001,7 +5649,17 @@ window.Scrapbook = (function () {
     if (built || buildQueue) return;
     buildCoverEssentials();
     wire();
-    buildQueue = buildJobs();
+    /* if the gate already made the paper, all that is left is the book */
+    buildQueue = warmed ? warmJobs().tail : buildJobs();
+    stepBuild();
+  }
+
+  /* called from the gate: the paper only, spread across frames */
+  function warmBuild() {
+    if (built || warmed || buildQueue) return;
+    buildCoverEssentials();
+    wire();
+    buildQueue = warmJobs().paper;
     stepBuild();
   }
 
@@ -5018,10 +5676,78 @@ window.Scrapbook = (function () {
   function buildNow() {
     buildCoverEssentials();
     wire();
-    if (!buildQueue) buildQueue = buildJobs();
+    if (!buildQueue) buildQueue = warmed ? warmJobs().tail : buildJobs();
     while (buildQueue.length) buildQueue.shift()();
     buildQueue = null;
+    /* a warm queue that was still draining when she arrived has been run
+       to its end by the loop above, so the book itself still has to be
+       laid out */
+    if (!built) { var t = warmJobs().tail; while (t.length) t.shift()(); }
   }
+
+  /* ---- laying the table -------------------------------------------
+     Built here rather than written into index.html. That file is one very
+     large document every session edits, and main lost both of the wall's
+     <div class="page-deco"> blocks to a merge that resolved it in favour of
+     the other side -- no conflict, no error, no failing test, the work just
+     quietly not there any more. A layer that builds itself cannot be lost
+     that way, and it cannot half-exist either.
+
+     Back to front: the cloth, the runner it is laid on, the lamp, the
+     things left lying about, and a breath of shade in the far corners.
+     Everything above the cloth is transparent, so the screen stays as light
+     as the cloth is. */
+  var tabled = false;
+
+  function tableProp(cls, src, css) {
+    var i = el("sb-prop " + cls, "i");
+    var img = document.createElement("img");
+    img.alt = ""; img.decoding = "async"; img.src = src;
+    i.appendChild(img);
+    for (var k in css) if (css.hasOwnProperty(k)) i.style.setProperty(k, css[k]);
+    return i;
+  }
+
+  /* Two jobs, not one. The surface goes down first, before the book is
+     cut -- it is what is behind the book, so she should never see a bare
+     screen under it, and weaving two cloths and painting four props in one
+     frame is a long enough block to push the book's own build past the
+     point where a page can be asked to turn. */
+  function buildTableSurface() {
+    var screen = document.getElementById("screen-scrapbook");
+    if (!screen || tabled) return;
+    if (screen.querySelector(".sb-table")) { tabled = true; return; }
+    tabled = true;
+
+    var t = el("sb-table");
+    t.setAttribute("aria-hidden", "true");
+
+    var cloth = el("sb-table-cloth", "span");
+    cloth.style.backgroundImage = "url(" + clothCream(57) + ")";
+    t.appendChild(cloth);
+
+    /* the runner is woven too, or it reads as a painted stripe on a cloth
+       rather than as a second piece of cloth lying on the first */
+    var runner = el("sb-table-runner", "span");
+    runner.style.setProperty("--weave", "url(" + clothRose(83) + ")");
+    t.appendChild(runner);
+    t.appendChild(el("sb-table-lamp", "span"));
+    t.appendChild(el("sb-table-edge", "span"));
+    screen.insertBefore(t, screen.firstChild);
+  }
+
+  /* NO THINGS ON THE TABLE.
+
+     There were seven -- a paperclip, two photo corners, a pencil, a paper
+     star, pressed flowers and the ring a cup left -- arranged in three
+     groups round the margins. He does not want them, and he is right: the
+     book is the thing on this screen, and a scattering of props round it is
+     a second thing competing with it. The cloth, the runner and the shadow
+     under the book are the table. That is enough of one.
+
+     buildTableProps is kept as a no-op rather than deleted so the build job
+     that calls it does not have to know it went. */
+  function buildTableProps() {}
 
   var wired = false;
   function wire() {
@@ -5032,7 +5758,14 @@ window.Scrapbook = (function () {
     if (intro) intro.addEventListener("click", function () { endIntro(false); });
 
     var extras = document.getElementById("sb-extras-btn");
-    if (extras) extras.addEventListener("click", function () { toggleDrawer(); });
+    if (extras) extras.addEventListener("click", function () {
+      /* The turn is the button's open/shut state now, in the stylesheet,
+         so there is no class to restart here -- toggleDrawer sets `on`
+         and the flower goes round. It is still deferred a frame: the
+         first press builds the drawer, and that build is synchronous and
+         long enough to eat the start of the turn if it runs first. */
+      requestAnimationFrame(function () { toggleDrawer(); });
+    });
 
     var noteDone = document.getElementById("sb-note-done");
     if (noteDone) noteDone.addEventListener("click", closeNote);
@@ -5099,6 +5832,22 @@ window.Scrapbook = (function () {
 
   api.start = start;
   api.stop = stop;
+  /* BUILD THE PAPER BEFORE SHE ASKS FOR IT.
+
+     Every sheet, sticker and dyed page is a canvas draw and a
+     toDataURL, and toDataURL is a whole PNG encode -- about 350ms of
+     them altogether. The queue spreads that over frames, but it does not
+     start until start() does, and if she reaches the book before it
+     drains, buildNow() runs the rest in one go. Measured on a phone
+     profile that is a 187ms block of script on the one transition in the
+     site that should be seamless: the passcode landing and the book
+     opening.
+
+     The gate is four taps of nothing happening, on a screen with no
+     animation to protect. Warming there means the queue is empty, or
+     nearly, by the time the cover swings. Calling it twice is free --
+     scheduleBuild returns if a queue is already running. */
+  api.warm = function () { try { warmBuild(); } catch (e) {} };
   api.next = next;
   api.prev = prev;
   api.closeLightbox = closeLightbox;

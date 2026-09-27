@@ -54,11 +54,16 @@ const R=[]; const ok=(n,c,x)=>R.push((c?'PASS  ':'FAIL  ')+n+(x?'   '+x:''));
   const bar = await page.evaluate(() => window.__soBgmBar());
   ok('the bass keeps its root notes', bar.bassRoots > 0,
      bar.bassRoots + ' roots, ' + bar.bassNotes + ' bass notes of ' + bar.steps + ' steps');
-  const barNotes = await page.evaluate(() => {
+  /* A WHOLE PASS OF THE LOOP, whatever the loop is. This used to drive
+     exactly 32 steps because the tune was exactly 32 steps long; the
+     score has four-bar arrangements now, so a hard-coded 32 measured half
+     a tune against the note count of a whole one. It asks the tune how
+     long it is. */
+  const barNotes = await page.evaluate((n) => {
     const start = window.__osc;
-    window.__soBgmSteps(32);
+    window.__soBgmSteps(n);
     return window.__osc - start;
-  });
+  }, bar.steps);
   ok('a full bar plays a real tune, not a handful of notes',
      barNotes >= bar.leadNotes + bar.bassNotes - 2,
      barNotes + ' notes for a bar of ' + (bar.leadNotes + bar.bassNotes));
