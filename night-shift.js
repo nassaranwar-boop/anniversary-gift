@@ -21618,6 +21618,71 @@ const testHooks = {
     };
     tick();
   }),
+  /* A METER THAT DOES NOT LIVE ON THE MAIN THREAD.
+
+     balance() polls with setTimeout(tick, 20) and averages whatever
+     snapshots it manages to take. That is fine on a machine that
+     runs its timers, and this chapter's own build container is not
+     one: at about a frame a second a setTimeout(20) comes back a
+     second later, so a 1.3 second window collected TWO snapshots of
+     2048 samples -- ninety milliseconds of audio out of thirteen
+     hundred, roughly seven per cent, sampled at moments having
+     nothing to do with when a door was struck.
+
+     Every strange reading this session came from that: effects at
+     -120 because the two snapshots fell in the gaps between them,
+     and his voice at -19.1 in one run and -120 in the next from the
+     same line. The numbers were not wrong about what they sampled.
+     They sampled almost nothing.
+
+     A ScriptProcessorNode is pulled by the audio system on the audio
+     thread's own schedule, every single block, whatever the main
+     thread is doing. It is deprecated and it is the right tool here:
+     an AudioWorklet needs a module fetch and this needs to work in a
+     page that is already loaded. Sum of squares accumulates in the
+     callback, and the main thread only reads the total at the end,
+     which is one number and cannot be undersampled. */
+  meterBuses: (ms) => new Promise((done) => {
+    if (!AC || !MUS.bus) return done(null);
+    const sink = AC.createGain(); sink.gain.value = 0; sink.connect(master);
+    const taps = {};
+    const mk = (src, key) => {
+      if (!src) return;
+      const sp = AC.createScriptProcessor(4096, 1, 1);
+      const t = { sum: 0, n: 0, loud: 0, blocks: 0 };
+      sp.onaudioprocess = (e) => {
+        const d = e.inputBuffer.getChannelData(0);
+        let acc = 0;
+        for (let i = 0; i < d.length; i++) acc += d[i] * d[i];
+        t.sum += acc; t.n += d.length; t.blocks++;
+        /* and the loudest block, because a door is a transient and
+           its mean over a quiet second says very little */
+        const fr = acc / d.length;
+        if (fr > t.loud) t.loud = fr;
+      };
+      src.connect(sp); sp.connect(sink);
+      taps[key] = { sp, t };
+    };
+    mk(MUS.bus, "music");
+    mk(voxOut, "him");
+    mk(cueGain, "cue");
+    const db = (x) => +(10 * Math.log10(Math.max(1e-12, x))).toFixed(1);
+    setTimeout(() => {
+      const r = { bed: +sideGain.gain.value.toFixed(3) };
+      for (const k in taps) {
+        const t = taps[k].t;
+        r[k] = db(t.sum / Math.max(1, t.n));
+        r[k + "Peak"] = db(t.loud);
+        r[k + "Blocks"] = t.blocks;
+        try { taps[k].sp.disconnect(); taps[k].sp.onaudioprocess = null; } catch (e) {}
+        try { (k === "music" ? MUS.bus : k === "him" ? voxOut : cueGain).disconnect(taps[k].sp); } catch (e) {}
+      }
+      try { sink.disconnect(); } catch (e) {}
+      /* the score as she hears it, after the duck */
+      r.musicHeard = +(r.music + 20 * Math.log10(Math.max(0.0001, r.bed))).toFixed(1);
+      done(r);
+    }, ms || 1200);
+  }),
   /* which path the last line took, and how many went out as speech
      because their take had not arrived yet */
   said: () => ({ took: VOX_FILE.took, late: VOX_FILE.late,

@@ -83,7 +83,7 @@ const { chromium } = require('playwright-core');
       N.tapeQuiet();
       if (!N.tapeSayRaw(line.t, null, false)) continue;
       await sleep(600);
-      const m = await N.balance(1600);
+      const m = await N.meterBuses(1800);
       if (N.said().took === 'tape') {
         live = true;
         hisRow = Object.assign({ what: 'him speaking', took: 'tape',
@@ -97,14 +97,14 @@ const { chromium } = require('playwright-core');
     if (!live) return { out, diag };
 
     await sleep(1200);
-    out.push(Object.assign({ what: 'nothing happening' }, await N.balance(1600)));
+    out.push(Object.assign({ what: 'nothing happening' }, await N.meterBuses(1800)));
 
     /* the shop, one effect at a time, each fired repeatedly so the
        gate has something to hold on to */
     for (const name of ['doorClose', 'knock', 'step', 'bells', 'beep', 'hatch']) {
       let told = null;
       const bang = setInterval(() => { try { told = N.sfxTest(name); } catch (e) { told = { threw: String(e) }; } }, 230);
-      const m = await N.balance(1300);
+      const m = await N.meterBuses(1600);
       clearInterval(bang);
       out.push(Object.assign({ what: name, sfx: told }, m));
       await sleep(350);
@@ -118,7 +118,7 @@ const { chromium } = require('playwright-core');
         N.tapeQuiet();
         if (!N.tapeSayRaw(w.t, w.who, false)) continue;
         await sleep(600);
-        const m = await N.balance(1600);
+        const m = await N.meterBuses(1800);
         const took = N.said().took;
         out.push(Object.assign({ what: w.who + ' speaking', took,
                                  line: String(w.t).slice(0, 32) }, m));
@@ -136,20 +136,20 @@ const { chromium } = require('playwright-core');
   if (Array.isArray(r.diag.sfx)) console.log('  effects: ' + r.diag.sfx.length + ' of them');
   console.log('  a recording actually played: ' + r.diag.live + ',  context after: ' + r.diag.acAfter +
               ',  shift ' + r.diag.paused);
-  console.log('\n  situation            score    shop     him     him over shop  duck   path');
+  console.log('\n  MEAN over the window, dB full scale');
+  console.log('  situation            score heard   cue      him      duck   blocks  path');
   r.out.forEach((x) => {
     console.log('  ' + String(x.what).padEnd(20) +
-                String(x.music).padStart(6) + '  ' + String(x.shop).padStart(6) + '  ' +
-                String(x.him).padStart(6) + '  ' + String(x.overShop).padStart(9) + ' dB  ' +
-                String(x.bed).padStart(5) + '  ' + (x.took || '') +
-                (x.sfx && x.sfx.threw ? '  THREW ' + x.sfx.threw : '') +
-                (x.sfx && x.sfx.how ? '  (' + x.sfx.how + ')' : ''));
+                String(x.musicHeard).padStart(8) + '  ' + String(x.cue).padStart(7) + '  ' +
+                String(x.him).padStart(7) + '  ' + String(x.bed).padStart(6) + '  ' +
+                String(x.cueBlocks).padStart(5) + '   ' + (x.took || '') +
+                (x.sfx && x.sfx.threw ? '  THREW ' + x.sfx.threw : ''));
   });
-  console.log('\n  raw buses (gated means, and how many frames had anything in them):');
+  console.log('\n  LOUDEST BLOCK in the window, which is what a transient is');
+  console.log('  situation            score       cue      him');
   r.out.forEach((x) => {
-    console.log('    ' + String(x.what).padEnd(20) + 'cueGain ' + String(x.cueRaw).padStart(7) +
-                '   voxOut ' + String(x.voxRaw).padStart(7) +
-                '   frames ' + x.frames + ', with sound ' + x.voiced + ', his ' + x.hisFrames);
+    console.log('  ' + String(x.what).padEnd(20) + String(x.musicPeak).padStart(8) + '  ' +
+                String(x.cuePeak).padStart(7) + '  ' + String(x.himPeak).padStart(7));
   });
   console.log('\n  (dB relative to full scale; "duck" is where the score is held)\n');
   r.out.forEach((x) => { if (x.line) console.log('    ' + x.what + ': "' + x.line + '..."'); });
