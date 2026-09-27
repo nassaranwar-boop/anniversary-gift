@@ -1123,10 +1123,34 @@ window.CupSprites = (function () {
     /* Shorts go on after both the shirt and the legs, and they are
        NARROWER than the torso: a hem the full width of the chest is a
        skirt, and that is exactly what the first pass looked like. */
+    /* WHAT WAS HERE WAS A NAPPY.
+
+       A flat slab the full width of the chest, five pixels deep, one
+       tone, with a single darker row at the bottom and a dithered
+       three-pixel column down the middle that nobody could see. Blown
+       up on the contact sheet it is the loudest thing on the figure
+       and it does not read as clothing at all: no waist, no leg
+       openings, and a colour that belongs to no part of the kit.
+
+       Four pixels of drawing fix it. A waistband in the team's trim
+       ties the shorts to the shirt. A pixel off each side puts them
+       inside the chest, which is what the note above always said they
+       were. And a notch cut up from the hem is the gap between two
+       legs -- the single thing that turns one shape into a pair of
+       shorts, and the thing the dither was trying and failing to
+       suggest. */
     var shorts = P.fam.shorts;
-    var shW = torsoW;
-    sh.rect(cx - shW, hipY - 4, shW * 2 + 1, 5, shorts.base);
+    var shW = Math.max(3, torsoW - 1);
+    /* the waistband, in the trim: one row, and the shirt sits over it */
+    sh.rect(cx - shW, hipY - 4, shW * 2 + 1, 1, trim.base);
+    sh.rect(cx - shW, hipY - 3, shW * 2 + 1, 4, shorts.base);
+    /* the light down the front of the near thigh, so they are not flat */
+    sh.rect(cx - shW + 1, hipY - 3, 2, 3, shorts.light);
     sh.rect(cx - shW + 1, hipY + 1, shW * 2 - 1, 1, shorts.shadow);  // the hem
+    /* AND THE GAP. Cut up from the hem rather than dithered across the
+       middle: two pixels of the darkest tone is a leg opening, and a
+       dither is a smudge. */
+    sh.rect(cx, hipY - 1, 1, 3, shorts.dark);
 
     /* arms: shoulder, a bend, and a hand — Part 1.1 says not blobs.
        They start OUTSIDE the chest, or the whole arm disappears into
@@ -1165,11 +1189,20 @@ window.CupSprites = (function () {
          spot beside the chest it stayed there while the arm went up,
          and she celebrated goals next to a floating gold rectangle. */
       if (L.armband && side < 0) {
+        /* A THIRD OF THE WAY DOWN, NOT HALF.
+
+           Halfway between the shoulder and the elbow sounds right and
+           lands on the elbow itself, because the sleeve already covers
+           the top third of that run -- so the captain wore a gold
+           block on the point of his arm that read as a mitten. It
+           sits on the bicep now, where an armband goes, and it is
+           three pixels wide rather than four so it stays on the arm
+           when the arm is bent. */
         var gd = P.fam.gold;
-        var mx = Math.round((sx + ex2) / 2) - 1;
-        var my = Math.round((shoulderY + 4 + elbowY) / 2) - 1;
-        sh.rect(mx - 1, my, 4, 2, gd.base);
-        sh.rect(mx - 1, my + 2, 4, 1, gd.shadow);
+        var mx = Math.round(sx + (ex2 - sx) * 0.34);
+        var my = Math.round(shoulderY + 4 + (elbowY - shoulderY - 4) * 0.34);
+        sh.rect(mx - 1, my, 3, 2, gd.base);
+        sh.rect(mx - 1, my + 2, 3, 1, gd.shadow);
       }
     };
     arm(-1, p.armA, !profile);
@@ -1185,7 +1218,8 @@ window.CupSprites = (function () {
        front. */
     sh.shadeIn(ux + torsoW - 2, shoulderY + 4, 3, torsoH - 6, kit.base, kit.shadow);
     sh.shadeIn(ux - torsoW, shoulderY + 5, 2, torsoH - 8, kit.base, kit.shadow);
-    sh.shadeIn(cx - 1, hipY - 3, 3, 5, shorts.base, shorts.shadow);
+    /* (the crotch shading that used to be here is a cut notch now --
+       see the shorts above) */
 
     if (face.back) {
       /* from behind she is a back, so: a number, and her hair over the
