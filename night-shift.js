@@ -1715,13 +1715,13 @@ const NS = {
          hourly lines it was never once named. His tape mentions it at
          four in the morning on the first night and that was the whole
          of it. */
-      { h: 1,   t: "Each of them has a key in its back. Find one on a camera and hold the key until the ring fills." },
-      { h: 1.5, t: "The ballerina is out. She stops dead while you are looking at her, and moves the moment you are not." },
-      { h: 2,   t: "Something of his is taped inside the drawer, where his hand would go." },
-      { h: 3,   t: "The jack-in-the-box is out. He is the one who will not wait at a door." },
-      { h: 4,   t: "He chalked four names on the workshop bench. Find out what the fourth word is." },
-      { h: 4.5, t: "The owl is up. Doors do nothing to that one — it comes through the ceiling. Latch the hatch." },
-      { h: 5,   t: "One hour. Whatever you can hear out there, it stops at six." },
+      { h: 0.7, t: "Each of them has a key in its back. Find one on a camera and hold the key until the ring fills." },
+      { h: 1.1, t: "The ballerina is out. She stops dead while you are looking at her, and moves the moment you are not." },
+      { h: 1.6, t: "Something of his is taped inside the drawer, where his hand would go." },
+      { h: 2.1, t: "The jack-in-the-box is out. He is the one who will not wait at a door." },
+      { h: 3.1, t: "The owl is up. Doors do nothing to that one — it comes through the ceiling. Latch the hatch." },
+      { h: 4.0, t: "He chalked four names on the workshop bench. Find out what the fourth word is." },
+      { h: 5.0, t: "One hour. Whatever you can hear out there, it stops at six." },
     ],
     2: [
       { h: 0, t: "There is a book under the till. He has spent a night asking you not to." },
@@ -2810,8 +2810,25 @@ const NIGHTS = [
        hazards and no parcels in it. The four simply arrive sooner and
        press a little harder, so that by five o'clock on her first
        night she has had to actually do the job. */
-    active: { cogsworth: 0, marabelle: 1.2, jax: 2.8, chime: 4.2 },
-    ramp: [0.92, 1.02, 1.12, 1.24, 1.36, 1.48],
+    /* AND THEN IT WAS STILL THE GENTLE NIGHT AND HE SAID FIX THAT TOO.
+
+       After the first pass a good player still finished night one with
+       forty-seven per cent of the meter and a careless one was never
+       once in danger. The aggression ramp cannot go much further
+       without crossing night two's, and a first night that is harder
+       than the night everything breaks is not a curve.
+
+       So it is the roster rather than the ramp. All four used to be on
+       the floor by twenty past four, which left the ceiling hatch live
+       for the last hour and three quarters of her first shift and
+       nothing at all coming through it before that. They are all up by
+       three now, an hour and a quarter earlier, which is four more
+       performer-hours of a night that had sixteen. That costs door
+       seconds and camera seconds rather than reaction time, so the
+       night gets busier without getting sharper -- which is the right
+       shape for the one she plays first. */
+    active: { cogsworth: 0, marabelle: 1, jax: 2, chime: 3 },
+    ramp: [0.94, 1.04, 1.16, 1.28, 1.40, 1.52],
     /* and one rule, which is the only one in the chapter that costs
        her nothing at all: her own bulb goes out by itself now and
        then, and comes back. The first night had no hazard of any kind
@@ -18522,24 +18539,32 @@ function beginGallery() {
 }
 
 /* =====================================================================
-   TEMPORARY SKIP — FOR TESTING, AND MEANT TO BE DELETED
+   THE SKIP, WHICH IS NOW BEHIND THE DOOR RATHER THAN IN THE ROOM
 
    He asked for a way to jump from one night to the next so the chapter
-   can be tested without playing five and a half minutes of every one
-   of them. This is that, and it is written to be removed in one go:
-   this block, the #ns-skip button in index.html, and the .ns-skip-btn
-   rule in style.css. Nothing else in the chapter refers to any of the
-   three, so deleting them cannot break anything.
+   could be tested without playing five and a half minutes of every one
+   of them, and said at the time that it was temporary. It was on, for
+   everybody, all week: a mustard dashed button sitting on the HUD of a
+   game that is a present for one person, offering to skip the thing
+   she is being given.
+
+   Deleting it outright was the obvious answer and the wrong one — he
+   is still testing, and taking the tool away in the same change that
+   makes the nights harder is a poor trade. So it is off unless it is
+   asked for by name: open the site with ?skip=1 on the end of the
+   address and the button is there, on any night, exactly as it was.
+   Without it there is no button, no key, no listener and nothing on
+   the screen, which is the state anybody who is handed this link is
+   in.
 
    It calls winNight, which is the real end of a night and not a
    shortcut round it: the night is marked done so the next one unlocks,
    the shift is rated, badges are awarded, and the card that follows is
-   the card she would have got. That matters for testing — a skip that
-   faked the transition would be testing the skip rather than the game.
-
-   Set TEST_SKIP to false, or delete the three pieces, and the chapter
-   is exactly what it was. */
-const TEST_SKIP = true;
+   the card she would have got. A skip that faked the transition would
+   be testing the skip rather than the game. */
+const TEST_SKIP = (() => {
+  try { return /[?&]skip=1(&|$)/.test(location.search); } catch (e) { return false; }
+})();
 
 function showHud(on) {
   if (EL["ns-hud"]) EL["ns-hud"].hidden = !on;

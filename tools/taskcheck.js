@@ -47,6 +47,32 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
     return out;
   });
 
+  /* THE ONE FAULT EVERY CHECK BELOW IS BLIND TO.
+
+     taskFor walks the night's list in order and keeps the LAST entry
+     whose hour has passed. So two entries written on the same hour
+     silently hide the first, and an entry written out of order hides
+     every later one across the hours it covers. Raising night one's
+     roster put the ballerina on the same hour as the winding line and
+     the owl after the chalk, and three of that night's eight lines
+     stopped existing -- with every check below still green, because
+     they all ask what she is told AT an hour and none of them asks
+     whether anything was lost. */
+  const order = await p.evaluate(() => {
+    const NS = OuissysNightShift.__night.words();
+    const bad = [];
+    for (const n in NS.tonight) {
+      let last = -1;
+      NS.tonight[n].forEach((t) => {
+        if (t.h <= last) bad.push('night ' + n + ': ' + t.h + ' after ' + last);
+        last = t.h;
+      });
+    }
+    return bad;
+  });
+  ok("every night's desk lines run up the clock, no two on one hour",
+     order.length === 0, order[0]);
+
   for (let night = 1; night <= 3; night++) {
     const hours = walk[night];
     const missing = hours.filter((x) => !x).length;

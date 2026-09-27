@@ -147,17 +147,36 @@ must not, the last night must cost a good player real seconds at an
 open door, it must take a normal one under 12%, and the curve must be
 monotone.
 
-**Still his call, not mine:** night one remains the gentle night. A
-good player finishes it with half the meter. It is the tutorial, it is
-the first thing a person who does not play games ever sees, and I would
-rather it be eerie than hard — the office bulb and the thing behind her
-chair are what it got instead of pressure. If he wants night one to
-bite as well, the lever is `NIGHTS[0].ramp` and it is one line.
+**Then he said fix those two as well, so:**
 
-**And the SKIP button is still on.** `TEST_SKIP` in night-shift.js,
-the mustard dashed button. It was asked for as a temporary testing aid
-and it is still there. It must come out before this is given to
-anybody.
+**Night one is not the gentle night any more, and it was the roster
+rather than the ramp.** The aggression curve cannot go much further
+without crossing night two's, and a first night harder than the night
+everything breaks is not a curve. What could move was who is on the
+floor: all four used to be up by twenty past four, which left the
+ceiling hatch live for the last hour and three quarters of her first
+shift and nothing coming through it before that. They are all up by
+three now — four more performer-hours in a night that had sixteen.
+That spends door seconds and camera seconds rather than reaction time,
+so the night gets busier without getting sharper, which is the right
+shape for the one she plays first.
+
+That change also broke three of night one's own desk lines and no
+check could see it. `taskFor` keeps the LAST entry whose hour has
+passed, so the ballerina landing on the same hour as the winding line
+hid the winding line, and the owl written after the chalk hid the owl.
+Everything in `taskcheck` stayed green, because every check in it asks
+what she is told AT an hour and none of them asked whether anything
+had been lost. There is one that does now.
+
+**The SKIP button is behind the door rather than in the room.**
+Deleting it was the obvious answer and the wrong one — he is still
+testing, and taking the tool away in the same change that makes the
+nights harder is a poor trade. It is off unless it is asked for by
+name: **open the site with `?skip=1` on the end of the address** and
+the button is there, on any night, exactly as it was. Without it there
+is no button, no listener and nothing on the screen, which is the
+state anybody handed this link is in.
 
 ### 2026-09-27 — six nights into three, and the four faults he named
 
