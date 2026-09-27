@@ -559,6 +559,71 @@ window.CupSprites = (function () {
     }
   }
 
+  /* =======================================================================
+     A SIDE VIEW IS A DIFFERENT HEAD, NOT A NARROWER ONE
+
+     What was here was the front head: one circle, the front hair cap
+     slid two pixels left, the eye moved across and a nose added. Dumped
+     a pixel at a time that reads exactly as it looks -- the hair mass
+     sits ON TOP of the skull and hangs FORWARD over the brow, the eye
+     and the cheek, so the face is a slot cut in a helmet; there is no
+     ear; the jaw is the bottom of a circle, so there is no chin and no
+     angle under it; and the head meets the shoulders with no neck at
+     all. It is the drawing everybody does first and it is why a side
+     view looks cheap.
+
+     Three pieces fix it, and all three are things a head actually has.
+     ======================================================================= */
+
+  /* ONE: the skull. The cranium sits BACK of the features -- in a side
+     view most of a head is behind the face -- the jaw runs forward and
+     down from under the ear so the corner behind it is air rather than
+     head, the chin comes forward of the circle, and there is a neck.
+     Nothing is cut except skin: the head is drawn last, over the body,
+     and taking pixels blind would punch a hole in the shoulder it is
+     standing on. */
+  function profileSkull(sh, cx, cy, r, skin) {
+    sh.ellipse(cx - 1, cy, r, r, skin.base);
+    for (var y = 3; y <= r + 2; y++) {
+      var edge = cx - r + Math.round((y - 2) * 0.9);
+      for (var x = cx - r - 2; x < edge; x++) {
+        if (sh.at(x, cy + y) === skin.base) sh.px(x, cy + y, 0);
+      }
+    }
+    sh.rect(cx + 1, cy + r - 3, 3, 2, skin.base);      // the chin, forward
+    sh.px(cx + 3, cy + r - 4, skin.base);
+    sh.rect(cx - 1, cy + r - 2, 4, 1, skin.shadow);    // under the jaw
+    sh.rect(cx - 4, cy + r - 2, 4, 3, skin.shadow);    // and the neck
+  }
+
+  /* TWO: the ear, which is the one feature that only a side view has
+     and the quickest way to say which way a head is pointing. Two
+     pixels of shadow with a lit pixel in front of them, set at the
+     back of the cheek where the jaw hinges. */
+  function profileEar(sh, cx, cy, r, skin) {
+    sh.rect(cx - 3, cy, 2, 3, skin.shadow);
+    sh.px(cx - 1, cy + 1, skin.base);
+    sh.px(cx - 3, cy - 1, skin.shadow);
+  }
+
+  /* THREE: the fringe stops at the brow. capDome centred on the skull
+     puts hair over the eye, the cheek and the jaw, which in profile is
+     not a hairstyle, it is a helmet with a face cut into it. Every hair
+     pixel forward of the brow and below the hairline goes back to being
+     skin where it is inside the skull and air where it is not. Then the
+     mass is put where it belongs -- behind and above -- so the head
+     keeps its volume instead of losing it. */
+  function clipFringe(sh, cx, cy, r, hair, skin, browY) {
+    for (var y = browY; y <= cy + r + 3; y++) {
+      for (var x = cx + 1; x <= cx + r + 4; x++) {
+        var v = sh.at(x, y);
+        if (v < hair.dark || v > hair.light) continue;
+        var a = (x - cx + 1) / (r + 0.5), b = (y - cy) / (r + 0.5);
+        sh.px(x, y, a * a + b * b <= 1 ? skin.base : 0);
+      }
+    }
+  }
+
   /* What falls behind the shoulders, drawn before the body — the only
      way long hair reads as long rather than as a bib. `lag` is Part
      4.2's secondary motion: the hair trails the body by a frame. */
@@ -676,7 +741,19 @@ window.CupSprites = (function () {
     /* LUMI — bun: a knot high and behind */
     bun: {
       crown: function (sh, P, cx, cy, r, f) {
-        var h = P.fam.hair, x = cx - (f.turn >= 0.9 ? 5 : 3);
+        var h = P.fam.hair;
+        if (f.profile) {
+          /* A KNOT IS BEHIND A HEAD, NOT ABOVE ONE. In profile it was
+             still drawn on the crown, which from the side is a lump
+             balanced on top of her skull rather than hair gathered at
+             the back of it -- and it is the single thing that made the
+             side view read as the front view with a hat on. */
+          sh.ellipse(cx - r - 1, cy - 3, 4, 4, h.base);
+          sh.rect(cx - r - 3, cy - 6, 3, 1, h.light);
+          sh.px(cx - r + 2, cy - 6, h.shadow);          // where it is gathered
+          return;
+        }
+        var x = cx - 3;
         sh.ellipse(x, cy - r - 2, 4, 4, h.base);
         sh.rect(x - 2, cy - r - 4, 3, 1, h.light);
       },
@@ -703,10 +780,15 @@ window.CupSprites = (function () {
     },
     /* BOULDER — flat: a flat top, squared off at the corners */
     flat: {
-      crown: function (sh, P, cx, cy, r) {
+      crown: function (sh, P, cx, cy, r, f) {
         var h = P.fam.hair;
-        sh.rect(cx - r, cy - r - 2, r * 2 + 1, 4, h.base);
-        sh.rect(cx - r + 1, cy - r - 2, r * 2 - 1, 1, h.light);
+        /* front-on the flat top is the full width of the head; from the
+           side it is the DEPTH of the head, which is shorter and sits
+           back, and drawn at full width it hung over his face */
+        var x0 = f && f.profile ? cx - r - 1 : cx - r;
+        var w = f && f.profile ? r + 4 : r * 2 + 1;
+        sh.rect(x0, cy - r - 2, w, 4, h.base);
+        sh.rect(x0 + 1, cy - r - 2, w - 2, 1, h.light);
       },
     },
     /* THORN — pads: a headband, low and tied at the side */
@@ -817,7 +899,8 @@ window.CupSprites = (function () {
       return;
     }
 
-    sh.ellipse(cx, cy, r, r, skin.base);
+    if (profile) profileSkull(sh, cx, cy, r, skin);
+    else sh.ellipse(cx, cy, r, r, skin.base);
 
     /* PART 3.1 — A TRUE PROFILE. The nose is the tell; without one a
        side view is a front view with the eyes moved, which is exactly
@@ -871,8 +954,26 @@ window.CupSprites = (function () {
          sitting on top of it, so BOULDER's flat top and ATLAS's crop are
          not the same shape with different colours in it */
       var grow = H.tight === undefined ? 1 : H.tight - 1;
-      capDome(sh, cx + (profile ? -2 : 0), cy - 1, r + grow, r, fringeY, hair.base);
-      if (!profile) sh.rect(cx - r + 2, cy - r + 1, 4, 1, hair.light);
+      capDome(sh, cx - (profile ? 1 : 0), cy - 1, r + (profile ? 1 : grow),
+              r, fringeY, hair.base);
+      if (profile) {
+        /* THE BACK OF THE HEAD, DOWN TO THE NAPE, and following the
+           skull rather than sitting in a lump behind it. A second
+           ellipse behind the head was the first try and it read as a
+           bag: hair four pixels outside the skull is not hair. */
+        for (var hy = fringeY; hy <= cy + r - 2; hy++) {
+          for (var hx = cx - r - 1; hx <= cx - 2; hx++) {
+            var ha = (hx - cx + 1) / (r + 0.5), hb = (hy - cy) / (r + 0.5);
+            if (ha * ha + hb * hb <= 1) sh.px(hx, hy, hair.base);
+          }
+        }
+        clipFringe(sh, cx, cy, r, hair, skin, fringeY + 1);
+        sh.rect(cx + 1, fringeY - 1, 4, 1, hair.base);   // a sweep over the brow
+        sh.rect(cx - r + 1, cy - r + 3, 3, 1, hair.light);
+        profileEar(sh, cx, cy, r, skin);                 // over the hair, not under
+      } else {
+        sh.rect(cx - r + 2, cy - r + 1, 4, 1, hair.light);
+      }
     }
     if (H.crown) H.crown(sh, P, cx, cy, r, fc);
 
@@ -1178,17 +1279,27 @@ window.CupSprites = (function () {
        shorts, and the thing the dither was trying and failing to
        suggest. */
     var shorts = P.fam.shorts;
-    var shW = Math.max(3, torsoW - 1);
+    /* AND THEY WERE AS WIDE AS THE CHEST AND STARTED HALFWAY UP IT.
+
+       At torsoW - 1 a pair of shorts is exactly the width of the
+       shoulders, and beginning four rows above the hip they took the
+       bottom third of the shirt with them. On a slim character in dark
+       shorts nobody noticed; on a wide one in white -- Othmane is both
+       -- it is a white slab from the middle of his chest to below his
+       hips, wider than the shirt over it, and it reads as a nappy.
+       Shorts are narrower than the chest and they start at the waist.
+       Two pixels in and two rows down is the whole fix. */
+    var shW = Math.max(3, torsoW - 2);
     /* the waistband, in the trim: one row, and the shirt sits over it */
-    sh.rect(cx - shW, hipY - 4, shW * 2 + 1, 1, trim.base);
-    sh.rect(cx - shW, hipY - 3, shW * 2 + 1, 4, shorts.base);
+    sh.rect(cx - shW, hipY - 3, shW * 2 + 1, 1, trim.base);
+    sh.rect(cx - shW, hipY - 2, shW * 2 + 1, 4, shorts.base);
     /* the light down the front of the near thigh, so they are not flat */
-    sh.rect(cx - shW + 1, hipY - 3, 2, 3, shorts.light);
-    sh.rect(cx - shW + 1, hipY + 1, shW * 2 - 1, 1, shorts.shadow);  // the hem
+    sh.rect(cx - shW + 1, hipY - 2, 2, 3, shorts.light);
+    sh.rect(cx - shW + 1, hipY + 2, shW * 2 - 1, 1, shorts.shadow);  // the hem
     /* AND THE GAP. Cut up from the hem rather than dithered across the
        middle: two pixels of the darkest tone is a leg opening, and a
        dither is a smudge. */
-    sh.rect(cx, hipY - 1, 1, 3, shorts.dark);
+    sh.rect(cx, hipY, 1, 3, shorts.dark);
 
     /* arms: shoulder, a bend, and a hand — Part 1.1 says not blobs.
        They start OUTSIDE the chest, or the whole arm disappears into

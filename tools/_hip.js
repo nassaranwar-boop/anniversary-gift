@@ -15,6 +15,7 @@ const who = process.argv[2] || 'lumi';
   await p.addScriptTag({ url:'cup.config.js' });
   await p.addScriptTag({ url:'cup.sprites.js' });
   await p.waitForFunction(()=>!!window.CupSprites && !!window.CUP_CONFIG,{timeout:20000});
+  await p.evaluate((f)=>{ window.__faces = f; }, (process.argv[3]||'s,e').split(','));
   console.log(await p.evaluate((id)=>{
     const look = window.CUP_CONFIG.ROSTER.filter(r=>r.id===id)[0];
     const team = window.CUP_CONFIG.TEAMS.filter(t=>(t.squad||[]).indexOf(id)>=0)[0];
@@ -41,7 +42,7 @@ const who = process.argv[2] || 'lumi';
       }
       out += '\n--- ' + face + '\n' + rows.join('\n') + '\n';
     };
-    show('s'); show('ne');
+    (window.__faces||['s','e']).forEach(show);
     out += '\nlegend: ' + [...legend].map(([h,k])=>k+'='+h).join(' ');
     return out;
   }, who));
