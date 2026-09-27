@@ -16614,19 +16614,6 @@ function tapeSpare() {
   return left - owed;
 }
 
-/* IS THERE A DEADLINE LINE WHOSE NIGHT HAS ALREADY PASSED? */
-function lateLineDue() {
-  for (const k in NS.tapeWhen) {
-    const it = NS.tapeWhen[k];
-    if (typeof it === "string" || !it.by) continue;
-    if (G.night <= it.by[0]) continue;
-    if (TAPE.said[it.t] || (it.elseT && TAPE.said[it.elseT])) continue;
-    if (wasTold(it.t) || (it.elseT && wasTold(it.elseT))) continue;
-    return true;
-  }
-  return false;
-}
-
 function tapeDue(dt) {
   if (!TAPE.on || !TAPE.opened || !NS.tapeWhen || G.phase !== "play") return;
   if (TAPE.pending || TALK.on) return;
@@ -16659,7 +16646,8 @@ function tapeDue(dt) {
      goes at the next quiet moment rather than the next free minute.
      It still will not talk over anything: the checks below are for
      what is being SAID, and those it waits for like everything else. */
-  if (TALK.cool > 0 && !lateLineDue()) return;
+  /* and the lines that carry a deadline are not gated on it at all:
+     see the note beside canKnock below */
   /* AND NOTHING KNOCKS ON TOP OF A LINE THAT IS STILL BEING SAID.
 
      His own lines queue: they go into TAPE.pending and tapeTick puts
@@ -16694,11 +16682,32 @@ function tapeDue(dt) {
        is the path that says it. See NS.tapeWhen.theyWound. */
     const say = it.elseT ? { t: it.elseT, who: it.who, after: it.after, by: it.by } : it;
     /* she is shut in, so it knocks first -- for the first two of a
-       night. See TALK_PER_NIGHT. */
-    if (canKnock(say)) { talkStart(say); return; }
+       night. See TALK_PER_NIGHT.
+
+       AND THE MINUTE BETWEEN KNOCKS DECIDES HOW, NOT WHETHER.
+
+       Every line this loop reaches is already at or past its own
+       deadline -- that is what the two checks above test -- so making
+       one of them wait for a cooldown is making a deadline wait,
+       which is the one thing a deadline cannot do. Tried both ways
+       and scriptcheck caught both: gate the loop on TALK.cool and
+       lines due on night two arrive on night three; gate it only for
+       lines from an earlier night and the ones due TONIGHT still miss
+       their night, because sixty-two seconds twice over is two hours
+       of a six hour night.
+
+       So it always goes. What the cooldown decides is whether it
+       walks to a door and knocks, or arrives through the tape in the
+       same voice -- which is exactly what the cooldown was for: not
+       two toys holding the same doorway one after the other. */
+    if (canKnock(say) && TALK.cool <= 0) { talkStart(say); return; }
     TAPE.pending = say;
     return;
   }
+
+  /* and below here nothing carries a deadline, so the minute between
+     knocks applies in full */
+  if (TALK.cool > 0) return;
 
   /* SOMETHING SHE LET RUN ALL THE WAY DOWN, FROM WHERE IT STOPPED.
      No knock and no door: it cannot walk to one. */

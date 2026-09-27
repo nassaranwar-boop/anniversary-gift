@@ -23,6 +23,7 @@ const { chromium } = require('playwright-core');
   await p.evaluate(() => OuissysNightShift.__night.silence(true));
 
   const keepAll = process.argv[2] !== 'burn';
+  let lateLines = 0;
   for (const night of [1, 2, 3]) {
     const r = await p.evaluate(({ night, keepAll }) => {
       const w = OuissysNightShift.__night;
@@ -78,7 +79,25 @@ const { chromium } = require('playwright-core');
       const script = (w.words().tapes || {})[night] || [];
       const said = {}; log.forEach(x => said[x.t] = 1);
       const lost = script.filter(x => !said[x.t]).map(x => x.h + '  ' + (x.who || 'him') + '  ' + x.t.slice(0, 70));
-      return { phase: s.phase, hour: +s.hour.toFixed(2), secs: +t.toFixed(1), log: log, lost: lost, stalls: stalls,
+      /* A DEADLINE IS A PROMISE THAT SHE GETS THE LINE.
+
+         `by: [night, hour]` says the latest she may hear it, earned
+         or not. Everything reactive shares one queue with his tape,
+         so a line with a deadline can be crowded past it and arrive a
+         whole night late -- or never. scriptcheck catches this, but
+         scriptcheck plays every night three times and takes twenty
+         minutes; this is the same property for the price of the
+         playthrough that is happening anyway. */
+      const owed = [];
+      for (const k in (w.words().tapeWhen || {})) {
+        const it = w.words().tapeWhen[k];
+        if (typeof it === 'string' || !it.by) continue;
+        if (it.by[0] !== night) continue;
+        const said = w.told();
+        if (!said[it.t] && !(it.elseT && said[it.elseT]))
+          owed.push(k + ' (due ' + it.by[0] + ':' + it.by[1] + ')');
+      }
+      return { phase: s.phase, hour: +s.hour.toFixed(2), secs: +t.toFixed(1), log: log, lost: lost, stalls: stalls, owed: owed,
                kept: JSON.parse(localStorage.getItem('ns_kept') || '{}') };
     }, { night, keepAll });
 
@@ -91,6 +110,10 @@ const { chromium } = require('playwright-core');
     if (r.lost.length) { console.log('\n  HIS WRITTEN LINES THAT NEVER GOT SAID (' + r.lost.length + '):');
       r.lost.forEach(x => console.log('    ' + x)); }
     else console.log('\n  every written tape line got said.');
+    if (r.owed && r.owed.length) {
+      console.log('  MISSED ITS DEADLINE (' + r.owed.length + '): ' + r.owed.join(', '));
+      lateLines += r.owed.length;
+    } else console.log('  and every line due by tonight arrived by tonight.');
     if (r.stalls && r.stalls.length) { console.log('  STALLS (30s+ of silence):');
       r.stalls.forEach(x => console.log('    ' + JSON.stringify(x))); }
   }
@@ -112,5 +135,7 @@ const { chromium } = require('playwright-core');
   console.log('\n' + '='.repeat(74));
   console.log('AT THE END OF THREE NIGHTS:');
   console.log(missed.length ? missed.map(x => '  ' + x).join('\n') : '  everything got the air it needed');
+  if (lateLines) console.log('\n  ' + lateLines + ' line(s) with a deadline missed it.');
+  process.exitCode = lateLines ? 1 : 0;
   await b.close();
 })();
