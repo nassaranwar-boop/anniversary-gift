@@ -127,6 +127,25 @@ window.CUP_CONFIG = {
   ROSTER: [
     /* ---- the two stars ---- */
     {
+      /* =====================================================================
+         THE NAMES ARE MOROCCAN, AND THEY ARE NAMES PEOPLE KNOW
+
+         The squad used to be Ember, Atlas, Comet, Lumi, Sage, Echo,
+         Boulder, Thorn, Willow, Gustav and Marina -- which is a set of
+         nouns from an English-language game, in a tournament played
+         between six Moroccan faculties, by two people from Casablanca
+         and Marrakech. The country the cup is in was nowhere in the
+         team sheet.
+
+         They are named after Morocco's own internationals now: the men
+         from the side everybody watched in Qatar, and the women from
+         the one that reached a World Cup for the first time. Everybody
+         here will recognise every one of them, which is the point --
+         a squad list you can read out loud to somebody and have them
+         nod at it.
+
+         Two names do not change, for the obvious reason.
+         ===================================================================== */
       id: "ouissy", name: "OUISSY", role: "st", star: true, captainable: true,
       tag: "Star Captain · Playmaker",
       build: { h: 1.00, w: 1.00 }, head: "ouissy",
@@ -160,7 +179,7 @@ window.CUP_CONFIG = {
 
     /* ---- strikers ---- */
     {
-      id: "ember", name: "EMBER", role: "st", captainable: true,
+      id: "ember", name: "CHEBBAK", role: "st", captainable: true,
       tag: "Striker · quick and hot-headed",
       build: { h: 0.87, w: 0.92 }, head: "flame",
       skin: "#f2c79c", hair: "#e8642a",
@@ -171,7 +190,7 @@ window.CUP_CONFIG = {
       emblem: "flame", trail: "spark",
     },
     {
-      id: "atlas", name: "ATLAS", role: "st", captainable: true,
+      id: "atlas", name: "KAABI", role: "st", captainable: true,
       tag: "Striker · built like the mountain",
       build: { h: 1.14, w: 1.26 }, head: "crop",
       skin: "#c9925e", hair: "#241a12",
@@ -182,7 +201,7 @@ window.CUP_CONFIG = {
       emblem: "mountain",
     },
     {
-      id: "comet", name: "COMET", role: "st", captainable: true,
+      id: "comet", name: "HAKIMI", role: "st", captainable: true,
       tag: "Striker · gone before you look up",
       build: { h: 1.02, w: 0.90 }, head: "goggles",
       skin: "#e8c2a0", hair: "#3a4a63",
@@ -195,7 +214,7 @@ window.CUP_CONFIG = {
 
     /* ---- playmakers ---- */
     {
-      id: "lumi", name: "LUMI", role: "mid", captainable: true,
+      id: "lumi", name: "SAKINA", role: "mid", captainable: true,
       tag: "Playmaker · sees the pass before it exists",
       build: { h: 0.90, w: 0.96 }, head: "bun",
       skin: "#f6dcc0", hair: "#b07a3c",
@@ -206,7 +225,7 @@ window.CUP_CONFIG = {
       emblem: "lantern", charm: true,
     },
     {
-      id: "sage", name: "SAGE", role: "mid", captainable: true,
+      id: "sage", name: "OUNAHI", role: "mid", captainable: true,
       tag: "Playmaker · never looks like they are trying",
       build: { h: 1.10, w: 0.86 }, head: "sprig",
       skin: "#e2c4a2", hair: "#6a5a3e",
@@ -217,7 +236,7 @@ window.CUP_CONFIG = {
       emblem: "leaf",
     },
     {
-      id: "echo", name: "ECHO", role: "mid", captainable: true,
+      id: "echo", name: "LAHMARI", role: "mid", captainable: true,
       tag: "Playmaker · cannot stand still",
       build: { h: 0.92, w: 0.90 }, head: "phones",
       skin: "#d9a882", hair: "#6b3f8a",
@@ -231,7 +250,7 @@ window.CUP_CONFIG = {
 
     /* ---- defenders ---- */
     {
-      id: "boulder", name: "BOULDER", role: "def", captainable: true,
+      id: "boulder", name: "SAISS", role: "def", captainable: true,
       tag: "Defender · does not move for anybody",
       build: { h: 0.94, w: 1.38 }, head: "flat",
       skin: "#c79a72", hair: "#3e4248",
@@ -242,7 +261,7 @@ window.CUP_CONFIG = {
       emblem: "shield",
     },
     {
-      id: "thorn", name: "THORN", role: "def", captainable: true,
+      id: "thorn", name: "AGUERD", role: "def", captainable: true,
       tag: "Defender · waiting for you to take a touch too many",
       build: { h: 1.04, w: 0.94 }, head: "pads",
       skin: "#d6a078", hair: "#241418",
@@ -253,7 +272,7 @@ window.CUP_CONFIG = {
       emblem: "rose",
     },
     {
-      id: "willow", name: "WILLOW", role: "def", captainable: true,
+      id: "willow", name: "BENZINA", role: "def", captainable: true,
       tag: "Defender · ends up in their box somehow",
       build: { h: 1.16, w: 0.88 }, head: "willow",
       skin: "#eccfb4", hair: "#4a7a72",
@@ -266,7 +285,7 @@ window.CUP_CONFIG = {
 
     /* ---- keepers ---- */
     {
-      id: "gustav", name: "GUSTAV", role: "gk",
+      id: "gustav", name: "BOUNOU", role: "gk",
       tag: "Keeper · has seen all of this before",
       build: { h: 1.06, w: 1.18 }, head: "cap",
       skin: "#e8c9a8", hair: "#6a5232",
@@ -277,7 +296,7 @@ window.CUP_CONFIG = {
       emblem: "glove",
     },
     {
-      id: "marina", name: "MARINA", role: "gk",
+      id: "marina", name: "KHADIJA", role: "gk",
       tag: "Keeper · airborne before the ball is",
       build: { h: 1.02, w: 0.92 }, head: "pony",
       skin: "#f0d2b8", hair: "#2f4a6b",

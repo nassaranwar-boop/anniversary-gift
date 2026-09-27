@@ -699,8 +699,43 @@ window.OuissyCup = (function () {
      leaving the page stops the crowd and coming back starts it again —
      the machinery for that lives in script.js and every chapter uses it.
      ======================================================================= */
-  var AC = null, master = null, crowdGain = null, crowdSrc = null,
+  var AC = null, master = null, musBus = null, sfxBus = null,
+      crowdGain = null, crowdSrc = null,
       registered = false, soundOn = true, noiseBuf = null;
+
+  /* =======================================================================
+     TWO FADERS, BECAUSE THERE WAS ONE SWITCH
+
+     Everything this chapter makes went through a single master gain and
+     a single boolean: sound was on, or it was off. So somebody who
+     wanted the music down and the match up had exactly one option,
+     which was silence.
+
+     There is a music bus and an effects bus now. The ground's song and
+     the menu score go through the first; the ball, the boots, the
+     whistle and the crowd's own noise bed go through the second. Both
+     remember where she left them.
+     ======================================================================= */
+  var VOL = { music: 0.75, sfx: 0.95 };
+  var VOL_KEY = "cup.vol.v1";
+  try {
+    var savedVol = JSON.parse(localStorage.getItem(VOL_KEY) || "null");
+    if (savedVol && typeof savedVol.music === "number") {
+      VOL.music = clamp(savedVol.music, 0, 1);
+      VOL.sfx = clamp(savedVol.sfx, 0, 1);
+    }
+  } catch (e) {}
+  function saveVol() {
+    try { localStorage.setItem(VOL_KEY, JSON.stringify(VOL)); } catch (e) {}
+  }
+  function applyVol() {
+    if (musBus) musBus.gain.value = VOL.music;
+    if (sfxBus) sfxBus.gain.value = VOL.sfx;
+  }
+  function setVol(which, v) {
+    VOL[which] = clamp(v, 0, 1);
+    applyVol(); saveVol();
+  }
 
   function audio() {
     if (AC) return AC;
@@ -712,6 +747,8 @@ window.OuissyCup = (function () {
     master = AC.createGain();
     master.gain.value = 0.9;
     master.connect(AC.destination);
+    musBus = AC.createGain(); musBus.gain.value = VOL.music; musBus.connect(master);
+    sfxBus = AC.createGain(); sfxBus.gain.value = VOL.sfx; sfxBus.connect(master);
 
     var len = Math.floor(AC.sampleRate * 2);
     noiseBuf = AC.createBuffer(1, len, AC.sampleRate);
@@ -736,7 +773,7 @@ window.OuissyCup = (function () {
      ======================================================================= */
   function startChant() {
     if (!window.CupChant || !audio() || !soundOn) return;
-    window.CupChant.init(AC, master, { volume: 0.55 });
+    window.CupChant.init(AC, musBus, { volume: 0.55 });
     /* =====================================================================
        WHOSE SONG PLAYS: THE ONE SHE IS PLAYING AGAINST.
 
@@ -767,7 +804,7 @@ window.OuissyCup = (function () {
     var band = AC.createBiquadFilter();
     band.type = "bandpass"; band.frequency.value = 520; band.Q.value = 0.7;
     crowdGain = AC.createGain(); crowdGain.gain.value = 0.018;
-    crowdSrc.connect(band); band.connect(crowdGain); crowdGain.connect(master);
+    crowdSrc.connect(band); band.connect(crowdGain); crowdGain.connect(sfxBus);
     crowdSrc.start();
   }
   function stopCrowd() {
@@ -796,7 +833,7 @@ window.OuissyCup = (function () {
     g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    o.connect(g); g.connect(master);
+    o.connect(g); g.connect(sfxBus);
     o.start(t); o.stop(t + dur + 0.02);
   }
   function burst(dur, vol, freq, q) {
@@ -808,7 +845,7 @@ window.OuissyCup = (function () {
     var g = AC.createGain();
     g.gain.setValueAtTime(vol, t);
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-    s.connect(f); f.connect(g); g.connect(master);
+    s.connect(f); f.connect(g); g.connect(sfxBus);
     s.start(t); s.stop(t + dur + 0.02);
   }
 
@@ -975,7 +1012,7 @@ window.OuissyCup = (function () {
     if (!window.CupScore) return;
     if (on) {
       if (!soundOn || !audio()) return;
-      window.CupScore.init(AC, master, { volume: 0.5 });
+      window.CupScore.init(AC, musBus, { volume: 0.5 });
       window.CupScore.setOn(true);
       musicOn = true;
       if (which) musicCue = which;
@@ -6899,11 +6936,14 @@ window.OuissyCup = (function () {
     var st = G.controlled ? G.controlled.stamina : 1;
     hudBar(6, UIH - 10, 58, 4, st,
            st < 0.3 ? "#e0556b" : st < 0.6 ? "#e8b23c" : "#5fd6cc");
-    /* the word only while the legend it belongs to is still up. After
-       that the bar is the only bar on the screen and it is sitting
-       under her own meter, which is label enough. */
-    if (legend > 0) {
-      UIX.save(); UIX.globalAlpha = legend;
+    /* IT SAYS RUN FOR THE FIRST TWENTY SECONDS OF A CUP, and then it
+       is the only bar on the screen and does not need telling apart
+       from anything. It used to fade with the keyboard legend, which
+       is not on the pitch any more, so it keeps its own clock. */
+    var barLab = run.round === 0 && G.half === 1
+      ? clamp((20 - G.clock) / 3, 0, 1) : 0;
+    if (barLab > 0) {
+      UIX.save(); UIX.globalAlpha = barLab;
       drawText(6, "RUN", UIH - 17, { colour: "#5f8a7a" });
       UIX.restore();
     }
@@ -6979,47 +7019,20 @@ window.OuissyCup = (function () {
        from then on is the pause screen and the how-to — which is where
        somebody who has forgotten a control would actually go looking
        for it. */
-    var legend = run.round === 0 && G.half === 1
-      ? clamp((16 - G.clock) / 3, 0, 1) : 0;
-    if (legend <= 0) { /* nothing on the grass */ }
-    else if (hudTouch()) {
-      UIX.save(); UIX.globalAlpha = legend;
-      drawText(6, "SLIDE TO RUN", UIH - 42, { colour: "#4f7a6a" });
-      UIX.restore();
-    } else {
-      UIX.save(); UIX.globalAlpha = legend;
-      /* WHERE IT SITS, after three attempts that each landed it on
-         something else: hard against the bottom-right it covered the
-         thumb button, beside the meter it collided with the super's
-         nameplate, and at sixty-four from the top it printed across the
-         advertising hoardings and the front rows of the stand. This is
-         low enough to be on grass and high enough to clear the
-         possession strip. */
-      /* clear of the heart meter, which now lives in this corner */
-      /* five rows now, not three -- so it starts higher, or the last
-         of them is printed across the super's nameplate */
-      var kz = UIH - 112;
-      [["W A S D", "run"],
-       ["J", "pass \u00b7 tackle"],
-       ["K", "dribble \u00b7 sprint"],
-       ["L", "shoot \u00b7 change player"],
-       ["E", "super, when the heart is full"]].forEach(function (k2) {
-        var kw = textWidth(k2[0]) + 8;
-        var tw2 = textWidth(k2[1]);
-        var tot = kw + tw2 + 12;
-        /* DOWN THE LEFT, because the radar lives bottom-right now and a
-           legend printed across a radar is two instruments you cannot
-           read instead of one you can */
-        var x0 = 6;
-        box(x0, kz, tot, 11, "#0d1412");
-        box(x0 + 1, kz + 1, tot - 2, 9, "#1b2a32");
-        box(x0 + 2, kz + 2, kw, 7, "#2f4450");
-        drawText(x0 + 6, k2[0], kz + 3, { colour: "#e8f0e8" });
-        drawText(x0 + kw + 6, k2[1], kz + 3, { colour: "#8fa8a0" });
-        kz += 13;
-      });
-      UIX.restore();
-    }
+    /* =====================================================================
+       NOTHING IS PRINTED ON THE GRASS ANY MORE
+
+       There were five rows of key-caps down the left-hand side of the
+       pitch for the first sixteen seconds of her first match, and a
+       line of text telling her to slide to run. Both were a help card
+       that had been pasted onto the picture: she is watching a
+       football match and being asked to read at the same time, and if
+       she misses it in those sixteen seconds it never comes back.
+
+       The controls are a screen now. She sees them before she starts
+       and she can open them again from the pause menu at any point,
+       which is where a person looks for them.
+       ===================================================================== */
 
     /* =====================================================================
        THE CARD
@@ -9888,6 +9901,11 @@ window.OuissyCup = (function () {
       line: r.before, lineMax: 2,
       accent: (mineT.kit && mineT.kit.shirt) || "#c1272d",
       action: "KICK OFF", onGo: kick,
+      /* THE CONTROLS, ONE PRESS AWAY FROM EVERY KICK-OFF. They used to
+         be printed on the grass for sixteen seconds of her first match
+         and never again. This is the screen in front of every match
+         she plays, so it is the right place for the door to them. */
+      alt: "HOW TO PLAY", onAlt: function () { uiClose(); helpCard(roundCard); },
       body: function (bx, by, bw) {
         by = cardVenue(bx, by, bw, (run.fixture && run.fixture.venue) || r.venue);
         /* The bracket only belongs on a cup tie. A friendly and the
@@ -10323,29 +10341,110 @@ window.OuissyCup = (function () {
     k.style.setProperty("--ky", dy.toFixed(1) + "px");
   }
 
+  /* =======================================================================
+     A VOLUME LADDER, NOT A SLIDER
+
+     A slider needs a drag, and a drag needs pointer capture, a hit
+     region that follows the finger and a decision about what happens
+     when it leaves the track. Ten boxes need a tap. She taps the one
+     she wants and that is the volume -- and unlike a slider she can
+     see, at a glance and from across the room, exactly where it is.
+     ======================================================================= */
+  function volRow(label, which, bx, by, bw) {
+    drawText(bx, label, by + 6, { colour: "#7f9a92", track: 1 });
+    var n = 10;
+    /* CAPPED, or the bars are forty pixels wide each and the ladder
+       reads as ten dashes rather than as a level going up */
+    var lx = bx + 62, tw = Math.min(bw - 80, 170);
+    var cw = Math.max(4, Math.floor((tw - (n - 1) * 2) / n));
+    var lvl = Math.round(VOL[which] * n);
+    for (var i = 0; i < n; i++) {
+      var x2 = lx + i * (cw + 2);
+      var on = i < lvl;
+      /* the bars grow, so the ladder reads as a level even in the dark */
+      var h = 4 + Math.round((i / (n - 1)) * 10);
+      var y2 = by + 15 - h;
+      box(x2, y2, cw, h, "#0d1412");
+      box(x2 + 1, y2 + 1, cw - 2, h - 2, on ? "#5fd6cc" : "#243640");
+      if (on) line(x2 + 1, y2 + 1, cw - 2, 1, "#a8f0e8");
+      UI.widgets.push({
+        id: "vol_" + which + "_" + i, x: x2 - 1, y: by - 2, w: cw + 3, h: 18,
+        label: label + " " + ((i + 1) * 10) + " per cent",
+        go: (function (v) { return function () { setVol(which, v); redraw(); }; })((i + 1) / n),
+      });
+    }
+    /* and a nought at the end, because "off" is a place on the ladder */
+    var ox = lx + n * (cw + 2) + 2;
+    var off = lvl === 0;
+    box(ox, by + 3, 16, 12, "#0d1412");
+    box(ox + 1, by + 4, 14, 10, off ? "#7a2b34" : "#243640");
+    drawText(ox + 8, "OFF", by + 6, { align: "center", scale: 1,
+                                      colour: off ? "#ffd6d6" : "#7f9a92" });
+    UI.widgets.push({ id: "vol_" + which + "_off", x: ox, y: by - 2, w: 18, h: 20,
+                      label: label + " off",
+                      go: function () { setVol(which, 0); redraw(); } });
+    return by + 22;
+  }
+
+  /* =======================================================================
+     THE PAUSE MENU
+
+     It used to be a scoreline, a list of controls and two buttons. The
+     two things a person actually reaches for when they stop a game --
+     turn that down, and how do I do this again -- were not there at
+     all, and neither was any way back to the chapter's own menu that
+     did not leave the chapter.
+     ======================================================================= */
   function pause() {
     if (!playing || !G) return;
     var was = G.state;
     G.state = "paused";
     stopCrowd();
+    var resume = function () {
+      uiClose();
+      G.state = was === "paused" ? "play" : was;
+      startCrowd();
+      if (EL["cup-hud"]) EL["cup-hud"].hidden = false;
+      if (EL["cup-pad"]) EL["cup-pad"].hidden = false;
+      if (EL["cup-pause-btn"]) EL["cup-pause-btn"].hidden = false;
+    };
     cardScreen({
-      name: "pause", title: "PAUSED", accent: "#2f5d72", wide: false,
+      name: "pause", title: "PAUSED", accent: "#2f5d72", wide: true,
       action: "BACK TO THE MATCH",
-      onGo: function () {
-        uiClose();
-        G.state = was === "paused" ? "play" : was;
-        startCrowd();
-        if (EL["cup-hud"]) EL["cup-hud"].hidden = false;
-        if (EL["cup-pad"]) EL["cup-pad"].hidden = false;
-      },
-      alt: "LEAVE THE CUP", onAlt: function () { quit(); },
+      onGo: resume,
       body: function (bx, by, bw) {
-        var ny = cardScore(bx, by, bw);
-        /* and the controls, because this is where the legend went when
-           it came off the pitch */
-        return controlList(bx, ny + 6, bw);
+        var ny = cardScore(bx, by, bw) + 8;
+        ny = volRow("MUSIC", "music", bx, ny, bw);
+        ny = volRow("SOUNDS", "sfx", bx, ny + 2, bw);
+        ny += 6;
+        /* the two places to go from here, as buttons of their own so
+           the card's own pair can stay "back to the match" and nothing
+           else */
+        var hw = Math.round((bw - 8) / 2);
+        uiButton("pause_help", bx, ny, hw, 20, "HOW TO PLAY",
+                 { tone: "#2f5d72", go: function () {
+                     uiClose();
+                     helpCard(function () { pauseAgain(was); });
+                   } });
+        uiButton("pause_menu", bx + hw + 8, ny, bw - hw - 8, 20, "THE MAIN MENU",
+                 { tone: "#3b4a54", back: true, go: function () {
+                     uiClose();
+                     if (EL["cup-hud"]) EL["cup-hud"].hidden = true;
+                     if (EL["cup-pad"]) EL["cup-pad"].hidden = true;
+                     if (EL["cup-pause-btn"]) EL["cup-pause-btn"].hidden = true;
+                     G = null;
+                     titleMenu();
+                   } });
+        return ny + 24;
       },
     });
+  }
+  /* coming back to the pause card from the how-to, without restarting
+     the match underneath it */
+  function pauseAgain(was) {
+    if (!G) { titleMenu(); return; }
+    G.state = "paused";
+    pause();
   }
 
   /* Starting is asynchronous now, because the world has to exist before
