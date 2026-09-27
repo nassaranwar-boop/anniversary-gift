@@ -8161,7 +8161,34 @@ let voxOut = null;
    Unity otherwise, so the routing change on its own moves nothing:
    any level decision after this is a deliberate one with a number
    behind it. */
-const VOX_BUS = 1.0;
+const VOX_BUS = 0.70;
+
+/* AND THE SHOP, WHICH IS THE ACTUAL PROBLEM.
+
+   Measured through the real door button, with a meter on the audio
+   thread so it is not sampling seven per cent of the window: a door
+   is -37.9dB averaged and -35.7 at its loudest block. His voice is
+   -19.4 and -13.6. The shop is EIGHTEEN DECIBELS under him, and
+   twenty-two at the peak.
+
+   Which is the complaint, read from the other end. He is not towering
+   over the score -- that sits at about -21, two decibels under him,
+   which is a normal place for a narrator. It is that the doors, the
+   knocks, the bells and the footsteps are buried seventeen decibels
+   below BOTH of them, so the only thing with any weight in the room
+   is whoever is talking.
+
+   So both ends move, because moving one end twice as far would be
+   wrong in a different way: the voice comes down 3dB and the shop
+   goes up 8, which closes an eighteen decibel gap to about seven. A
+   narrator six to eight decibels over the ambient effects is an
+   ordinary, comfortable mix.
+
+   sfxOut rather than cueGain, because cueGain also carries the tape
+   machine's hum and hiss under his voice, and lifting that with the
+   doors would just put the hiss in her lap. */
+const SFX_BUS = 2.5;
+let sfxOut = null;
 let bedNodes = [], creakTimer = 0, audioOn = false, muted = false;
 
 /* THE FIVE FADERS.
@@ -8304,6 +8331,7 @@ function audioInit() {
   cueGain = AC.createGain(); cueGain.gain.value = 1.0; cueGain.connect(duckGain);
   /* PAST the shop's fader, not through it. See VOX_BUS. */
   voxOut = AC.createGain(); voxOut.gain.value = VOX_BUS * MIX.voice; voxOut.connect(duckGain);
+  sfxOut = AC.createGain(); sfxOut.gain.value = SFX_BUS; sfxOut.connect(cueGain);
   NB = noiseBuffer(3);
   loadMix();
   applyMix();
@@ -8477,9 +8505,9 @@ function panned(o) {
     const p = AC.createStereoPanner();
     p.pan.value = clamp(o.pan, -1, 1);
     g.connect(p);
-    p.connect(o.bus || cueGain);
+    p.connect(o.bus || sfxOut || cueGain);
   } else {
-    g.connect(o.bus || cueGain);
+    g.connect(o.bus || sfxOut || cueGain);
   }
   return g;
 }

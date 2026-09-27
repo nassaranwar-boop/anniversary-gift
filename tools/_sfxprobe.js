@@ -46,6 +46,23 @@ const { chromium } = require('playwright-core');
       rows.push('the door button'.padEnd(11) + ' cue mean ' + String(m.cue).padStart(7) +
                 '  cue peak ' + String(m.cuePeak).padStart(7) + '  blocks ' + m.cueBlocks);
     }
+    /* and his voice, in the same run and on the same meter, so the
+       gap is one measurement and not two compared across runs */
+    await sleep(600);
+    const script = N.words();
+    for (const line of (script.tapes[3] || []).concat(script.tapes[2] || []).slice(0, 10)) {
+      N.tapeQuiet();
+      if (!N.tapeSayRaw(line.t, null, false)) continue;
+      await sleep(600);
+      const m = await N.meterBuses(1800);
+      if (N.said().took === 'tape') {
+        rows.push('HIS VOICE'.padEnd(11) + ' vox mean ' + String(m.him).padStart(7) +
+                  '  vox peak ' + String(m.himPeak).padStart(7) +
+                  '  score heard ' + m.musicHeard);
+        break;
+      }
+      await sleep(500);
+    }
     return rows;
   });
   out.forEach(l => console.log('  ' + l));
