@@ -25,6 +25,17 @@ const { chromium } = require('playwright-core');
     /* in the office, not paused, nothing else going on */
     N.begin(1); N.midEnd();
     await sleep(700);
+    rows.push('noise buffer: ' + JSON.stringify(N.noiseMade()));
+    /* the primitives on their own, before any effect built from them */
+    for (const [what, fn] of [['tone()', () => N.toneTest()], ['burst()', () => N.burstTest()]]) {
+      let said = null;
+      const bang = setInterval(() => { said = fn(); }, 250);
+      const m = await N.meterBuses(1600);
+      clearInterval(bang);
+      rows.push(what.padEnd(11) + ' sfxOut ' + String(m.sfx).padStart(7) +
+                '  cueGain ' + String(m.cue).padStart(7) + '   returned ' + said);
+      await sleep(400);
+    }
     for (const name of ['doorClose', 'hatch', 'knock', 'beep']) {
       const bang = setInterval(() => { try { N.sfxTest(name); } catch(e) {} }, 200);
       const m = await N.meterBuses(1600);

@@ -21094,6 +21094,16 @@ const testHooks = {
   /* fire a named effect, for measuring the shop against the voice.
      `door` above is the DUCK that a door causes, not the sound of
      one, which is a distinction that cost a run of mixcheck. */
+  /* the two primitives every effect is built from, called directly
+     with a loud, unambiguous config. If these are silent then every
+     door, knock and bell in the shop is silent and the thing to fix
+     is not a level. */
+  toneTest: () => { try { tone({ type: "square", f0: 440, dur: 0.5, gain: 0.5 }); return "ok"; }
+                    catch (e) { return String(e).slice(0, 70); } },
+  burstTest: () => { try { burst({ f0: 1200, dur: 0.5, gain: 0.5, q: 0.7 }); return "ok"; }
+                     catch (e) { return String(e).slice(0, 70); } },
+  /* and whether the noise buffer every burst reads from was ever made */
+  noiseMade: () => (NB ? { channels: NB.numberOfChannels, secs: +NB.duration.toFixed(2) } : "NB IS NULL"),
   sfxTest: (name) => {
     const f = SFX && SFX[name];
     if (typeof f !== "function") return { list: Object.keys(SFX || {}) };
