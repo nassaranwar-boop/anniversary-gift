@@ -6712,44 +6712,109 @@ window.OuissyCup = (function () {
      shadow, and a ring round it that fills as she winds up a shot. The
      ring is stepped rather than swept, because a smooth arc on a pixel
      screen is the one thing that gives the whole illusion away. */
-  function hudRound(r2, label, tone, ink, charge, icon) {
+  /* =======================================================================
+     THE PLAY BUTTONS
+
+     What was here was a flat disc with a word printed on it, and he is
+     right that it is not a design. It was three tones of the same
+     colour stacked concentrically, with a label laid on top in white,
+     which is a coloured circle with a caption -- the shape a button
+     has when nobody has decided what it is made of.
+
+     These are moulded. Five things do the whole of it, and every one
+     of them is a real thing about a real button:
+
+       THE SOCKET   the cap sits in a well, and the well casts a
+                    shadow onto the grass. A button with a hole to sit
+                    in is furniture; a button on its own is a sticker.
+       THE BEZEL    one ring in the action's own colour, outside the
+                    cap. It is what tells the three of them apart from
+                    the corner of an eye, before any word is read.
+       THE DOME     not a flat fill: a crescent of light up and to the
+                    left and the base colour falling away to the
+                    bottom right, which is the only cue that makes a
+                    circle read as a sphere.
+       THE ENGRAVING the word is CUT IN rather than laid on. Dark
+                    letters with a one-pixel lip of light along their
+                    bottom edge is how a stamped legend catches the
+                    light, and it is the difference between a button
+                    with writing on it and a button with writing in it.
+       THE TRAVEL   pressed, the cap drops into the well, the dome
+                    flattens, and the shadow under it closes up. It
+                    moves, which is the only feedback a thumb covering
+                    the whole control can actually get.
+     ======================================================================= */
+  function hudKey(r2, label, base, opts) {
     if (!r2) return;
+    var o = opts || {};
     var cx2 = Math.round(r2.x + r2.w / 2), cy2 = Math.round(r2.y + r2.h / 2);
     var rad = Math.round(Math.min(r2.w, r2.h) / 2) - 1;
-    if (rad < 6) return;
-    /* the drop, then the face */
-    uiDisc(cx2, cy2 + 2, rad, "rgba(4,8,10,.5)");
-    uiDisc(cx2, cy2, rad, "#0d1412");
-    uiDisc(cx2, cy2, rad - 1, tone);
-    uiDisc(cx2, cy2 - 1, rad - 3, lift(tone, 26));
-    if (charge > 0) {
-      /* twenty-four steps round the outside, lit clockwise from the top */
-      var lit = Math.round(clamp(charge, 0, 1) * 24);
+    if (rad < 7) return;
+    var down = !!o.down;
+    var lift0 = down ? 1 : 3;                  // how proud the cap stands
+    var capY = cy2 - lift0;
+
+    /* the well, and what it throws on the grass */
+    uiDisc(cx2, cy2 + (down ? 1 : 3), rad, "rgba(4,8,10,.42)");
+    uiDisc(cx2, cy2, rad, "#080d11");
+    uiDisc(cx2, cy2, rad - 1, shade(base, 0.30));
+    /* the bezel: the action's colour, around the outside of the cap */
+    uiDisc(cx2, cy2, rad - 1, shade(base, 0.52));
+    uiDisc(cx2, cy2 + 1, rad - 2, shade(base, 0.24));
+
+    /* the cap */
+    uiDisc(cx2, capY, rad - 2, shade(base, 0.58));
+    uiDisc(cx2, capY, rad - 3, base);
+    /* the dome. Two crescents offset up and left, each a step lighter,
+       and one small specular at the top -- which is a sphere lit from
+       over her left shoulder, the same light every sprite in this
+       chapter is lit by. */
+    if (!down) {
+      uiDisc(cx2 - 1, capY - 1, rad - 5, lift(base, 18));
+      uiDisc(cx2 - 2, capY - 2, rad - 8, lift(base, 38));
+      if (rad > 14) uiDisc(cx2 - 3, capY - 4, Math.max(1, rad - 13), lift(base, 62));
+    } else {
+      /* pressed: the light is mostly gone and what is left is a rim */
+      uiDisc(cx2 - 1, capY - 1, rad - 6, lift(base, 8));
+    }
+
+    /* the charge collar, outside everything, so a winding shot reads
+       even with a thumb over the face of the button */
+    if (o.charge > 0) {
+      var lit = Math.round(clamp(o.charge, 0, 1) * 24);
       for (var i = 0; i < lit; i++) {
         var a = -Math.PI / 2 + (i / 24) * Math.PI * 2;
         box(Math.round(cx2 + Math.cos(a) * (rad + 2)) - 1,
             Math.round(cy2 + Math.sin(a) * (rad + 2)) - 1, 2, 2,
-            charge > 0.92 ? "#ffffff" : "#ffe9a8");
+            o.charge > 0.92 ? "#ffffff" : "#ffe9a8");
       }
     }
-    if (icon) icon(cx2, cy2 - 4);
-    /* TWO LINES RATHER THAN AN ELLIPSIS.
 
-       A disc is a bad shape for a word: the widest line you can fit
-       across one is its diameter, and "DRIBBLE" at the size a thumb
-       covers came out as "DRIB..." -- which is not a label, it is a
-       truncation of one. Anything too long for the width is broken
-       across the middle instead, which is how every button on every
-       control pad with words on it has always done it. */
+    if (o.icon) o.icon(cx2, capY - 4);
     if (!label) return;
-    var wide = rad * 2 - 4;
+    /* THE ENGRAVING. Cut with the dark tone, lit along the bottom lip
+       with a light one -- `shadow` is drawn behind and offset, which
+       is exactly the lip. */
+    var wide = rad * 2 - 6;
     var lines = textWidth(label, 1) <= wide ? [label] : splitTwo(label, wide);
-    var ly = cy2 + 3 - (lines.length - 1) * 4;
+    /* CENTRED ON THE CAP, not on the socket. The cap stands three
+       pixels proud of the well it sits in, so a label centred on the
+       rectangle sits three pixels low on the thing it is stamped into
+       -- which is exactly how it looked. */
+    var ly = capY - 3 - (lines.length - 1) * 4;
     lines.forEach(function (ln) {
       drawText(cx2, fitText(ln, wide, 1), ly,
-               { align: "center", colour: ink || "#f4f4e8" });
+               { align: "center",
+                 colour: o.ink || shade(base, 0.30),
+                 shadow: lift(base, 52), shadowX: 0, shadowY: 1 });
       ly += 8;
     });
+  }
+
+  /* the old name, so the heart button and anything added later still
+     paint. It is the same button with no press state. */
+  function hudRound(r2, label, tone, ink, charge, icon) {
+    hudKey(r2, label, tone, { ink: ink, charge: charge, icon: icon });
   }
 
   /* break one word or two into two lines that each fit */
@@ -7235,17 +7300,18 @@ window.OuissyCup = (function () {
        out as "DRIB..." and then, once it wrapped, as "DRIB / BLE",
        which is worse. RUN is true of that button in both of its
        states and is three letters long. */
-    hudRound(uiRectOf(EL["cup-b-pass"]),
-             carrying ? "PASS" : "PRESS",
-             IN.pass ? "#3f8fb0" : "#2f6d8a", "#f4f4e8", 0);
-    /* it goes green while it is held, because close control is a state
-       she is IN rather than a thing she just did */
-    hudRound(uiRectOf(EL["cup-b-drib"]), "RUN",
-             IN.drib ? "#3d9c6b" : "#2b6b4c", "#f4f4e8", 0);
-    hudRound(uiRectOf(EL["cup-b-shot"]),
-             carrying ? "SHOOT" : "SWAP",
-             charge > 0.92 ? "#e8b23c" : carrying ? "#a8443f" : "#4a5a66",
-             charge > 0.92 ? "#2a1c08" : "#f4f4e8", charge);
+    /* ONE COLOUR EACH, AND IT DOES NOT CHANGE WHEN IT IS PRESSED.
+       The old pair lightened the whole button on contact, which is a
+       hover state and not a press -- a real one moves. These keep
+       their colour and drop into the socket instead. */
+    hudKey(uiRectOf(EL["cup-b-pass"]), carrying ? "PASS" : "PRESS",
+           "#2f6d8a", { down: IN.pass });
+    hudKey(uiRectOf(EL["cup-b-drib"]), "RUN",
+           "#2b8a5e", { down: IN.drib });
+    hudKey(uiRectOf(EL["cup-b-shot"]), carrying ? "SHOOT" : "SWAP",
+           carrying ? "#b04a42" : "#4a5a66",
+           { down: IN.shot, charge: charge,
+             ink: charge > 0.92 ? "#2a1c08" : undefined });
     if (EL["cup-sup-btn"] && !EL["cup-sup-btn"].hidden) {
       /* THE WORD IS "SUPER", not the first four letters of whatever the
          super happens to be called. "HEARTBEAT STRIKE" fitted to the
