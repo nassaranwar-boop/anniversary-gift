@@ -20,12 +20,18 @@ const RUNS = 5;
   await p.waitForFunction(()=>Object.keys(OuissysNightShift.__night.cast()).length>=4,{timeout:20000,polling:200});
   await p.evaluate(()=>OuissysNightShift.__night.silence(true));
   let bad = 0;
-  for (let night=1; night<=6; night++) {
+  for (let night=1; night<=3; night++) {
     const r = await p.evaluate(({night,RUNS})=>{
       const w = OuissysNightShift.__night;
       const hit = {}, bump = (k)=>{ hit[k]=(hit[k]||0)+1; };
+      /* two and three of the revelations a night now, so the beat is
+         "every one tonight arrived", counted per run rather than per
+         card -- a run that delivered two of two used to read 10/5 and
+         be reported as a miss */
+      const wantRev = (w.revealPlan ? w.revealPlan(night) : [1]).length;
       let active = [], expectHidden = null, rule = null;
       for (let run=0; run<RUNS; run++) {
+        let revThisRun = 0;
         /* A find she has already collected is deliberately never placed
            again — it is hers now. So each run starts from a shop she has
            not been round yet, or runs two to five of every night would
@@ -56,22 +62,23 @@ const RUNS = 5;
           const txt = w.sayText()||'';
           if (/CAMERA ZERO/.test(txt)) told = true;
           if (w.desk().on || w.desk().seen) deskOn = true;
-          if (!s.monitor && s.hour>=5 && night===6) blind = true;
+          if (!s.monitor && s.hour>=5 && night===3) blind = true;
           /* stepReveal is deliberately not in pump — a headless clock
              must not answer a keep-or-burn that writes saved state — so
              the beat is driven here, the way the frame loop drives it */
           w.revealStep(0.25);
-          if (s.phase==='reveal') { bump('the three o\'clock revelation'); w.route('keep'); }
+          if (s.phase==='reveal') { revThisRun++; w.route('keep'); }
           if (s.phase!=='play') break;
         }
+        if (revThisRun >= wantRev) bump('every revelation tonight');
         const tp = w.tape();
         if ((tp.said || 0) >= 6) bump('his voice through the night');
         const fs = w.finds();
         if (fs.armed) bump('a hidden thing is placed');
         if (active.every(k=>((w.cast()[k]||{}).arrivals||0)>0)) bump('all four turn up');
-        if (night>=3 && (told || deskOn)) bump('camera zero offered');
-        if (night<3) bump('camera zero offered');
-        if (night!==6 || blind) bump('the blind last hour');
+        if (night>=2 && (told || deskOn)) bump('camera zero offered');
+        if (night<2) bump('camera zero offered');
+        if (night!==3 || blind) bump('the blind last hour');
         if (s.hour>=6) bump('she reaches six');
         w.route('title');
       }
@@ -81,7 +88,7 @@ const RUNS = 5;
        night six she cannot lose would not be a night six. It is reported
        below as information, not as a failure. */
     const beats = ['arrival card','his voice through the night','all four turn up',
-                   'the three o\'clock revelation','camera zero offered','a hidden thing is placed',
+                   'every revelation tonight','camera zero offered','a hidden thing is placed',
                    'the blind last hour'];
     const miss = beats.filter(k=>(r.hit[k]||0) < RUNS);
     console.log(`\nNIGHT ${night}   rule: ${r.rule}`);

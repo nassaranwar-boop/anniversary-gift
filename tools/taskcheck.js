@@ -40,14 +40,14 @@ const ok = (n, c, x) => { if (c) { pass++; console.log('  ok   ' + n); }
   const walk = await p.evaluate(() => {
     const N = OuissysNightShift.__night, NS = N.words();
     const out = {};
-    for (let night = 1; night <= 6; night++) {
+    for (let night = 1; night <= 3; night++) {
       out[night] = [];
       for (let h = 0; h < 6; h++) out[night].push(N.taskFor(night, h));
     }
     return out;
   });
 
-  for (let night = 1; night <= 6; night++) {
+  for (let night = 1; night <= 3; night++) {
     const hours = walk[night];
     const missing = hours.filter((x) => !x).length;
     const distinct = new Set(hours.filter(Boolean)).size;

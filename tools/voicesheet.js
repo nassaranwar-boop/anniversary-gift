@@ -165,8 +165,11 @@ for (const k in (NS.tapeWhen || {})) {
      six of them are one of the four speaking rather than him, and
      String({t,who}) is "[object Object]" said out loud in a Welsh accent */
   const it = NS.tapeWhen[k];
-  if (typeof it === 'string') add('when-' + k, it, 'when she does the thing');
-  else add('when-' + k, it.t, 'when she does the thing', it.who);
+  if (typeof it === 'string') { add('when-' + k, it, 'when she does the thing'); continue; }
+  add('when-' + k, it.t, 'when she does the thing', it.who);
+  /* and the version the deadline says, for a line she never cued: a
+     different sentence in the same voice, so it needs its own take */
+  if (it.elseT) add('when-' + k + '-else', it.elseT, 'when she never did the thing', it.who);
 }
 /* AND THE ONES SHE IS NOT MEANT TO BE HEARING.
 
@@ -176,10 +179,15 @@ for (const k in (NS.tapeWhen || {})) {
    last hour, so the casting matters more here than anywhere -- a pair
    that comes out in one voice is not a conversation, it is somebody
    muttering. castcheck is what proves they did not. */
-for (const n in (NS.overheard || {}))
-  (NS.overheard[n].lines || []).forEach((l, i) =>
-    add('over-' + n + '-' + (i + 1), l.t,
-        'night ' + n + ', overheard from the ' + NS.overheard[n].room, l.who));
+/* two exchanges on each of the two nights before they ever speak to
+   her, so a night is a LIST of them rather than one */
+for (const n in (NS.overheard || {})) {
+  const sc = NS.overheard[n];
+  (sc.length ? sc : [sc]).forEach((one, j) =>
+    (one.lines || []).forEach((l, i) =>
+      add('over-' + n + '-' + (j + 1) + '-' + (i + 1), l.t,
+          'night ' + n + ', overheard from the ' + one.room, l.who)));
+}
 
 /* and the one who tells her where she left his card */
 for (const k in (NS.pointAt || {}))

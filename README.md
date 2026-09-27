@@ -13,6 +13,187 @@ landed, what is half-done and what the next session should do first.
 **Add a new entry every session.** Anything not written down here is
 lost when the container is reclaimed.
 
+### 2026-09-27 — six nights into three, and the four faults he named
+
+**Asked for:** he said the game felt as though it had no purpose, that
+the narrator's talk was cheap and half of it not understandable, that
+some of the toys' lines did not match what was happening, and that a
+scenario he had built for nights five and six never happened. Then,
+asked how to fix it, he chose the structure himself: *"instead of doing
+6 nights, we will do 3, so compact all the night perfectly into 3
+perfect nights that she wont get bored of at all, then fix everything
+else"* — and picked all four faults as priorities rather than any
+subset.
+
+**What three nights actually meant.** Nothing was cut for space. Each
+of the three carries two of the old six: two revelations, two things
+hidden on the cameras, two conversations between them in a room down
+the hall, and one tape made out of the best of the two it replaces. The
+six keep-or-burn decisions are all still there and all still compute
+the ending — two on the first night, three on the second, one on the
+last. So is every oddment, every desk thing, every line the four speak
+to her, the staged save, and the last hour.
+
+What the six-night shape was actually buying was repetition. Nights two
+and five each added exactly one rule and otherwise reran the night
+before with a different tape over it, so a player not gripped by night
+three had three more of the same ahead of her before anything landed.
+The difficulty curve is now monotone by construction: night one is the
+old night one, night two sits where the old three and four sat, night
+three is the old night six exactly, hazards and ramp unchanged.
+
+**1. Lines that did not fit what was happening.** This was real and I
+had the mechanism wrong in my head until I read it again. Every line
+one of the four says to her is hung on something she does — wind one,
+shut a door on one, hold a camera on one — and each also carries a
+deadline, so that a player who never does the thing still gets the
+story. That is the right design and it is why the chapter is not
+optional. The fault is that four of those lines are written as an
+ANSWER. "Thank you. Nobody has done that since March" is a thank-you
+for winding him, and it arrived at four in the morning whether or not
+she had ever turned a key. So did "That was the right thing to do", to
+somebody who had not shut a door yet.
+
+Each of those four keeps its answer and gets a second version for the
+other case — same character, same subject, said unprompted instead of
+in reply:
+
+> **cued** Thank you. Nobody has done that since March.
+> **not cued** There is a key in the middle of my back and nobody has
+> turned it since March. I am not asking you for anything. I am telling
+> you where it is.
+
+No test is needed to choose between them. A cue marks the line said the
+instant it fires, so any line still unsaid at its deadline is by
+definition one she never prompted, and the deadline path is the one
+that says `elseT`. Both sentences are once-ever and marking either marks
+the other, so she never gets both.
+
+**2. Not being able to understand him — and I caused it last session.**
+It is not the tape. At `VOX_ROOM = 0.34` the band closes to 12kHz and
+the saturator runs at 1.27, neither of which costs a consonant. It is
+that the score ducks only 2.4dB under his voice (`VOICE_BED = 0.76`),
+which was the right number when the voice bus was at unity — and last
+session I took `VOX_BUS` to 0.70 to stop him sitting on top of the shop
+and did not move the duck to match. Measured on a bench render
+afterwards: his peak −20.7dB, the score he is talking over −20.2. He
+was underneath it.
+
+`VOICE_BED` is 0.55 now and `VOX_BUS` is 0.82. Net against the build
+this replaces he is four and a half decibels further in front; net
+against the build that chose 0.76 in the first place, one decibel. The
+line through a shut door had its lowpass at 700Hz, which takes every
+consonant off it — 1100Hz now, which keeps the muffle and hands back
+the fricatives, because the door is meant to cost her two thirds of the
+words and not all of them.
+
+And the other half of "cheap, and half of it has no meaning" is simply
+true when you read the six tapes end to end. Eighty-five lines became
+sixty. What went was the throat-clearing — "You are better at this than
+I was. I mean that", "You have probably worked out the pattern by now",
+"I am telling you this badly" — the lines that delayed a revelation the
+next line then gave, and four separate goodbyes: the night-six tape
+signed off, then the last hour signed off over a picture of his bench,
+then the finale card, then the last page. He gets one now, the one with
+the film under it.
+
+**3. No purpose.** He does set a goal in the first ninety seconds and
+the line under the clock restates it every hour; what was missing is
+anything that ACCUMULATED between them. She finished a night, read a
+card, and started another night that looked the same. The ledger — six
+marks, kept or burned or still out there — existed only on the six
+o'clock card and the title screen. It is on the card she reads on the
+way in now, with how many nights are left over it, and it opens the
+same drawer, so she can read back anything she kept before she goes in.
+Not on the first night: a progress bar at zero is worse than none.
+
+**4. The scenario that never happened — found, and it was a one-line
+bug.** It is `stageTheTurn`: at two in the morning on the last night a
+parcel is walked to the office door on rails and the nearest wound one
+of his takes it, which is the beat the whole chapter is built to
+arrive at. It was gated `if (STAGED.done || seenSave())`, and
+`seenSave` is a localStorage flag set the first time she is ever saved
+by one of his, on any night, in any run, for ever. It exists to stop
+the explanatory card appearing twice. What it actually did was cancel
+the whole set piece: a player saved once by accident on an early night
+— the exact fluke this scene exists to replace — had the last night's
+centrepiece silently deleted. The parcel is walked either way now;
+`seenSave` still decides whether the CARD comes up, which is all it was
+ever for.
+
+Measured both ways with the flag clear and with it already set, on the
+last night with the four wound: **intercept HAPPENED / card shown**, and
+**intercept HAPPENED / card not shown**. The last hour was never broken
+— five o'clock on the last night reaches `finale` — so of the two
+things he thought were missing, one was and one was not.
+
+**Also changed, because three nights broke them:** the parcel count is
+off the night number (one, two, all three) rather than `from + 1` with
+a floor of two, which over three nights would have given the last night
+fewer of them than the old night four. `armedFind` handles two pages on
+a night and `closeFind` puts the second one out once she has pocketed
+the first. `handOverMissed` hands over BOTH of the two that cannot be
+missed, since the ledger and the last page are on the same night now.
+`MIDNIGHT[n].breaks` is a list, because night two loses the workshop
+camera and the hall in the same fifteen seconds and with one slot the
+second was already broken while the annunciator announced it. Every
+workshop oddment moved to night one, because camera eight is dead from
+night two and two of them were hidden in a room that cannot be looked
+at. `DESK_FROM` is 2.
+
+**Two knocks a night, and the rest through the tape.** The thing the
+compression actually broke, which no amount of shuffling deadlines
+fixed: every line one of the four says to her comes to a door and
+knocks first, and there are thirteen of those — eight gated lines and
+five answers to what she did with his things. Over six nights that is
+about two a night. Over three it is four and a half, and a knock is
+not a line; it is a knock, an ask, the time she is given to decide,
+and then either the doorway or the shutter. Call it half a minute.
+`scriptcheck` reported it twice in the same run as "arrived night two,
+due night one" before I understood what I was looking at.
+
+So the ask is rationed rather than rewritten. The first two of a night
+knock; anything after that arrives in the same voice through the tape,
+the way his own lines do. She still pays the door for the first two,
+every night, and nothing is lost. It also reads better on the last
+night, where they have stopped asking to be let in anyway — the tape
+IS them by then, talking over her head and then to her directly — and
+a knock in the middle of that is the one of them who has not noticed
+the others have stopped.
+
+**Every night now has an hour in it where he says nothing.** That is
+not pacing taste, it is a requirement: everything reactive in this
+chapter waits for quiet, so a night with no quiet in it is a night
+where the reactive things never happen. The first time round I packed
+the tapes to sixteen lines a night and `overcheck` caught it
+immediately — night one's second conversation got three of its seven
+lines away before six o'clock. Thirteen, thirteen and seven, with a
+deliberate hole in the back half of each.
+
+**Measured afterwards, so the curve is not a guess.** `nightbudget`,
+an attentive guard playing each night twice — a door shut only while
+something is actually at it:
+
+| | at six | meter spent per hour |
+|---|---|---|
+| night one | 42% and 49% left | ~9% |
+| night two | 18% and 14% left | ~14% |
+| night three | reaches the film at five with 23% and 33% left | ~14.4% |
+
+Monotone, and the tightest night in the chapter is the middle one at
+14% in hand — which is slightly kinder than the old night six, which
+landed at nine. `nightcertain`: all four turn up on every night, ten
+runs each, nobody died. `nightbeats`: every beat the story promises
+reaches her, every time, on all three.
+
+**Left undone, and it needs a click from him:** sixty-odd of his lines
+were rewritten, so they have no recordings. Run **Actions → Anwar's
+voice → Run workflow** on `site-with-night-shift` with mode `full`. It
+takes about four minutes and commits the takes itself. Until then those
+lines come out of the browser's own speech engine, which is the thing
+the recordings exist to replace. `linecheck` is the check that goes
+green when it is done.
+
 ### 2026-09-26c — three things to make it less boring, and what testing them cost
 
 **Asked for:** he asked whether the game needed anything else to be

@@ -110,15 +110,23 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
 
   const script = await p.evaluate(() => OuissysNightShift.__night.overScript());
 
-  ok('nights one to four each have an exchange written for them',
-     [1, 2, 3, 4].every((n) => script[n] && script[n].lines.length >= 3),
-     [1, 2, 3, 4].map((n) => script[n] ? script[n].lines.length : 0).join('/') + ' lines');
-  ok('and nights five and six do not, because by then they talk to her',
-     !script[5] && !script[6], Object.keys(script).join(','));
+  /* a night holds a LIST of these: four exchanges over the two nights
+     before they ever speak to her, two on each */
+  const scenesOf = (n) => !script[n] ? [] : (script[n].length ? script[n] : [script[n]]);
+
+  ok('the two nights before they speak to her have two exchanges each',
+     [1, 2].every((n) => scenesOf(n).length === 2 &&
+                         scenesOf(n).every((sc) => sc.lines.length >= 3)),
+     [1, 2].map((n) => scenesOf(n).map((sc) => sc.lines.length).join('+')).join(' / '));
+  ok('and the last night does not, because by then they talk to her',
+     !script[3], Object.keys(script).join(','));
+  ok('and the second one on a night is held back to the far side of it',
+     [1, 2].every((n) => scenesOf(n)[1].from >= scenesOf(n)[0].from + 2),
+     [1, 2].map((n) => scenesOf(n).map((sc) => sc.from).join('->')).join(' / '));
   ok('every line in them is spoken by one of the four, and no line by the speaker before it',
-     [1, 2, 3, 4].every((n) => script[n].lines.every((l, i) =>
+     [1, 2].every((n) => scenesOf(n).every((sc) => sc.lines.every((l, i) =>
        ['cogsworth', 'chime', 'marabelle', 'jax'].indexOf(l.who) >= 0 &&
-       (i === 0 || l.who !== script[n].lines[i - 1].who))), 'two voices, taking turns');
+       (i === 0 || l.who !== sc.lines[i - 1].who)))), 'two voices, taking turns');
 
   /* one night, pumped to six o'clock, with the camera either parked on
      the room the conversation is in or deliberately never on it */
@@ -131,7 +139,13 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
   const runOn = (p, night, watch) => p.evaluate(([n, w]) => {
     const N = OuissysNightShift.__night, G = N.state(), cast = N.cast();
     N.begin(n);
-    const sc = N.overScript()[n];
+    const raw = N.overScript()[n];
+    const scenes = raw.length ? raw : [raw];
+    /* every line of every exchange the night has, so one run measures
+       both of them and their order across the whole night */
+    const all = [];
+    scenes.forEach((s2, j) => s2.lines.forEach((l) => all.push({ t: l.t, who: l.who, scene: j })));
+    const sc = scenes[0];
     const film = [];
     const DT = 1 / 30;
     let said = [], lastCap = '';
@@ -153,6 +167,18 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
          is measuring never started, reported as "she never heard it".
          A death ends the run; the exchange has to have happened before
          it, which is the real requirement anyway. */
+      /* A CARD IS NOT A DEATH.
+
+         There are two and three revelations a night now rather than
+         one at three in the morning, and every one of them stops the
+         shop -- which this read as "she died", ended the run, and
+         reported the conversation it was measuring as never having
+         happened. Night two's first card is due at half past one and
+         took six of the night's seven overheard lines with it. A card
+         is read and put down; only a scare ends a run. */
+      if (G.phase === 'reveal') { N.route('keep'); continue; }
+      if (G.phase === 'found')  { N.route('findOut'); continue; }
+      if (G.phase === 'held')   { N.route('heldOut'); continue; }
       if (G.phase !== 'play') { died++; break; }
       /* HOLD THE PICTURE UP FOR THE WATCHING RUN.
 
@@ -163,7 +189,10 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
          thing to measure here: this run is asking whether WATCHING gets
          it clear, so the feed is held up and the dropout is left to the
          run below, which never looks at all. */
-      if (w) { G.monitor = true; G.cam = sc.room; G.lost = {}; G.monOut = 0; }
+      /* park on whichever exchange is armed right now: with two on a
+         night the room changes halfway through */
+      if (w) { G.monitor = true; G.cam = (N.overState().room || sc.room);
+               G.lost = {}; G.monOut = 0; }
       else   { G.monitor = false; }
       N.pumpFrame(DT);
       const st = N.overState();
@@ -179,33 +208,38 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
          up are all things the chapter can simply be asked. */
       const d = N.tapeDebug();
       if (d.line && d.line !== lastCap) {
-        const hit = sc.lines.filter((l) => l.t === d.line)[0];
+        const hit = all.filter((l) => l.t === d.line)[0];
         if (hit) {
           if (seen[hit.t]) twice++;
           seen[hit.t] = 1;
-          said.push({ t: hit.t, who: hit.who, through: d.through,
+          said.push({ t: hit.t, who: hit.who, scene: hit.scene, through: d.through,
                       shown: d.shown, hour: G.hour, at: +(k * DT).toFixed(2) });
-          if (early === null && G.hour < sc.from) early = G.hour;
+          if (early === null && G.hour < scenes[hit.scene].from) early = G.hour;
         }
         lastCap = d.line;
       }
       /* whether they take turns is measured below, from the times the
          lines actually went out */
-      if (st.done && !st.on) break;
+      /* not "the first one finished" any more: the night is over when
+         the last of its exchanges is done, or the clock runs out */
+      if (st.done && !st.on && !st.armed) break;
       if (G.hour >= 6) break;
     }
     return { said, overlapped, early, twice, died, state: N.overState(),
-             from: sc.from, room: sc.room, want: sc.lines.length, hour: G.hour };
+             want: all.length, hour: G.hour };
   }, [night, watch]);
 
-  for (const n of [1, 2, 3, 4]) {
-    const w = script[n];
+  for (const n of [1, 2]) {
+    const scenes = scenesOf(n);
+    const w = { room: scenes.map((s2) => s2.room).join(' then '),
+                lines: [].concat.apply([], scenes.map((s2) => s2.lines)),
+                from: scenes[0].from };
 
     /* WATCHING: she gets all of it, clear */
     const on = await run(n, true);
-    ok(`night ${n}, on the ${w.room} camera: she hears the whole exchange`,
+    ok(`night ${n}, on the ${w.room} camera: she hears both exchanges whole`,
        on.said.length === w.lines.length, `${on.said.length} of ${w.lines.length}`);
-    ok(`night ${n}, on camera: in the order it was written`,
+    ok(`night ${n}, on camera: in the order they were written`,
        on.said.every((x, i) => w.lines[i] && x.t === w.lines[i].t &&
                                x.who === w.lines[i].who), 'in order');
     ok(`night ${n}, on camera: clear, not through a wall`,
@@ -214,7 +248,7 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
     ok(`night ${n}, on camera: and the words are on the screen`,
        on.said.length > 0 && on.said.every((x) => x.shown),
        on.said.filter((x) => !x.shown).length + ' never shown');
-    ok(`night ${n}: it does not start before ${w.from} o'clock`,
+    ok(`night ${n}: neither of them starts before its hour`,
        on.early === null, 'first line at ' + (on.said[0] ? on.said[0].hour : '-'));
     ok(`night ${n}: nothing is said twice`, on.twice === 0, on.twice + ' repeats');
     /* TAKING TURNS IS A MEASUREMENT, NOT A FLAG.
@@ -232,7 +266,11 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
        asserted, because the spacing is the thing that has to be true --
        and the case it was written for is the one where the tape tick
        has been switched off and nothing else is holding them apart. */
-    const gaps = on.said.slice(1).map((x, i) => +(x.at - on.said[i].at).toFixed(2));
+    /* only within one exchange: the gap ACROSS the two of them is
+       two hours of night and says nothing about taking turns */
+    const gaps = on.said.slice(1)
+      .map((x, i) => [x.scene === on.said[i].scene, +(x.at - on.said[i].at).toFixed(2)])
+      .filter(([same]) => same).map(([, g]) => g);
     ok(`night ${n}: they take turns rather than talk over each other`,
        gaps.length > 0 && gaps.every((g) => g >= 0.8),
        gaps.length ? gaps.join('s, ') + 's apart' : 'nothing said');
@@ -249,7 +287,7 @@ const ok = (n, c, note) => { c ? pass++ : fail++;
   /* it gives way to anything standing at her door */
   const yields = await p.evaluate(() => {
     const N = OuissysNightShift.__night, G = N.state(), cast = N.cast();
-    N.begin(4);
+    N.begin(2);
     const DT = 1 / 30;
     /* run it up past the hour it is due, then put something at a door
        and hold it there */

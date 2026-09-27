@@ -9136,6 +9136,24 @@ img{-webkit-user-drag:none; user-select:none;}
 .ns-lcap{ font-size:.74em; letter-spacing:.08em; text-transform:uppercase;
           color:rgba(232,223,200,.62); white-space:nowrap; }
 
+/* THE SAME LEDGER, ON THE WAY IN.
+
+   It lives on the six o'clock card, where she is already sitting still
+   and reading. It is on the card she reads before a night now as well,
+   because between two nights that look alike the only thing that
+   visibly accumulates is what she has taken out of the shop, and she
+   was only ever shown it on the way out. The strip inside it is the
+   button, styled above; this is the line over it and the rule under. */
+.ns-standing{
+  margin:1.05em auto .35em; padding-top:.9em; max-width:30em;
+  border-top:1px solid rgba(255,206,140,.13);
+}
+.ns-standing-lab{
+  margin:0; font-size:.72em; letter-spacing:.14em; text-transform:uppercase;
+  color:rgba(232,223,200,.5); text-align:center;
+}
+.ns-standing .ns-ledger{ margin:.55em auto 0; }
+
 /* a row she can open, and a row she cannot */
 .ns-drawer-row.open{ cursor:pointer; }
 .ns-drawer-row.open:hover,.ns-drawer-row.open:focus-visible{
