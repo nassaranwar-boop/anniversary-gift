@@ -13,6 +13,152 @@ landed, what is half-done and what the next session should do first.
 **Add a new entry every session.** Anything not written down here is
 lost when the container is reclaimed.
 
+### 2026-09-27b — why it was not frightening, and the winding key that did not work
+
+**Asked for:** whether three nights is now right; make it scarier, because
+playing it he feels nothing; fix the winding button, which feels cheap
+and does not always work, and fix the reason behind winding, which he
+thinks does not work either; and check every detail of the gameplay.
+
+**The honest answer to "is it perfect": no, and here is the number.**
+`tools/fearcheck.js` is new. It plays each night three ways — a perfect
+guard, a normal one (half a second late to every door, monitor up a
+third of the time), and a careless one (monitor up two thirds of the
+night, winds one of the four) — and counts what actually happens to
+her. Before this session:
+
+| | night one | night two | night three |
+|---|---|---|---|
+| perfect, meter at six | 48.7% | 23.8% | 26.3% |
+| careless, meter at six | 16.3% | 1.9% | 3.5% |
+| **deaths, 27 runs, all skills** | **1** | | |
+
+One death in twenty-seven playthroughs, including a careless one. A
+horror game a careless player cannot lose is not frightening, whatever
+is on the screen, and that is the whole of the report.
+
+**And the reason it cannot kill her was one line.** Every arrival at
+her door already fires a sound of its own — boots, wings, a music box,
+bells — panned to the side it came from, which is what the chapter's
+entire audio design is for. And then `arriveCue` also said
+`MOTION: WEST DOOR`, in words, on the screen, every single time. She
+never had to listen, never had to look, and never had to be wrong.
+
+So on the last night the floor sensors stop resolving a bearing. They
+still say something is coming — she is not being asked to play without
+information — they stop saying which side. It is a new hazard,
+`blindSensors`, the midnight beat acts it out, and it is the single
+biggest change to how the chapter feels. Measured:
+
+| night three | before | after |
+|---|---|---|
+| perfect: seconds at an open door | 1.4s | 16.3s |
+| normal: meter at five o'clock | 15.9% | 2.7% |
+| careless: deaths in three runs | 0 | 1–2 |
+
+**Night one was inert, not gentle.** 48.7% of the meter left and zero
+seconds of exposure for a good player; sixteen per cent for a careless
+one who was never once in danger. It is still by a distance the easiest
+night, still has no parcels, and is still the tutorial — but the four
+arrive sooner and press a little harder, the office bulb has started
+going out by itself, and **the thing that stands in her office is
+allowed to happen on it.**
+
+That last one is the fix I would keep if I could only keep one.
+`DESK_FROM` was 3, then 2. It is 1. This is the only thing in the
+chapter that puts something in the room she is sitting in; it cannot
+kill her, it cannot cost her a single per cent, and it was not allowed
+to happen until her second shift. Everything else the game does to
+frighten her happens somewhere else, to a figure on a tube, and reaches
+her as a number going down. It is capped — once on the first two
+nights, twice on the last, four times in a playthrough — so it stays
+four moments rather than a mechanic.
+
+**THE WINDING KEY: four faults, and none of them was in the writing.**
+`tools/windcheck.js` is new (9 checks) and drives the real element with
+real pointer events on a real wall clock, because every one of these is
+invisible to anything that calls `windStart()` directly.
+
+1. **It walked away from her thumb.** The button is positioned every
+   frame from the toy's position on the monitor, and the toy is
+   walking. Hold it for a second and a bit on a phone and the target
+   slides out from under a thumb that has not moved: `pointerleave`
+   fires, the hold dies, nothing says why. **This is the main one.**
+   The press is captured to the element now, the position is frozen
+   for the duration of a hold, and `pointerleave` no longer cancels.
+2. **It vanished.** The key only existed below 55% of a wind. Above
+   that she is looking straight at one of his, pressing where the key
+   was, and there is nothing there. It is always on one of them now,
+   the ring shows how much wind is left when she is not holding, and
+   the label says FULL when there is nothing to do.
+3. **It aimed at nothing.** `G.windTarget` was set when a target
+   existed and never cleared when one stopped existing, so the button
+   stayed live with a stale id and the press did nothing at all. That
+   is the "sometimes".
+4. **It picked the wrong one.** Two in a room and it always took the
+   first in cast order.
+
+And a cancelled hold was silent, which from the chair is identical to
+the button not working. It ticks.
+
+**The reason behind winding was real and invisible.** Being wound
+already does four things: leaves a shut door 55% faster, is 35% less
+aggressive, is the only thing that can step in front of a parcel, and a
+wound Marabelle freezes when watched where a run-down one does not —
+the nastiest state in the chapter. Nothing ever told her any of it had
+happened. `NS.sys.slack` — "$1: RUN DOWN." — has been written, and
+correct, and **never once fired** in the chapter's life; `G.stats.slack`
+was declared and never incremented. The building announces it now, once
+per toy per night, with a hiss under it, and a wind that restarts a
+stopped one says RUNNING AGAIN rather than WOUND.
+
+**Other things the detail sweep found:**
+
+- **`NS.sys.camBack`** — "CAMERA $1: RESTORED." — zero references. The
+  hazard's own description says the feeds "come back on their own", and
+  they do, and the building never mentioned it. A room going dark is
+  frightening once; a room coming back is what tells her the dark one
+  was a room she could not see into.
+- **The HANDS OFF badge was not hard, it was impossible.** "Clear a
+  night without shutting a door", awarded on `closes === 0`. Every one
+  of the four is guaranteed to reach her door at least once a night,
+  and an arrival at an open door kills her. No line of play finishes a
+  night with zero closes. It is LIGHT TOUCH now — under forty seconds
+  of shut door across a shift, which is about two thirds of what an
+  attentive guard spends.
+- **`NS.howTo`**, the six one-line rules, had been read by nothing
+  since the how-to card was rewritten. Deleted — except that its last
+  line, LISTEN, had just become load-bearing, so that one is on the
+  card and orientation says it out loud on night one. A game that
+  quietly starts depending on the ear on its last night, having never
+  said so, is not difficult, it is unfair.
+
+**Where it stands now, measured:**
+
+| | perfect | normal | careless |
+|---|---|---|---|
+| night one | 49.8% | 38.9% | 15.0%, 0 deaths |
+| night two | 21.1% | 17.5% | 0.0%, 2 of 3 died |
+| night three | 17.4% | **2.7%** | 0.0%, 1–2 of 3 died |
+
+`fearcheck` asserts five of those as a floor now, so this cannot come
+back quietly: a careless player must be able to lose, a perfect one
+must not, the last night must cost a good player real seconds at an
+open door, it must take a normal one under 12%, and the curve must be
+monotone.
+
+**Still his call, not mine:** night one remains the gentle night. A
+good player finishes it with half the meter. It is the tutorial, it is
+the first thing a person who does not play games ever sees, and I would
+rather it be eerie than hard — the office bulb and the thing behind her
+chair are what it got instead of pressure. If he wants night one to
+bite as well, the lever is `NIGHTS[0].ramp` and it is one line.
+
+**And the SKIP button is still on.** `TEST_SKIP` in night-shift.js,
+the mustard dashed button. It was asked for as a temporary testing aid
+and it is still there. It must come out before this is given to
+anybody.
+
 ### 2026-09-27 — six nights into three, and the four faults he named
 
 **Asked for:** he said the game felt as though it had no purpose, that

@@ -9774,6 +9774,18 @@ img{-webkit-user-drag:none; user-select:none;}
   margin:1.4cqh 0 0; font-size:max(9px, 1.35cqh); letter-spacing:.1em;
   color:rgba(226,206,172,.46);
 }
+/* THE ONE LINE ON THIS CARD THAT IS NOT ABOUT A BUTTON.
+
+   Each of the four has its own sound at the door, panned to the side
+   it came from, and on the last night the floor sensors stop naming
+   the door, so that pan becomes the only thing that says which side.
+   The card had never mentioned sound at all. It is set warmer than
+   the line above it because it is the only instruction here she
+   cannot work out by pressing things. */
+.ns-how-ear{
+  margin:1.1cqh 0 0; font-size:max(9.5px, 1.45cqh); line-height:1.55;
+  color:rgba(255,206,140,.66);
+}
 .ns-how-lab{
   margin:2.6cqh 0 1cqh; font-size:max(8.5px, 1.3cqh); letter-spacing:.3em;
   color:rgba(226,206,172,.42);

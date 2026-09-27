@@ -2474,16 +2474,18 @@ const NS = {
     ],
   },
 
-  /* Six lines, and each one is the whole rule. She should be able to
-     skim this once and start, and never need it again. */
-  howTo: [
-    ["THE JOB", "Midnight to six. About six minutes. Do not leave the chair."],
-    ["THE DOORS", "A&nbsp;/&nbsp;D shut the two doors. W shuts the ceiling hatch."],
-    ["THE CAMERAS", "SPACE puts the monitor up. 1&ndash;8 pick a room."],
-    ["THE POWER", "One charge. Doors and cameras spend it. At zero, the doors stop working."],
-    ["THE TRICK", "Shut a door only while something is actually there. Open it again straight after."],
-    ["LISTEN", "Which ear a sound comes from is which side it is on. Headphones help."],
-  ],
+  /* THE SIX RULES USED TO BE HERE AND NOTHING HAS READ THEM FOR A
+     LONG TIME.
+
+     screenHowTo was rewritten into three things -- one sentence, the
+     buttons drawn as buttons, and who the four are -- and this table
+     was left behind, referenced by nothing. Every line of it is said
+     on that card now except the last one, LISTEN, and that one has
+     just become load-bearing: on the last night the floor sensors
+     stop resolving a bearing and the panned cue is the only thing
+     that says which side. So it is on the card, and orientation says
+     it out loud on night one, and the table is gone rather than
+     sitting here looking like it does something. */
 
   /* Everything the security system is allowed to say. It reports and it
      stops. It never reassures, never explains, never uses her name and
@@ -2501,6 +2503,8 @@ const NS = {
     hatchShut: "VENT HATCH: SEALED.",
     hatchOpen: "VENT HATCH: OPEN.",
     motion:    "MOTION: $1.",
+    /* the last night, with the direction gone. See HAZARDS.blindSensors */
+    motionBlind: "MOTION: OFFICE APPROACH. BEARING UNRESOLVED.",
     /* the one line that exists to make her look somewhere. Camera zero
        is the room she is sitting in, and if she never raises it the
        thing standing behind her chair is a scene that does not happen. */
@@ -2535,7 +2539,23 @@ const NS = {
     { id:"first",   name:"FIRST LIGHT",      note:"finish a night" },
     { id:"story",   name:"CLOSING TIME",     note:"finish every night" },
     { id:"onepc",   name:"ON THE FUMES",     note:"reach six with one percent left" },
-    { id:"nodoor",  name:"HANDS OFF",        note:"clear a night without shutting a door" },
+    /* HANDS OFF WAS NOT HARD, IT WAS IMPOSSIBLE.
+
+       "clear a night without shutting a door", awarded on
+       `stats.closes === 0`. Every one of the four is guaranteed to
+       reach her door at least once a night -- that guarantee is
+       deliberate and is what stops a performer never turning up -- and
+       an arrival at an OPEN door kills her when its grace runs out.
+       There is no line of play in this game that finishes a night with
+       zero closes. It has been on the shelf since the shelf existed,
+       unearnable, next to seven that are not.
+
+       What it was reaching for is real and is worth having: a night
+       where she barely touched the doors. Forty seconds of door across
+       a whole shift is about two thirds of what an attentive guard
+       spends, so it wants genuinely good listening and genuinely fast
+       reopening, and it is achievable on any night. */
+    { id:"nodoor",  name:"LIGHT TOUCH",      note:"clear a night with under forty seconds of shut door" },
     { id:"nocam",   name:"EYES SHUT",        note:"clear a night with under twenty seconds of camera" },
     { id:"arcade",  name:"OUT OF ORDER",     note:"find whatever is still running in the arcade" },
     { id:"kept",    name:"ALL FOUR",         note:"reach six with every one of them still wound" },
@@ -2715,6 +2735,25 @@ const HAZARDS = {
   stickyDoor:   "The right-hand actuator is going. That door is slow now, and expensive.",
   monitorDrop:  "The monitor cuts out mid-look. It comes back.",
   blindHour:    "At five the cameras go for good. The last hour is by ear.",
+  /* THE BUILDING TELLING HER WHICH DOOR WAS THE REASON SHE WAS NEVER
+     FRIGHTENED.
+
+     Every arrival at her door fires a sound -- boots, wings, a music
+     box, bells -- panned to the side it came from, which is the whole
+     of what the chapter's audio design is for. And then arriveCue said
+     "MOTION: WEST DOOR", in words, on the screen, every single time.
+     So she never had to listen, never had to look, and never had to be
+     wrong: measured across twenty-seven playthroughs at three skill
+     levels, including one that leaves the monitor up two thirds of the
+     night and is half a second late to everything, the chapter killed
+     her once.
+
+     On the last night the sensors stop resolving a direction. They
+     still say something is coming -- she is not being asked to play
+     without information, and a player with no headphones can still
+     shut both and pay for it -- they stop saying which side. The ear,
+     or the camera, or both doors and the meter. */
+  blindSensors: "The floor sensors have stopped telling you which side.",
 };
 
 const NIGHTS = [
@@ -2754,9 +2793,28 @@ const NIGHTS = [
        hall goes dark. So they arrive one at a time, in the order the
        tape introduces them, and the whole cast is on the floor by five
        o'clock on night one. */
-    active: { cogsworth: 0, marabelle: 1.5, jax: 3, chime: 4.5 },
-    ramp: [0.80, 0.90, 1.00, 1.10, 1.20, 1.32],
-    hazards: [],
+    /* AND IT HAD NO TEETH AT ALL.
+
+       Measured with tools/fearcheck.js, which plays each night three
+       ways: a perfect guard finished night one with 48.7% of the meter
+       in hand and zero seconds of anything standing at an open door,
+       and a CARELESS one -- monitor up two thirds of the shift, half a
+       second late to every door, winding one of the four -- finished
+       it with 16% and was never in danger either. The night was not
+       gentle, it was inert, and it is the first impression the whole
+       chapter makes.
+
+       It is still the easiest night by a distance and it still has no
+       hazards and no parcels in it. The four simply arrive sooner and
+       press a little harder, so that by five o'clock on her first
+       night she has had to actually do the job. */
+    active: { cogsworth: 0, marabelle: 1.2, jax: 2.8, chime: 4.2 },
+    ramp: [0.92, 1.02, 1.12, 1.24, 1.36, 1.48],
+    /* and one rule, which is the only one in the chapter that costs
+       her nothing at all: her own bulb goes out by itself now and
+       then, and comes back. The first night had no hazard of any kind
+       and it is the first impression the chapter makes. */
+    hazards: ["officeDark"],
   },
   {
     n: 2,
@@ -2778,7 +2836,7 @@ const NIGHTS = [
     power: 100,
     active: { cogsworth: 0, chime: 0, marabelle: 0, jax: 0 },
     ramp: [1.10, 1.25, 1.35, 1.50, 1.62, 1.75],
-    hazards: ["deadWorkshop", "signalLoss", "hallDark", "surges", "officeDark", "stickyDoor", "monitorDrop", "blindHour"],
+    hazards: ["deadWorkshop", "signalLoss", "hallDark", "surges", "officeDark", "stickyDoor", "monitorDrop", "blindHour", "blindSensors"],
   },
 ];
 
@@ -12672,7 +12730,11 @@ function arriveCue(ch) {
   else if (ch.def.id === "chime") { SFX.hoot(1, p); SFX.flutter(0.9, p); }
   else if (ch.def.id === "marabelle") { SFX.tune(1, 0.72, p); }
   else { SFX.laugh(0.9, p); SFX.bells(0.9, p); }
-  /* the system notices it too, and says only that it noticed */
+  /* The system notices it too, and says only that it noticed -- and on
+     the last night it cannot say where. The cue above already panned
+     it to the side it came from; this is the line that used to make
+     that pan decorative. */
+  if (hazard("blindSensors")) { say(NS.sys.motionBlind, true); return; }
   say(fmt(NS.sys.motion, ch.def.door === "hatch" ? "VENT" :
         ch.def.door === "left" ? "WEST DOOR" : "EAST DOOR"), true);
 }
@@ -12823,6 +12885,15 @@ const TUTOR = [
   { line: "A WOUND ONE TAKES NO FOR AN ANSWER AND LEAVES YOUR DOOR SOONER.", hold: 4.0 },
   { line: "AND IF SOMETHING HE SOLD EVER GETS THIS FAR, A WOUND ONE WILL STAND IN FRONT OF IT.", hold: 4.6 },
 
+  /* THE EAR, WHICH THE LAST NIGHT DEPENDS ON.
+
+     Each of the four has a sound of its own at the door and it is
+     panned to the side it came from. Nothing ever told her that, and
+     on the last night the annunciator stops naming the door, so the
+     pan stops being decoration and becomes the information. Said
+     here, once, on the night she has headphones in or does not. */
+  { line: "AUDIO: EACH OF THEM SOUNDS LIKE ITSELF, ON THE SIDE IT IS ON.", hold: 4.0 },
+
   { line: "ORIENTATION COMPLETE. THE SHIFT IS YOURS.", hold: 3.0 },
 ];
 
@@ -12916,7 +12987,7 @@ const MIDNIGHT = {
      all night, played once, with nothing on the other side of it. And
      then the building does the only thing it has left, which is stop
      for a second and come back. */
-  3: { secs: 12.8, covers: ["stickyDoor"], beats: [
+  3: { secs: 15.4, covers: ["stickyDoor", "blindSensors"], beats: [
     { at: 0.30,  act: "sfx:beep",       sys: "MIDNIGHT. SHIFT THREE OF THREE." },
     { at: 1.90,  act: "doorTest:right", sys: "DOOR TWO: SELF TEST." },
     { at: 4.40,  act: "doorBack:right", sys: "DOOR TWO: ACTUATOR RESPONDING SLOWLY. HOLD CURRENT UP FIFTY PERCENT." },
@@ -12924,6 +12995,10 @@ const MIDNIGHT = {
     { at: 7.60,  act: "mon:2.0",        sys: "" },
     { at: 9.90,  act: "sfx:monitor:1",  sys: "MONITOR: RESTORED. CAUSE UNKNOWN." },
     { at: 11.50, act: "monDown",        sys: "CAMERA NETWORK: SEVEN OF EIGHT." },
+    /* and the last thing it does before it hands her the night is stop
+       being able to tell her which side of her a thing is on */
+    { at: 13.00, act: "sfx:falseSkitter:0.6", sys: "FLOOR SENSORS: WEST LOOP FAULT." },
+    { at: 14.30, act: "sfx:beep",       sys: "FLOOR SENSORS: BEARING UNRESOLVED. NO ENGINEER ASSIGNED." },
   ] },
 };
 
@@ -14268,7 +14343,25 @@ function stepClock(dt) {
 /* --- the cameras that give out --------------------------------------- */
 function stepSignal(dt) {
   if (!hazard("signalLoss")) return;
-  for (const k in G.lost) if (G.lost[k] > 0) G.lost[k] -= dt;
+  /* AND IT SAYS WHEN ONE COMES BACK.
+
+     NS.sys.camBack -- "CAMERA $1: RESTORED." -- has been written and
+     correct and referenced exactly nowhere for the whole life of the
+     chapter. The hazard's own description says the feeds "come back on
+     their own", and they do, and the building never mentioned it. It
+     is the cheapest possible piece of dread to have left on the floor:
+     a room going dark is frightening once, and a room coming back is
+     what tells her the dark one was a room she could not see into. */
+  for (const k in G.lost) {
+    if (G.lost[k] > 0) {
+      G.lost[k] -= dt;
+      if (G.lost[k] <= 0) {
+        const room = ROOM[k];
+        if (room && room.cam > 0) say(fmt(NS.sys.camBack, "ZERO " + numWord(room.cam)));
+        bumpUI();
+      }
+    }
+  }
   G.lostT -= dt;
   if (G.lostT <= 0) {
     G.lostT = range(Math.random, 26, 46);
@@ -14667,22 +14760,37 @@ function closeReveal(kept) {
                                again, exactly as it was. There is never
                                anything to find by turning round, and
                                that is worse.
-     it does not repeat        once per night, and only after two in
-                               the morning, so it is never a mechanic
-                               she can farm — it happens to her.
+     it does not repeat        only after two in the morning, and a
+                               capped number of times, so it is never
+                               a mechanic she can farm — it happens to
+                               her. Once on the middle night. Twice on
+                               the last one, because by the last one
+                               the building is coming apart and the
+                               one place she was allowed to feel safe
+                               should stop being reliable about it.
 
    The point is not a jump. The point is that the one place she was
    allowed to feel safe has a camera on it now, and some nights there
    is somebody in the picture. */
-const DESK = { on: false, at: -1, who: null, seen: false, armed: false, cool: 0, was: false, nag: 0 };
+const DESK = { on: false, at: -1, who: null, seen: 0, cap: 0, armed: false, cool: 0, was: false, nag: 0 };
 /* THE NIGHT THE OFFICE STOPS BEING EMPTY.
 
-   Three, of six, so she had four nights of it. Three, of three, is one
-   night of it -- and it is the night that already carries the staged
-   save, the four of them talking to each other and the last hour. It
-   moves to two, which is where it sat in the week: past the tutorial
-   night, with a night after it. */
-const DESK_FROM = 2;
+   Three, of six, so she had four nights of it. Three of three is one
+   night of it, which is why it first moved to two.
+
+   It is one now, and that is the answer to "I do not feel scared at
+   all". This is the only thing in the chapter that puts something in
+   the room she is sitting in, it cannot kill her, it cannot cost her
+   a single per cent of the meter, and it was not allowed to happen
+   until her second shift. Everything else the game does to frighten
+   her happens somewhere else, to a figure on a tube, and arrives as a
+   number going down.
+
+   It still waits until two in the morning, it still only happens if
+   she chooses to raise camera zero, and it is still capped -- once on
+   the first two nights, twice on the last. Four times in a whole
+   playthrough. That is not a mechanic, it is four moments. */
+const DESK_FROM = 1;
 const DESK_MARKS = ["d0", "d1", "d2"];
 /* where the four of them stand in the daylight, which is where the
    drawing on night five put them: round the desk, facing out */
@@ -14690,8 +14798,10 @@ const GALLERY_MARKS = ["g0", "g1", "g2", "g3"];
 
 function deskReset() {
   DESK.on = false; DESK.at = -1; DESK.who = null;
-  DESK.seen = false; DESK.cool = 0; DESK.was = false; DESK.nag = 0;
+  DESK.seen = 0; DESK.cool = 0; DESK.was = false; DESK.nag = 0;
   DESK.armed = G.mode === "story" && G.night >= DESK_FROM;
+  /* once on the middle night, twice on the last */
+  DESK.cap = !DESK.armed ? 0 : (G.night >= NIGHTS.length ? 2 : 1);
   deskHide();
 }
 function deskHide() {
@@ -14719,7 +14829,7 @@ function stepDesk(dt) {
   const watching = G.monitor && G.monOut <= 0 && G.cam === "office";
 
   if (!DESK.on) {
-    if (DESK.seen || G.hour < 2) return;
+    if (DESK.seen >= DESK.cap || G.hour < 2) return;
     DESK.cool -= dt;
     if (DESK.cool > 0) return;
     /* --- MAKING SURE SHE LOOKS ------------------------------------
@@ -14776,7 +14886,12 @@ function stepDesk(dt) {
   if (DESK.at >= DESK_MARKS.length) {
     /* and then it is simply not there any more */
     DESK.on = false;
-    DESK.seen = true;
+    DESK.seen++;
+    /* and if it is allowed to come back tonight it does not come back
+       straight away: a gap she cannot time, long enough that she has
+       stopped expecting it */
+    DESK.cool = range(Math.random, 55, 110);
+    DESK.nag = 0;
     deskHide();
     SFX.deskGone();
     return;
@@ -16612,7 +16727,7 @@ function awardBadges() {
   for (let i = 1; i <= NIGHTS.length && all; i++) if (!done[i]) all = false;
   if (all && giveBadge("story")) got.push("story");
   if (G.power <= 1.2 && giveBadge("onepc")) got.push("onepc");
-  if (st.closes === 0 && giveBadge("nodoor")) got.push("nodoor");
+  if (st.doorSec < 40 && giveBadge("nodoor")) got.push("nodoor");
   if (st.camSec < 20 && giveBadge("nocam")) got.push("nocam");
   if (woundCount() === 4 && giveBadge("kept")) got.push("kept");
   if (st.saves > 0 && giveBadge("held")) got.push("held");
@@ -17483,6 +17598,19 @@ function screenHowTo() {
         '<span class="ns-kcap"><i>SPACE</i><em>cameras</em></span>' +
       '</div>' +
       '<p class="ns-how-touch">On a phone: the buttons are on the screen where your thumbs are.</p>' +
+
+      /* AND SHE HAS TO BE TOLD TO LISTEN.
+
+         Every one of the four makes its own sound at her door --
+         boots, wings, a music box, bells -- panned to the side it
+         came from, and on the last night that pan is the ONLY thing
+         that says which side, because the floor sensors stop
+         resolving a bearing. This card has never once mentioned
+         sound. A game that quietly starts depending on the ear on
+         its last night, having never said so, is not difficult, it
+         is unfair. */
+      '<p class="ns-how-ear">Listen. Which ear a sound comes from is which side of you it is on ' +
+        '&mdash; and on the last night the floor sensors stop telling you. Headphones help.</p>' +
 
       '<p class="ns-how-lab">THE FOUR IN THE BACK ROOM</p>' +
       '<ul class="ns-who2s">' + who + '</ul>' +
@@ -20704,12 +20832,15 @@ const testHooks = {
   },
   /* what is standing in her own office, and how near it has got */
   desk: () => ({ armed: DESK.armed, on: DESK.on, at: DESK.at,
-                 who: DESK.who, seen: DESK.seen,
+                 who: DESK.who, seen: DESK.seen, cap: DESK.cap,
                  where: DESK.who && cast[DESK.who]
                    ? [+cast[DESK.who].group.position.x.toFixed(2),
                       +cast[DESK.who].group.position.z.toFixed(2)] : null }),
   deskStep: (dt) => { stepDesk(dt); return DESK.at; },
   revealStep: (dt) => { stepReveal(dt); return G.phase; },
+  /* which of tonight's rules are on, so a harness can play the night
+     the way a person has to play it rather than by reading the cast */
+  hazardOn: (name) => hazard(name),
   /* which of the six a night is meant to deliver, and when */
   revealPlan: (n) => (REVEAL_PLAN[n] || []).map((x) => [x.n, x.at]),
   /* the last night's set piece: has it been walked to the door yet */
