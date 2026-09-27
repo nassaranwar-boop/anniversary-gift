@@ -8143,8 +8143,24 @@ let AC = null, master = null, bedGain = null, cueGain = null, duckGain = null, s
    voxOut sits between the two. Nothing else changes: it is unity by
    default and the voice still lands in cueGain through it. */
 let voxOut = null;
-/* Unity to begin with, so that adding the bus changes nothing audible
-   and any later move is a deliberate one with a number behind it. */
+/* AND IT DOES NOT HANG OFF THE SHOP'S FADER.
+
+   applyMix sets `cueGain` to MIX.sfx -- cueGain IS the sound-effects
+   fader -- and every spoken line was routed through it. So pulling
+   THE SHOP down pulled his voice down with it, and the two sliders
+   the settings screen offers as separate things were not separate.
+   Worse in the other direction: MIX.voice had to be multiplied into
+   every line at playback because there was nowhere to put it, so the
+   two controls fought over one gain and neither did what it said.
+
+   voxOut goes to duckGain instead, which is past the shop's fader
+   and still inside the master duck, so the voice is still pushed
+   aside by a scare and still sits under the limiter. MIX.voice lives
+   here now, where a fader belongs.
+
+   Unity otherwise, so the routing change on its own moves nothing:
+   any level decision after this is a deliberate one with a number
+   behind it. */
 const VOX_BUS = 1.0;
 let bedNodes = [], creakTimer = 0, audioOn = false, muted = false;
 
@@ -8197,6 +8213,9 @@ function applyMix() {
   };
   set(master, MASTER_BASE * MIX.master);
   set(cueGain, 1.0 * MIX.sfx);
+  /* his voice on its own fader, rather than multiplied into every
+     line at playback and dragged about by the shop's */
+  set(voxOut, VOX_BUS * MIX.voice);
   if (MUS.bus && MUS.mode !== "none") {
     const feel = MODE_FEEL[MUS.mode];
     set(MUS.bus, (feel ? feel.level : MUS_LEVEL) * MIX.music);
@@ -8283,7 +8302,8 @@ function audioInit() {
   sideGain = AC.createGain(); sideGain.gain.value = 1; sideGain.connect(duckGain);
   bedGain = AC.createGain(); bedGain.gain.value = 0.0; bedGain.connect(sideGain);
   cueGain = AC.createGain(); cueGain.gain.value = 1.0; cueGain.connect(duckGain);
-  voxOut = AC.createGain(); voxOut.gain.value = VOX_BUS; voxOut.connect(cueGain);
+  /* PAST the shop's fader, not through it. See VOX_BUS. */
+  voxOut = AC.createGain(); voxOut.gain.value = VOX_BUS * MIX.voice; voxOut.connect(duckGain);
   NB = noiseBuffer(3);
   loadMix();
   applyMix();
@@ -10171,7 +10191,10 @@ function voxSpeak(plan, opts) {
       /* 0.62 rather than 0.92: the other half of the same measurement.
          Pulling the bed up alone would have meant a louder shop under
          an equally loud man; the fix has to come off both. */
-      total = voicePlay(b, (opts.gain === undefined ? 1 : opts.gain) * 0.62 * voiceTrim() * MIX.voice,
+      /* no MIX.voice here any more: it is on voxOut, and applying it
+         in both places squares it -- a slider at 0.5 would have made
+         him a quarter as loud, not half */
+      total = voicePlay(b, (opts.gain === undefined ? 1 : opts.gain) * 0.62 * voiceTrim(),
                         opts.many, opts.through);
       const k = total / was;
       plan.words.forEach((w) => { w.at *= k; });
