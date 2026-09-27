@@ -20236,13 +20236,29 @@ const testHooks = {
     const OC = window.OfflineAudioContext || window.webkitOfflineAudioContext;
     if (!OC) return Promise.resolve(null);
     const ctx = new OC(2, Math.ceil(44100 * (secs || 1.5)), 44100);
-    const keep = { AC, master, duckGain, sideGain, bedGain, cueGain, NB, muted };
+    /* AND THE TWO NEW BUSES, OR THE RENDER IS SILENT.
+
+       This rebuilds the whole graph on a fresh OfflineAudioContext
+       and restores the live one afterwards. Adding voxOut and sfxOut
+       without adding them here left both pointing at LIVE nodes
+       during an offline render -- and a node from one context cannot
+       be connected to a node from another, so every voice and every
+       effect either threw or rendered silence. nightsound caught it
+       immediately: "the last-resort voice is pitched where a man is
+       pitched: 0 voiced windows", which is what a silent render
+       looks like from the outside. */
+    const keep = { AC, master, duckGain, sideGain, bedGain, cueGain, voxOut, sfxOut, NB, muted };
     AC = ctx;
     master = ctx.createGain(); master.gain.value = 1; master.connect(ctx.destination);
     duckGain = ctx.createGain(); duckGain.connect(master);
     sideGain = ctx.createGain(); sideGain.connect(duckGain);
     bedGain = ctx.createGain(); bedGain.connect(sideGain);
     cueGain = ctx.createGain(); cueGain.connect(duckGain);
+    /* the same shape as the live graph: his voice past the shop's
+       fader, the shop through its own, so an offline render measures
+       what the game actually sounds like */
+    voxOut = ctx.createGain(); voxOut.gain.value = VOX_BUS; voxOut.connect(duckGain);
+    sfxOut = ctx.createGain(); sfxOut.gain.value = SFX_BUS; sfxOut.connect(cueGain);
     NB = noiseBuffer(3);
     muted = false;
     try {
@@ -20460,6 +20476,7 @@ const testHooks = {
         AC = keep.AC; master = keep.master; duckGain = keep.duckGain;
         sideGain = keep.sideGain;
         bedGain = keep.bedGain; cueGain = keep.cueGain; NB = keep.NB; muted = keep.muted;
+        voxOut = keep.voxOut; sfxOut = keep.sfxOut;
         return {};
       })());
     return done.then((buf) => ({
