@@ -866,15 +866,81 @@ window.OuissyCup = (function () {
     s.start(t); s.stop(t + dur + 0.02);
   }
 
+  /* =======================================================================
+     WHAT A FOOTBALL ACTUALLY SOUNDS LIKE
+
+     Every sound in here was one oscillator with a falling pitch and one
+     burst of band-passed noise. That is enough to tell two events
+     apart and it is nowhere near enough to make either of them sound
+     like anything: a struck ball came out as a hiss with a thump
+     behind it, and the post was a square wave going down a bit.
+
+     A ball being hit is three things arriving within forty
+     milliseconds of each other, and leaving any of them out is why it
+     sounds like a menu beep:
+
+       THE CLICK    five milliseconds of bright noise. This is the boot
+                    hitting the panel, and it is the only part that
+                    survives a phone speaker, which is why it has to be
+                    there.
+       THE BODY     a low sine dropping fast. This is the air inside
+                    moving, and it is the part you feel.
+       THE RING     the panels themselves, which is noise through a
+                    resonant filter -- a very narrow band rings like a
+                    struck object rather than hissing like a filter.
+
+     `ring` is the piece that was missing. A biquad at Q of twenty is
+     an object with a pitch; the same filter at Q of one is a wind
+     noise, and everything in this bank was built at Q of one.
+     ======================================================================= */
+  function ring(f, q, dur, vol, delay) {
+    if (!audio() || !soundOn) return;
+    var t = AC.currentTime + (delay || 0);
+    var s2 = AC.createBufferSource(); s2.buffer = noiseBuf;
+    var bp = AC.createBiquadFilter();
+    bp.type = "bandpass"; bp.frequency.value = f; bp.Q.value = q || 14;
+    var g = AC.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.004);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    s2.connect(bp); bp.connect(g); g.connect(sfxBus || master);
+    s2.start(t, Math.random() * 1.5); s2.stop(t + dur + 0.02);
+  }
+  /* the boot on the panel: five milliseconds, and nothing else */
+  function click(vol, bright, delay) {
+    if (!audio() || !soundOn) return;
+    var t = AC.currentTime + (delay || 0);
+    var s2 = AC.createBufferSource(); s2.buffer = noiseBuf;
+    var hp = AC.createBiquadFilter();
+    hp.type = "highpass"; hp.frequency.value = bright || 2600;
+    var g = AC.createGain();
+    g.gain.setValueAtTime(vol, t);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.022);
+    s2.connect(hp); hp.connect(g); g.connect(sfxBus || master);
+    s2.start(t, Math.random() * 1.5); s2.stop(t + 0.04);
+  }
+  /* ONE STRIKE, AT A WEIGHT. Everything from a side-foot to a shot is
+     this with a different number in it, which is why they sound like
+     the same ball. */
+  function thock(power) {
+    var w = clamp(power, 0.15, 1);
+    click(0.05 + w * 0.22, 2400 + w * 1400);
+    /* the body: lower and longer the harder it is hit */
+    tone("sine", 150 + w * 90, 52 + w * 18, 0.07 + w * 0.09, 0.10 + w * 0.22);
+    /* and the panels ringing, which is the part that makes it leather */
+    ring(320 + w * 180, 9 + w * 8, 0.09 + w * 0.10, 0.04 + w * 0.10);
+    ring(720 + w * 420, 16, 0.05 + w * 0.05, 0.02 + w * 0.05, 0.004);
+  }
+
   var SFX = {
-    kick:    function () { burst(0.07, 0.22, 1400, 1.2); tone("sine", 180, 70, 0.10, 0.18); },
-    pass:    function () { burst(0.05, 0.13, 1100, 1.4); tone("sine", 150, 80, 0.07, 0.10); },
+    /* every one of these is the same ball hit at a different weight */
+    kick:    function () { thock(0.62); },
+    pass:    function () { thock(0.34); },
     /* A TOUCH IS NOT A KICK. It is the softest sound in the game on
        purpose: it plays only on the heavy touch and on a ball nicked
        off somebody, which between them happen a couple of times a
        passage rather than three times a second. */
-    touch:   function () { burst(0.035, 0.07, 820, 1.8);
-                           tone("sine", 130, 95, 0.05, 0.05); },
+    touch:   function () { thock(0.18); },
     /* TWO PLAYERS MEETING. Low, short and soft — a shoulder in a shirt,
        not a collision in a racing game. It scales with how hard they
        came together, because a jostle and a proper challenge are the
@@ -883,7 +949,12 @@ window.OuissyCup = (function () {
       burst(0.07, 0.05 + hard * 0.10, 240 + hard * 120, 0.7);
       tone("sine", 90 + hard * 40, 55, 0.09, 0.05 + hard * 0.06);
     },
-    shot:    function () { burst(0.09, 0.30, 1700, 1.0); tone("sine", 220, 60, 0.14, 0.24); },
+    shot:    function () {
+      thock(1);
+      /* and the air it moves on the way. A struck ball is the only
+         sound in a stadium that arrives after you have seen it. */
+      burst(0.20, 0.06, 900, 0.7);
+    },
     tackle:  function () { burst(0.13, 0.18, 380, 0.8); },
     /* =====================================================================
        A FOOT GOING INTO GRASS
@@ -902,9 +973,34 @@ window.OuissyCup = (function () {
       burst(0.018, 0.030 * vol, f, 0.7);
       tone("sine", other ? 96 : 88, 54, 0.045, 0.026 * vol);
     },
-    post:    function () { tone("square", 900, 520, 0.16, 0.16); },
-    net:     function () { burst(0.22, 0.12, 2600, 0.6); },
-    save:    function () { burst(0.10, 0.20, 700, 1.0); tone("sine", 120, 60, 0.12, 0.14); },
+    /* THE WOODWORK. A post is a hollow aluminium tube two metres long
+       and it RINGS -- two close partials, a hard transient on the
+       front and a tail you can hear over a crowd. It was a square wave
+       sliding down, which is a doorbell. */
+    post:    function () {
+      click(0.24, 3200);
+      ring(196, 30, 0.85, 0.16);
+      ring(392, 26, 0.55, 0.10, 0.004);
+      ring(587, 20, 0.30, 0.05, 0.008);
+      tone("sine", 98, 88, 0.5, 0.07);
+    },
+    /* THE NET. Not a hiss: a thousand nylon cords moving at once,
+       which is a soft noise falling in pitch with a flutter under it
+       as the whole thing swings back. */
+    net:     function () {
+      burst(0.26, 0.10, 2400, 0.5);
+      ring(1500, 5, 0.22, 0.05);
+      tone("sine", 70, 46, 0.34, 0.05, 0.03);
+      burst(0.30, 0.04, 1200, 0.4);
+    },
+    /* GLOVES. Flatter and duller than a boot -- the palm absorbs the
+       ring instead of setting it off, which is the whole difference
+       between a save and a clearance. */
+    save:    function () {
+      click(0.10, 1800);
+      tone("sine", 128, 58, 0.13, 0.17);
+      ring(240, 6, 0.09, 0.07);
+    },
     whistle: function () {
       tone("square", 2100, 2100, 0.20, 0.10);
       tone("square", 3150, 3150, 0.20, 0.07);
@@ -925,11 +1021,23 @@ window.OuissyCup = (function () {
        sound — a dull scuff — so the one thing the pitch does that has
        no equivalent in real football sounded like somebody sliding in.
        A board is hollow, wooden and short. */
-    board:   function () { tone("square", 210, 120, 0.09, 0.13);
-                           burst(0.05, 0.10, 900, 1.6); },
+    /* A HOARDING IS A BIG THIN PANEL, so it booms and then buzzes. */
+    board:   function () {
+      click(0.10, 1500);
+      ring(150, 12, 0.24, 0.12);
+      ring(430, 8, 0.12, 0.06, 0.005);
+      tone("sine", 92, 70, 0.14, 0.09);
+    },
     /* the ball landing on the turf: almost nothing, which is the point */
-    bounce:  function (hard) { burst(0.05, 0.05 + hard * 0.07, 300, 0.9);
-                               tone("sine", 120, 70, 0.07, 0.05 + hard * 0.05); },
+    /* THE BALL LANDING. Almost nothing, which is the point -- but it
+       is the same ball, so it is the same ring an octave down and a
+       tenth of the level. */
+    bounce:  function (hard) {
+      var h = clamp(hard, 0, 1);
+      click(0.02 + h * 0.05, 1400);
+      tone("sine", 112 + h * 40, 62, 0.08, 0.05 + h * 0.06);
+      ring(260, 7, 0.07, 0.02 + h * 0.04);
+    },
     /* THE CAMERA CUTTING IN. It halves the virtual screen, which on
        screen is an instant doubling — a cut, not a glide — and a cut
        with no sound on it reads as a dropped frame. */
@@ -11237,6 +11345,11 @@ window.OuissyCup = (function () {
        which sounds a real passage of football produced — and a sound
        that is defined and never fires is a sound that is not there. */
     sfx: function () { return SFX; },
+    /* the two buses, so a harness can hang a meter on them and find
+       out whether a sound actually makes any sound -- which is the one
+       question about an effects bank that counting calls cannot answer */
+    buses: function () { audio(); return { ctx: AC, music: musBus, sfx: sfxBus,
+                                           master: master, vol: VOL }; },
     /* the renderer itself, for harnesses that need to ask the lens
        where something lands rather than looking at a screenshot */
     r2: function () { return R2; },

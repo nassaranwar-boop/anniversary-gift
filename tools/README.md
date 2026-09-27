@@ -181,6 +181,22 @@ heading; waiting for `state().state === 'play'` lets the flash decay.
   widened, because widening them throws away the only thing they are
   for. If it fails on one metric by a couple of points, run it again
   before believing it; if it fails the same one twice, believe it.
+- **`cupheard.js`** — *does any of it actually make a sound?*
+  `cupsfx.js` counts the calls, which answers "is this sound ever asked
+  for" and cannot answer "does asking for it produce anything". A sound
+  built on a filter with the wrong Q, or on a buffer that is not ready,
+  fires exactly as often as a working one and is silent. This hangs an
+  analyser on the effects bus, fires every entry in the bank one at a
+  time and reports the peak each reached. The reading ladder is the
+  point as much as the pass: a touch at 0.11, a pass at 0.15, a kick at
+  0.20 and a shot at 0.30 is the weight progression the strike model is
+  built on, and if two of them ever come out level something has gone
+  flat. Note for whoever runs it: it samples in a tight loop rather
+  than sleeping between readings — the first version slept 8ms, which
+  on a page rendering at three frames a second came back a third of a
+  second later and sampled each sound once, at random. It reported a
+  loud sound as silent and a quiet one as fine in the same run.
+
 - **`cupfeel2.js`** — *can she actually do the four things?* The pad
   used to be one button meaning four, told apart by how long she held
   it: a shot had to be held past 170ms and a pass released inside it,
