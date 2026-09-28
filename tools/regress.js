@@ -94,7 +94,7 @@ const ok = (n, c, x) => {
        back on this list the day the chapter comes back. The cup is the
        fifth. */
     const WANT = ['hub-card-quest','hub-card-ouissy','hub-card-apoc','hub-card-race',
-                  'hub-card-cup'];
+                  'hub-card-cup','hub-card-nightshift'];
     ok(label + ': the hub has every card',
        WANT.every(id => cards.includes(id)) && cards.length === WANT.length,
        cards.join(','));

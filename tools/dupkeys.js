@@ -44,6 +44,36 @@ function blank(src) {
 
 let bad = 0;
 for (const f of process.argv.slice(2)) {
+  /* A STYLESHEET THAT DOES NOT CLOSE ITS BRACES LOSES EVERYTHING AFTER.
+
+     Rebuilding style.css around a merge left five rules open -- a
+     selector, three declarations, and then the next unrelated rule
+     swallowed into it as if it were more declarations. CSS has no
+     error to report: the browser quietly parses what it can and drops
+     the rest, so the turn-your-phone card, the rule that takes the
+     skin off the pad buttons and every rule between them had been
+     dead for dozens of commits while every harness stayed green. The
+     only symptom was one regression check nobody could explain.
+
+     Counting braces cannot tell you what a rule MEANT, but it can tell
+     you the file ends mid-rule, which is the whole of this fault. */
+  if (/\.css$/.test(f)) {
+    const css = fs.readFileSync(f, "utf8")
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/"[^"\n]*"|'[^'\n]*'/g, "");
+    let d = 0, line = 1, open = [];
+    for (const ch of css) {
+      if (ch === "\n") line++;
+      else if (ch === "{") { d++; open.push(line); }
+      else if (ch === "}") { d--; open.pop(); }
+    }
+    if (d !== 0) {
+      console.log(f + ":  " + Math.abs(d) + (d > 0 ? " rule(s) never closed" : " stray closing brace(s)") +
+                  (open.length ? " — opened at line " + open.join(", ") : ""));
+      bad++;
+    }
+    continue;
+  }
   const src = blank(fs.readFileSync(f, "utf8"));
 
   /* FUNCTION DECLARATIONS, PER SCOPE.
@@ -105,5 +135,5 @@ for (const f of process.argv.slice(2)) {
     i++;
   }
 }
-console.log(bad ? "FAIL " + bad + " duplicate name(s)" : "ok — no duplicate object keys or function declarations");
+console.log(bad ? "FAIL " + bad + " problem(s)" : "ok — nothing shadowed, nothing left open");
 process.exit(bad ? 1 : 0);
