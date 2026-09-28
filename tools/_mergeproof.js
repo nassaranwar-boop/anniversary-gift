@@ -15,7 +15,7 @@ const { chromium } = require('playwright-core');
   p.on('console', m => { if (m.type() === 'error') errs.push('console: ' + m.text().slice(0, 160)); });
   await p.route('**/*', r => r.request().url().startsWith('http://127.0.0.1')
     ? r.continue() : r.abort());
-  await p.goto('http://127.0.0.1:8901/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await p.goto('http://127.0.0.1:8899/index.html', { waitUntil: 'domcontentloaded', timeout: 60000 });
   await p.waitForTimeout(2500);
 
   const cards = await p.evaluate(() =>

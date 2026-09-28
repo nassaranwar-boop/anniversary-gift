@@ -669,6 +669,50 @@ const NS = {
   /* The one line the whole chapter is built to earn. It is not on any
      card she can reach — it is the last thing the game says, after the
      ending, in his hand, dated the day he was told. */
+  /* =====================================================================
+     AND THEN IT IS MONDAY, AND IT IS HERS.
+
+     THE LAST WORD WENT TO HIM, WHICH IS THE ONE THING THIS CHAPTER
+     COULD NOT AFFORD.
+
+     Read the ending card in the order a player actually receives it:
+     she decides what to do with the fifth one, the six things she kept
+     or burned are added up, and then the last thing on the screen --
+     under her ending, in his handwriting -- is his note. "I am
+     counting on that and I have no right to."
+
+     It is a good line and it is exactly the wrong last line. The whole
+     chapter is about a woman who was watched for fifteen years,
+     written down, copied into four things, and never once spoken to.
+     The last hour kills all four of them doing the job he built them
+     for. The finale finally hands her the decision. And then the
+     closing word on the page goes back to him, one more time, the way
+     it always has.
+
+     So he keeps his note -- he has earned the apology and she has
+     earned hearing it -- and then the page carries on for four more
+     lines that are hers. No reply to him, nothing about him. A Monday
+     morning, a door that sticks, a kettle that takes a while, and
+     somebody finally asking her to fix something.
+
+     The kettle is deliberate: it is the third line of his first tape,
+     on night one, hours earlier -- "The kettle is behind the till. It
+     takes a while. Everything in here does." He said it to teach her
+     the room. She gets it back as hers.
+
+     Printed, not spoken, like the rest of this card, so it needs no
+     take and cannot fall back to a browser voice. */
+  hers: {
+    head: "AND THEN IT IS MONDAY",
+    lines: [
+      "She props the front door with the brass wedge, because it sticks in the damp and always has.",
+      "She puts the kettle on behind the till. It takes a while. Everything in here does.",
+      "At ten past nine a woman comes in with a music box that has stopped, and holds it out, and asks whether anything can be done about it.",
+      "Ouissy turns it over in her hands, and finds the key, and says: leave it with me.",
+    ],
+    close: "She could always do this. It is the first time anybody has asked.",
+  },
+
   lastPage: {
     at: "the final entry, dated the day he was told",
     lines: [
@@ -18590,6 +18634,11 @@ function screenEnding(which) {
       '<p class="ns-kept-ask">' + NS.kept.ask + '</p>' +
       '<p class="ns-kept-out">' + (NS.kept[endingKind()] || NS.kept.some) + '</p>' +
       lastPageCard() +
+      /* and then the page goes on without him. See NS.hers. */
+      '<p class="ns-hers-head">' + NS.hers.head + '</p>' +
+      '<div class="ns-hers">' + NS.hers.lines.map((l) => "<p>" + l + "</p>").join("") +
+        '<p class="ns-hers-close">' + NS.hers.close + '</p>' +
+      '</div>' +
       '<div class="ns-btns">' +
         '<button class="ns-btn ns-btn-go" data-go="galleryOffer">THE SHOP IN DAYLIGHT</button>' +
         '<button class="ns-btn" data-go="title">THE WEEK</button>' +
